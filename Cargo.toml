@@ -1,0 +1,8 @@
+[package]
+name = "shasper"
+version = "0.1.0"
+authors = ["Wei Tang <hi@that.world>"]
+
+[dependencies]
+substrate-primitives = { git = "https://github.com/paritytech/substrate" }
+sr-primitives = { git = "https://github.com/paritytech/substrate" }
