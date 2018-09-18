@@ -1,8 +1,15 @@
 [package]
 name = "shasper"
 version = "0.1.0"
-authors = ["Wei Tang <hi@that.world>"]
+authors = ["Parity Team <admin@parity.io>"]
 
 [dependencies]
-substrate-primitives = { git = "https://github.com/paritytech/substrate" }
-sr-primitives = { git = "https://github.com/paritytech/substrate" }
+serde = "1.0"
+serde_derive = "1.0"
+tiny-keccak = "1.4.2"
+hashdb = "0.2.1"
+plain_hasher = "0.2"
+substrate-primitives = { path = "../substrate/core/primitives" }
+substrate-client = { path = "../substrate/core/client" }
+sr-primitives = { path = "../substrate/core/sr-primitives" }
+sr-io = { path = "../substrate/core/sr-io" }
