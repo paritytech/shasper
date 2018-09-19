@@ -17,6 +17,7 @@ extern crate sr_io as runtime_io;
 extern crate srml_support as runtime_support;
 
 mod attestation;
+mod extrinsic;
 mod hasher;
 mod header;
 mod utils;
@@ -26,6 +27,7 @@ mod validators;
 
 pub use attestation::AttestationRecord;
 pub use header::Header;
+pub use extrinsic::Extrinsic;
 pub use state::{CrosslinkRecord, ActiveState, CrystallizedState};
 pub use validators::{Validators, ValidatorRecord, ShardAndCommittee};
 
@@ -34,7 +36,6 @@ use primitives::{H256, H160};
 pub type Hash = H256;
 pub type BlockNumber = u64;
 pub type Address = H160;
-pub type Extrinsic = Vec<AttestationRecord>;
 pub type Block = runtime_primitives::generic::Block<Header, Extrinsic>;
 
 pub mod api {

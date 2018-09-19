@@ -21,8 +21,6 @@ pub struct Header {
 	pub number: BlockNumber,
 	pub parent_hash: H256,
 	pub slot_number: u64,
-	pub randao_reveal: H256,
-	pub pow_chain_ref: H256,
 	pub active_state_root: H256,
 	pub crystallized_state_root: H256,
 }
