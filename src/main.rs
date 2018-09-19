@@ -1,6 +1,9 @@
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate parity_codec as codec;
+#[macro_use]
+extern crate parity_codec_derive;
 extern crate hashdb;
 extern crate plain_hasher;
 extern crate tiny_keccak;
@@ -71,9 +74,13 @@ impl HashT for Keccak256 {
 	fn storage_root() -> Self::Output {
 		runtime_io::storage_root().into()
 	}
+
+	fn storage_changes_root(block: u64) -> Option<Self::Output> {
+		runtime_io::storage_changes_root(block).into()
+	}
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Decode, Encode, Default, Serialize, Deserialize)]
 pub struct AttestationRecord {
     pub slot: u64,
     pub shard_id: u16,
@@ -85,38 +92,11 @@ pub struct AttestationRecord {
     pub aggregate_sig: Vec<U256>,
 }
 
-impl Decode for AttestationRecord {
-    fn decode<I: Input>(input: &mut I) -> Option<Self> {
-        Some(AttestationRecord {
-            slot: Decode::decode(input)?,
-            shard_id: Decode::decode(input)?,
-            oplique_parent_hashes: Decode::decode(input)?,
-            shard_block_hash: Decode::decode(input)?,
-            attester_bitfield: Decode::decode(input)?,
-            justified_slot: Decode::decode(input)?,
-            justified_block_hash: Decode::decode(input)?,
-            aggregate_sig: Decode::decode(input)?,
-        })
-    }
-}
-
-impl Encode for AttestationRecord {
-    fn encode_to<T: Output>(&self, dest: &mut T) {
-        dest.push(&self.slot);
-        dest.push(&self.shard_id);
-        dest.push(&self.oplique_parent_hashes);
-        dest.push(&self.shard_block_hash);
-        dest.push(&self.attester_bitfield);
-        dest.push(&self.justified_slot);
-        dest.push(&self.justified_block_hash);
-        dest.push(&self.aggregate_sig);
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Never { }
 
 impl DigestItemT for Never {
+	type Hash = H256;
     type AuthorityId = Never;
 }
 
@@ -124,13 +104,14 @@ impl DigestItemT for Never {
 pub struct NeverDigest;
 
 impl DigestT for NeverDigest {
+	type Hash = H256;
     type Item = Never;
 
     fn logs(&self) -> &[Self::Item] { &[] }
     fn push(&mut self, item: Self::Item) { panic!("Never can never be initialized; this function is impossible to be called; qed"); }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Decode, Encode, Default, Serialize, Deserialize)]
 pub struct Header {
     pub number: BlockNumber, // Note: this field is not yet in the spec.
     pub parent_hash: H256,
@@ -140,34 +121,6 @@ pub struct Header {
     pub pow_chain_ref: H256,
     pub active_state_root: H256,
     pub crystallized_state_root: H256,
-}
-
-impl Decode for Header {
-    fn decode<I: Input>(input: &mut I) -> Option<Self> {
-        Some(Header {
-            number: Decode::decode(input)?,
-            parent_hash: Decode::decode(input)?,
-            slot_number: Decode::decode(input)?,
-            randao_reveal: Decode::decode(input)?,
-            attestations: Decode::decode(input)?,
-            pow_chain_ref: Decode::decode(input)?,
-            active_state_root: Decode::decode(input)?,
-            crystallized_state_root: Decode::decode(input)?,
-        })
-    }
-}
-
-impl Encode for Header {
-    fn encode_to<T: Output>(&self, dest: &mut T) {
-        dest.push(&self.number);
-        dest.push(&self.parent_hash);
-        dest.push(&self.slot_number);
-        dest.push(&self.randao_reveal);
-        dest.push(&self.attestations);
-        dest.push(&self.pow_chain_ref);
-        dest.push(&self.active_state_root);
-        dest.push(&self.crystallized_state_root);
-    }
 }
 
 impl HeaderT for Header {
