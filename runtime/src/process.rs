@@ -1,9 +1,11 @@
 use primitives::H256;
-use runtime_support::storage::StorageValue;
+use runtime_support::storage::{StorageValue, StorageMap};
 
 use super::{BlockNumber, Hash, Block};
+use attestation::AttestationRecord;
 use header::Header;
 use state::{ActiveState, CrystallizedState};
+use consts::CYCLE_LENGTH;
 
 storage_items! {
 	Number: b"sys:num" => required BlockNumber;
@@ -11,6 +13,7 @@ storage_items! {
 	// to handle this state transition.
 	ParentHash: b"sys:parenthash" => required Hash;
 	ParentSlot: b"sys:parentslot" => required u64;
+	JustifiedBlockHashes: b"sys:justifiedblockhashes" => required map [ u64 => H256 ];
 	Active: b"sys:active" => required ActiveState;
 	Crystallized: b"sys:crystallized" => required CrystallizedState;
 }
@@ -36,6 +39,15 @@ pub fn execute_block(block: Block) {
 	assert!(slot_number > parent_slot);
 
 	update_recent_block_hashes(&mut active, parent_slot, slot_number, parent_hash);
+
+	for i in 3..block.extrinsics.len() {
+		verify_attestation(
+			&block.extrinsics[i].attestation().expect("Expect index 3+ to be attestation"),
+			&active,
+			&crystallized,
+			parent_slot
+		);
+	}
 }
 
 fn update_recent_block_hashes(active: &mut ActiveState, parent_slot: u64, current_slot: u64, parent_hash: H256) {
@@ -45,4 +57,17 @@ fn update_recent_block_hashes(active: &mut ActiveState, parent_slot: u64, curren
 		recent_block_hashes.push(parent_hash);
 	}
 	active.recent_block_hashes = recent_block_hashes;
+}
+
+fn verify_attestation(
+	attestation: &AttestationRecord,
+	active: &ActiveState,
+	crystallized: &CrystallizedState,
+	parent_slot: u64
+) {
+	assert!(attestation.slot <= parent_slot);
+	assert!(attestation.slot >= parent_slot.saturating_sub(CYCLE_LENGTH as u64 - 1));
+
+	assert!(attestation.justified_slot <= crystallized.last_justified_slot);
+	assert_eq!(attestation.justified_block_hash, <JustifiedBlockHashes>::get(attestation.justified_slot));
 }

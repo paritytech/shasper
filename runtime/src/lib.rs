@@ -24,6 +24,7 @@ mod utils;
 mod state;
 mod process;
 mod validators;
+mod consts;
 
 pub use attestation::AttestationRecord;
 pub use header::Header;

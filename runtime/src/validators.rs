@@ -2,10 +2,7 @@ use primitives::H256;
 use blake2::blake2s::blake2s;
 
 use super::Address;
-
-const CYCLE_LENGTH: usize = 64;
-const MIN_COMMITTEE_SIZE: usize = 128;
-const SHARD_COUNT: u16 = 1024;
+use consts::{CYCLE_LENGTH, MIN_COMMITTEE_SIZE, SHARD_COUNT};
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode)]
 pub struct ValidatorRecord {
