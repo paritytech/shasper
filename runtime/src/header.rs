@@ -20,7 +20,6 @@ impl DigestT for NeverDigest {
 pub struct Header {
 	pub number: BlockNumber,
 	pub parent_hash: H256,
-	pub slot_number: u64,
 	pub active_state_root: H256,
 	pub crystallized_state_root: H256,
 }

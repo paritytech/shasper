@@ -41,6 +41,7 @@ pub type Block = runtime_primitives::generic::Block<Header, Extrinsic>;
 pub mod api {
 	use process;
 	impl_stubs!(
-		initialise_block => |header| process::initialise_block(header)
+		initialise_block => |header| process::initialise_block(header),
+		execute_block => |block| process::execute_block(block)
 	);
 }
