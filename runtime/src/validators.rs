@@ -51,4 +51,20 @@ impl Validators {
 
 		ret
 	}
+
+	pub fn split(&self, n: usize) -> Vec<Vec<ValidatorRecord>> {
+		let m = self.0.len() / n;
+		let mut ret = Vec::new();
+
+		for (i, value) in self.0.clone().into_iter().enumerate() {
+			if i % m == 0 {
+				ret.push(Vec::new());
+			}
+
+			ret.last_mut().expect("When i is 0, one vector is always pushed; it cannot be empty; qed")
+				.push(value);
+		}
+
+		ret
+	}
 }
