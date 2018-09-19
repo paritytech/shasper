@@ -1,6 +1,7 @@
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate blake2_rfc as blake2;
 extern crate parity_codec as codec;
 #[macro_use]
 extern crate parity_codec_derive;

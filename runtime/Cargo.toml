@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Parity Team <admin@parity.io>"]
 
 [dependencies]
+blake2-rfc = "0.2"
 serde = "1.0"
 serde_derive = "1.0"
 tiny-keccak = "1.4.2"
