@@ -15,3 +15,4 @@ substrate-primitives = { git = "https://github.com/paritytech/substrate" }
 substrate-client = { git = "https://github.com/paritytech/substrate" }
 sr-primitives = { git = "https://github.com/paritytech/substrate" }
 sr-io = { git = "https://github.com/paritytech/substrate" }
+srml-support = { git = "https://github.com/paritytech/substrate" }

@@ -1,17 +1,7 @@
 use primitives::H256;
 
-use super::Address;
 use attestation::AttestationRecord;
-
-pub struct ValidatorRecord {
-	pub pubkey: H256,
-	pub withdrawal_shard: u16,
-	pub withdrawal_address: Address,
-	pub randao_commitment: H256,
-	pub balance: u128,
-	pub start_dynasty: u64,
-	pub end_dynasty: u64,
-}
+use validators::Validators;
 
 pub struct CrosslinkRecord {
 	pub dynasty: u64,
@@ -30,7 +20,7 @@ pub struct ActiveState {
 }
 
 pub struct CrystallizedState {
-	pub validators: Vec<ValidatorRecord>,
+	pub validators: Validators,
 	pub last_state_recalc: u64,
 	pub shard_and_committee_for_slots: Vec<Vec<ShardAndCommittee>>,
 	pub last_justified_slot: u64,
