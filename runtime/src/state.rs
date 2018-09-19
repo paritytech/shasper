@@ -3,17 +3,20 @@ use primitives::H256;
 use attestation::AttestationRecord;
 use validators::{Validators, ShardAndCommittee};
 
+#[derive(Encode, Decode)]
 pub struct CrosslinkRecord {
 	pub dynasty: u64,
 	pub slot: u64,
 	pub hash: H256,
 }
 
+#[derive(Encode, Decode)]
 pub struct ActiveState {
 	pub pending_attestation: Vec<AttestationRecord>,
 	pub recent_block_hashes: Vec<H256>,
 }
 
+#[derive(Encode, Decode)]
 pub struct CrystallizedState {
 	pub validators: Validators,
 	pub last_state_recalc: u64,

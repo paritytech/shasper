@@ -7,7 +7,7 @@ const CYCLE_LENGTH: usize = 64;
 const MIN_COMMITTEE_SIZE: usize = 128;
 const SHARD_COUNT: u16 = 1024;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode)]
 pub struct ValidatorRecord {
 	pub pubkey: H256,
 	pub withdrawal_shard: u16,
@@ -18,12 +18,13 @@ pub struct ValidatorRecord {
 	pub end_dynasty: u64,
 }
 
+#[derive(Encode, Decode)]
 pub struct ShardAndCommittee {
 	pub shard_id: u16,
 	pub committee: Vec<u32>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Encode, Decode)]
 pub struct Validators(pub Vec<ValidatorRecord>);
 
 impl Validators {
