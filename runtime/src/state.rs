@@ -1,17 +1,12 @@
 use primitives::H256;
 
 use attestation::AttestationRecord;
-use validators::Validators;
+use validators::{Validators, ShardAndCommittee};
 
 pub struct CrosslinkRecord {
 	pub dynasty: u64,
 	pub slot: u64,
 	pub hash: H256,
-}
-
-pub struct ShardAndCommittee {
-	pub shard_id: u16,
-	pub committee: Vec<u32>,
 }
 
 pub struct ActiveState {

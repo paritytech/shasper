@@ -26,8 +26,8 @@ mod validators;
 
 pub use attestation::AttestationRecord;
 pub use header::Header;
-pub use state::{CrosslinkRecord, ShardAndCommittee, ActiveState, CrystallizedState};
-pub use validators::{Validators, ValidatorRecord};
+pub use state::{CrosslinkRecord, ActiveState, CrystallizedState};
+pub use validators::{Validators, ValidatorRecord, ShardAndCommittee};
 
 use primitives::{H256, H160};
 
