@@ -12,6 +12,7 @@ extern crate substrate_client as client;
 extern crate sr_primitives as runtime_primitives;
 extern crate sr_io as runtime_io;
 
+mod attestation;
 mod hasher;
 mod header;
 mod utils;
