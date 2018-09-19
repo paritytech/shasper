@@ -1,11 +1,10 @@
 use primitives::H256;
 use runtime_primitives::traits::{Header as HeaderT, Digest as DigestT};
 
+use super::BlockNumber;
 use attestation::AttestationRecord;
 use hasher::{Keccak256, KECCAK_NULL_RLP};
 use utils::Never;
-
-pub type BlockNumber = u64;
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
 pub struct NeverDigest;

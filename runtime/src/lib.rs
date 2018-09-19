@@ -16,3 +16,13 @@ mod attestation;
 mod hasher;
 mod header;
 mod utils;
+mod state;
+
+pub use attestation::AttestationRecord;
+pub use header::Header;
+pub use state::{ValidatorRecord, CrosslinkRecord, ShardAndCommittee, ActiveState, CrystallizedState};
+
+use primitives::H160;
+
+pub type BlockNumber = u64;
+pub type Address = H160;
