@@ -26,3 +26,5 @@ use primitives::H160;
 
 pub type BlockNumber = u64;
 pub type Address = H160;
+pub type Extrinsic = Vec<AttestationRecord>;
+pub type Block = runtime_primitives::generic::Block<Header, Extrinsic>;

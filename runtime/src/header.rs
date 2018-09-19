@@ -2,7 +2,6 @@ use primitives::H256;
 use runtime_primitives::traits::{Header as HeaderT, Digest as DigestT};
 
 use super::BlockNumber;
-use attestation::AttestationRecord;
 use hasher::{Keccak256, KECCAK_NULL_RLP};
 use utils::Never;
 
@@ -23,7 +22,6 @@ pub struct Header {
 	pub parent_hash: H256,
 	pub slot_number: u64,
 	pub randao_reveal: H256,
-	pub attestations: Vec<AttestationRecord>,
 	pub pow_chain_ref: H256,
 	pub active_state_root: H256,
 	pub crystallized_state_root: H256,
