@@ -4,3 +4,14 @@ version = "0.1.0"
 authors = ["Parity Team <admin@parity.io>"]
 
 [dependencies]
+serde = "1.0"
+serde_derive = "1.0"
+tiny-keccak = "1.4.2"
+hashdb = "0.2.1"
+plain_hasher = "0.2"
+parity-codec = "1.0"
+parity-codec-derive = "1.0"
+substrate-primitives = { git = "https://github.com/paritytech/substrate" }
+substrate-client = { git = "https://github.com/paritytech/substrate" }
+sr-primitives = { git = "https://github.com/paritytech/substrate" }
+sr-io = { git = "https://github.com/paritytech/substrate" }
