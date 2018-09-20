@@ -1,5 +1,6 @@
 use primitives::H256;
 use blake2::blake2s::blake2s;
+use rstd::prelude::*;
 
 use super::Address;
 use consts::{CYCLE_LENGTH, MIN_COMMITTEE_SIZE, SHARD_COUNT};
@@ -42,7 +43,7 @@ impl Validators {
 			source = H256::from(blake2s(32, &[], &source).as_bytes());
 			for j in 0..10 {
 				let pos = j * 3;
-				let m = u32::from_be(unsafe { ::std::mem::transmute([0u8, source[pos], source[pos+1], source[pos+2]]) });
+				let m = u32::from_be(unsafe { ::rstd::mem::transmute([0u8, source[pos], source[pos+1], source[pos+2]]) });
 				let remaining = ret.len() - i;
 				if remaining == 0 {
 					break;

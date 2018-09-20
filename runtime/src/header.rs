@@ -1,11 +1,13 @@
 use primitives::H256;
 use runtime_primitives::traits::{Header as HeaderT, Digest as DigestT};
+use rstd::prelude::*;
 
 use super::BlockNumber;
 use hasher::{Keccak256, KECCAK_NULL_RLP};
 use utils::Never;
 
-#[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct NeverDigest;
 
 impl DigestT for NeverDigest {
@@ -16,7 +18,8 @@ impl DigestT for NeverDigest {
 	fn push(&mut self, _item: Self::Item) { panic!("Never can never be initialized; this function is impossible to be called; qed"); }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Decode, Encode, Default, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Decode, Encode, Default)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Header {
 	pub number: BlockNumber,
 	pub parent_hash: H256,

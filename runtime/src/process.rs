@@ -1,5 +1,6 @@
 use primitives::H256;
 use runtime_support::storage::{StorageValue, StorageMap};
+use rstd::prelude::*;
 
 use super::{BlockNumber, Hash, Block};
 use attestation::AttestationRecord;
@@ -53,7 +54,7 @@ pub fn execute_block(block: Block) {
 fn update_recent_block_hashes(active: &mut ActiveState, parent_slot: u64, current_slot: u64, parent_hash: H256) {
 	let d = (current_slot - parent_slot) as usize;
 	let mut recent_block_hashes: Vec<H256> = active.recent_block_hashes[d..].iter().cloned().collect();
-	for _ in 0..::std::cmp::min(d, active.recent_block_hashes.len()) {
+	for _ in 0..::rstd::cmp::min(d, active.recent_block_hashes.len()) {
 		recent_block_hashes.push(parent_hash);
 	}
 	active.recent_block_hashes = recent_block_hashes;

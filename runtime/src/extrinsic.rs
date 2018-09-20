@@ -1,4 +1,5 @@
 use primitives::H256;
+use rstd::prelude::*;
 
 use attestation::AttestationRecord;
 

@@ -16,6 +16,7 @@ extern crate serde;
 extern crate serde_derive;
 
 extern crate substrate_primitives as primitives;
+extern crate sr_std as rstd;
 extern crate sr_primitives as runtime_primitives;
 #[macro_use]
 extern crate sr_io as runtime_io;
@@ -42,6 +43,7 @@ pub use validators::{Validators, ValidatorRecord, ShardAndCommittee};
 
 use primitives::{H256, H160};
 
+use rstd::prelude::*;
 use runtime_version::RuntimeVersion;
 
 /// Shasper runtime version.
@@ -65,10 +67,9 @@ pub type Block = runtime_primitives::generic::Block<Header, Extrinsic>;
 
 pub mod api {
 	use process;
-	use version;
 	impl_stubs!(
 		initialise_block => |header| process::initialise_block(header),
 		execute_block => |block| process::execute_block(block),
-		version => |()| version()
+		version => |()| ::version()
 	);
 }
