@@ -70,4 +70,17 @@ fn verify_attestation(
 
 	assert!(attestation.justified_slot <= crystallized.last_justified_slot);
 	assert_eq!(attestation.justified_block_hash, <JustifiedBlockHashes>::get(attestation.justified_slot));
+
+	let attestation_indices = crystallized.shard_and_committee_for_slots[attestation.slot as usize].iter().find(|v| v.shard_id == attestation.shard_id).expect("Attestation must exist").committee.clone();
+	assert_eq!(attestation.attester_bitfield.len(), (attestation_indices.len() + 7) / 8);
+
+	let mut _group_public_key = H256::new();
+	for (i, validator_index) in attestation_indices.into_iter().enumerate() {
+		if (attestation.attester_bitfield[i / 8] >> (7 - (i % 8))) % 2 == 1 {
+			_group_public_key = _group_public_key | crystallized.validators.0[validator_index as usize].pubkey;
+		}
+	}
+
+	// TODO: actually verify the message via blake2s.
+	assert!(true);
 }
