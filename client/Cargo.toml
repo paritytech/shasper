@@ -1,0 +1,10 @@
+[package]
+name = "shasper-client"
+version = "0.1.0"
+authors = ["Parity Team <admin@parity.io>"]
+
+[dependencies]
+substrate-client = { git = "https://github.com/paritytech/substrate" }
+substrate-executor = { git = "https://github.com/paritytech/substrate" }
+substrate-primitives = { git = "https://github.com/paritytech/substrate" }
+shasper-runtime = { path = "../runtime" }

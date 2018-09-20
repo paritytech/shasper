@@ -5,7 +5,8 @@ authors = ["Parity Team <admin@parity.io>"]
 
 [workspace]
 members = [
-	"runtime"
+	"runtime",
+	"client"
 ]
 exclude = [
 	"runtime/wasm"

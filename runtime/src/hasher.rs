@@ -1,5 +1,6 @@
 use primitives::H256;
 use runtime_primitives::traits::{Hash as HashT};
+#[cfg(not(feature = "std"))]
 use runtime_io::ExternTrieCrypto;
 
 pub const KECCAK_NULL_RLP: H256 = H256(
@@ -67,6 +68,7 @@ impl HashT for Keccak256 {
 	}
 }
 
+#[cfg(not(feature = "std"))]
 impl ExternTrieCrypto for KeccakHasher {
 	fn enumerated_trie_root(values: &[&[u8]]) -> [u8; 32] {
 		::runtime_io::enumerated_trie_root::<KeccakHasher>(values)
