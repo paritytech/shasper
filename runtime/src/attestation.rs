@@ -1,6 +1,6 @@
 use primitives::{H256, U256};
 
-#[derive(Clone, PartialEq, Eq, Debug, Decode, Encode, Default, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Decode, Encode, Default)]
 pub struct AttestationRecord {
 	pub slot: u64,
 	pub shard_id: u16,
