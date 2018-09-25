@@ -31,7 +31,7 @@ mod hasher;
 mod header;
 mod utils;
 mod state;
-mod process;
+mod system;
 mod validators;
 mod consts;
 
@@ -67,10 +67,10 @@ pub type Address = H160;
 pub type Block = runtime_primitives::generic::Block<Header, Extrinsic>;
 
 pub mod api {
-	use process;
+	use system;
 	impl_stubs!(
-		initialise_block => |header| process::initialise_block(header),
-		execute_block => |block| process::execute_block(block),
+		initialise_block => |header| system::initialise_block(header),
+		execute_block => |block| system::execute_block(block),
 		version => |()| ::version()
 	);
 }
