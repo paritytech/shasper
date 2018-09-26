@@ -6,7 +6,5 @@ Here is the [2.1 spec](https://notes.ethereum.org/SCIg8AH5SA-O4C1G1LYZHQ) from D
 
 What we get / planned so far:
 
-* [X] Basic header and block representations.
-* [ ] Refactor so that it aligns with coding guidelines.
-* [ ] Basic non-checking executor.
-* [ ] State and block processing.
+* [ ] State transition
+* [ ] Fork choice rules
