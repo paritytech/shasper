@@ -3,6 +3,10 @@ name = "shasper"
 version = "0.1.0"
 authors = ["Parity Team <admin@parity.io>"]
 
+[dependencies]
+shasper-client = { path = "client" }
+shasper-runtime = { path = "runtime" }
+
 [workspace]
 members = [
 	"runtime",

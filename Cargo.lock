@@ -858,6 +858,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "shasper"
 version = "0.1.0"
+dependencies = [
+ "shasper-client 0.1.0",
+ "shasper-runtime 0.1.0",
+]
 
 [[package]]
 name = "shasper-client"
