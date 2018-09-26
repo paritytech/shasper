@@ -4,7 +4,87 @@ use core::{mem, slice};
 use arrayvec::ArrayVec;
 use primitives::{H160, H256, U256};
 
-pub use parity_codec::{Input, Output};
+/// Trait that allows reading of data into a slice.
+pub trait Input {
+	/// Read into the provided input slice. Returns the number of bytes read.
+	fn read(&mut self, into: &mut [u8]) -> usize;
+
+	/// Read a single byte from the input.
+	fn read_byte(&mut self) -> Option<u8> {
+		let mut buf = [0u8];
+		match self.read(&mut buf[..]) {
+			0 => None,
+			1 => Some(buf[0]),
+			_ => unreachable!(),
+		}
+	}
+}
+
+#[cfg(not(feature = "std"))]
+impl<'a> Input for &'a [u8] {
+	fn read(&mut self, into: &mut [u8]) -> usize {
+		let len = ::core::cmp::min(into.len(), self.len());
+		into[..len].copy_from_slice(&self[..len]);
+		*self = &self[len..];
+		len
+	}
+}
+
+#[cfg(feature = "std")]
+impl<R: ::std::io::Read> Input for R {
+	fn read(&mut self, into: &mut [u8]) -> usize {
+		match (self as &mut ::std::io::Read).read_exact(into) {
+			Ok(()) => into.len(),
+			Err(_) => 0,
+		}
+	}
+}
+
+/// Prefix another input with a byte.
+struct PrefixInput<'a, T: 'a> {
+	prefix: Option<u8>,
+	input: &'a mut T,
+}
+
+impl<'a, T: 'a + Input> Input for PrefixInput<'a, T> {
+	fn read(&mut self, buffer: &mut [u8]) -> usize {
+		match self.prefix.take() {
+			Some(v) if buffer.len() > 0 => {
+				buffer[0] = v;
+				1 + self.input.read(&mut buffer[1..])
+			}
+			_ => self.input.read(buffer)
+		}
+	}
+}
+
+/// Trait that allows writing of data.
+pub trait Output: Sized {
+	/// Write to the output.
+	fn write(&mut self, bytes: &[u8]);
+
+	fn push_byte(&mut self, byte: u8) {
+		self.write(&[byte]);
+	}
+
+	fn push<V: Encode + ?Sized>(&mut self, value: &V) {
+		value.encode_to(self);
+	}
+}
+
+#[cfg(not(feature = "std"))]
+impl Output for Vec<u8> {
+	fn write(&mut self, bytes: &[u8]) {
+		self.extend(bytes);
+	}
+}
+
+#[cfg(feature = "std")]
+impl<W: ::std::io::Write> Output for W {
+	fn write(&mut self, bytes: &[u8]) {
+		(self as &mut ::std::io::Write).write_all(bytes).expect("Codec outputs are infallible");
+	}
+}
 
 /// Trait that allows zero-copy write of value-references to slices in SSZ format.
 /// Implementations should override `using_encoded` for value types and `encode_to` for allocating types.

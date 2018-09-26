@@ -9,7 +9,6 @@ extern crate alloc;
 extern crate core;
 
 extern crate arrayvec;
-extern crate parity_codec;
 extern crate substrate_primitives as primitives;
 
 #[cfg(feature = "std")]

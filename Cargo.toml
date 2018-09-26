@@ -12,6 +12,7 @@ members = [
 	"runtime",
 	"client",
 	"util/ssz",
+	"util/ssz-derive",
 ]
 exclude = [
 	"runtime/wasm",
