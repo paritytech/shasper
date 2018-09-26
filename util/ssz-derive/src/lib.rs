@@ -43,7 +43,8 @@ pub fn encode_derive(input: TokenStream) -> TokenStream {
 
 	let self_ = quote!(self);
 	let dest_ = quote!(dest);
-	let encoding = encode::quote(&input.data, name, &self_, &dest_);
+	let sorted = sorted(&input.attrs);
+	let encoding = encode::quote(&input.data, name, &self_, &dest_, sorted);
 
 	let expanded = quote! {
 		impl #impl_generics ::ssz::Encode for #name #ty_generics #where_clause {
@@ -65,7 +66,8 @@ pub fn decode_derive(input: TokenStream) -> TokenStream {
 	let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
 	let input_ = quote!(input);
-	let decoding = decode::quote(&input.data, name, &input_);
+	let sorted = sorted(&input.attrs);
+	let decoding = decode::quote(&input.data, name, &input_, sorted);
 
 	let expanded = quote! {
 		impl #impl_generics ::ssz::Decode for #name #ty_generics #where_clause {
@@ -85,6 +87,32 @@ fn add_trait_bounds(mut generics: Generics, bounds: syn::TypeParamBound) -> Gene
 		}
 	}
 	generics
+}
+
+fn sorted(attrs: &[syn::Attribute]) -> bool {
+	attrs.iter().any(|attr| {
+		attr.path.segments.first().map(|pair| {
+			let seg = pair.value();
+
+			if seg.ident == Ident::new("ssz_codec", seg.ident.span()) {
+				assert_eq!(attr.path.segments.len(), 1);
+
+				let meta = attr.interpret_meta();
+				if let Some(syn::Meta::List(ref l)) = meta {
+					if let syn::NestedMeta::Meta(syn::Meta::Word(ref w)) = l.nested.last().unwrap().value() {
+						assert_eq!(w, &Ident::new("sorted", w.span()));
+						true
+					} else {
+						panic!("Invalid syntax for `ssz_codec` attribute: Expected sorted.");
+					}
+				} else {
+					panic!("Invalid syntax for `ssz_codec` attribute: Expected sorted.");
+				}
+			} else {
+				false
+			}
+		}).unwrap_or(false)
+	})
 }
 
 fn index(v: &syn::Variant, i: usize) -> proc_macro2::TokenStream {

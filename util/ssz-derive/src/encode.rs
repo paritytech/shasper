@@ -31,9 +31,18 @@ fn encode_fields<F>(
 	dest: &TokenStream,
 	fields: &FieldsList,
 	field_name: F,
+	sorted: bool,
 ) -> TokenStream where
 	F: Fn(usize, &Option<Ident>) -> TokenStream,
 {
+	let mut fields: Vec<_> = fields.iter().collect();
+
+	if sorted {
+		fields.sort_by(|a, b| {
+			a.ident.cmp(&b.ident)
+		})
+	}
+
 	let recurse = fields.iter().enumerate().map(|(i, f)| {
 		let field = field_name(i, &f.ident);
 
@@ -47,7 +56,7 @@ fn encode_fields<F>(
 	}
 }
 
-pub fn quote(data: &Data, type_name: &Ident, self_: &TokenStream, dest: &TokenStream) -> TokenStream {
+pub fn quote(data: &Data, type_name: &Ident, self_: &TokenStream, dest: &TokenStream, sorted: bool) -> TokenStream {
 	let call_site = Span::call_site();
 	match *data {
 		Data::Struct(ref data) => match data.fields {
@@ -55,6 +64,7 @@ pub fn quote(data: &Data, type_name: &Ident, self_: &TokenStream, dest: &TokenSt
 				dest,
 				&fields.named,
 				|_, name| quote_spanned!(call_site => &#self_.#name),
+				sorted,
 			),
 			Fields::Unnamed(ref fields) => encode_fields(
 				dest,
@@ -63,6 +73,7 @@ pub fn quote(data: &Data, type_name: &Ident, self_: &TokenStream, dest: &TokenSt
 					let index = Index { index: i as u32, span: call_site };
 					quote_spanned!(call_site => &#self_.#index)
 				},
+				sorted,
 			),
 			Fields::Unit => quote_spanned! { call_site =>
 				drop(#dest);
@@ -87,6 +98,7 @@ pub fn quote(data: &Data, type_name: &Ident, self_: &TokenStream, dest: &TokenSt
 							dest,
 							&fields.named,
 							|a, b| field_name(a, b),
+							sorted,
 						);
 
 						quote_spanned! { f.span() =>
@@ -112,6 +124,7 @@ pub fn quote(data: &Data, type_name: &Ident, self_: &TokenStream, dest: &TokenSt
 							dest,
 							&fields.unnamed,
 							|a, b| field_name(a, b),
+							sorted,
 						);
 
 						quote_spanned! { f.span() =>

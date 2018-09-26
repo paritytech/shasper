@@ -18,7 +18,7 @@ use syn::{
 	spanned::Spanned,
 };
 
-pub fn quote(data: &Data, type_name: &Ident, input: &TokenStream) -> TokenStream {
+pub fn quote(data: &Data, type_name: &Ident, input: &TokenStream, sorted: bool) -> TokenStream {
 	let call_site = Span::call_site();
 	match *data {
 		Data::Struct(ref data) => match data.fields {
@@ -27,6 +27,7 @@ pub fn quote(data: &Data, type_name: &Ident, input: &TokenStream) -> TokenStream
 				quote! { #type_name },
 				input,
 				&data.fields,
+				sorted,
 			),
 			Fields::Unit => {
 				quote_spanned! {call_site =>
@@ -47,6 +48,7 @@ pub fn quote(data: &Data, type_name: &Ident, input: &TokenStream) -> TokenStream
 					quote! { #type_name :: #name },
 					input,
 					&v.fields,
+					sorted,
 				);
 
 				quote_spanned! { v.span() =>
@@ -69,10 +71,18 @@ pub fn quote(data: &Data, type_name: &Ident, input: &TokenStream) -> TokenStream
 	}
 }
 
-fn create_instance(call_site: Span, name: TokenStream, input: &TokenStream, fields: &Fields) -> TokenStream {
+fn create_instance(call_site: Span, name: TokenStream, input: &TokenStream, fields: &Fields, sorted: bool) -> TokenStream {
 	match *fields {
 		Fields::Named(ref fields) => {
-			let recurse = fields.named.iter().map(|f| {
+			let mut named_fields: Vec<_> = fields.named.iter().collect();
+
+			if sorted {
+				named_fields.sort_by(|a, b| {
+					a.ident.cmp(&b.ident)
+				})
+			}
+
+			let recurse = named_fields.iter().map(|f| {
 				let name = &f.ident;
 				let field = quote_spanned!(call_site => #name);
 

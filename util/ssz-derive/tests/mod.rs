@@ -32,6 +32,14 @@ struct Struct<A, B, C> {
 	pub c: C,
 }
 
+#[derive(Debug, PartialEq, SszEncode, SszDecode)]
+#[ssz_codec(sorted)]
+struct SortedType {
+	pub b: u32,
+	pub c: u32,
+	pub a: u32,
+}
+
 type TestType = Struct<u32, u64, Vec<u8>>;
 
 impl <A, B, C> Struct<A, B, C> {
@@ -56,6 +64,20 @@ enum EnumWithDiscriminant {
 	A = 1,
 	B = 15,
 	C = 255,
+}
+
+#[test]
+fn should_work_for_sorted() {
+	let a = SortedType {
+		c: 3, b: 2, a: 1
+	};
+
+	a.using_encoded(|ref slice| {
+		assert_eq!(slice, &b"\0\0\0\x01\0\0\0\x02\0\0\0\x03");
+	});
+
+	let mut da: &[u8] = b"\0\0\0\x01\0\0\0\x02\0\0\0\x03";
+	assert_eq!(SortedType::decode(&mut da), Some(a));
 }
 
 #[test]
