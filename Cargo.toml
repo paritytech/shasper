@@ -10,8 +10,9 @@ shasper-runtime = { path = "runtime" }
 [workspace]
 members = [
 	"runtime",
-	"client"
+	"client",
+	"util/ssz",
 ]
 exclude = [
-	"runtime/wasm"
+	"runtime/wasm",
 ]
