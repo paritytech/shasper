@@ -1,7 +1,7 @@
 use primitives::{H256, U256};
 use rstd::prelude::*;
 
-#[derive(Clone, PartialEq, Eq, Decode, Encode, Default)]
+#[derive(Clone, PartialEq, Eq, Decode, Encode, Default, SszEncode, SszDecode)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct AttestationRecord {
 	pub slot: u64,
