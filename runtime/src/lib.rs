@@ -34,6 +34,7 @@ mod state;
 mod system;
 mod validators;
 mod consts;
+mod spec;
 
 pub use attestation::AttestationRecord;
 pub use header::Header;
