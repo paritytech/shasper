@@ -10,6 +10,8 @@ hashdb = { version = "0.2.1", default-features = false }
 plain_hasher = { version = "0.2", default-features = false }
 parity-codec = { version = "1.0", default-features = false }
 parity-codec-derive = { version = "1.0", default-features = false }
+ssz = { path = "../util/ssz", default-features = false }
+ssz-derive = { path = "../util/ssz-derive", default-features = false }
 substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-io = { git = "https://github.com/paritytech/substrate", default-features = false }
@@ -26,6 +28,8 @@ std = [
 	"plain_hasher/std",
 	"parity-codec/std",
 	"parity-codec-derive/std",
+	"ssz/std",
+	"ssz-derive/std",
 	"substrate-primitives/std",
 	"sr-primitives/std",
 	"sr-io/std",

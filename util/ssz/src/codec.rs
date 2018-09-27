@@ -40,24 +40,6 @@ impl<R: ::std::io::Read> Input for R {
 	}
 }
 
-/// Prefix another input with a byte.
-struct PrefixInput<'a, T: 'a> {
-	prefix: Option<u8>,
-	input: &'a mut T,
-}
-
-impl<'a, T: 'a + Input> Input for PrefixInput<'a, T> {
-	fn read(&mut self, buffer: &mut [u8]) -> usize {
-		match self.prefix.take() {
-			Some(v) if buffer.len() > 0 => {
-				buffer[0] = v;
-				1 + self.input.read(&mut buffer[1..])
-			}
-			_ => self.input.read(buffer)
-		}
-	}
-}
-
 /// Trait that allows writing of data.
 pub trait Output: Sized {
 	/// Write to the output.

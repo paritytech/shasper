@@ -929,6 +929,8 @@ dependencies = [
  "sr-std 0.1.0 (git+https://github.com/paritytech/substrate)",
  "sr-version 0.1.0 (git+https://github.com/paritytech/substrate)",
  "srml-support 0.1.0 (git+https://github.com/paritytech/substrate)",
+ "ssz 0.1.0",
+ "ssz-derive 0.1.0",
  "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1061,7 +1063,7 @@ dependencies = [
 
 [[package]]
 name = "ssz-derive"
-version = "1.0.0"
+version = "0.1.0"
 dependencies = [
  "proc-macro2 0.4.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.8 (registry+https://github.com/rust-lang/crates.io-index)",

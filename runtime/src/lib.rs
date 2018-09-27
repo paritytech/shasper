@@ -4,6 +4,9 @@ extern crate blake2;
 extern crate parity_codec as codec;
 #[macro_use]
 extern crate parity_codec_derive;
+extern crate ssz;
+#[macro_use]
+extern crate ssz_derive;
 extern crate hashdb;
 extern crate plain_hasher;
 extern crate tiny_keccak;

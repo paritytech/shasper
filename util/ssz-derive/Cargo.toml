@@ -1,6 +1,6 @@
 [package]
 name = "ssz-derive"
-version = "1.0.0"
+version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 license = "Apache-2.0"
 
