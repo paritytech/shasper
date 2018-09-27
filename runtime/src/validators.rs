@@ -1,5 +1,4 @@
 use primitives::H256;
-use blake2::blake2s::blake2s;
 use rstd::prelude::*;
 
 use super::Address;
@@ -40,7 +39,7 @@ impl Validators {
 		let mut i = 0;
 
 		while i < ret.len() {
-			source = H256::from(blake2s(32, &[], &source).as_bytes());
+			source = H256::default(); // H256::from(blake2s(32, &[], &source).as_bytes());
 			for j in 0..10 {
 				let pos = j * 3;
 				let m = u32::from_be(unsafe { ::rstd::mem::transmute([0u8, source[pos], source[pos+1], source[pos+2]]) });

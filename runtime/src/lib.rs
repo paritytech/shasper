@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-extern crate blake2_rfc as blake2;
+extern crate blake2;
 extern crate parity_codec as codec;
 #[macro_use]
 extern crate parity_codec_derive;
