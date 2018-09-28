@@ -15,6 +15,14 @@
 //! Derives serialization and deserialization codec for complex structs for simple marshalling.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "std"), feature(alloc))]
+
+#[cfg(not(feature = "std"))]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate core;
 
 extern crate proc_macro;
 extern crate proc_macro2;
@@ -30,6 +38,12 @@ use syn::{DeriveInput, Generics, GenericParam, Ident};
 
 mod decode;
 mod encode;
+
+#[cfg(feature = "std")]
+pub mod alloc {
+	pub use std::boxed;
+	pub use std::vec;
+}
 
 const ENCODE_ERR: &str = "derive(SszEncode) failed";
 

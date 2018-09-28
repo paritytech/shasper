@@ -17,6 +17,8 @@ use core::str::from_utf8;
 #[cfg(feature = "std")]
 use std::str::from_utf8;
 
+use alloc::vec::Vec;
+
 use proc_macro2::{Span, TokenStream};
 use syn::{
 	Data, Field, Fields, Ident, Index,
