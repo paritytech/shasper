@@ -6,7 +6,7 @@ use rstd::prelude::*;
 
 use attestation::AttestationRecord;
 
-#[derive(Clone, PartialEq, Eq, SszEncode, SszDecode)]
+#[derive(Clone, PartialEq, Eq, Default, SszEncode, SszDecode)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]
 pub struct SpecHeader {
