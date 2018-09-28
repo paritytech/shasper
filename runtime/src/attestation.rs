@@ -19,12 +19,17 @@ impl Default for AttestationRecord {
 		Self {
 			slot: 0,
 			shard_id: 0,
-			oplique_parent_hashes: vec![],
+			oplique_parent_hashes: Vec::new(),
 			shard_block_hash: H256::new(),
-			attester_bitfield: vec![],
+			attester_bitfield: Vec::new(),
 			justified_slot: 0,
 			justified_block_hash: H256::new(),
-			aggregate_sig: vec![U256::zero(), U256::zero()],
+			aggregate_sig: {
+				let mut ret = Vec::new();
+				ret.push(U256::zero());
+				ret.push(U256::zero());
+				ret
+			},
 		}
 	}
 }
