@@ -1,6 +1,5 @@
 use primitives::H256;
 use runtime_primitives::traits::{Header as HeaderT, Digest as DigestT};
-use rstd::prelude::*;
 
 use super::BlockNumber;
 use hasher::{Keccak256, KECCAK_NULL_RLP};

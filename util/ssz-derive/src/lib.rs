@@ -40,7 +40,7 @@ mod decode;
 mod encode;
 
 #[cfg(feature = "std")]
-pub mod alloc {
+mod alloc {
 	pub use std::boxed;
 	pub use std::vec;
 }

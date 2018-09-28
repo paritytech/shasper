@@ -48,7 +48,6 @@ pub use hasher::KeccakHasher;
 
 use primitives::{H256, H160};
 
-use rstd::prelude::*;
 use runtime_version::RuntimeVersion;
 
 /// Shasper runtime version.

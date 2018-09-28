@@ -11,7 +11,6 @@ pub const KECCAK_NULL_RLP: H256 = H256(
 use plain_hasher::PlainHasher;
 use hashdb::Hasher;
 use tiny_keccak::Keccak;
-use rstd::prelude::*;
 
 // Note: We can't use keccak-hasher crate because that one uses ethereum_types::H256.
 #[derive(Default, Debug, Clone, PartialEq)]

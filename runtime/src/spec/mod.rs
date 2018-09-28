@@ -2,7 +2,6 @@ use primitives::H256;
 use blake2::Blake2b;
 use blake2::crypto_mac::Mac;
 use ssz;
-#[allow(unused_imports)]
 use rstd::prelude::*;
 
 use attestation::AttestationRecord;
