@@ -13,7 +13,8 @@ use hashdb::Hasher;
 use tiny_keccak::Keccak;
 
 // Note: We can't use keccak-hasher crate because that one uses ethereum_types::H256.
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct KeccakHasher;
 
 impl Hasher for KeccakHasher {

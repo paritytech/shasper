@@ -12,6 +12,7 @@ parity-codec = { version = "1.0", default-features = false }
 parity-codec-derive = { version = "1.0", default-features = false }
 ssz = { path = "../../util/ssz", default-features = false }
 ssz-derive = { path = "../../util/ssz-derive", default-features = false }
+bls = { git = "https://github.com/sorpaas/bls", default-features = false }
 substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-io = { git = "https://github.com/paritytech/substrate", default-features = false }
@@ -30,6 +31,7 @@ std = [
 	"parity-codec-derive/std",
 	"ssz/std",
 	"ssz-derive/std",
+	"bls/std",
 	"substrate-primitives/std",
 	"sr-primitives/std",
 	"sr-io/std",

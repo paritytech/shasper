@@ -10,6 +10,7 @@ extern crate ssz_derive;
 extern crate hashdb;
 extern crate plain_hasher;
 extern crate tiny_keccak;
+extern crate bls;
 
 #[cfg(feature = "std")]
 extern crate serde;
