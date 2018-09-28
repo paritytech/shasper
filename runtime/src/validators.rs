@@ -4,7 +4,8 @@ use rstd::prelude::*;
 use super::Address;
 use consts::{CYCLE_LENGTH, MIN_COMMITTEE_SIZE, SHARD_COUNT};
 
-#[derive(Clone, PartialEq, Eq, Default, Encode, Decode)]
+#[derive(Clone, PartialEq, Eq, Default, Encode, Decode, SszEncode, SszDecode)]
+#[ssz_codec(sorted)]
 pub struct ValidatorRecord {
 	pub pubkey: H256,
 	pub withdrawal_shard: u16,
@@ -15,13 +16,14 @@ pub struct ValidatorRecord {
 	pub end_dynasty: u64,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, SszEncode, SszDecode)]
+#[ssz_codec(sorted)]
 pub struct ShardAndCommittee {
 	pub shard_id: u16,
 	pub committee: Vec<u32>,
 }
 
-#[derive(Clone, Default, Encode, Decode)]
+#[derive(Clone, Default, Encode, Decode, SszEncode, SszDecode)]
 pub struct Validators(pub Vec<ValidatorRecord>);
 
 impl Validators {

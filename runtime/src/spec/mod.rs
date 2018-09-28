@@ -1,10 +1,16 @@
 use primitives::H256;
-use blake2::Blake2b;
-use blake2::crypto_mac::Mac;
+use blake2::{Blake2b, crypto_mac::Mac};
 use ssz;
 use rstd::prelude::*;
 
 use attestation::AttestationRecord;
+
+mod state;
+
+pub use self::state::{
+	SpecActiveState, SpecCrystallizedState,
+	SpecActiveStateExt, SpecCrystallizedStateExt
+};
 
 #[derive(Clone, PartialEq, Eq, Default, SszEncode, SszDecode)]
 #[cfg_attr(feature = "std", derive(Debug))]

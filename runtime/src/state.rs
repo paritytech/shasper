@@ -4,20 +4,23 @@ use rstd::prelude::*;
 use attestation::AttestationRecord;
 use validators::{Validators, ShardAndCommittee};
 
-#[derive(Encode, Decode, Default)]
+#[derive(Encode, Decode, Default, SszEncode, SszDecode)]
+#[ssz_codec(sorted)]
 pub struct CrosslinkRecord {
 	pub dynasty: u64,
 	pub slot: u64,
 	pub hash: H256,
 }
 
-#[derive(Encode, Decode, Default)]
+#[derive(Encode, Decode, Default, SszEncode, SszDecode)]
+#[ssz_codec(sorted)]
 pub struct ActiveState {
 	pub pending_attestation: Vec<AttestationRecord>,
 	pub recent_block_hashes: Vec<H256>,
 }
 
-#[derive(Encode, Decode, Default)]
+#[derive(Encode, Decode, Default, SszEncode, SszDecode)]
+#[ssz_codec(sorted)]
 pub struct CrystallizedState {
 	pub validators: Validators,
 	pub last_state_recalc: u64,

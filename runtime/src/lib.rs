@@ -45,6 +45,7 @@ pub use extrinsic::Extrinsic;
 pub use state::{CrosslinkRecord, ActiveState, CrystallizedState};
 pub use validators::{Validators, ValidatorRecord, ShardAndCommittee};
 pub use hasher::KeccakHasher;
+pub use spec::{SpecHeader, SpecAttestationRecord};
 
 use primitives::{H256, H160};
 
