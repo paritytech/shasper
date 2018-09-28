@@ -11,7 +11,7 @@ pub struct CrosslinkRecord {
 	pub hash: H256,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Default)]
 pub struct ActiveState {
 	pub pending_attestation: Vec<AttestationRecord>,
 	pub recent_block_hashes: Vec<H256>,
