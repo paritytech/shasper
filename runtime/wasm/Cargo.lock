@@ -1,4 +1,9 @@
 [[package]]
+name = "amcl"
+version = "0.1.0"
+source = "git+https://github.com/sorpaas/signature-schemes#af51e8a29c5cc9788d21985fdbe570230c1216aa"
+
+[[package]]
 name = "arrayvec"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -42,6 +47,17 @@ source = "git+https://github.com/sorpaas/bls#a32ce55298a89edb8a0373815029bcb9eff
 dependencies = [
  "pairing 0.14.0 (git+https://github.com/sorpaas/pairing)",
  "rand 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "bls-aggregates"
+version = "0.2.0"
+source = "git+https://github.com/sorpaas/signature-schemes#af51e8a29c5cc9788d21985fdbe570230c1216aa"
+dependencies = [
+ "amcl 0.1.0 (git+https://github.com/sorpaas/signature-schemes)",
+ "blake2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -588,6 +604,7 @@ version = "0.1.0"
 dependencies = [
  "blake2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bls 0.0.1 (git+https://github.com/sorpaas/bls)",
+ "bls-aggregates 0.2.0 (git+https://github.com/sorpaas/signature-schemes)",
  "hashdb 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec-derive 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -884,12 +901,14 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [metadata]
+"checksum amcl 0.1.0 (git+https://github.com/sorpaas/signature-schemes)" = "<none>"
 "checksum arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)" = "a1e964f9e24d588183fcb43503abda40d288c8657dfc27311516ce2f05675aef"
 "checksum base58 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5024ee8015f02155eee35c711107ddd9a9bf3cb689cf2a9089c97e79b6e1ae83"
 "checksum bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "228047a76f468627ca71776ecdebd732a3423081fcf5125585bcd7c49886ce12"
 "checksum blake2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "73b77e29dbd0115e43938be2d5128ecf81c0353e00acaa65339a1242586951d9"
 "checksum blake2-rfc 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)" = "5d6d530bdd2d52966a6d03b7a964add7ae1a288d25214066fd4b600f0f796400"
 "checksum bls 0.0.1 (git+https://github.com/sorpaas/bls)" = "<none>"
+"checksum bls-aggregates 0.2.0 (git+https://github.com/sorpaas/signature-schemes)" = "<none>"
 "checksum byte-tools 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "560c32574a12a89ecd91f5e742165893f86e3ab98d21f8ea548658eb9eef5f40"
 "checksum byteorder 1.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "90492c5858dd7d2e78691cfb89f90d273a2800fc11d98f60786e5d87e2f83781"
 "checksum cfg-if 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "0c4e7bb64a8ebb0d856483e1e682ea3422f883c5f5615a90d51a2c82fe87fdd3"

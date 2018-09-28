@@ -11,6 +11,7 @@ extern crate hashdb;
 extern crate plain_hasher;
 extern crate tiny_keccak;
 extern crate bls;
+extern crate bls_aggregates;
 
 #[cfg(feature = "std")]
 extern crate serde;
