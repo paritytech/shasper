@@ -8,6 +8,7 @@ use attestation::AttestationRecord;
 
 #[derive(Clone, PartialEq, Eq, SszEncode, SszDecode)]
 #[cfg_attr(feature = "std", derive(Debug))]
+#[ssz_codec(sorted)]
 pub struct SpecHeader {
 	parent_hash: H256,
 	slot_number: u64,

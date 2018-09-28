@@ -3,6 +3,7 @@ use rstd::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode)]
 #[cfg_attr(feature = "std", derive(Debug))]
+#[ssz_codec(sorted)]
 pub struct AttestationRecord {
 	pub slot: u64,
 	pub shard_id: u16,
