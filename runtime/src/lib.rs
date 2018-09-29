@@ -82,9 +82,13 @@ pub mod api {
 	use system;
 	impl_stubs!(
 		initialise_block => |header| system::initialise_block(header),
+		apply_extrinsic => |extrinsic| system::apply_extrinsic(extrinsic),
+		finalise_block => |()| system::finalise_block(),
+		inherent_extrinsics => |_| system::inherent_extrinsics(),
 		execute_block => |block| system::execute_block(block),
 		active_state_root => |()| system::active_state_root(),
 		crystallized_state_root => |()| system::crystallized_state_root(),
+		authorities => |()| system::authorities(),
 		version => |()| ::version()
 	);
 }
