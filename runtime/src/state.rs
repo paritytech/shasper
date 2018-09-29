@@ -20,6 +20,17 @@ pub struct ActiveState {
 	pub recent_block_hashes: Vec<H256>,
 }
 
+impl ActiveState {
+	pub fn block_hash(&self, current_slot: u64, target_slot: u64) -> H256 {
+		let current_slot = current_slot as usize;
+		let target_slot = target_slot as usize;
+
+		let sback = current_slot.saturating_sub(CYCLE_LENGTH * 2);
+		assert!(sback <= target_slot && target_slot > sback + CYCLE_LENGTH * 2);
+		self.recent_block_hashes[target_slot - sback]
+	}
+}
+
 #[derive(Encode, Decode, Default, SszEncode, SszDecode)]
 #[ssz_codec(sorted)]
 pub struct CrystallizedState {
@@ -39,7 +50,7 @@ impl CrystallizedState {
 	pub fn shards_and_committees_for_slot(&self, slot: u64) -> &[ShardAndCommittee] {
 		let slot = slot as usize;
 		let start = (self.last_state_recalc as usize).saturating_sub(CYCLE_LENGTH);
-		assert!(start <= slot, slot > start + CYCLE_LENGTH * 2);
+		assert!(start <= slot && slot > start + CYCLE_LENGTH * 2);
 		&self.shards_and_committees_for_slots[slot - start]
 	}
 }
