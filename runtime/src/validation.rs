@@ -49,7 +49,7 @@ pub fn validate_attestation<JustifiedBlockHashes: StorageMap<u64, H256, Query=Op
 	attestation.verify_signatures(&parent_hashes, &pubkeys);
 }
 
-pub fn update_block_vote_cache<BlockVoteCache: StorageMap<H256, BlockVoteInfo, Query=Option<BlockVoteInfo>>>(
+pub fn update_block_vote_cache<BlockVoteCache: StorageMap<H256, BlockVoteInfo, Query=BlockVoteInfo>>(
 	slot: u64,
 	crystallized_state: &CrystallizedState,
 	active_state: &ActiveState,
@@ -63,7 +63,7 @@ pub fn update_block_vote_cache<BlockVoteCache: StorageMap<H256, BlockVoteInfo, Q
 			continue;
 		}
 
-		let mut info = BlockVoteCache::get(&parent_hash).unwrap_or_default();
+		let mut info = BlockVoteCache::get(&parent_hash);
 		for (i, index) in attestation_indices.iter().enumerate() {
 			if attestation.attester_bitfield.has_voted(i) && !info.voter_indices.contains(index) {
 				info.voter_indices.push(*index);
@@ -74,7 +74,7 @@ pub fn update_block_vote_cache<BlockVoteCache: StorageMap<H256, BlockVoteInfo, Q
 	}
 }
 
-pub fn process_block<JustifiedBlockHashes: StorageMap<u64, H256, Query=Option<H256>>, BlockVoteCache: StorageMap<H256, BlockVoteInfo, Query=Option<BlockVoteInfo>>>(
+pub fn process_block<JustifiedBlockHashes: StorageMap<u64, H256, Query=Option<H256>>, BlockVoteCache: StorageMap<H256, BlockVoteInfo, Query=BlockVoteInfo>>(
 	slot: u64,
 	parent_slot: u64,
 	crystallized_state: &CrystallizedState,

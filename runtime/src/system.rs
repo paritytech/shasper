@@ -5,6 +5,7 @@ use rstd::prelude::*;
 use super::{BlockNumber, Hash, Block};
 use header::Header;
 use state::{ActiveState, CrystallizedState, BlockVoteInfo};
+use validation;
 
 storage_items! {
 	Number: b"sys:num" => required BlockNumber;
@@ -12,18 +13,39 @@ storage_items! {
 	// to handle this state transition.
 	ParentHash: b"sys:parenthash" => required Hash;
 	ParentSlot: b"sys:parentslot" => required u64;
-	JustifiedBlockHashes: b"sys:justifiedblockhashes" => required map [ u64 => H256 ];
+	JustifiedBlockHashes: b"sys:justifiedblockhashes" => map [ u64 => H256 ];
 	Active: b"sys:active" => required ActiveState;
 	Crystallized: b"sys:crystallized" => required CrystallizedState;
 	BlockVoteCache: b"sys:blockvotecache" => required map [ H256 => BlockVoteInfo ];
 }
 
 pub fn initialise_block(header: Header) {
-	assert_eq!(<ParentHash>::get(), header.parent_hash);
+	assert_eq!(ParentHash::get(), header.parent_hash);
 
-	<Number>::put(&header.number);
+	Number::put(&header.number);
 }
 
-pub fn execute_block(_block: Block) {
+pub fn execute_block(block: Block) {
+	let extrinsic = &block.extrinsics[0];
+	let slot = extrinsic.slot_number;
+	let parent_hash = ParentHash::get();
+	let parent_slot = ParentSlot::get();
+	let attestations = &extrinsic.attestations;
 
+	let mut active_state = Active::get();
+	let crystallized_state = Crystallized::get();
+
+	validation::validate_block_pre_processing_conditions();
+	active_state.update_recent_block_hashes(parent_slot, slot, parent_hash);
+
+	validation::process_block::<JustifiedBlockHashes, BlockVoteCache>(
+		slot,
+		parent_slot,
+		&crystallized_state,
+		&mut active_state,
+		attestations
+	);
+
+	ParentSlot::put(&slot);
+	// TODO: Update ParentHash
 }
