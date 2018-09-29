@@ -29,6 +29,14 @@ impl ActiveState {
 		assert!(sback <= target_slot && target_slot > sback + CYCLE_LENGTH * 2);
 		self.recent_block_hashes[target_slot - sback]
 	}
+
+	pub fn block_hashes(&self, current_slot: u64, target_from_slot: u64, target_to_slot: u64) -> Vec<H256> {
+		let mut ret = Vec::new();
+		for target_slot in target_from_slot..(target_to_slot + 1) {
+			ret.push(self.block_hash(current_slot, target_slot));
+		}
+		ret
+	}
 }
 
 #[derive(Encode, Decode, Default, SszEncode, SszDecode)]
