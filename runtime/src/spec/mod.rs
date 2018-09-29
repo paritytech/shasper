@@ -26,7 +26,7 @@ pub struct SpecHeader {
 }
 
 impl SpecHeader {
-	pub fn hash(&self) -> H256 {
+	pub fn spec_hash(&self) -> H256 {
 		let encoded = ssz::Encode::encode(self);
 		let mut blake2 = Blake2b::new_keyed(&[], 64);
 		blake2.input(&encoded);

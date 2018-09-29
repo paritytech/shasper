@@ -33,7 +33,7 @@ pub fn execute_block(block: Block) {
 	let attestations = &extrinsic.attestations;
 
 	let mut active_state = Active::get();
-	let crystallized_state = Crystallized::get();
+	let mut crystallized_state = Crystallized::get();
 
 	validation::validate_block_pre_processing_conditions();
 	active_state.update_recent_block_hashes(parent_slot, slot, parent_hash);
@@ -44,6 +44,13 @@ pub fn execute_block(block: Block) {
 		&crystallized_state,
 		&mut active_state,
 		attestations
+	);
+
+	validation::process_cycle_transitions::<BlockHashesBySlot, BlockVoteCache>(
+		slot,
+		parent_hash,
+		&mut crystallized_state,
+		&mut active_state
 	);
 
 	ParentSlot::put(&slot);
