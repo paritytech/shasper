@@ -78,6 +78,7 @@ pub type Hash = H256;
 pub type BlockNumber = u64;
 pub type Address = H160;
 pub type PublicKey = Vec<u8>;
+pub type ShardId = u16;
 
 pub mod api {
 	use system;

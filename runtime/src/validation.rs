@@ -1,9 +1,11 @@
 use primitives::H256;
 use runtime_support::storage::StorageMap;
+use rstd::collections::btree_map::BTreeMap;
 
-use state::{ActiveState, CrystallizedState, BlockVoteInfo};
+use state::{ActiveState, CrystallizedState, BlockVoteInfo, CrosslinkRecord};
 use attestation::AttestationRecord;
 use consts::CYCLE_LENGTH;
+use ::ShardId;
 
 pub fn validate_block_pre_processing_conditions() { }
 
@@ -100,4 +102,40 @@ pub fn process_block<JustifiedBlockHashes: StorageMap<u64, H256, Query=Option<H2
 	}
 
 	active_state.pending_attestations.append(&mut attestations.iter().cloned().collect());
+}
+
+pub fn process_updated_crosslinks(
+	crystallized_state: &mut CrystallizedState,
+	active_state: &ActiveState
+) {
+	let mut total_attestation_balance: BTreeMap<(ShardId, H256), u128> = Default::default();
+
+	for attestation in &active_state.pending_attestations {
+		let shard_tuple = (attestation.shard_id, attestation.shard_block_hash);
+
+		let attestation_indices = crystallized_state.attestation_indices(attestation);
+		let total_committee_balance = attestation_indices
+			.iter()
+			.fold(0, |acc, index| {
+				acc + crystallized_state.validators[*index].balance
+			});
+
+		*total_attestation_balance.entry(shard_tuple).or_insert(0) += attestation_indices
+			.iter()
+			.enumerate()
+			.filter(|(in_cycle_slot_height, _)| {
+				attestation.attester_bitfield.has_voted(*in_cycle_slot_height)
+			})
+			.fold(0, |acc, (_, index)| {
+				acc + crystallized_state.validators[*index].balance
+			});
+
+		if 3 * *total_attestation_balance.entry(shard_tuple).or_insert(0) >= 2 * total_committee_balance && crystallized_state.current_dynasty > crystallized_state.crosslink_records[attestation.shard_id as usize].dynasty {
+			crystallized_state.crosslink_records[attestation.shard_id as usize] = CrosslinkRecord {
+				dynasty: crystallized_state.current_dynasty,
+				slot: crystallized_state.last_state_recalc + CYCLE_LENGTH as u64,
+				hash: attestation.shard_block_hash
+			};
+		}
+	}
 }

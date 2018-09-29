@@ -2,14 +2,14 @@ use primitives::H256;
 use rstd::prelude::*;
 
 use bitfield::BitField;
-use super::PublicKey;
+use super::{PublicKey, ShardId};
 
 #[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]
 pub struct AttestationRecord {
 	pub slot: u64,
-	pub shard_id: u16,
+	pub shard_id: ShardId,
 	pub oblique_parent_hashes: Vec<H256>,
 	pub shard_block_hash: H256,
 	pub attester_bitfield: BitField,
