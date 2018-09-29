@@ -343,3 +343,18 @@ pub fn process_dynasty_transition(
 	crystallized_state.current_dynasty += 1;
 	crystallized_state.dynasty_start = crystallized_state.last_state_recalc;
 }
+
+pub fn process_cycle_transitions<BlockHashesBySlot: StorageMap<u64, H256, Query=Option<H256>>, BlockVoteCache: StorageMap<H256, BlockVoteInfo, Query=BlockVoteInfo>>(
+	slot: u64,
+	parent_hash: H256,
+	crystallized_state: &mut CrystallizedState,
+	active_state: &mut ActiveState
+) {
+	while slot >= crystallized_state.last_state_recalc + CYCLE_LENGTH as u64 {
+		initialize_new_cycle::<BlockHashesBySlot, BlockVoteCache>(slot, crystallized_state, active_state);
+
+		if is_ready_for_dynasty_transition(slot, crystallized_state) {
+			process_dynasty_transition(parent_hash, crystallized_state);
+		}
+	}
+}
