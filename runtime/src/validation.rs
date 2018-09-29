@@ -73,3 +73,31 @@ pub fn update_block_vote_cache<BlockVoteCache: StorageMap<H256, BlockVoteInfo, Q
 		BlockVoteCache::insert(parent_hash, info);
 	}
 }
+
+pub fn process_block<JustifiedBlockHashes: StorageMap<u64, H256, Query=Option<H256>>, BlockVoteCache: StorageMap<H256, BlockVoteInfo, Query=Option<BlockVoteInfo>>>(
+	slot: u64,
+	parent_slot: u64,
+	crystallized_state: &CrystallizedState,
+	active_state: &mut ActiveState,
+	attestations: &[AttestationRecord]
+) {
+	validate_parent_block_proposer(slot, parent_slot, crystallized_state, attestations);
+
+	for attestation in attestations {
+		validate_attestation::<JustifiedBlockHashes>(
+			slot,
+			parent_slot,
+			crystallized_state,
+			active_state,
+			attestation
+		);
+		update_block_vote_cache::<BlockVoteCache>(
+			slot,
+			crystallized_state,
+			active_state,
+			attestation
+		);
+	}
+
+	active_state.pending_attestations.append(&mut attestations.iter().cloned().collect());
+}
