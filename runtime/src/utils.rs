@@ -9,3 +9,13 @@ impl DigestItemT for Never {
 	type Hash = H256;
 	type AuthorityId = Never;
 }
+
+pub fn split(list: Vec<usize>, n: usize) -> Vec<Vec<usize>> {
+	let mut ret = Vec::new();
+	for i in 0..n {
+		let cur = list[(list.len() * i / n)..(list.len() * (i + 1) / n)]
+			.iter().cloned().collect();
+		ret.push(cur);
+	}
+	ret
+}
