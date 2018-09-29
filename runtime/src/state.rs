@@ -16,7 +16,7 @@ pub struct CrosslinkRecord {
 #[derive(Encode, Decode, Default, SszEncode, SszDecode)]
 #[ssz_codec(sorted)]
 pub struct ActiveState {
-	pub pending_attestation: Vec<AttestationRecord>,
+	pub pending_attestations: Vec<AttestationRecord>,
 	pub recent_block_hashes: Vec<H256>,
 }
 
@@ -45,6 +45,16 @@ impl ActiveState {
 			current_slot.saturating_sub(1)
 		);
 		ret.push(current_hash);
+		ret
+	}
+
+	pub fn signed_parent_block_hashes(&self, current_slot: u64, attestation: &AttestationRecord) -> Vec<H256> {
+		let mut ret = self.block_hashes(
+			current_slot,
+			attestation.slot.saturating_sub(CYCLE_LENGTH as u64 - 1),
+			attestation.slot - attestation.oblique_parent_hashes.len() as u64,
+		);
+		ret.append(&mut attestation.oblique_parent_hashes.clone());
 		ret
 	}
 }

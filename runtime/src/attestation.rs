@@ -7,7 +7,7 @@ use rstd::prelude::*;
 pub struct AttestationRecord {
 	pub slot: u64,
 	pub shard_id: u16,
-	pub oplique_parent_hashes: Vec<H256>,
+	pub oblique_parent_hashes: Vec<H256>,
 	pub shard_block_hash: H256,
 	pub attester_bitfield: Vec<u8>,
 	pub justified_slot: u64,
@@ -20,7 +20,7 @@ impl Default for AttestationRecord {
 		Self {
 			slot: 0,
 			shard_id: 0,
-			oplique_parent_hashes: Vec::new(),
+			oblique_parent_hashes: Vec::new(),
 			shard_block_hash: H256::new(),
 			attester_bitfield: Vec::new(),
 			justified_slot: 0,
