@@ -22,7 +22,7 @@ pub struct ActiveState {
 	pub recent_block_hashes: Vec<H256>,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Default)]
 pub struct BlockVoteInfo {
 	pub voter_indices: Vec<usize>,
 	pub total_voter_deposits: u128,
