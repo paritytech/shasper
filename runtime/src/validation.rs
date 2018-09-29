@@ -4,7 +4,7 @@ use rstd::collections::btree_map::BTreeMap;
 
 use state::{ActiveState, CrystallizedState, BlockVoteInfo, CrosslinkRecord};
 use attestation::AttestationRecord;
-use consts::{CYCLE_LENGTH, WEI_PER_ETH, BASE_REWARD_QUOTIENT, SQRT_E_DROP_TIME, SLOT_DURATION, MIN_DYNASTY_LENGTH};
+use consts::{CYCLE_LENGTH, WEI_PER_ETH, BASE_REWARD_QUOTIENT, SQRT_E_DROP_TIME, SLOT_DURATION, MIN_DYNASTY_LENGTH, SHARD_COUNT};
 use ::ShardId;
 
 pub fn validate_block_pre_processing_conditions() { }
@@ -328,4 +328,18 @@ pub fn is_ready_for_dynasty_transition(
 	}
 
 	return true;
+}
+
+pub fn process_dynasty_transition(
+	parent_hash: H256,
+	crystallized_state: &mut CrystallizedState
+) {
+	let new_start_shard = (crystallized_state.shards_and_committees_for_slots.last().expect("There must be at least one shard_and_committee").last().expect("There must be at least one shard_and_committee").shard_id + 1) % SHARD_COUNT;
+
+	let mut new_shards_and_committees: Vec<_> = crystallized_state.shards_and_committees_for_slots[CYCLE_LENGTH..].iter().cloned().collect();
+	new_shards_and_committees.append(&mut crystallized_state.new_shuffling(parent_hash, new_start_shard));
+	crystallized_state.shards_and_committees_for_slots = new_shards_and_committees;
+
+	crystallized_state.current_dynasty += 1;
+	crystallized_state.dynasty_start = crystallized_state.last_state_recalc;
 }
