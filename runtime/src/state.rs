@@ -57,6 +57,15 @@ impl ActiveState {
 		ret.append(&mut attestation.oblique_parent_hashes.clone());
 		ret
 	}
+
+	pub fn update_recent_block_hashes(&mut self, parent_slot: u64, current_slot: u64, parent_hash: H256) {
+		let d = (current_slot - parent_slot) as usize;
+		let mut ret = self.recent_block_hashes[d..].iter().cloned().collect::<Vec<H256>>();
+		for _ in 0..::std::cmp::min(d, self.recent_block_hashes.len()) {
+			ret.push(parent_hash);
+		}
+		self.recent_block_hashes = ret;
+	}
 }
 
 #[derive(Encode, Decode, Default, SszEncode, SszDecode)]
