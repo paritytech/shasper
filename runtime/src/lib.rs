@@ -38,6 +38,7 @@ mod utils;
 mod state;
 mod system;
 mod validators;
+mod block;
 
 pub mod consts;
 pub mod spec;
@@ -48,6 +49,7 @@ pub use extrinsic::Extrinsic;
 pub use state::{CrosslinkRecord, ActiveState, CrystallizedState};
 pub use validators::{ValidatorRecord, ShardAndCommittee};
 pub use hasher::KeccakHasher;
+pub use block::{Block, BlockExt};
 
 use primitives::{H256, H160};
 
@@ -70,7 +72,6 @@ fn version() -> RuntimeVersion {
 pub type Hash = H256;
 pub type BlockNumber = u64;
 pub type Address = H160;
-pub type Block = runtime_primitives::generic::Block<Header, Extrinsic>;
 
 pub mod api {
 	use system;

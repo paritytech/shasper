@@ -8,7 +8,7 @@ pub enum Extrinsic {
 	SlotNumber(u64),
 	RandaoReveal(H256),
 	PoWChainRef(H256),
-	Attestation(AttestationRecord),
+	Attestations(Vec<AttestationRecord>),
 }
 
 impl Extrinsic {
@@ -33,9 +33,9 @@ impl Extrinsic {
 		}
 	}
 
-	pub fn attestation(&self) -> Option<AttestationRecord> {
+	pub fn attestations(&self) -> Option<&[AttestationRecord]> {
 		match &self {
-			&Extrinsic::Attestation(v) => Some(v.clone()),
+			&Extrinsic::Attestations(ref v) => Some(v),
 			_ => None,
 		}
 	}
