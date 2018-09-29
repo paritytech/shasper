@@ -107,4 +107,13 @@ impl CrystallizedState {
 			.map(|x| x.committee.iter().map(|i| *i as usize).collect())
 			.unwrap_or_default()
 	}
+
+	pub fn active_validator_indices(&self) -> Vec<usize> {
+		self.validators
+			.iter()
+			.enumerate()
+			.filter(|(_, v)| v.start_dynasty <= self.current_dynasty && v.end_dynasty > self.current_dynasty)
+			.map(|(i, _)| i)
+			.collect()
+	}
 }
