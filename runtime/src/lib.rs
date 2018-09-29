@@ -38,8 +38,9 @@ mod utils;
 mod state;
 mod system;
 mod validators;
-mod consts;
-mod spec;
+
+pub mod consts;
+pub mod spec;
 
 pub use attestation::AttestationRecord;
 pub use header::Header;
@@ -47,7 +48,6 @@ pub use extrinsic::Extrinsic;
 pub use state::{CrosslinkRecord, ActiveState, CrystallizedState};
 pub use validators::{ValidatorRecord, ShardAndCommittee};
 pub use hasher::KeccakHasher;
-pub use spec::{SpecHeader, SpecAttestationRecord};
 
 use primitives::{H256, H160};
 

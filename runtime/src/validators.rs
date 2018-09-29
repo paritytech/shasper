@@ -2,7 +2,6 @@ use primitives::H256;
 use rstd::prelude::*;
 
 use super::Address;
-use consts::{CYCLE_LENGTH, MIN_COMMITTEE_SIZE, SHARD_COUNT};
 
 #[derive(Clone, PartialEq, Eq, Default, Encode, Decode, SszEncode, SszDecode)]
 #[ssz_codec(sorted)]

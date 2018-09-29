@@ -1,12 +1,10 @@
 use primitives::H256;
-use runtime_support::storage::{StorageValue, StorageMap};
+use runtime_support::storage::StorageValue;
 use rstd::prelude::*;
 
 use super::{BlockNumber, Hash, Block};
-use attestation::AttestationRecord;
 use header::Header;
 use state::{ActiveState, CrystallizedState};
-use consts::CYCLE_LENGTH;
 
 storage_items! {
 	Number: b"sys:num" => required BlockNumber;
@@ -25,6 +23,6 @@ pub fn initialise_block(header: Header) {
 	<Number>::put(&header.number);
 }
 
-pub fn execute_block(block: Block) {
+pub fn execute_block(_block: Block) {
 
 }
