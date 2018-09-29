@@ -4,7 +4,7 @@ use rstd::collections::btree_map::BTreeMap;
 
 use state::{ActiveState, CrystallizedState, BlockVoteInfo, CrosslinkRecord};
 use attestation::AttestationRecord;
-use consts::{CYCLE_LENGTH, WEI_PER_ETH, BASE_REWARD_QUOTIENT, SQRT_E_DROP_TIME, SLOT_DURATION};
+use consts::{CYCLE_LENGTH, WEI_PER_ETH, BASE_REWARD_QUOTIENT, SQRT_E_DROP_TIME, SLOT_DURATION, MIN_DYNASTY_LENGTH};
 use ::ShardId;
 
 pub fn validate_block_pre_processing_conditions() { }
@@ -297,4 +297,35 @@ pub fn initialize_new_cycle<BlockHashesBySlot: StorageMap<u64, H256, Query=Optio
 	crystallized_state.last_justified_slot = last_justified_slot;
 	crystallized_state.justified_streak = justified_streak;
 	crystallized_state.last_finalized_slot = last_finalized_slot;
+}
+
+pub fn is_ready_for_dynasty_transition(
+	slot: u64,
+	crystallized_state: &CrystallizedState
+) -> bool {
+	let slots_since_last_dynasty_change = slot - crystallized_state.dynasty_start;
+	if slots_since_last_dynasty_change < MIN_DYNASTY_LENGTH {
+		return false;
+	}
+
+	if crystallized_state.last_finalized_slot <= crystallized_state.dynasty_start {
+		return false;
+	}
+
+	let mut required_shards = Vec::new();
+	for shards_and_committees_for_slot in &crystallized_state.shards_and_committees_for_slots {
+		for shard_and_committee in shards_and_committees_for_slot {
+			required_shards.push(shard_and_committee.shard_id);
+		}
+	}
+
+	for (shard_id, crosslink) in crystallized_state.crosslink_records.iter().enumerate() {
+		if required_shards.contains(&(shard_id as u16)) {
+			if crosslink.slot <= crystallized_state.dynasty_start {
+				return false;
+			}
+		}
+	}
+
+	return true;
 }
