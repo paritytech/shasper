@@ -40,6 +40,7 @@ mod state;
 mod system;
 mod validators;
 mod block;
+mod bitfield;
 
 pub mod consts;
 pub mod spec;
@@ -51,6 +52,7 @@ pub use state::{CrosslinkRecord, ActiveState, CrystallizedState};
 pub use validators::{ValidatorRecord, ShardAndCommittee};
 pub use hasher::KeccakHasher;
 pub use block::{Block, BlockExt};
+pub use bitfield::BitField;
 
 use primitives::{H256, H160};
 
