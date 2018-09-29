@@ -22,6 +22,12 @@ pub struct ActiveState {
 	pub recent_block_hashes: Vec<H256>,
 }
 
+#[derive(Encode, Decode)]
+pub struct BlockVoteInfo {
+	pub voter_indices: Vec<usize>,
+	pub total_voter_deposits: u128,
+}
+
 impl ActiveState {
 	pub fn block_hash(&self, current_slot: u64, target_slot: u64) -> H256 {
 		let current_slot = current_slot as usize;

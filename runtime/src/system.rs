@@ -4,7 +4,7 @@ use rstd::prelude::*;
 
 use super::{BlockNumber, Hash, Block};
 use header::Header;
-use state::{ActiveState, CrystallizedState};
+use state::{ActiveState, CrystallizedState, BlockVoteInfo};
 
 storage_items! {
 	Number: b"sys:num" => required BlockNumber;
@@ -15,6 +15,7 @@ storage_items! {
 	JustifiedBlockHashes: b"sys:justifiedblockhashes" => required map [ u64 => H256 ];
 	Active: b"sys:active" => required ActiveState;
 	Crystallized: b"sys:crystallized" => required CrystallizedState;
+	BlockVoteCache: b"sys:blockvotecache" => required map [ H256 => BlockVoteInfo ];
 }
 
 pub fn initialise_block(header: Header) {
