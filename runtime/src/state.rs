@@ -37,6 +37,16 @@ impl ActiveState {
 		}
 		ret
 	}
+
+	pub fn block_hashes_to_sign(&self, current_slot: u64, current_hash: H256) -> Vec<H256> {
+		let mut ret = self.block_hashes(
+			current_slot,
+			current_slot.saturating_sub(CYCLE_LENGTH as u64 - 1),
+			current_slot.saturating_sub(1)
+		);
+		ret.push(current_hash);
+		ret
+	}
 }
 
 #[derive(Encode, Decode, Default, SszEncode, SszDecode)]
