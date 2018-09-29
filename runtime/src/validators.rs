@@ -15,7 +15,7 @@ pub struct ValidatorRecord {
 	pub end_dynasty: u64,
 }
 
-#[derive(Encode, Decode, SszEncode, SszDecode)]
+#[derive(Clone, Encode, Decode, SszEncode, SszDecode)]
 #[ssz_codec(sorted)]
 pub struct ShardAndCommittee {
 	pub shard_id: u16,

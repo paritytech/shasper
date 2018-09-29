@@ -13,7 +13,7 @@ storage_items! {
 	// to handle this state transition.
 	ParentHash: b"sys:parenthash" => required Hash;
 	ParentSlot: b"sys:parentslot" => required u64;
-	JustifiedBlockHashes: b"sys:justifiedblockhashes" => map [ u64 => H256 ];
+	BlockHashesBySlot: b"sys:blockhashesbyslot" => map [ u64 => H256 ];
 	Active: b"sys:active" => required ActiveState;
 	Crystallized: b"sys:crystallized" => required CrystallizedState;
 	BlockVoteCache: b"sys:blockvotecache" => required map [ H256 => BlockVoteInfo ];
@@ -38,7 +38,7 @@ pub fn execute_block(block: Block) {
 	validation::validate_block_pre_processing_conditions();
 	active_state.update_recent_block_hashes(parent_slot, slot, parent_hash);
 
-	validation::process_block::<JustifiedBlockHashes, BlockVoteCache>(
+	validation::process_block::<BlockHashesBySlot, BlockVoteCache>(
 		slot,
 		parent_slot,
 		&crystallized_state,

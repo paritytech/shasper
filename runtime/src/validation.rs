@@ -4,7 +4,7 @@ use rstd::collections::btree_map::BTreeMap;
 
 use state::{ActiveState, CrystallizedState, BlockVoteInfo, CrosslinkRecord};
 use attestation::AttestationRecord;
-use consts::CYCLE_LENGTH;
+use consts::{CYCLE_LENGTH, WEI_PER_ETH, BASE_REWARD_QUOTIENT, SQRT_E_DROP_TIME, SLOT_DURATION};
 use ::ShardId;
 
 pub fn validate_block_pre_processing_conditions() { }
@@ -24,7 +24,7 @@ pub fn validate_parent_block_proposer(slot: u64, parent_slot: u64, crystallized_
 			attestation.attester_bitfield.has_voted(proposer_index_in_committee));
 }
 
-pub fn validate_attestation<JustifiedBlockHashes: StorageMap<u64, H256, Query=Option<H256>>>(
+pub fn validate_attestation<BlockHashesBySlot: StorageMap<u64, H256, Query=Option<H256>>>(
 	slot: u64,
 	parent_slot: u64,
 	crystallized_state: &CrystallizedState,
@@ -35,7 +35,7 @@ pub fn validate_attestation<JustifiedBlockHashes: StorageMap<u64, H256, Query=Op
 	assert!(attestation.slot >= parent_slot.saturating_sub(CYCLE_LENGTH as u64 - 1));
 
 	assert!(attestation.justified_slot <= crystallized_state.last_justified_slot);
-	assert!(JustifiedBlockHashes::get(attestation.justified_slot).expect("Justified block hash not found, attestation validation failed") == attestation.justified_block_hash);
+	assert!(BlockHashesBySlot::get(attestation.justified_slot).expect("Justified block hash not found, attestation validation failed") == attestation.justified_block_hash);
 
 	let parent_hashes = active_state.signed_parent_block_hashes(slot, attestation);
 	let attestation_indices = crystallized_state.attestation_indices(attestation);
@@ -76,7 +76,7 @@ pub fn update_block_vote_cache<BlockVoteCache: StorageMap<H256, BlockVoteInfo, Q
 	}
 }
 
-pub fn process_block<JustifiedBlockHashes: StorageMap<u64, H256, Query=Option<H256>>, BlockVoteCache: StorageMap<H256, BlockVoteInfo, Query=BlockVoteInfo>>(
+pub fn process_block<BlockHashesBySlot: StorageMap<u64, H256, Query=Option<H256>>, BlockVoteCache: StorageMap<H256, BlockVoteInfo, Query=BlockVoteInfo>>(
 	slot: u64,
 	parent_slot: u64,
 	crystallized_state: &CrystallizedState,
@@ -86,7 +86,7 @@ pub fn process_block<JustifiedBlockHashes: StorageMap<u64, H256, Query=Option<H2
 	validate_parent_block_proposer(slot, parent_slot, crystallized_state, attestations);
 
 	for attestation in attestations {
-		validate_attestation::<JustifiedBlockHashes>(
+		validate_attestation::<BlockHashesBySlot>(
 			slot,
 			parent_slot,
 			crystallized_state,
@@ -138,4 +138,163 @@ pub fn process_updated_crosslinks(
 			};
 		}
 	}
+}
+
+pub fn calculate_ffg_rewards<BlockHashesBySlot: StorageMap<u64, H256, Query=Option<H256>>, BlockVoteCache: StorageMap<H256, BlockVoteInfo, Query=BlockVoteInfo>>(
+	slot: u64,
+	crystallized_state: &CrystallizedState,
+) -> Vec<i128> {
+	let active_validator_indices = crystallized_state.active_validator_indices();
+	let mut rewards_and_penalties: Vec<i128> = crystallized_state.validators.iter().map(|_| 0).collect();
+
+	let time_since_finality = slot - crystallized_state.last_finalized_slot;
+
+	let total_deposits = crystallized_state.total_deposits();
+	let total_deposits_in_eth = total_deposits / WEI_PER_ETH;
+
+	let reward_quotient = BASE_REWARD_QUOTIENT * total_deposits_in_eth / 2;
+	let quadratic_penalty_quotient = (SQRT_E_DROP_TIME / SLOT_DURATION).pow(2);
+
+	let last_state_recalc = crystallized_state.last_state_recalc;
+
+	for slot in last_state_recalc.saturating_sub(CYCLE_LENGTH as u64)..last_state_recalc {
+		let block_hash = BlockHashesBySlot::get(slot);
+
+		let (total_participated_deposits, voter_indices) = match block_hash {
+			Some(block_hash) => {
+				let cache = BlockVoteCache::get(block_hash);
+				(cache.total_voter_deposits, cache.voter_indices)
+			},
+			None => {
+				(0, Vec::new())
+			},
+		};
+
+		let participating_validator_indices: Vec<_> = active_validator_indices
+			.iter()
+			.filter(|index| voter_indices.contains(index))
+			.cloned()
+			.collect();
+
+		let non_participating_validator_indices: Vec<_> = active_validator_indices
+			.iter()
+			.filter(|index| !voter_indices.contains(index))
+			.cloned()
+			.collect();
+
+		if time_since_finality <= 3 * CYCLE_LENGTH as u64 {
+			for index in participating_validator_indices {
+				let balance = crystallized_state.validators[index].balance;
+
+				rewards_and_penalties[index] += (
+					balance /
+						reward_quotient *
+						(2 * total_participated_deposits - total_deposits) /
+						total_deposits
+				) as i128;
+			}
+			for index in non_participating_validator_indices {
+				let balance = crystallized_state.validators[index].balance;
+
+				rewards_and_penalties[index] -= (
+					balance /
+						reward_quotient
+				) as i128;
+			}
+		} else {
+			for index in non_participating_validator_indices {
+				let balance = crystallized_state.validators[index].balance;
+
+				rewards_and_penalties[index] -= (
+					(balance / reward_quotient) +
+						(balance * time_since_finality as u128 / quadratic_penalty_quotient)
+				) as i128;
+			}
+		}
+	}
+
+	rewards_and_penalties
+}
+
+pub fn calculate_crosslink_rewards(
+	_slot: u64,
+	crystallized_state: &CrystallizedState,
+) -> Vec<i128> {
+	crystallized_state.validators.iter().map(|_| 0).collect()
+}
+
+pub fn apply_rewards_and_penalties<BlockHashesBySlot: StorageMap<u64, H256, Query=Option<H256>>, BlockVoteCache: StorageMap<H256, BlockVoteInfo, Query=BlockVoteInfo>>(
+	slot: u64,
+	crystallized_state: &mut CrystallizedState,
+) {
+	let ffg_rewards = calculate_ffg_rewards::<BlockHashesBySlot, BlockVoteCache>(slot, crystallized_state);
+	let crosslink_rewards = calculate_crosslink_rewards(slot, crystallized_state);
+
+	let active_validator_indices = crystallized_state.active_validator_indices();
+
+	for index in active_validator_indices {
+		if ffg_rewards[index] > 0 {
+			crystallized_state.validators[index].balance += ffg_rewards[index] as u128;
+		}
+		if ffg_rewards[index] < 0 {
+			crystallized_state.validators[index].balance = crystallized_state.validators[index].balance.saturating_sub((-ffg_rewards[index]) as u128);
+		}
+
+		if crosslink_rewards[index] > 0 {
+			crystallized_state.validators[index].balance += crosslink_rewards[index] as u128;
+		}
+		if crosslink_rewards[index] < 0 {
+			crystallized_state.validators[index].balance = crystallized_state.validators[index].balance.saturating_sub((-crosslink_rewards[index]) as u128);
+		}
+	}
+}
+
+pub fn initialize_new_cycle<BlockHashesBySlot: StorageMap<u64, H256, Query=Option<H256>>, BlockVoteCache: StorageMap<H256, BlockVoteInfo, Query=BlockVoteInfo>>(
+	slot: u64,
+	crystallized_state: &mut CrystallizedState,
+	active_state: &mut ActiveState
+) {
+	let last_state_recalc = crystallized_state.last_state_recalc;
+	let total_deposits = crystallized_state.total_deposits();
+
+	let mut last_justified_slot = crystallized_state.last_justified_slot;
+	let mut last_finalized_slot = crystallized_state.last_finalized_slot;
+	let mut justified_streak = crystallized_state.justified_streak;
+
+	for i in 0..CYCLE_LENGTH {
+		let slot = i as u64 + last_state_recalc.saturating_sub(CYCLE_LENGTH as u64);
+
+		let block_hash = active_state.recent_block_hashes[i];
+		let vote_balance = BlockVoteCache::get(&block_hash).total_voter_deposits;
+
+		if 3 * vote_balance >= 2 * total_deposits {
+			last_justified_slot = ::std::cmp::max(last_justified_slot, slot);
+			justified_streak += 1;
+		} else {
+			justified_streak = 0;
+		}
+
+		if justified_streak >= CYCLE_LENGTH as u64 + 1 {
+			last_finalized_slot = ::std::cmp::max(last_finalized_slot, slot.saturating_sub(CYCLE_LENGTH as u64 - 1));
+		}
+	}
+
+	process_updated_crosslinks(crystallized_state, active_state);
+
+	active_state.pending_attestations = active_state.pending_attestations.clone()
+		.into_iter()
+		.filter(|a| a.slot >= last_state_recalc)
+		.collect();
+
+	apply_rewards_and_penalties::<BlockHashesBySlot, BlockVoteCache>(slot, crystallized_state);
+
+	let mut new_shards_and_committees_for_slots: Vec<_> = crystallized_state.shards_and_committees_for_slots[CYCLE_LENGTH..].iter().cloned().collect();
+	let mut copied_shards_and_committees_for_slots = new_shards_and_committees_for_slots.clone();
+	new_shards_and_committees_for_slots.append(&mut copied_shards_and_committees_for_slots);
+
+	crystallized_state.last_state_recalc = last_state_recalc + CYCLE_LENGTH as u64;
+	crystallized_state.shards_and_committees_for_slots = new_shards_and_committees_for_slots;
+	crystallized_state.last_justified_slot = last_justified_slot;
+	crystallized_state.justified_streak = justified_streak;
+	crystallized_state.last_finalized_slot = last_finalized_slot;
 }

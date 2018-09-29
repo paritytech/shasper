@@ -172,4 +172,12 @@ impl CrystallizedState {
 
 		ret
 	}
+
+	pub fn total_deposits(&self) -> u128 {
+		self.active_validator_indices()
+			.iter()
+			.fold(0, |acc, index| {
+				acc + self.validators[*index].balance
+			})
+	}
 }
