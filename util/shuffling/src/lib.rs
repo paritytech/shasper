@@ -2,7 +2,6 @@
 #![cfg_attr(not(feature = "std"), feature(alloc))]
 
 #[cfg(not(feature = "std"))]
-#[macro_use]
 extern crate alloc;
 
 extern crate blake2;
@@ -10,6 +9,9 @@ extern crate blake2;
 mod rng;
 
 use rng::ShuffleRng;
+
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 
 #[derive(Debug)]
 pub enum ShuffleErr {
