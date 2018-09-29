@@ -44,6 +44,7 @@ mod bitfield;
 
 pub mod consts;
 pub mod spec;
+pub mod validation;
 
 pub use attestation::AttestationRecord;
 pub use header::Header;
