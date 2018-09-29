@@ -3,7 +3,7 @@ use rstd::prelude::*;
 
 use consts::CYCLE_LENGTH;
 use attestation::AttestationRecord;
-use validators::{Validators, ShardAndCommittee};
+use validators::{ValidatorRecord, ShardAndCommittee};
 
 #[derive(Encode, Decode, Default, SszEncode, SszDecode)]
 #[ssz_codec(sorted)]
@@ -34,7 +34,7 @@ impl ActiveState {
 #[derive(Encode, Decode, Default, SszEncode, SszDecode)]
 #[ssz_codec(sorted)]
 pub struct CrystallizedState {
-	pub validators: Validators,
+	pub validators: Vec<ValidatorRecord>,
 	pub last_state_recalc: u64,
 	pub shards_and_committees_for_slots: Vec<Vec<ShardAndCommittee>>,
 	pub last_justified_slot: u64,
