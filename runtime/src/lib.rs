@@ -34,7 +34,6 @@ extern crate srml_support as runtime_support;
 
 mod attestation;
 mod extrinsic;
-mod hasher;
 mod header;
 mod utils;
 mod state;
@@ -48,11 +47,10 @@ pub mod spec;
 pub mod validation;
 
 pub use attestation::AttestationRecord;
-pub use header::Header;
+pub use header::{Header, Digest, DigestItem};
 pub use extrinsic::Extrinsic;
 pub use state::{CrosslinkRecord, ActiveState, CrystallizedState};
 pub use validators::{ValidatorRecord, ShardAndCommittee};
-pub use hasher::KeccakHasher;
 pub use block::{Block, BlockExt};
 pub use bitfield::BitField;
 
@@ -85,6 +83,8 @@ pub mod api {
 	impl_stubs!(
 		initialise_block => |header| system::initialise_block(header),
 		execute_block => |block| system::execute_block(block),
+		active_state_root => |()| system::active_state_root(),
+		crystallized_state_root => |()| system::crystallized_state_root(),
 		version => |()| ::version()
 	);
 }

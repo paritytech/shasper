@@ -1,10 +1,12 @@
 use primitives::H256;
-use runtime_support::storage::StorageValue;
+use runtime_support::storage::{StorageValue, StorageMap};
 use rstd::prelude::*;
 
 use super::{BlockNumber, Hash, Block};
 use header::Header;
 use state::{ActiveState, CrystallizedState, BlockVoteInfo};
+use spec::{SpecActiveStateExt, SpecCrystallizedStateExt};
+use block::BlockExt;
 use validation;
 
 storage_items! {
@@ -15,8 +17,18 @@ storage_items! {
 	ParentSlot: b"sys:parentslot" => required u64;
 	BlockHashesBySlot: b"sys:blockhashesbyslot" => map [ u64 => H256 ];
 	Active: b"sys:active" => required ActiveState;
+	ActiveRoot: b"sys:activeroot" => required H256;
 	Crystallized: b"sys:crystallized" => required CrystallizedState;
+	CrystallizedRoot: b"sys:crystallizedroot" => required H256;
 	BlockVoteCache: b"sys:blockvotecache" => required map [ H256 => BlockVoteInfo ];
+}
+
+pub fn active_state_root() -> H256 {
+	ActiveRoot::get()
+}
+
+pub fn crystallized_state_root() -> H256 {
+	CrystallizedRoot::get()
 }
 
 pub fn initialise_block(header: Header) {
@@ -53,6 +65,15 @@ pub fn execute_block(block: Block) {
 		&mut active_state
 	);
 
+	let active_state_root = active_state.spec_hash();
+	let crystallized_state_root = crystallized_state.spec_hash();
+	let block_hash = block.spec_hash(active_state_root, crystallized_state_root);
+
+	ParentHash::put(&block_hash);
 	ParentSlot::put(&slot);
-	// TODO: Update ParentHash
+	BlockHashesBySlot::insert(slot, block_hash);
+	Active::put(&active_state);
+	ActiveRoot::put(&active_state_root);
+	Crystallized::put(&crystallized_state);
+	CrystallizedRoot::put(&crystallized_state_root);
 }
