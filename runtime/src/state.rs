@@ -99,4 +99,12 @@ impl CrystallizedState {
 
 		(proposer_index_in_committee, shard_and_committee.shard_id)
 	}
+
+	pub fn attestation_indices(&self, attestation: &AttestationRecord) -> Vec<u32> {
+		self.shards_and_committees_for_slot(attestation.slot)
+			.iter()
+			.find(|x| x.shard_id == attestation.shard_id)
+			.map(|x| x.committee.clone())
+			.unwrap_or_default()
+	}
 }
