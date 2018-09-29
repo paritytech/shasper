@@ -973,6 +973,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "shuffling"
+version = "0.1.0"
+dependencies = [
+ "blake2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

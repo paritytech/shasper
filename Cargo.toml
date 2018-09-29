@@ -13,6 +13,7 @@ members = [
 	"client",
 	"util/ssz",
 	"util/ssz-derive",
+	"util/shuffling",
 ]
 exclude = [
 	"runtime/wasm",
