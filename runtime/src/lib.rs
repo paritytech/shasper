@@ -13,6 +13,7 @@ extern crate tiny_keccak;
 extern crate bls;
 extern crate bls_aggregates;
 extern crate shuffling;
+extern crate byteorder;
 
 #[cfg(feature = "std")]
 extern crate serde;
@@ -76,6 +77,7 @@ fn version() -> RuntimeVersion {
 pub type Hash = H256;
 pub type BlockNumber = u64;
 pub type Address = H160;
+pub type PublicKey = Vec<u8>;
 
 pub mod api {
 	use system;

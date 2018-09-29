@@ -1,5 +1,7 @@
 use std::ops::BitOr;
 
+// TODO: Validate bitfield trailing bits in encoding/decoding.
+
 #[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct BitField(Vec<u8>, usize);
