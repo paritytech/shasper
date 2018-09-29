@@ -53,4 +53,13 @@ impl CrystallizedState {
 		assert!(start <= slot && slot > start + CYCLE_LENGTH * 2);
 		&self.shards_and_committees_for_slots[slot - start]
 	}
+
+	pub fn proposer_position(&self, parent_slot: u64) -> (usize, u16) {
+		let shard_and_committee = &self.shards_and_committees_for_slot(parent_slot)[0];
+
+		assert!(shard_and_committee.committee.len() > 0);
+		let proposer_index_in_committee = parent_slot as usize % shard_and_committee.committee.len();
+
+		(proposer_index_in_committee, shard_and_committee.shard_id)
+	}
 }
