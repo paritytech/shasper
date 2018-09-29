@@ -4,6 +4,8 @@ use rstd::prelude::*;
 use consts::CYCLE_LENGTH;
 use attestation::AttestationRecord;
 use validators::{ValidatorRecord, ShardAndCommittee};
+use shuffling;
+use utils;
 
 #[derive(Encode, Decode, Default, SszEncode, SszDecode)]
 #[ssz_codec(sorted)]
@@ -115,5 +117,53 @@ impl CrystallizedState {
 			.filter(|(_, v)| v.start_dynasty <= self.current_dynasty && v.end_dynasty > self.current_dynasty)
 			.map(|(i, _)| i)
 			.collect()
+	}
+
+	pub fn new_shuffling(
+		&self,
+		seed: H256,
+		crosslinking_start_shard: u16
+	) -> Vec<Vec<ShardAndCommittee>> {
+		use consts::{CYCLE_LENGTH, MIN_COMMITTEE_SIZE, SHARD_COUNT};
+
+		let avs = self.active_validator_indices();
+		let (committees_per_slot, slots_per_committee) = if avs.len() >= CYCLE_LENGTH * MIN_COMMITTEE_SIZE {
+			let committees_per_slot = avs.len() / CYCLE_LENGTH / (MIN_COMMITTEE_SIZE * 2) + 1;
+			let slots_per_committee = 1;
+			(committees_per_slot, slots_per_committee)
+		} else {
+			let committees_per_slot = 1;
+			let mut slots_per_committee = 1;
+			while avs.len() * slots_per_committee < CYCLE_LENGTH * MIN_COMMITTEE_SIZE &&
+				slots_per_committee < CYCLE_LENGTH
+			{
+				slots_per_committee *= 2;
+			}
+			(committees_per_slot, slots_per_committee)
+		};
+
+		let shuffled_active_validator_indices = shuffling::shuffle(&seed, avs).expect("Shuffling failed, cannot build new block");
+		let validators_per_slot = utils::split(shuffled_active_validator_indices, CYCLE_LENGTH);
+
+		let mut ret = Vec::new();
+		for (slot, slot_indices) in validators_per_slot.into_iter().enumerate() {
+			let shard_indices = utils::split(slot_indices, committees_per_slot);
+			let shard_id_start = crosslinking_start_shard +
+				(slot * committees_per_slot / slots_per_committee) as u16;
+			ret.push(
+				shard_indices
+					.into_iter()
+					.enumerate()
+					.map(|(j, indices)| {
+						ShardAndCommittee {
+							shard_id: (shard_id_start + j as u16) % SHARD_COUNT,
+							committee: indices.into_iter().map(|v| v as u32).collect(),
+						}
+					})
+					.collect()
+			);
+		}
+
+		ret
 	}
 }
