@@ -1,4 +1,4 @@
-# Shasper Substrate
+# Substrate Shasper
 
 *Note: This is an experimental project. Everything will break, and it may disappear without any notice!*
 
