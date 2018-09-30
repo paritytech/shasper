@@ -10,3 +10,9 @@ pub trait Components: service::Components {
 	type Backend: 'static + client::backend::Backend<Block, Blake2Hasher>;
 	type Executor: 'static + client::CallExecutor<Block, Blake2Hasher> + Send + Sync;
 }
+
+pub struct Factory;
+
+impl service::ServiceFactory for Factory {
+
+}

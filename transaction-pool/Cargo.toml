@@ -1,10 +1,9 @@
 [package]
-name = "shasper-network"
+name = "shasper-transaction-pool"
 version = "0.1.0"
 authors = ["Parity Team <admin@parity.io>"]
 
 [dependencies]
-log = "0.4"
 shasper-runtime = { path = "../runtime" }
-substrate-network = { git = "https://github.com/paritytech/substrate" }
 substrate-primitives = { git = "https://github.com/paritytech/substrate" }
+substrate-transaction-pool = { git = "https://github.com/paritytech/substrate" }
