@@ -57,7 +57,7 @@ pub use bitfield::BitField;
 use primitives::{H256, H160};
 use rstd::prelude::*;
 
-use runtime_version::RuntimeVersion;
+use runtime_version::{RuntimeVersion, NativeVersion};
 
 /// Shasper runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -69,8 +69,12 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	apis: apis_vec!([]),
 };
 
-fn version() -> RuntimeVersion {
-	VERSION
+#[cfg(feature = "std")]
+pub fn native_version() -> NativeVersion {
+	NativeVersion {
+		runtime_version: VERSION,
+		can_author_with: Default::default(),
+	}
 }
 
 pub type Hash = H256;
@@ -91,6 +95,6 @@ pub mod api {
 		active_state_root => |()| system::active_state_root(),
 		crystallized_state_root => |()| system::crystallized_state_root(),
 		authorities => |()| system::authorities(),
-		version => |()| ::version()
+		version => |()| ::VERSION
 	);
 }

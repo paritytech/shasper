@@ -8,8 +8,8 @@ blake2 = "0.7"
 tiny-keccak = "1.4.2"
 hashdb = { version = "0.2.1", default-features = false }
 plain_hasher = { version = "0.2", default-features = false }
-parity-codec = { version = "1.0", default-features = false }
-parity-codec-derive = { version = "1.0", default-features = false }
+parity-codec = { version = "2.0", default-features = false }
+parity-codec-derive = { version = "2.0", default-features = false }
 ssz = { path = "../../util/ssz", default-features = false }
 ssz-derive = { path = "../../util/ssz-derive", default-features = false }
 bls = { git = "https://github.com/sorpaas/bls", default-features = false }

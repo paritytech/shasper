@@ -6,7 +6,6 @@ authors = ["Parity Team <admin@parity.io>"]
 [workspace]
 members = [
 	"runtime",
-	"api",
 	"executor",
 	"util/ssz",
 	"util/ssz-derive",
