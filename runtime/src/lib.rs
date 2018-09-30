@@ -57,7 +57,8 @@ pub use bitfield::BitField;
 use primitives::{H256, H160};
 use rstd::prelude::*;
 
-use runtime_version::{RuntimeVersion, NativeVersion};
+use runtime_version::RuntimeVersion;
+#[cfg(feature = "std")] use runtime_version::NativeVersion;
 
 /// Shasper runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {

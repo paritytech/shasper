@@ -1,10 +1,38 @@
 # Shasper Substrate
 
-This is an attempt to implement "Ethereum 2.0" specifications using the Substrate framework. Note that there's nothing much here yet and everything can disappear in any minute!
+*Note: This is an experimental project. Everything will break, and it may disappear without any notice!*
 
-Here is the [2.1 spec](https://notes.ethereum.org/SCIg8AH5SA-O4C1G1LYZHQ) from Danny Dyan.
+This is an implementation of [Shasper](https://github.com/ethereum/eth2.0-specs) beacon chain using the [Substrate framework](https://github.com/paritytech/parity).
 
-What we get / planned so far:
+## Status
 
-* [ ] State transition
-* [ ] Fork choice rules
+Currently we have a (mostly complete, but untested) implementation of Shasper state transition validation algorithms. This is then combined with Substrate's embedded consensus engine to provide a simple Substrate node implementation. In the future, this consensus engine will be replaced to comply with Shasper's fork choice rule specification.
+
+## Get Started
+
+To build the project, first install [rustup](https://rustup.rs/) and [wasm-gc](https://github.com/alexcrichton/wasm-gc]):
+
+```
+rustup update stable
+rustup update nightly
+rustup target add wasm32-unknown-unknown --toolchain nightly
+cargo +nightly install --git https://github.com/alexcrichton/wasm-gc
+```
+
+After that, compile the WebAssembly runtime:
+
+```
+cd runtime/wasm && ./build.sh && cd ../..
+```
+
+You can then execute the client:
+
+```
+cargo run -- --chain dev
+```
+
+However, before the block authoring logic is added, there's probably not much you can do!
+
+## License
+
+Licensed under GPLv3.
