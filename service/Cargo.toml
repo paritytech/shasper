@@ -1,0 +1,8 @@
+[package]
+name = "service"
+version = "0.1.0"
+authors = ["Parity Team <admin@parity.io>"]
+
+[dependencies]
+shasper-runtime = { path = "../runtime" }
+substrate-service = { git = "https://github.com/paritytech/substrate" }
