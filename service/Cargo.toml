@@ -4,7 +4,12 @@ version = "0.1.0"
 authors = ["Parity Team <admin@parity.io>"]
 
 [dependencies]
+tokio = "0.1.7"
 shasper-runtime = { path = "../runtime" }
+shasper-network = { path = "../network" }
+shasper-executor = { path = "../executor" }
+shasper-transaction-pool = { path = "../transaction-pool" }
+sr-primitives = { git = "https://github.com/paritytech/substrate" }
 substrate-primitives = { git = "https://github.com/paritytech/substrate" }
 substrate-client = { git = "https://github.com/paritytech/substrate" }
 substrate-service = { git = "https://github.com/paritytech/substrate" }

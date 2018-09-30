@@ -10,6 +10,8 @@ use transaction_pool::scoring::{Change, Choice};
 
 use std::cmp::Ordering;
 
+pub type TransactionPool = transaction_pool::Pool<ChainApi>;
+
 #[derive(Debug, Clone)]
 pub struct Verified {
 	pub extrinsic: Extrinsic,
