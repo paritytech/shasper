@@ -1,9 +1,10 @@
-use std::ops::BitOr;
+use rstd::prelude::*;
+use rstd::ops::BitOr;
 
 // TODO: Validate bitfield trailing bits in encoding/decoding.
 
 #[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct BitField(Vec<u8>, usize);
 
 impl BitField {
@@ -45,8 +46,8 @@ impl BitOr for BitField {
 	type Output = Self;
 
 	fn bitor(self, rhs: Self) -> Self {
-		let mut new = BitField::new(::std::cmp::max(self.count(), rhs.count()));
-		for i in 0..::std::cmp::max(self.count(), rhs.count()) {
+		let mut new = BitField::new(::rstd::cmp::max(self.count(), rhs.count()));
+		for i in 0..::rstd::cmp::max(self.count(), rhs.count()) {
 			let mut voted = false;
 			if i < self.count() {
 				voted = voted || self.has_voted(i);

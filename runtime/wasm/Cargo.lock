@@ -605,12 +605,14 @@ dependencies = [
  "blake2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bls 0.0.1 (git+https://github.com/sorpaas/bls)",
  "bls-aggregates 0.2.0 (git+https://github.com/sorpaas/signature-schemes)",
+ "byteorder 1.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "hashdb 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec-derive 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "plain_hasher 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.79 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shuffling 0.1.0",
  "sr-io 0.1.0 (git+https://github.com/paritytech/substrate)",
  "sr-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
  "sr-std 0.1.0 (git+https://github.com/paritytech/substrate)",
@@ -620,6 +622,13 @@ dependencies = [
  "ssz-derive 0.1.0",
  "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "shuffling"
+version = "0.1.0"
+dependencies = [
+ "blake2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

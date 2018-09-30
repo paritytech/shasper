@@ -4,7 +4,8 @@ use rstd::prelude::*;
 use attestation::AttestationRecord;
 use spec::SpecHeader;
 
-#[derive(Encode, Decode)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Extrinsic {
 	pub slot_number: u64,
 	pub randao_reveal: H256,

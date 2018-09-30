@@ -933,17 +933,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "shasper"
 version = "0.1.0"
+
+[[package]]
+name = "shasper-api"
+version = "0.1.0"
 dependencies = [
- "shasper-client 0.1.0",
+ "error-chain 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parity-codec 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shasper-executor 0.1.0",
  "shasper-runtime 0.1.0",
+ "sr-io 0.1.0 (git+https://github.com/paritytech/substrate)",
+ "sr-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
+ "substrate-client 0.1.0 (git+https://github.com/paritytech/substrate)",
+ "substrate-executor 0.1.0 (git+https://github.com/paritytech/substrate)",
+ "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
 ]
 
 [[package]]
-name = "shasper-client"
+name = "shasper-executor"
 version = "0.1.0"
 dependencies = [
  "shasper-runtime 0.1.0",
- "substrate-client 0.1.0 (git+https://github.com/paritytech/substrate)",
  "substrate-executor 0.1.0 (git+https://github.com/paritytech/substrate)",
  "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
 ]

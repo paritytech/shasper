@@ -5,7 +5,7 @@ use bitfield::BitField;
 use super::{PublicKey, ShardId};
 
 #[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 #[ssz_codec(sorted)]
 pub struct AttestationRecord {
 	pub slot: u64,

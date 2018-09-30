@@ -6,6 +6,7 @@ use extrinsic::Extrinsic;
 use spec::SpecHeader;
 
 pub type Block = runtime_primitives::generic::Block<Header, Extrinsic>;
+pub type BlockId = runtime_primitives::generic::BlockId<Block>;
 
 pub trait BlockExt {
 	fn spec_hash(&self, active_state_root: H256, crystallized_state_root: H256) -> H256;

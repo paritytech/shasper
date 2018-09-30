@@ -14,12 +14,14 @@ ssz = { path = "../../util/ssz", default-features = false }
 ssz-derive = { path = "../../util/ssz-derive", default-features = false }
 bls = { git = "https://github.com/sorpaas/bls", default-features = false }
 bls-aggregates = { git = "https://github.com/sorpaas/signature-schemes", default-features = false }
+shuffling = { path = "../../util/shuffling", default-features = false }
 substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-io = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-version = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-std = { git = "https://github.com/paritytech/substrate", default-features = false }
 srml-support = { git = "https://github.com/paritytech/substrate", default-features = false }
+byteorder = { version = "1.2", default-features = false }
 serde = { version = "1.0", optional = true }
 serde_derive = { version = "1.0", optional = true }
 
@@ -34,6 +36,7 @@ std = [
 	"ssz-derive/std",
 	"bls/std",
 	"bls-aggregates/std",
+	"shuffling/std",
 	"substrate-primitives/std",
 	"sr-primitives/std",
 	"sr-io/std",

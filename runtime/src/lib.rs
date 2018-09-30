@@ -51,10 +51,11 @@ pub use header::{Header, Digest, DigestItem};
 pub use extrinsic::Extrinsic;
 pub use state::{CrosslinkRecord, ActiveState, CrystallizedState};
 pub use validators::{ValidatorRecord, ShardAndCommittee};
-pub use block::{Block, BlockExt};
+pub use block::{Block, BlockId, BlockExt};
 pub use bitfield::BitField;
 
 use primitives::{H256, H160};
+use rstd::prelude::*;
 
 use runtime_version::RuntimeVersion;
 
@@ -77,6 +78,7 @@ pub type BlockNumber = u64;
 pub type Address = H160;
 pub type PublicKey = Vec<u8>;
 pub type ShardId = u16;
+pub type InherentData = ();
 
 pub mod api {
 	use system;

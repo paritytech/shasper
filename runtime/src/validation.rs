@@ -1,5 +1,6 @@
 use primitives::H256;
 use runtime_support::storage::StorageMap;
+use rstd::prelude::*;
 use rstd::collections::btree_map::BTreeMap;
 
 use state::{ActiveState, CrystallizedState, BlockVoteInfo, CrosslinkRecord};
@@ -268,14 +269,14 @@ pub fn initialize_new_cycle<BlockHashesBySlot: StorageMap<u64, H256, Query=Optio
 		let vote_balance = BlockVoteCache::get(&block_hash).total_voter_deposits;
 
 		if 3 * vote_balance >= 2 * total_deposits {
-			last_justified_slot = ::std::cmp::max(last_justified_slot, slot);
+			last_justified_slot = ::rstd::cmp::max(last_justified_slot, slot);
 			justified_streak += 1;
 		} else {
 			justified_streak = 0;
 		}
 
 		if justified_streak >= CYCLE_LENGTH as u64 + 1 {
-			last_finalized_slot = ::std::cmp::max(last_finalized_slot, slot.saturating_sub(CYCLE_LENGTH as u64 - 1));
+			last_finalized_slot = ::rstd::cmp::max(last_finalized_slot, slot.saturating_sub(CYCLE_LENGTH as u64 - 1));
 		}
 	}
 

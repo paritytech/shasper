@@ -1,0 +1,16 @@
+[package]
+name = "shasper-api"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+
+[dependencies]
+error-chain = "0.12"
+log = "0.3"
+shasper-executor = { path = "../executor" }
+shasper-runtime = { path = "../runtime" }
+parity-codec = "1.0"
+sr-io = { git = "https://github.com/paritytech/substrate" }
+sr-primitives = { git = "https://github.com/paritytech/substrate" }
+substrate-client = { git = "https://github.com/paritytech/substrate" }
+substrate-primitives = { git = "https://github.com/paritytech/substrate" }
+substrate-executor = { git = "https://github.com/paritytech/substrate" }

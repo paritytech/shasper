@@ -2,7 +2,6 @@
 name = "shuffling"
 version = "0.1.0"
 authors = ["Paul Hauner <paul@paulhauner.com>", "Parity Team <admin@parity.io>"]
-license = "GPL-2.0"
 license-file = "LICENSE"
 
 [dependencies]
