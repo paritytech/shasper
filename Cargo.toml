@@ -2,6 +2,16 @@
 name = "shasper"
 version = "0.1.0"
 authors = ["Parity Team <admin@parity.io>"]
+build = "build.rs"
+
+[dependencies]
+error-chain = "0.12"
+shasper-cli = { path = "cli" }
+futures = "0.1"
+ctrlc = { version = "3.0", features = ["termination"] }
+
+[build-dependencies]
+vergen = "2"
 
 [workspace]
 members = [
