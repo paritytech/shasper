@@ -8,6 +8,7 @@ members = [
 	"runtime",
 	"executor",
 	"service",
+	"network",
 	"util/ssz",
 	"util/ssz-derive",
 	"util/shuffling",
