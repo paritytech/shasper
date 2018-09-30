@@ -10,7 +10,7 @@ Currently we have a (mostly complete, but untested) implementation of Shasper st
 
 ## Get Started
 
-To build the project, first install [rustup](https://rustup.rs/) and [wasm-gc](https://github.com/alexcrichton/wasm-gc]):
+To build the project, first install [rustup](https://rustup.rs/) and [wasm-gc](https://github.com/alexcrichton/wasm-gc):
 
 ```
 rustup update stable
