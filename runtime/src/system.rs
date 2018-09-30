@@ -10,16 +10,16 @@ use extrinsic::Extrinsic;
 use validation;
 
 storage_items! {
-	Number: b"sys:num" => required BlockNumber;
-	ParentNumber: b"sys:parentnumber" => required BlockNumber;
-	ParentHash: b"sys:parenthash" => required Hash;
-	ParentSlot: b"sys:parentslot" => required u64;
+	Number: b"sys:num" => default BlockNumber;
+	ParentNumber: b"sys:parentnumber" => default BlockNumber;
+	ParentHash: b"sys:parenthash" => default Hash;
+	ParentSlot: b"sys:parentslot" => default u64;
 	BlockHashesBySlot: b"sys:blockhashesbyslot" => map [ u64 => H256 ];
-	Active: b"sys:active" => required ActiveState;
-	ActiveRoot: b"sys:activeroot" => required H256;
-	Crystallized: b"sys:crystallized" => required CrystallizedState;
-	CrystallizedRoot: b"sys:crystallizedroot" => required H256;
-	BlockVoteCache: b"sys:blockvotecache" => required map [ H256 => BlockVoteInfo ];
+	Active: b"sys:active" => default ActiveState;
+	ActiveRoot: b"sys:activeroot" => default H256;
+	Crystallized: b"sys:crystallized" => default CrystallizedState;
+	CrystallizedRoot: b"sys:crystallizedroot" => default H256;
+	BlockVoteCache: b"sys:blockvotecache" => default map [ H256 => BlockVoteInfo ];
 }
 
 pub fn authorities() -> Vec<()> {
