@@ -2,7 +2,7 @@
 
 *Note: This is an experimental project. Everything will break, and it may disappear without any notice!*
 
-This is an implementation of [Shasper](https://github.com/ethereum/eth2.0-specs) beacon chain using the [Substrate framework](https://github.com/paritytech/parity).
+This is an implementation of [Shasper](https://github.com/ethereum/eth2.0-specs) beacon chain using the [Substrate framework](https://github.com/paritytech/substrate).
 
 ## Status
 
