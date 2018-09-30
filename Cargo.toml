@@ -10,6 +10,7 @@ members = [
 	"service",
 	"network",
 	"transaction-pool",
+	"cli",
 	"util/ssz",
 	"util/ssz-derive",
 	"util/shuffling",

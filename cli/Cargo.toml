@@ -1,0 +1,11 @@
+[package]
+name = "cli"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+
+[dependencies]
+log = "0.4"
+tokio = "0.1.7"
+exit-future = "0.1"
+substrate-cli = { git = "https://github.com/paritytech/substrate" }
+shasper-service = { path = "../service" }

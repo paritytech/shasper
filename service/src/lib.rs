@@ -6,20 +6,27 @@ extern crate sr_primitives as runtime_primitives;
 extern crate substrate_primitives as primitives;
 extern crate substrate_client as client;
 extern crate substrate_service as service;
+extern crate parity_codec as codec;
 extern crate tokio;
+
+pub mod chain_spec;
 
 use runtime::Block;
 use network::Protocol;
 use primitives::H256;
 use transaction_pool::TransactionPool;
-use service::TransactionPoolOptions;
 use runtime_primitives::StorageMap;
 use tokio::runtime::TaskExecutor;
 
 use std::sync::Arc;
 
+pub type ChainSpec = service::ChainSpec<StorageMap>;
+
 /// All configuration for the node.
 pub type Configuration = service::FactoryFullConfiguration<Factory>;
+pub use service::{
+	Roles, PruningMode, TransactionPoolOptions, ServiceFactory,
+	ErrorKind, Error, ComponentBlock, LightComponents, FullComponents, Components};
 
 pub struct Factory;
 
