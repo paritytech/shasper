@@ -22,6 +22,7 @@ use rstd::collections::btree_map::BTreeMap;
 use state::{ActiveState, CrystallizedState, BlockVoteInfo, CrosslinkRecord};
 use attestation::AttestationRecord;
 use consts::{CYCLE_LENGTH, WEI_PER_ETH, BASE_REWARD_QUOTIENT, SQRT_E_DROP_TIME, SLOT_DURATION, MIN_DYNASTY_LENGTH, SHARD_COUNT};
+use utils::sqrt;
 use ::ShardId;
 
 pub fn validate_block_pre_processing_conditions() { }
@@ -169,7 +170,7 @@ pub fn calculate_ffg_rewards<BlockHashesBySlot: StorageMap<u64, H256, Query=Opti
 	let total_deposits = crystallized_state.total_deposits();
 	let total_deposits_in_eth = total_deposits / WEI_PER_ETH;
 
-	let reward_quotient = BASE_REWARD_QUOTIENT * total_deposits_in_eth / 2;
+	let reward_quotient = BASE_REWARD_QUOTIENT * sqrt(total_deposits_in_eth);
 	let quadratic_penalty_quotient = (SQRT_E_DROP_TIME / SLOT_DURATION).pow(2);
 
 	let last_state_recalc = crystallized_state.last_state_recalc;
