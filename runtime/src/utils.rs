@@ -14,18 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
-use runtime_primitives::traits::{DigestItem as DigestItemT};
 use rstd::prelude::*;
-
-#[derive(Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub enum Never { }
-
-impl DigestItemT for Never {
-	type Hash = H256;
-	type AuthorityId = Never;
-}
 
 pub fn split(list: Vec<usize>, n: usize) -> Vec<Vec<usize>> {
 	let mut ret = Vec::new();
@@ -35,4 +24,14 @@ pub fn split(list: Vec<usize>, n: usize) -> Vec<Vec<usize>> {
 		ret.push(cur);
 	}
 	ret
+}
+
+pub fn sqrt(n: u128) -> u128 {
+	let mut x = n;
+	let mut y = (x + 1) / 2;
+	while y < x {
+		x = y;
+		y = (x + n / x) / 2;
+	}
+	x
 }
