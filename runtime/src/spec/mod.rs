@@ -58,6 +58,6 @@ mod tests {
 
 	#[test]
 	fn spec_header_hash() {
-		assert_eq!(SpecHeader::default().hash(), H256::from("0x66cad4289cc03192dc9a0b7583d1075b17bb6b78bd91694cdd3ff5c57e31d744"));
+		assert_eq!(SpecHeader::default().spec_hash(), H256::from("0x66cad4289cc03192dc9a0b7583d1075b17bb6b78bd91694cdd3ff5c57e31d744"));
 	}
 }
