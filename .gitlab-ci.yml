@@ -39,7 +39,7 @@ before_script:
 test:rust:stable:
   stage:                           test
   script:
-    - time cargo test --all --locked
+    - time cargo test --all --release --locked
   only:
     - triggers
     - tags
@@ -55,7 +55,7 @@ test:rust:stable:
 build:linux:ubuntu:amd64:
   stage:                           build
   script:
-    - cargo build
+    - cargo build --release
   <<:                              *collect_artifacts
   only:
     - master
