@@ -22,7 +22,7 @@ cache:
     when:                          on_success
     expire_in:                     7 days
     paths:
-    - target/release/polkadot
+    - target/release/shasper
 
 .determine_version: &determine_version |
   export VERSION="$(sed -r -n '1,/^version/s/^version = "([^"]+)".*$/\1/p' Cargo.toml)"
