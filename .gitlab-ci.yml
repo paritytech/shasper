@@ -36,7 +36,7 @@ before_script:
 
 #### stage:                        test
 
-test:rust:stable:
+test-rust-stable:
   stage:                           test
   script:
     - time cargo test --all --release --locked
@@ -52,7 +52,7 @@ test:rust:stable:
 
 #### stage:                        build
 
-build:linux:ubuntu:amd64:
+build-linux:
   stage:                           build
   script:
     - cargo build --release
