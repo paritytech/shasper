@@ -7,7 +7,7 @@ image:                             parity/rust:nightly
 variables:
   CI_SERVER_NAME:                  "GitLab CI"
   CARGO_HOME:                      "${CI_PROJECT_DIR}/.cargo"
-
+  RUST_TOOLCHAIN:                  "stable"
 
 cache:
   key:                             "${CI_JOB_NAME}"
@@ -29,6 +29,7 @@ cache:
   echo "Version" $VERSION
 
 before_script:
+  - rustc --version
   - ./scripts/init.sh
   - export PATH="${CI_PROJECT_DIR}/cargo/bin/:$PATH"
   - ./scripts/build.sh
@@ -39,6 +40,7 @@ before_script:
 test:rust:stable:
   stage:                           test
   script:
+    - rustc --version
     - time cargo test --all --release --locked
   only:
     - triggers
@@ -55,6 +57,7 @@ test:rust:stable:
 build:linux:ubuntu:amd64:
   stage:                           build
   script:
+    - rustc --version
     - cargo build --release
   <<:                              *collect_artifacts
   only:
