@@ -23,7 +23,7 @@ After that, clone the repo and compile the WebAssembly runtime:
 
 ```bash
 git clone https://github.com/paritytech/shasper.git
-cd runtime/wasm && ./build.sh && cd ../..
+cd shasper/runtime/wasm && ./build.sh && cd ../..
 ```
 
 You can then execute the client:
