@@ -1,0 +1,1 @@
+{"rustc":568405751546663000,"features":"[]","target":7185906112594023708,"profile":1959927154783042816,"path":4894142588922148024,"deps":[["parity-codec v2.0.3","parity_codec",16110935005288541219],["parity-codec-derive v2.0.4","parity_codec_derive",3702522965814700314]],"local":[{"Precalculated":"38f679ef1a050101095f019fe4b911137cc5c27b"}],"rustflags":[],"edition":"Edition2015"}

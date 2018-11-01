@@ -1,0 +1,1 @@
+{"rustc":568405751546663000,"features":"[]","target":18003550075125747381,"profile":1959927154783042816,"path":13226848441667287230,"deps":[["byteorder v1.2.6","byteorder",5438345665702630180],["crunchy v0.1.6","crunchy",1888543094201662207],["rustc-hex v2.0.1","rustc_hex",12155311158093300492]],"local":[{"Precalculated":"0.4.1"}],"rustflags":[],"edition":"Edition2015"}
