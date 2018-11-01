@@ -12,22 +12,23 @@ Currently we have a (mostly complete, but untested) implementation of Shasper st
 
 To build the project, first install [rustup](https://rustup.rs/) and [wasm-gc](https://github.com/alexcrichton/wasm-gc):
 
-```
+```bash
 rustup update stable
 rustup update nightly
 rustup target add wasm32-unknown-unknown --toolchain nightly
 cargo +nightly install --git https://github.com/alexcrichton/wasm-gc
 ```
 
-After that, compile the WebAssembly runtime:
+After that, clone the repo and compile the WebAssembly runtime:
 
-```
+```bash
+git clone https://github.com/paritytech/shasper.git
 cd runtime/wasm && ./build.sh && cd ../..
 ```
 
 You can then execute the client:
 
-```
+```bash
 cargo run -- --chain dev
 ```
 
