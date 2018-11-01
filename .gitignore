@@ -1,2 +1,4 @@
-**/target/
+target/
+runtime/wasm/target/
+**/**target/
 **/*.rs.bk
