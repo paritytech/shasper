@@ -36,6 +36,27 @@ extern crate substrate_primitives as primitives;
 use primitives::U256;
 use hash_db::Hasher;
 
+pub enum HashItem {
+	List(Vec<HashItem>),
+	Single(Vec<u8>),
+}
+
+pub fn hash_object<H: Hasher>(input: HashItem) -> H::Out {
+	match input {
+		HashItem::List(list) => {
+			let values: Vec<_> = list
+				.into_iter()
+				.map(|item| hash_object::<H>(item).as_ref().to_vec())
+				.collect();
+
+			merkle_root::<H, _>(&values)
+		},
+		HashItem::Single(obj) => {
+			H::hash(&obj)
+		},
+	}
+}
+
 pub fn merkle_root<H: Hasher, A>(input: &[A]) -> H::Out where
 	A: AsRef<[u8]>
 {
