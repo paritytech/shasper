@@ -1,0 +1,15 @@
+[package]
+name = "ssz-hash"
+version = "0.1.0"
+authors = ["Parity Team <admin@parity.io>"]
+
+[dependencies]
+substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
+hash-db = { git = "https://github.com/paritytech/trie", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"substrate-primitives/std",
+	"hash-db/std",
+]

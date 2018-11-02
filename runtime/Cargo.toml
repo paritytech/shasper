@@ -12,6 +12,7 @@ parity-codec = { version = "2.0", default-features = false }
 parity-codec-derive = { version = "2.0", default-features = false }
 ssz = { path = "../util/ssz", default-features = false }
 ssz-derive = { path = "../util/ssz-derive", default-features = false }
+ssz-hash = { path = "../util/ssz-hash", default-features = false }
 bls = { git = "https://github.com/sorpaas/bls", default-features = false }
 bls-aggregates = { git = "https://github.com/sorpaas/signature-schemes", default-features = false }
 shuffling = { path = "../util/shuffling", default-features = false }
@@ -34,6 +35,7 @@ std = [
 	"parity-codec-derive/std",
 	"ssz/std",
 	"ssz-derive/std",
+	"ssz-hash/std",
 	"bls/std",
 	"bls-aggregates/std",
 	"shuffling/std",
