@@ -55,22 +55,18 @@ pub fn hash_derive(input: TokenStream) -> TokenStream {
 	let input: DeriveInput = syn::parse(input).expect(HASH_ERR);
 	let name = &input.ident;
 
-	let hash_param_ = quote!(H);
-	let generics = add_trait_bounds(input.generics, parse_quote!(::ssz_hash::SpecHash < #hash_param_ >));
-	let mut generics_for_impl = generics.clone();
-	let (_, ty_generics, where_clause) = generics.split_for_impl();
-	let hash_param_ = quote!(H);
-	generics_for_impl.params.push(parse_quote!(#hash_param_ : ::hash_db::Hasher));
-	let (impl_generics, _, _) = generics_for_impl.split_for_impl();
+	let generics = add_trait_bounds(input.generics, parse_quote!(::ssz_hash::SpecHash));
+	let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+	let hash_param_ = quote!(H);
 	let self_ = quote!(self);
 	let dest_ = quote!(agg);
 
 	let hashing = quote(&input.data, &self_, &dest_, &hash_param_);
 
 	let expanded = quote! {
-		impl #impl_generics ::ssz_hash::SpecHash<#hash_param_> for #name #ty_generics #where_clause {
-			fn spec_hash(&self) -> H::Out {
+		impl #impl_generics ::ssz_hash::SpecHash for #name #ty_generics #where_clause {
+			fn spec_hash<#hash_param_ : ::hash_db::Hasher>(&self) -> H::Out {
 				let mut #dest_ = ::ssz_hash::alloc::vec::Vec::new();
 				#hashing
 				#hash_param_ :: hash(& #dest_ )
@@ -97,7 +93,7 @@ fn encode_fields<F>(
 		let field = field_name(i, &f.ident);
 
 		quote_spanned! { f.span() =>
-			#dest.append(&mut ::ssz_hash::SpecHash::< #generic_param >::spec_hash(#field).as_ref().to_vec());
+			#dest.append(&mut ::ssz_hash::SpecHash::spec_hash::< #generic_param >(#field).as_ref().to_vec());
 		}
 	});
 

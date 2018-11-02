@@ -37,14 +37,14 @@ extern crate substrate_primitives as primitives;
 use primitives::{U256, H256};
 use hash_db::Hasher;
 
-pub trait SpecHash<H: Hasher> {
-	fn spec_hash(&self) -> H::Out;
+pub trait SpecHash {
+	fn spec_hash<H: Hasher>(&self) -> H::Out;
 }
 
 macro_rules! impl_encoded {
 	( $( $t:ty ),* ) => { $(
-		impl<H: Hasher> SpecHash<H> for $t {
-			fn spec_hash(&self) -> H::Out {
+		impl SpecHash for $t {
+			fn spec_hash<H: Hasher>(&self) -> H::Out {
 				let encoded = ssz::Encode::encode(self);
 				H::hash(&encoded)
 			}
@@ -54,10 +54,10 @@ macro_rules! impl_encoded {
 
 impl_encoded!(u16, u32, u64, u128, usize, i16, i32, i64, i128, isize, U256, H256);
 
-impl<T, H: Hasher> SpecHash<H> for Vec<T> where T: SpecHash<H> {
-	fn spec_hash(&self) -> H::Out {
+impl<T: SpecHash> SpecHash for Vec<T> {
+	fn spec_hash<H: Hasher>(&self) -> H::Out {
 		let values: Vec<_> = self.iter()
-			.map(|item| SpecHash::<H>::spec_hash(item).as_ref().to_vec())
+			.map(|item| SpecHash::spec_hash::<H>(item).as_ref().to_vec())
 			.collect();
 
 		merkle_root::<H, _>(&values)

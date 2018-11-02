@@ -39,5 +39,5 @@ fn should_work_for_struct() {
 		c: 0u64,
 	};
 
-	assert_eq!(SpecHash::<Blake2Hasher>::spec_hash(&s), H256::from("0xd6bcc4731213bbe7640cd9a44610ad4ae2717e5f3551a4c96565579fe494a45a"));
+	assert_eq!(SpecHash::spec_hash::<Blake2Hasher>(&s), H256::from("0xd6bcc4731213bbe7640cd9a44610ad4ae2717e5f3551a4c96565579fe494a45a"));
 }
