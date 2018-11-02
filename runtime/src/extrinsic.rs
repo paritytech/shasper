@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
+use primitives::{H256, Blake2Hasher};
 use rstd::prelude::*;
 
+use ssz_hash::SpecHash;
 use attestation::AttestationRecord;
 use spec::SpecHeader;
 
@@ -30,7 +31,7 @@ pub struct Extrinsic {
 }
 
 impl Extrinsic {
-	pub fn spec_hash(&self, parent_hash: H256, active_state_root: H256, crystallized_state_root: H256) -> H256 {
+	pub fn header_spec_hash(&self, parent_hash: H256, active_state_root: H256, crystallized_state_root: H256) -> H256 {
 		let spec_header = SpecHeader {
 			parent_hash: parent_hash,
 			slot_number: self.slot_number,
@@ -41,6 +42,6 @@ impl Extrinsic {
 			crystallized_state_root: crystallized_state_root,
 		};
 
-		spec_header.spec_hash()
+		spec_header.spec_hash::<Blake2Hasher>()
 	}
 }

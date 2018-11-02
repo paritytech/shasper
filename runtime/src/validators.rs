@@ -19,7 +19,7 @@ use rstd::prelude::*;
 
 use super::{Address, PublicKey};
 
-#[derive(Clone, PartialEq, Eq, Default, Encode, Decode, SszEncode, SszDecode)]
+#[derive(Clone, PartialEq, Eq, Default, Encode, Decode, SszEncode, SszDecode, SszHash)]
 #[ssz_codec(sorted)]
 pub struct ValidatorRecord {
 	pub pubkey: PublicKey,
@@ -31,7 +31,7 @@ pub struct ValidatorRecord {
 	pub end_dynasty: u64,
 }
 
-#[derive(Clone, Encode, Decode, SszEncode, SszDecode)]
+#[derive(Clone, Encode, Decode, SszEncode, SszDecode, SszHash)]
 #[ssz_codec(sorted)]
 pub struct ShardAndCommittee {
 	pub shard_id: u16,

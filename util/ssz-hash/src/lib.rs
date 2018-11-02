@@ -18,8 +18,7 @@
 #![cfg_attr(not(feature = "std"), feature(alloc))]
 
 #[cfg(not(feature = "std"))]
-#[macro_use]
-extern crate alloc;
+pub extern crate alloc;
 
 #[cfg(feature = "std")]
 extern crate core;
@@ -34,7 +33,8 @@ extern crate ssz;
 extern crate hash_db;
 extern crate substrate_primitives as primitives;
 
-use primitives::{U256, H256};
+use alloc::vec::Vec;
+use primitives::{U256, H256, H160};
 use hash_db::Hasher;
 
 pub trait SpecHash {
@@ -52,7 +52,7 @@ macro_rules! impl_encoded {
 	)* }
 }
 
-impl_encoded!(u16, u32, u64, u128, usize, i16, i32, i64, i128, isize, U256, H256);
+impl_encoded!(u16, u32, u64, u128, usize, i16, i32, i64, i128, isize, U256, H256, H160, Vec<u8>);
 
 impl<T: SpecHash> SpecHash for Vec<T> {
 	fn spec_hash<H: Hasher>(&self) -> H::Out {

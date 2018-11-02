@@ -23,7 +23,7 @@ use validators::{ValidatorRecord, ShardAndCommittee};
 use shuffling;
 use utils;
 
-#[derive(Encode, Decode, Default, SszEncode, SszDecode)]
+#[derive(Encode, Decode, Default, SszEncode, SszDecode, SszHash)]
 #[ssz_codec(sorted)]
 pub struct CrosslinkRecord {
 	pub dynasty: u64,
@@ -31,7 +31,7 @@ pub struct CrosslinkRecord {
 	pub hash: H256,
 }
 
-#[derive(Encode, Decode, Default, SszEncode, SszDecode)]
+#[derive(Encode, Decode, Default, SszEncode, SszDecode, SszHash)]
 #[ssz_codec(sorted)]
 pub struct ActiveState {
 	pub pending_attestations: Vec<AttestationRecord>,
@@ -92,7 +92,7 @@ impl ActiveState {
 	}
 }
 
-#[derive(Encode, Decode, Default, SszEncode, SszDecode)]
+#[derive(Encode, Decode, Default, SszEncode, SszDecode, SszHash)]
 #[ssz_codec(sorted)]
 pub struct CrystallizedState {
 	pub validators: Vec<ValidatorRecord>,

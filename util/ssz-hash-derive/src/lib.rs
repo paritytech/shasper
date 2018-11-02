@@ -18,7 +18,6 @@
 #![cfg_attr(not(feature = "std"), feature(alloc))]
 
 #[cfg(not(feature = "std"))]
-#[macro_use]
 extern crate alloc;
 
 #[cfg(feature = "std")]
@@ -47,6 +46,8 @@ mod alloc {
 	pub use std::boxed;
 	pub use std::vec;
 }
+
+use alloc::vec::Vec;
 
 const HASH_ERR: &str = "derive(SszHash) failed";
 
