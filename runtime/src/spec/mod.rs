@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
+use primitives::{Blake2Hasher, H256};
 use blake2::{Blake2b, crypto_mac::Mac};
 use ssz;
 use rstd::prelude::*;

@@ -155,6 +155,7 @@ pub fn quote(data: &Data, type_name: &Ident, self_: &TokenStream, dest: &TokenSt
 		Data::Union(_) => panic!("Union types are not supported."),
 	}
 }
+
 pub fn stringify(id: u8) -> [u8; 2] {
 	const CHARS: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 	let len = CHARS.len() as u8;

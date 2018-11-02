@@ -30,11 +30,29 @@ pub mod alloc {
 	pub use std::vec;
 }
 
+extern crate ssz;
 extern crate hash_db;
 extern crate substrate_primitives as primitives;
 
-use primitives::U256;
+use primitives::{U256, H256};
 use hash_db::Hasher;
+
+pub trait SpecHash<H: Hasher> {
+	fn spec_hash(&self) -> H::Out;
+}
+
+macro_rules! impl_encoded {
+	( $( $t:ty ),* ) => { $(
+		impl<H: Hasher> SpecHash<H> for $t {
+			fn spec_hash(&self) -> H::Out {
+				let encoded = ssz::Encode::encode(self);
+				H::hash(&encoded)
+			}
+		}
+	)* }
+}
+
+impl_encoded!(u16, u32, u64, u128, usize, i16, i32, i64, i128, isize, U256, H256);
 
 pub enum HashItem {
 	List(Vec<HashItem>),

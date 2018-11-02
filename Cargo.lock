@@ -2161,6 +2161,7 @@ dependencies = [
  "ssz 0.1.0",
  "ssz-derive 0.1.0",
  "ssz-hash 0.1.0",
+ "ssz-hash-derive 0.1.0",
  "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2364,7 +2365,20 @@ name = "ssz-hash"
 version = "0.1.0"
 dependencies = [
  "hash-db 0.9.0 (git+https://github.com/paritytech/trie)",
+ "ssz 0.1.0",
  "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
+]
+
+[[package]]
+name = "ssz-hash-derive"
+version = "0.1.0"
+dependencies = [
+ "hash-db 0.9.0 (git+https://github.com/paritytech/trie)",
+ "proc-macro2 0.4.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 0.6.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ssz-hash 0.1.0",
+ "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
+ "syn 0.14.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

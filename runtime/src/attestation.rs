@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
+use primitives::{H256, Blake2Hasher};
 use rstd::prelude::*;
 
 use bitfield::BitField;

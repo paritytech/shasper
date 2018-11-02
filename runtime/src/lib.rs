@@ -23,6 +23,7 @@ extern crate parity_codec_derive;
 extern crate ssz;
 #[macro_use]
 extern crate ssz_derive;
+extern crate ssz_hash;
 extern crate hashdb;
 extern crate plain_hasher;
 extern crate tiny_keccak;
