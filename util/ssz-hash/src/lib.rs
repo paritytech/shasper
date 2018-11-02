@@ -54,6 +54,16 @@ macro_rules! impl_encoded {
 
 impl_encoded!(u16, u32, u64, u128, usize, i16, i32, i64, i128, isize, U256, H256);
 
+impl<T, H: Hasher> SpecHash<H> for Vec<T> where T: SpecHash<H> {
+	fn spec_hash(&self) -> H::Out {
+		let values: Vec<_> = self.iter()
+			.map(|item| SpecHash::<H>::spec_hash(item).as_ref().to_vec())
+			.collect();
+
+		merkle_root::<H, _>(&values)
+	}
+}
+
 pub enum HashItem {
 	List(Vec<HashItem>),
 	Single(Vec<u8>),
