@@ -35,6 +35,7 @@ test-rust-stable:
     - schedules
     - web
     - /^[0-9]+$/
+    - branches
   tags:
     - rust-stable
 
