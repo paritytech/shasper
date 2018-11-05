@@ -1,6 +1,5 @@
 stages:
   - test
-  - build
 
 image:                             parity/rust:nightly
 
@@ -30,6 +29,13 @@ test-rust-stable:
     - time cargo test --all --release --locked
   tags:
     - rust-stable
+  only:
+    - triggers
+    - tags
+    - master
+    - schedules
+    - web
+    - /^[0-9]+$/
 
 
 #### stage:                        build
