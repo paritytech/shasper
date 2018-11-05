@@ -28,14 +28,6 @@ test-rust-stable:
   stage:                           test
   script:
     - time cargo test --all --release --locked
-  only:
-    - triggers
-    - tags
-    - master
-    - schedules
-    - web
-    - /^[0-9]+$/
-    - branches
   tags:
     - rust-stable
 
