@@ -16,10 +16,5 @@ test-rust-stable:
   tags:
     - rust-stable
   only:
-    - triggers
-    - tags
-    - master
-    - schedules
-    - web
     - /^[0-9]+$/
 
