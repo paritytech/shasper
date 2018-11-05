@@ -15,6 +15,7 @@ test-rust-stable:
     - echo "${CI_COMMIT_REF_NAME} tested"
   tags:
     - rust-stable
-  only:
-    - /^[0-9]+$/
+
+#   only:
+#     - /^[0-9]+$/
 
