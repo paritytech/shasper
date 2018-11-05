@@ -12,7 +12,7 @@ variables:
 test-rust-stable:
   stage:                           test
   script:
-    - echo "tested"
+    - echo "${CI_COMMIT_REF_NAME} tested"
   tags:
     - rust-stable
   only:
