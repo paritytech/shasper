@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
 use rstd::prelude::*;
 
+use primitives::H256;
 use bitfield::BitField;
 use super::{PublicKey, ShardId};
 
-#[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode)]
+#[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode, SszHash)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 #[ssz_codec(sorted)]
 pub struct AttestationRecord {

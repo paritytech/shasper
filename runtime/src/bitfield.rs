@@ -19,7 +19,7 @@ use rstd::ops::BitOr;
 
 // TODO: Validate bitfield trailing bits in encoding/decoding.
 
-#[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode)]
+#[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode, SszHash)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct BitField(Vec<u8>, usize);
 

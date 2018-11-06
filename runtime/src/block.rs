@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
+use primitives::{H256, Blake2Hasher};
 use runtime_primitives;
 
+use ssz_hash;
 use header::Header;
 use extrinsic::Extrinsic;
 use spec::SpecHeader;
@@ -25,11 +26,11 @@ pub type Block = runtime_primitives::generic::Block<Header, Extrinsic>;
 pub type BlockId = runtime_primitives::generic::BlockId<Block>;
 
 pub trait BlockExt {
-	fn spec_hash(&self, active_state_root: H256, crystallized_state_root: H256) -> H256;
+	fn header_spec_hash(&self, active_state_root: H256, crystallized_state_root: H256) -> H256;
 }
 
 impl BlockExt for Block {
-	fn spec_hash(&self, active_state_root: H256, crystallized_state_root: H256) -> H256 {
+	fn header_spec_hash(&self, active_state_root: H256, crystallized_state_root: H256) -> H256 {
 		let extrinsic = &self.extrinsics[0];
 		let header = &self.header;
 
@@ -43,6 +44,6 @@ impl BlockExt for Block {
 			crystallized_state_root: crystallized_state_root,
 		};
 
-		spec_header.spec_hash()
+		ssz_hash::SpecHash::spec_hash::<Blake2Hasher>(&spec_header)
 	}
 }

@@ -669,14 +669,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hashdb"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "elastic-array 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "heapsize"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2146,7 +2138,7 @@ dependencies = [
  "bls 0.0.1 (git+https://github.com/sorpaas/bls)",
  "bls-aggregates 0.2.0 (git+https://github.com/sorpaas/signature-schemes)",
  "byteorder 1.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "hashdb 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hash-db 0.9.0 (git+https://github.com/paritytech/trie)",
  "parity-codec 2.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec-derive 2.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "plain_hasher 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2160,6 +2152,8 @@ dependencies = [
  "srml-support 0.1.0 (git+https://github.com/paritytech/substrate)",
  "ssz 0.1.0",
  "ssz-derive 0.1.0",
+ "ssz-hash 0.1.0",
+ "ssz-hash-derive 0.1.0",
  "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2355,6 +2349,27 @@ dependencies = [
  "proc-macro2 0.4.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ssz 0.1.0",
+ "syn 0.14.9 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "ssz-hash"
+version = "0.1.0"
+dependencies = [
+ "hash-db 0.9.0 (git+https://github.com/paritytech/trie)",
+ "ssz 0.1.0",
+ "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
+]
+
+[[package]]
+name = "ssz-hash-derive"
+version = "0.1.0"
+dependencies = [
+ "hash-db 0.9.0 (git+https://github.com/paritytech/trie)",
+ "proc-macro2 0.4.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 0.6.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ssz-hash 0.1.0",
+ "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
  "syn 0.14.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3537,7 +3552,6 @@ dependencies = [
 "checksum h2 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)" = "a27e7ed946e8335bdf9a191bc1b9b14a03ba822d013d2f58437f4fabcbd7fc2c"
 "checksum hash-db 0.9.0 (git+https://github.com/paritytech/trie)" = "<none>"
 "checksum hash256-std-hasher 0.9.0 (git+https://github.com/paritytech/trie)" = "<none>"
-"checksum hashdb 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f1c71fc577cde89b3345d5f2880fecaf462a32e96c619f431279bdaf1ba5ddb1"
 "checksum heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1679e6ea370dee694f91f1dc469bf94cf8f52051d147aec3e1f9497c6fc22461"
 "checksum hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "805026a5d0141ffc30abb3be3173848ad46a1b1664fe632428479619a3644d77"
 "checksum hex-literal 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4da5f0e01bd8a71a224a4eedecaacfcabda388dbb7a80faf04d3514287572d95"

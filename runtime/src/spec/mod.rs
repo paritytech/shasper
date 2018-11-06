@@ -14,21 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
-use blake2::{Blake2b, crypto_mac::Mac};
-use ssz;
 use rstd::prelude::*;
 
+use primitives::H256;
 use attestation::AttestationRecord;
 
 mod state;
 
 pub use self::state::{
 	SpecActiveState, SpecCrystallizedState,
-	SpecActiveStateExt, SpecCrystallizedStateExt
 };
 
-#[derive(Clone, PartialEq, Eq, Default, SszEncode, SszDecode)]
+#[derive(Clone, PartialEq, Eq, Default, SszEncode, SszDecode, SszHash)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]
 pub struct SpecHeader {
@@ -41,23 +38,16 @@ pub struct SpecHeader {
 	pub crystallized_state_root: H256,
 }
 
-impl SpecHeader {
-	pub fn spec_hash(&self) -> H256 {
-		let encoded = ssz::Encode::encode(self);
-		let mut blake2 = Blake2b::new_keyed(&[], 64);
-		blake2.input(&encoded);
-		H256::from(&blake2.result().code()[0..32])
-	}
-}
-
 pub type SpecAttestationRecord = AttestationRecord;
 
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use ssz_hash::SpecHash;
+	use primitives::Blake2Hasher;
 
 	#[test]
 	fn spec_header_hash() {
-		assert_eq!(SpecHeader::default().spec_hash(), H256::from("0x66cad4289cc03192dc9a0b7583d1075b17bb6b78bd91694cdd3ff5c57e31d744"));
+		assert_eq!(SpecHeader::default().spec_hash::<Blake2Hasher>(), H256::from("0x66cad4289cc03192dc9a0b7583d1075b17bb6b78bd91694cdd3ff5c57e31d744"));
 	}
 }

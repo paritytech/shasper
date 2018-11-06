@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
+use primitives::{H256, Blake2Hasher};
 use runtime_support::storage::{StorageValue, StorageMap};
 use rstd::prelude::*;
 
 use super::{BlockNumber, Hash, Block};
+use ssz_hash::SpecHash;
 use header::Header;
 use state::{ActiveState, CrystallizedState, BlockVoteInfo};
-use spec::{SpecActiveStateExt, SpecCrystallizedStateExt};
 use extrinsic::Extrinsic;
 use validation;
 
@@ -102,9 +102,9 @@ fn state_transition(extrinsic: Extrinsic) {
 		&mut active_state
 	);
 
-	let active_state_root = active_state.spec_hash();
-	let crystallized_state_root = crystallized_state.spec_hash();
-	let block_hash = extrinsic.spec_hash(parent_hash, active_state_root, crystallized_state_root);
+	let active_state_root = active_state.spec_hash::<Blake2Hasher>();
+	let crystallized_state_root = crystallized_state.spec_hash::<Blake2Hasher>();
+	let block_hash = extrinsic.header_spec_hash(parent_hash, active_state_root, crystallized_state_root);
 
 	ParentNumber::put(&number);
 	ParentHash::put(&block_hash);
