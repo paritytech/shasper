@@ -62,7 +62,7 @@ pub fn execute_block(mut block: Block) {
 // FIXME #27: fix header fields.
 pub fn finalise_block() -> Header {
 	Header {
-		state_root: H256::from(&runtime_io::storage_root()),
+		state_root: H256::from_slice(runtime_io::storage_root().as_ref()),
 		digest: Digest {
 			logs: Vec::new(),
 		},
