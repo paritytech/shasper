@@ -44,12 +44,13 @@ extern crate serde_derive;
 extern crate substrate_primitives as primitives;
 extern crate sr_std as rstd;
 extern crate sr_primitives as runtime_primitives;
-#[macro_use]
 extern crate sr_io as runtime_io;
 #[macro_use]
 extern crate sr_version as runtime_version;
 #[macro_use]
 extern crate srml_support as runtime_support;
+#[macro_use]
+extern crate sr_api as runtime_api;
 
 mod attestation;
 mod extrinsic;
@@ -76,6 +77,8 @@ pub use bitfield::BitField;
 use primitives::{H256, H160};
 use rstd::prelude::*;
 
+use runtime_primitives::{ApplyOutcome, ApplyResult};
+use runtime_api::runtime::{Core, BlockBuilder};
 use runtime_version::RuntimeVersion;
 #[cfg(feature = "std")] use runtime_version::NativeVersion;
 
@@ -103,18 +106,28 @@ pub type Address = H160;
 pub type PublicKey = Vec<u8>;
 pub type ShardId = u16;
 pub type InherentData = ();
+pub type AuthorityId = ();
+pub type NullError = ();
 
-pub mod api {
-	use system;
-	impl_stubs!(
-		initialise_block => |header| system::initialise_block(header),
-		apply_extrinsic => |extrinsic| system::apply_extrinsic(extrinsic),
-		finalise_block => |()| system::finalise_block(),
-		inherent_extrinsics => |_| system::inherent_extrinsics(),
-		execute_block => |block| system::execute_block(block),
-		active_state_root => |()| system::active_state_root(),
-		crystallized_state_root => |()| system::crystallized_state_root(),
-		authorities => |()| system::authorities(),
-		version => |()| ::VERSION
-	);
+struct Runtime;
+
+// FIXME (#26): implement additional APIs via traits.
+impl_apis! {
+	impl Core<Block, AuthorityId> for Runtime {
+		fn version() -> RuntimeVersion { VERSION.clone() }
+		fn authorities() -> Vec<AuthorityId> { system::authorities() }
+		fn execute_block(block: Block) { system::execute_block(block) }
+	}
+
+	impl BlockBuilder<Block, Extrinsic, Extrinsic, InherentData, NullError> for Runtime {
+		fn initialise_block(header: Header) { system::initialise_block(header) }
+		fn apply_extrinsic(extrinsic: Extrinsic) -> ApplyResult {
+			system::apply_extrinsic(extrinsic);
+			Ok(ApplyOutcome::Success)
+		}
+		fn finalise_block() -> Header { system::finalise_block() }
+		fn inherent_extrinsics(_extrinsic: Extrinsic) -> Vec<Extrinsic> { system::inherent_extrinsics() }
+		fn check_inherents(_block: Block, _data: InherentData) -> Result<(), NullError> { Ok(()) }
+		fn random_seed() -> H256 { H256::default() }
+	}
 }

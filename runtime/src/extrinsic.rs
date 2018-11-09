@@ -17,6 +17,7 @@
 use primitives::{H256, Blake2Hasher};
 use rstd::prelude::*;
 
+use runtime_primitives::traits::{Extrinsic as ExtrinsicT};
 use ssz_hash::SpecHash;
 use attestation::AttestationRecord;
 use spec::SpecHeader;
@@ -29,6 +30,8 @@ pub struct Extrinsic {
 	pub pow_chain_ref: H256,
 	pub attestations: Vec<AttestationRecord>,
 }
+
+impl ExtrinsicT for Extrinsic { }
 
 impl Extrinsic {
 	pub fn header_spec_hash(&self, parent_hash: H256, active_state_root: H256, crystallized_state_root: H256) -> H256 {

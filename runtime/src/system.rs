@@ -20,10 +20,11 @@ use rstd::prelude::*;
 
 use super::{BlockNumber, Hash, Block};
 use ssz_hash::SpecHash;
-use header::Header;
+use header::{Header, Digest};
 use state::{ActiveState, CrystallizedState, BlockVoteInfo};
 use extrinsic::Extrinsic;
 use validation;
+use runtime_io;
 
 storage_items! {
 	Number: b"sys:num" => default BlockNumber;
@@ -44,14 +45,6 @@ pub fn authorities() -> Vec<()> {
 	ret
 }
 
-pub fn active_state_root() -> H256 {
-	ActiveRoot::get()
-}
-
-pub fn crystallized_state_root() -> H256 {
-	CrystallizedRoot::get()
-}
-
 pub fn initialise_block(header: Header) {
 	Number::put(&header.number);
 }
@@ -66,7 +59,18 @@ pub fn execute_block(mut block: Block) {
 	state_transition(block.extrinsics.remove(0))
 }
 
-pub fn finalise_block() { }
+// FIXME #27: fix header fields.
+pub fn finalise_block() -> Header {
+	Header {
+		state_root: H256::from(&runtime_io::storage_root()),
+		digest: Digest {
+			logs: Vec::new(),
+		},
+		extrinsics_root: H256::default(),
+		number: Number::get(),
+		parent_hash: ParentHash::get(),
+	}
+}
 
 pub fn inherent_extrinsics() -> Vec<Extrinsic> {
 	Vec::new()
