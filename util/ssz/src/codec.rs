@@ -395,7 +395,7 @@ macro_rules! impl_hash {
 	($name: ident, $len: expr) => {
 		impl Encode for $name {
 			fn encode_to<W: Output>(&self, dest: &mut W) {
-				dest.write(&self)
+				dest.write(self.as_ref())
 			}
 		}
 		impl Decode for $name {
@@ -404,7 +404,7 @@ macro_rules! impl_hash {
 				if input.read(&mut vec[..$len]) != $len {
 					None
 				} else {
-					Some($name::from(vec.as_ref()))
+					Some($name::from(&vec))
 				}
 			}
 		}
