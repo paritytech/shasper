@@ -137,5 +137,18 @@ pub fn merkle_root<H: Hasher, A>(input: &[A]) -> H::Out where
 		outs[i] = Some(H::hash(&bytes));
 	}
 
-	outs[1].expect("outs at 1 always exists because we iterate to 1.")
+	if outs.len() < 2 {
+		let target = &mut hashes[1 - outs.len()];
+
+		let mut out = H::Out::default();
+		for i in (0..out.as_ref().len()).rev() {
+			match target.pop() {
+				Some(v) => out.as_mut()[i] = v,
+				None => break,
+			}
+		}
+		out
+	} else {
+		outs[1].expect("outs at 1 always exists because we iterate to 1.")
+	}
 }
