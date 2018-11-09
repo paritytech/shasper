@@ -14,3 +14,4 @@ sr-primitives = { git = "https://github.com/paritytech/substrate" }
 substrate-primitives = { git = "https://github.com/paritytech/substrate" }
 substrate-client = { git = "https://github.com/paritytech/substrate" }
 substrate-service = { git = "https://github.com/paritytech/substrate" }
+substrate-consensus-common = { git = "https://github.com/paritytech/substrate" }

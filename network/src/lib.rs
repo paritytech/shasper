@@ -16,17 +16,18 @@
 
 extern crate shasper_runtime as runtime;
 
-#[macro_use]
 extern crate log;
 extern crate substrate_network as network;
 extern crate substrate_primitives as primitives;
 
-use network::{NodeIndex, Context, Severity};
+use network::{NodeIndex, Context};
 use network::consensus_gossip::ConsensusGossip;
-use network::{message, generic_message};
+use network::message;
 use network::specialization::Specialization;
 use network::StatusMessage as GenericFullStatus;
 use runtime::{Header, Block, Hash};
+
+pub use network::import_queue;
 
 type FullStatus = GenericFullStatus<Block>;
 
@@ -47,18 +48,7 @@ impl Specialization<Block> for Protocol {
 
 	fn on_disconnect(&mut self, _ctx: &mut Context<Block>, _who: NodeIndex) { }
 
-	fn on_message(&mut self, ctx: &mut Context<Block>, who: NodeIndex, message: message::Message<Block>) {
-		match message {
-			generic_message::Message::BftMessage(msg) => {
-				trace!(target: "node-network", "BFT message from {}: {:?}", who, msg);
-			}
-			generic_message::Message::ChainSpecific(_) => {
-				trace!(target: "node-network", "Bad message from {}", who);
-				ctx.report_peer(who, Severity::Bad("Invalid node protocol message format"));
-			}
-			_ => {}
-		}
-	}
+	fn on_message(&mut self, _ctx: &mut Context<Block>, _who: NodeIndex, _message: &mut Option<message::Message<Block>>) { }
 
 	fn on_abort(&mut self) { }
 

@@ -164,7 +164,7 @@ impl CrystallizedState {
 			(committees_per_slot, slots_per_committee)
 		};
 
-		let shuffled_active_validator_indices = shuffling::shuffle(&seed, avs).expect("Shuffling failed, cannot build new block");
+		let shuffled_active_validator_indices = shuffling::shuffle(seed.as_ref(), avs).expect("Shuffling failed, cannot build new block");
 		let validators_per_slot = utils::split(shuffled_active_validator_indices, CYCLE_LENGTH);
 
 		let mut ret = Vec::new();

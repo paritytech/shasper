@@ -40,10 +40,10 @@ impl Default for AttestationRecord {
 			slot: 0,
 			shard_id: 0,
 			oblique_parent_hashes: Vec::new(),
-			shard_block_hash: H256::new(),
+			shard_block_hash: H256::default(),
 			attester_bitfield: BitField::new(0),
 			justified_slot: 0,
-			justified_block_hash: H256::new(),
+			justified_block_hash: H256::default(),
 			aggregate_sig: {
 				let mut ret = Vec::with_capacity(2 * 48 + 1);
 				ret.resize(2 * 48 + 1, 0);
@@ -70,13 +70,13 @@ impl AttestationRecord {
 		let mut hasher = Blake2b::new_keyed(&[], 64);
 		hasher.input(&attestation_slot_bytes);
 		for hash in parent_hashes {
-			hasher.input(&hash);
+			hasher.input(hash.as_ref());
 		}
 		hasher.input(&shard_id_bytes);
-		hasher.input(&self.shard_block_hash);
+		hasher.input(self.shard_block_hash.as_ref());
 		hasher.input(&justified_slot_bytes);
 
-		H256::from(&hasher.result().code()[0..32])
+		H256::from_slice(&hasher.result().code()[0..32])
 	}
 
 	pub fn verify_signatures(&self, parent_hashes: &[H256], pubkeys: &[PublicKey]){
@@ -90,6 +90,6 @@ impl AttestationRecord {
 			.map(|bytes| BlsPublicKey::from_bytes(bytes).expect("Public key decoding failed, attestation is invalid"))
 			.collect();
 		let aggpub = AggregatePublicKey::from_public_keys(&pubkeys);
-		assert!(aggsig.verify(&message, &aggpub));
+		assert!(aggsig.verify(message.as_ref(), &aggpub));
 	}
 }

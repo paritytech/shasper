@@ -45,9 +45,10 @@ mod tests {
 	use super::*;
 	use ssz_hash::SpecHash;
 	use primitives::Blake2Hasher;
+	use std::str::FromStr;
 
 	#[test]
 	fn spec_header_hash() {
-		assert_eq!(SpecHeader::default().spec_hash::<Blake2Hasher>(), H256::from("0x66cad4289cc03192dc9a0b7583d1075b17bb6b78bd91694cdd3ff5c57e31d744"));
+		assert_eq!(SpecHeader::default().spec_hash::<Blake2Hasher>(), H256::from_str("e9b1696a21d83ab3509d87e4d0f5feff7cac730ab2511c75477016c9e1f44a2a").unwrap());
 	}
 }

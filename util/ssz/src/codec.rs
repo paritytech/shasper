@@ -395,7 +395,7 @@ macro_rules! impl_hash {
 	($name: ident, $len: expr) => {
 		impl Encode for $name {
 			fn encode_to<W: Output>(&self, dest: &mut W) {
-				dest.write(&self)
+				dest.write(self.as_ref())
 			}
 		}
 		impl Decode for $name {
@@ -404,7 +404,7 @@ macro_rules! impl_hash {
 				if input.read(&mut vec[..$len]) != $len {
 					None
 				} else {
-					Some($name::from(vec.as_ref()))
+					Some($name::from(&vec))
 				}
 			}
 		}
@@ -447,22 +447,22 @@ mod tests {
 		assert_eq!(vec![99u8, 111u8, 119u8].encode(), vec![0u8, 0u8, 0u8, 3u8, 99u8, 111u8, 119u8]);
 		assert_eq!(Vec::<u8>::decode(&mut [0u8, 0u8, 0u8, 3u8, 99u8, 111u8, 119u8].as_ref()).unwrap(),
 				   vec![99u8, 111u8, 119u8]);
-		assert_eq!(H160::from([5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-							   5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-							   5u8, 5u8, 5u8, 5u8].as_ref()).encode(),
+		assert_eq!(H160::from_slice([5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
+									 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
+									 5u8, 5u8, 5u8, 5u8].as_ref()).encode(),
 				   vec![5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
 						5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
 						5u8, 5u8, 5u8, 5u8]);
 		assert_eq!(H160::decode(&mut [5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
 									  5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
 									  5u8, 5u8, 5u8, 5u8].as_ref()).unwrap(),
-				   H160::from([5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-							   5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-							   5u8, 5u8, 5u8, 5u8].as_ref()));
-		assert_eq!(H256::from([5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-							   5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-							   5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-							   5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8].as_ref()).encode(),
+				   H160::from_slice([5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
+									 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
+									 5u8, 5u8, 5u8, 5u8].as_ref()));
+		assert_eq!(H256::from_slice([5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
+									 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
+									 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
+									 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8].as_ref()).encode(),
 				   vec![5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
 						5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
 						5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
