@@ -50,7 +50,7 @@ extern crate sr_version as runtime_version;
 #[macro_use]
 extern crate srml_support as runtime_support;
 #[macro_use]
-extern crate sr_api as runtime_api;
+extern crate substrate_client;
 
 mod attestation;
 mod extrinsic;
@@ -76,6 +76,7 @@ pub use bitfield::BitField;
 
 use primitives::{H256, H160};
 use rstd::prelude::*;
+use substrate_client::runtime_api;
 
 use runtime_primitives::{ApplyOutcome, ApplyResult};
 use runtime_api::runtime::{Core, BlockBuilder};
