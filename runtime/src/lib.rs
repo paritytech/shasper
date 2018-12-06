@@ -110,7 +110,7 @@ pub type InherentData = ();
 pub type AuthorityId = primitives::AuthorityId;
 pub type NullError = ();
 
-struct Runtime;
+pub struct Runtime;
 
 impl GetNodeBlockType for Runtime {
 	type NodeBlock = Block;
