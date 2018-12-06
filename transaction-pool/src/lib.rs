@@ -19,9 +19,7 @@ extern crate shasper_runtime as runtime;
 extern crate substrate_primitives as primitives;
 extern crate substrate_transaction_pool as transaction_pool;
 
-use runtime::Block;
-
 pub type TransactionPool<B, E> = transaction_pool::txpool::Pool<ChainApi<B, E>>;
 
 /// A simple transaction pool API that only allows one extrinsic in the pool at a given time.
-pub type ChainApi<B, E> = transaction_pool::ChainApi<B, E, Block>;
+pub type ChainApi<B, E> = transaction_pool::ChainApi<B, E>;

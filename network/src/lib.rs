@@ -23,7 +23,7 @@ extern crate substrate_primitives as primitives;
 use network::{NodeIndex, Context};
 use network::consensus_gossip::ConsensusGossip;
 use network::message;
-use network::specialization::Specialization;
+use network::specialization::NetworkSpecialization;
 use network::StatusMessage as GenericFullStatus;
 use runtime::{Header, Block, Hash};
 
@@ -39,7 +39,7 @@ impl Protocol {
 	}
 }
 
-impl Specialization<Block> for Protocol {
+impl NetworkSpecialization<Block> for Protocol {
 	fn status(&self) -> Vec<u8> {
 		Vec::new()
 	}
