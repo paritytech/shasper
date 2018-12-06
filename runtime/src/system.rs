@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{H256, Blake2Hasher};
+use primitives::{self, H256, Blake2Hasher};
 use runtime_support::storage::{StorageValue, StorageMap};
 use rstd::prelude::*;
 
@@ -39,10 +39,8 @@ storage_items! {
 	BlockVoteCache: b"sys:blockvotecache" => default map [ H256 => BlockVoteInfo ];
 }
 
-pub fn authorities() -> Vec<()> {
-	let mut ret = Vec::new();
-	ret.push(());
-	ret
+pub fn authorities() -> Vec<primitives::AuthorityId> {
+	Vec::new()
 }
 
 pub fn initialise_block(header: Header) {

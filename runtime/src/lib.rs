@@ -50,7 +50,7 @@ extern crate sr_version as runtime_version;
 #[macro_use]
 extern crate srml_support as runtime_support;
 #[macro_use]
-extern crate substrate_client;
+extern crate substrate_client as client;
 
 mod attestation;
 mod extrinsic;
@@ -76,10 +76,9 @@ pub use bitfield::BitField;
 
 use primitives::{H256, H160};
 use rstd::prelude::*;
-use substrate_client::runtime_api;
 
 use runtime_primitives::{ApplyOutcome, ApplyResult};
-use runtime_api::runtime::{Core, BlockBuilder};
+use client::{runtime_api as client_api, block_builder::api as block_builder_api};
 use runtime_version::RuntimeVersion;
 #[cfg(feature = "std")] use runtime_version::NativeVersion;
 
@@ -107,28 +106,28 @@ pub type Address = H160;
 pub type PublicKey = Vec<u8>;
 pub type ShardId = u16;
 pub type InherentData = ();
-pub type AuthorityId = ();
+pub type AuthorityId = primitives::AuthorityId;
 pub type NullError = ();
 
 struct Runtime;
 
 // FIXME (#26): implement additional APIs via traits.
-impl_apis! {
-	impl Core<Block, AuthorityId> for Runtime {
+impl_runtime_apis! {
+	impl client_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion { VERSION.clone() }
 		fn authorities() -> Vec<AuthorityId> { system::authorities() }
 		fn execute_block(block: Block) { system::execute_block(block) }
+		fn initialise_block(header: Header) { system::initialise_block(header) }
 	}
 
-	impl BlockBuilder<Block, Extrinsic, Extrinsic, InherentData, NullError> for Runtime {
-		fn initialise_block(header: Header) { system::initialise_block(header) }
+	impl block_builder_api::BlockBuilder<Block, Extrinsic> for Runtime {
 		fn apply_extrinsic(extrinsic: Extrinsic) -> ApplyResult {
 			system::apply_extrinsic(extrinsic);
 			Ok(ApplyOutcome::Success)
 		}
 		fn finalise_block() -> Header { system::finalise_block() }
 		fn inherent_extrinsics(_extrinsic: Extrinsic) -> Vec<Extrinsic> { system::inherent_extrinsics() }
-		fn check_inherents(_block: Block, _data: InherentData) -> Result<(), NullError> { Ok(()) }
+		fn check_inherents(_block: Block, _data: Extrinsic) -> Result<(), runtime_primitives::CheckInherentError> { Ok(()) }
 		fn random_seed() -> H256 { H256::default() }
 	}
 }
