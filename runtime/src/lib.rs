@@ -78,6 +78,7 @@ use primitives::{H256, H160};
 use rstd::prelude::*;
 
 use runtime_primitives::{ApplyOutcome, ApplyResult};
+use runtime_primitives::traits::{GetNodeBlockType, GetRuntimeBlockType};
 use client::{runtime_api as client_api, block_builder::api as block_builder_api};
 use runtime_version::RuntimeVersion;
 #[cfg(feature = "std")] use runtime_version::NativeVersion;
@@ -110,6 +111,14 @@ pub type AuthorityId = primitives::AuthorityId;
 pub type NullError = ();
 
 struct Runtime;
+
+impl GetNodeBlockType for Runtime {
+	type NodeBlock = Block;
+}
+
+impl GetRuntimeBlockType for Runtime {
+	type RuntimeBlock = Block;
+}
 
 // FIXME (#26): implement additional APIs via traits.
 impl_runtime_apis! {
