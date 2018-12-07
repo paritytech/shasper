@@ -29,7 +29,7 @@ extern crate tokio;
 pub mod chain_spec;
 
 use consensus_common::{ImportBlock, BlockOrigin};
-use runtime::{Block, Header, Extrinsic};
+use runtime::{Block, Header, Extrinsic, RuntimeApi};
 use network::Protocol;
 use network::import_queue::{Verifier, BasicQueue};
 use transaction_pool::TransactionPool;
@@ -79,9 +79,10 @@ pub struct Factory;
 impl service::ServiceFactory for Factory {
 	type Block = Block;
 	type NetworkProtocol = Protocol;
+	type RuntimeApi = RuntimeApi;
 	type RuntimeDispatch = executor::Executor;
-	type FullTransactionPoolApi = transaction_pool::ChainApi<FullBackend<Self>, FullExecutor<Self>>;
-	type LightTransactionPoolApi = transaction_pool::ChainApi<LightBackend<Self>, LightExecutor<Self>>;
+	type FullTransactionPoolApi = transaction_pool::ChainApi<client::Client<FullBackend<Self>, FullExecutor<Self>, Block, RuntimeApi>, Block>;
+	type LightTransactionPoolApi = transaction_pool::ChainApi<client::Client<LightBackend<Self>, LightExecutor<Self>, Block, RuntimeApi>, Block>;
 	type Genesis = StorageMap;
 	type Configuration = ();
 	type FullService = Service<service::FullComponents<Self>>;
@@ -90,13 +91,13 @@ impl service::ServiceFactory for Factory {
 	type LightImportQueue = NullQueue;
 
 	fn build_full_transaction_pool(config: TransactionPoolOptions, client: Arc<service::FullClient<Self>>)
-		-> Result<TransactionPool<FullBackend<Self>, FullExecutor<Self>>, service::Error>
+		-> Result<TransactionPool<client::Client<FullBackend<Self>, FullExecutor<Self>, Block, RuntimeApi>, Block>, service::Error>
 	{
 		Ok(TransactionPool::new(config, transaction_pool::ChainApi::new(client)))
 	}
 
 	fn build_light_transaction_pool(config: TransactionPoolOptions, client: Arc<service::LightClient<Self>>)
-		-> Result<TransactionPool<LightBackend<Self>, LightExecutor<Self>>, service::Error>
+		-> Result<TransactionPool<client::Client<LightBackend<Self>, LightExecutor<Self>, Block, RuntimeApi>, Block>, service::Error>
 	{
 		Ok(TransactionPool::new(config, transaction_pool::ChainApi::new(client)))
 	}

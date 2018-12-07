@@ -139,4 +139,10 @@ impl_runtime_apis! {
 		fn check_inherents(_block: Block, _data: Extrinsic) -> Result<(), runtime_primitives::CheckInherentError> { Ok(()) }
 		fn random_seed() -> H256 { H256::default() }
 	}
+
+	impl client_api::TaggedTransactionQueue<Block> for Runtime {
+		fn validate_transaction(_tx: Extrinsic) -> client_api::TransactionValidity {
+			unimplemented!()
+		}
+	}
 }
