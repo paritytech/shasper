@@ -22,17 +22,29 @@
 extern crate tokio;
 
 extern crate substrate_cli as cli;
+extern crate substrate_service;
 extern crate shasper_service as service;
 extern crate exit_future;
+extern crate structopt;
 
 #[macro_use]
 extern crate log;
 
 pub use cli::error;
 
+use std::ops::Deref;
 use tokio::runtime::Runtime;
+use structopt::StructOpt;
+
 pub use service::{Components as ServiceComponents, Service, ServiceFactory};
-pub use cli::{VersionInfo, IntoExit};
+pub use cli::{VersionInfo, IntoExit, CoreParams};
+
+/// Extend params for Node
+#[derive(Debug, StructOpt)]
+pub struct NodeParams {
+	#[structopt(flatten)]
+	core: CoreParams
+}
 
 /// The chain specification option.
 #[derive(Clone, Debug)]
@@ -70,9 +82,22 @@ pub fn run<I, T, E>(args: I, exit: E, version: cli::VersionInfo) -> error::Resul
 	T: Into<std::ffi::OsString> + Clone,
 	E: IntoExit,
 {
-	match cli::prepare_execution::<service::Factory, _, _, _, _>(args, exit, version, load_spec, "substrate-node")? {
+	let matches = match NodeParams::clap()
+		.name(version.executable_name)
+		.author(version.author)
+		.about(version.description)
+		.get_matches_from_safe(args) {
+			Ok(m) => m,
+			Err(e) => e.exit(),
+		};
+
+	let (spec, config) = cli::parse_matches::<service::Factory, _>(
+		load_spec, version, "shasper-node", &matches
+	)?;
+
+	match cli::execute_default::<service::Factory, _>(spec, exit, &matches, &config)? {
 		cli::Action::ExecutedInternally => (),
-		cli::Action::RunService((config, exit)) => {
+		cli::Action::RunService(exit) => {
 			info!("Substrate Shasper Node");
 			info!("  version {}", config.full_version());
 			info!("  by Parity Technologies, 2017, 2018");
@@ -90,13 +115,14 @@ pub fn run<I, T, E>(args: I, exit: E, version: cli::VersionInfo) -> error::Resul
 	Ok(())
 }
 
-fn run_until_exit<C, E>(
+fn run_until_exit<T, C, E>(
 	runtime: &mut Runtime,
-	service: service::Service<C>,
+	service: T,
 	e: E,
 ) -> error::Result<()>
 	where
-		C: service::Components,
+	    T: Deref<Target=substrate_service::Service<C>>,
+		C: substrate_service::Components,
 		E: IntoExit,
 {
 	let (exit_send, exit) = exit_future::signal();

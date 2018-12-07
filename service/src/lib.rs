@@ -29,7 +29,7 @@ extern crate tokio;
 pub mod chain_spec;
 
 use consensus_common::{ImportBlock, BlockOrigin};
-use runtime::{Block, Header, Extrinsic};
+use runtime::{Block, Header, Extrinsic, RuntimeApi};
 use network::Protocol;
 use network::import_queue::{Verifier, BasicQueue};
 use transaction_pool::TransactionPool;
@@ -56,14 +56,13 @@ impl Verifier<Block> for NullVerifier {
 		&self,
 		origin: BlockOrigin,
 		header: Header,
-		_justification: Vec<u8>,
+		justification: Vec<u8>,
 		body: Option<Vec<Extrinsic>>
 	) -> Result<(ImportBlock<Block>, Option<Vec<primitives::AuthorityId>>), String> {
 		Ok((
 			ImportBlock {
-				header, body, origin,
-				external_justification: Default::default(),
-				post_runtime_digests: Vec::new(),
+				header, body, origin, justification,
+				post_digests: Default::default(),
 				finalized: false,
 				auxiliary: Vec::new()
 			},
@@ -79,24 +78,25 @@ pub struct Factory;
 impl service::ServiceFactory for Factory {
 	type Block = Block;
 	type NetworkProtocol = Protocol;
+	type RuntimeApi = RuntimeApi;
 	type RuntimeDispatch = executor::Executor;
-	type FullTransactionPoolApi = transaction_pool::ChainApi<FullBackend<Self>, FullExecutor<Self>>;
-	type LightTransactionPoolApi = transaction_pool::ChainApi<LightBackend<Self>, LightExecutor<Self>>;
+	type FullTransactionPoolApi = transaction_pool::ChainApi<client::Client<FullBackend<Self>, FullExecutor<Self>, Block, RuntimeApi>, Block>;
+	type LightTransactionPoolApi = transaction_pool::ChainApi<client::Client<LightBackend<Self>, LightExecutor<Self>, Block, RuntimeApi>, Block>;
 	type Genesis = StorageMap;
 	type Configuration = ();
-	type FullService = Service<service::FullComponents<Self>>;
-	type LightService = Service<service::LightComponents<Self>>;
+	type FullService = service::FullComponents<Self>;
+	type LightService = service::LightComponents<Self>;
 	type FullImportQueue = NullQueue;
 	type LightImportQueue = NullQueue;
 
 	fn build_full_transaction_pool(config: TransactionPoolOptions, client: Arc<service::FullClient<Self>>)
-		-> Result<TransactionPool<FullBackend<Self>, FullExecutor<Self>>, service::Error>
+		-> Result<TransactionPool<client::Client<FullBackend<Self>, FullExecutor<Self>, Block, RuntimeApi>, Block>, service::Error>
 	{
 		Ok(TransactionPool::new(config, transaction_pool::ChainApi::new(client)))
 	}
 
 	fn build_light_transaction_pool(config: TransactionPoolOptions, client: Arc<service::LightClient<Self>>)
-		-> Result<TransactionPool<LightBackend<Self>, LightExecutor<Self>>, service::Error>
+		-> Result<TransactionPool<client::Client<LightBackend<Self>, LightExecutor<Self>, Block, RuntimeApi>, Block>, service::Error>
 	{
 		Ok(TransactionPool::new(config, transaction_pool::ChainApi::new(client)))
 	}
@@ -108,29 +108,29 @@ impl service::ServiceFactory for Factory {
 	}
 
 	fn new_light(config: Configuration, executor: TaskExecutor)
-		-> Result<Service<service::LightComponents<Factory>>, service::Error>
+		-> Result<service::LightComponents<Factory>, service::Error>
 	{
-		Ok(Service(service::Service::<service::LightComponents<Factory>>::new(config, executor.clone())?))
+		Ok(service::LightComponents::<Factory>::new(config, executor.clone())?)
 	}
 
 	fn new_full(config: Configuration, executor: TaskExecutor)
-		-> Result<Service<service::FullComponents<Factory>>, service::Error>
+		-> Result<service::FullComponents<Factory>, service::Error>
 	{
-		Ok(Service(service::Service::<service::FullComponents<Factory>>::new(config, executor.clone())?))
+		Ok(service::FullComponents::<Factory>::new(config, executor.clone())?)
 	}
 
 	fn build_full_import_queue(
-		_config: &FactoryFullConfiguration<Self>,
-		_client: Arc<FullClient<Self>>
+		_config: &mut FactoryFullConfiguration<Self>,
+		client: Arc<FullClient<Self>>
 	) -> Result<Self::FullImportQueue, service::Error> {
-		Ok(NullQueue::new(Arc::new(NullVerifier)))
+		Ok(NullQueue::new(Arc::new(NullVerifier), client))
 	}
 
 	fn build_light_import_queue(
-		_config: &FactoryFullConfiguration<Self>,
-		_client: Arc<LightClient<Self>>
+		_config: &mut FactoryFullConfiguration<Self>,
+		client: Arc<LightClient<Self>>
 	) -> Result<Self::LightImportQueue, service::Error> {
-		Ok(NullQueue::new(Arc::new(NullVerifier)))
+		Ok(NullQueue::new(Arc::new(NullVerifier), client))
 	}
 }
 
