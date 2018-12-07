@@ -121,16 +121,16 @@ impl service::ServiceFactory for Factory {
 
 	fn build_full_import_queue(
 		_config: &mut FactoryFullConfiguration<Self>,
-		_client: Arc<FullClient<Self>>
+		client: Arc<FullClient<Self>>
 	) -> Result<Self::FullImportQueue, service::Error> {
-		Ok(NullQueue::new(Arc::new(NullVerifier)))
+		Ok(NullQueue::new(Arc::new(NullVerifier), client))
 	}
 
 	fn build_light_import_queue(
 		_config: &mut FactoryFullConfiguration<Self>,
-		_client: Arc<LightClient<Self>>
+		client: Arc<LightClient<Self>>
 	) -> Result<Self::LightImportQueue, service::Error> {
-		Ok(NullQueue::new(Arc::new(NullVerifier)))
+		Ok(NullQueue::new(Arc::new(NullVerifier), client))
 	}
 }
 
