@@ -74,7 +74,7 @@ pub use validators::{ValidatorRecord, ShardAndCommittee};
 pub use block::{Block, BlockId, BlockExt};
 pub use bitfield::BitField;
 
-use primitives::{H256, H160};
+use primitives::{H256, H160, OpaqueMetadata};
 use rstd::prelude::*;
 
 use runtime_primitives::{ApplyOutcome, ApplyResult};
@@ -143,6 +143,12 @@ impl_runtime_apis! {
 	impl client_api::TaggedTransactionQueue<Block> for Runtime {
 		fn validate_transaction(_tx: Extrinsic) -> client_api::TransactionValidity {
 			unimplemented!()
+		}
+	}
+
+	impl client_api::Metadata<Block> for Runtime {
+		fn metadata() -> OpaqueMetadata {
+			OpaqueMetadata::new(Vec::new())
 		}
 	}
 }

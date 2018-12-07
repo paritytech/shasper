@@ -56,14 +56,13 @@ impl Verifier<Block> for NullVerifier {
 		&self,
 		origin: BlockOrigin,
 		header: Header,
-		_justification: Vec<u8>,
+		justification: Vec<u8>,
 		body: Option<Vec<Extrinsic>>
 	) -> Result<(ImportBlock<Block>, Option<Vec<primitives::AuthorityId>>), String> {
 		Ok((
 			ImportBlock {
-				header, body, origin,
-				external_justification: Default::default(),
-				post_runtime_digests: Vec::new(),
+				header, body, origin, justification,
+				post_digests: Default::default(),
 				finalized: false,
 				auxiliary: Vec::new()
 			},
@@ -85,8 +84,8 @@ impl service::ServiceFactory for Factory {
 	type LightTransactionPoolApi = transaction_pool::ChainApi<client::Client<LightBackend<Self>, LightExecutor<Self>, Block, RuntimeApi>, Block>;
 	type Genesis = StorageMap;
 	type Configuration = ();
-	type FullService = Service<service::FullComponents<Self>>;
-	type LightService = Service<service::LightComponents<Self>>;
+	type FullService = service::FullComponents<Self>;
+	type LightService = service::LightComponents<Self>;
 	type FullImportQueue = NullQueue;
 	type LightImportQueue = NullQueue;
 
@@ -109,26 +108,26 @@ impl service::ServiceFactory for Factory {
 	}
 
 	fn new_light(config: Configuration, executor: TaskExecutor)
-		-> Result<Service<service::LightComponents<Factory>>, service::Error>
+		-> Result<service::LightComponents<Factory>, service::Error>
 	{
-		Ok(Service(service::Service::<service::LightComponents<Factory>>::new(config, executor.clone())?))
+		Ok(service::LightComponents::<Factory>::new(config, executor.clone())?)
 	}
 
 	fn new_full(config: Configuration, executor: TaskExecutor)
-		-> Result<Service<service::FullComponents<Factory>>, service::Error>
+		-> Result<service::FullComponents<Factory>, service::Error>
 	{
-		Ok(Service(service::Service::<service::FullComponents<Factory>>::new(config, executor.clone())?))
+		Ok(service::FullComponents::<Factory>::new(config, executor.clone())?)
 	}
 
 	fn build_full_import_queue(
-		_config: &FactoryFullConfiguration<Self>,
+		_config: &mut FactoryFullConfiguration<Self>,
 		_client: Arc<FullClient<Self>>
 	) -> Result<Self::FullImportQueue, service::Error> {
 		Ok(NullQueue::new(Arc::new(NullVerifier)))
 	}
 
 	fn build_light_import_queue(
-		_config: &FactoryFullConfiguration<Self>,
+		_config: &mut FactoryFullConfiguration<Self>,
 		_client: Arc<LightClient<Self>>
 	) -> Result<Self::LightImportQueue, service::Error> {
 		Ok(NullQueue::new(Arc::new(NullVerifier)))
