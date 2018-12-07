@@ -2311,7 +2311,9 @@ dependencies = [
  "exit-future 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "shasper-service 0.1.0",
+ "structopt 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "substrate-cli 0.3.0 (git+https://github.com/paritytech/substrate)",
+ "substrate-service 0.3.0 (git+https://github.com/paritytech/substrate)",
  "tokio 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
