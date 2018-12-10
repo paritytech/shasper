@@ -24,6 +24,7 @@ members = [
 	"util/ssz",
 	"util/ssz-derive",
 	"util/shuffling",
+	"lmd-ghost",
 ]
 exclude = [
 	"runtime/wasm",

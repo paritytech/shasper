@@ -1,0 +1,6 @@
+[package]
+name = "lmd-ghost"
+version = "0.1.0"
+authors = ["Parity Team <admin@parity.io>"]
+
+[dependencies]
