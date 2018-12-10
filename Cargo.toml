@@ -19,6 +19,7 @@ members = [
 	"executor",
 	"service",
 	"network",
+	"primitives",
 	"transaction-pool",
 	"cli",
 	"util/ssz",
