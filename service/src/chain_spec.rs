@@ -29,5 +29,5 @@ fn development_genesis() -> StorageMap {
 }
 
 pub fn development_config() -> ChainSpec<StorageMap> {
-	ChainSpec::from_genesis("Shasper Development", "shasper_dev", development_genesis, vec![], None, None, None)
+	ChainSpec::from_genesis("Shasper Development", "shasper_dev", development_genesis, vec![], None, None, None, None)
 }
