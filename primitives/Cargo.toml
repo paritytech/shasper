@@ -5,7 +5,8 @@ authors = ["Parity Team <admin@parity.io>"]
 
 [dependencies]
 fixed-hash = { version = "0.3.0", default-features = false }
+substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
 
 [features]
 default = ["std"]
-std = ["fixed-hash/std"]
+std = ["fixed-hash/std", "substrate-primitives/std"]

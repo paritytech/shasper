@@ -1344,6 +1344,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "lmd-ghost"
 version = "0.1.0"
+dependencies = [
+ "shasper-primitives 0.1.0",
+ "sr-std 0.1.0 (git+https://github.com/paritytech/substrate)",
+]
 
 [[package]]
 name = "local-encoding"
@@ -1816,13 +1820,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "primitives"
-version = "0.1.0"
-dependencies = [
- "fixed-hash 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "proc-macro-hack"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2243,6 +2240,14 @@ dependencies = [
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "shasper-runtime 0.1.0",
  "substrate-network 0.1.0 (git+https://github.com/paritytech/substrate)",
+ "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
+]
+
+[[package]]
+name = "shasper-primitives"
+version = "0.1.0"
+dependencies = [
+ "fixed-hash 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
 ]
 
