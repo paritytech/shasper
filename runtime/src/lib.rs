@@ -59,8 +59,8 @@ pub use runtime_primitives::{Permill, Perbill};
 pub use timestamp::BlockPeriod;
 pub use srml_support::{StorageValue, RuntimeMetadata};
 
-const TIMESTAMP_SET_POSITION: u32 = 1;
-const NOTE_OFFLINE_POSITION: u32 = 0;
+const TIMESTAMP_SET_POSITION: u32 = 0;
+const NOTE_OFFLINE_POSITION: u32 = 1;
 
 /// Alias to Ed25519 pubkey that identifies an account on the chain.
 pub type AccountId = primitives::H256;
