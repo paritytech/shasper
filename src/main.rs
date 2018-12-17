@@ -9,6 +9,7 @@ extern crate error_chain;
 extern crate tokio;
 #[macro_use]
 extern crate log;
+extern crate sr_primitives as runtime_primitives;
 extern crate substrate_cli;
 extern crate substrate_primitives as primitives;
 extern crate substrate_consensus_aura as consensus;
@@ -18,11 +19,9 @@ extern crate substrate_network as network;
 #[macro_use]
 extern crate substrate_executor;
 extern crate substrate_transaction_pool as transaction_pool;
-extern crate substrate_finality_grandpa as grandpa;
 #[macro_use]
 extern crate substrate_service;
 extern crate template_node_runtime;
-#[macro_use]
 extern crate structopt;
 
 mod chain_spec;
