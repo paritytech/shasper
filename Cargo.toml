@@ -1,11 +1,11 @@
 [package]
-name = "template-node"
+name = "shasper"
 version = "0.9.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 
 [[bin]]
-name = "template-node"
+name = "shapser"
 path = "src/main.rs"
 
 [dependencies]
@@ -30,7 +30,7 @@ substrate-transaction-pool = { git = "https://github.com/paritytech/substrate" }
 substrate-network = { git = "https://github.com/paritytech/substrate" }
 substrate-consensus-aura = { git = "https://github.com/paritytech/substrate" }
 substrate-client = { git = "https://github.com/paritytech/substrate", default-features = false }
-template-node-runtime = { path = "runtime" }
+shasper-runtime = { path = "runtime" }
 structopt = "0.2.13"
 
 [build-dependencies]

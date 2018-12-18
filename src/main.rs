@@ -21,7 +21,7 @@ extern crate substrate_executor;
 extern crate substrate_transaction_pool as transaction_pool;
 #[macro_use]
 extern crate substrate_service;
-extern crate template_node_runtime;
+extern crate shasper_runtime;
 extern crate structopt;
 
 mod chain_spec;
