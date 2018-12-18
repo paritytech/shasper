@@ -1,0 +1,22 @@
+[package]
+name = "shasper-primitives"
+version = "0.1.0"
+authors = ["Parity Team <admin@parity.io>"]
+
+[dependencies]
+parity-codec-derive = { version = "^2.1" }
+parity-codec = { version = "^2.1", default-features = false }
+fixed-hash = { version = "0.3.0", default-features = false }
+sr-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
+substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
+sr-std = { git = "https://github.com/paritytech/substrate", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"fixed-hash/std",
+	"substrate-primitives/std",
+	"parity-codec/std",
+	"sr-primitives/std",
+	"sr-std/std",
+]

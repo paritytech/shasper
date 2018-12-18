@@ -37,7 +37,7 @@ structopt = "0.2.13"
 vergen = "2"
 
 [workspace]
-members = [ "runtime" ]
+members = [ "runtime", "primitives" ]
 exclude = [ "runtime/wasm" ]
 
 [profile.release]

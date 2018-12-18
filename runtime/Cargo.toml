@@ -14,7 +14,7 @@ parity-codec-derive = "2.0"
 sr-std = { git = "https://github.com/paritytech/substrate" }
 sr-io = { git = "https://github.com/paritytech/substrate" }
 srml-support = { git = "https://github.com/paritytech/substrate" }
-substrate-primitives = { git = "https://github.com/paritytech/substrate" }
+shasper-primitives = { path = "../primitives" }
 substrate-keyring = { git = "https://github.com/paritytech/substrate" }
 srml-aura = { git = "https://github.com/paritytech/substrate" }
 srml-balances = { git = "https://github.com/paritytech/substrate" }
@@ -32,7 +32,7 @@ sr-version = { git = "https://github.com/paritytech/substrate" }
 default = ["std"]
 std = [
 	"parity-codec/std",
-	"substrate-primitives/std",
+	"shasper-primitives/std",
 	"substrate-client/std",
 	"sr-std/std",
 	"sr-io/std",

@@ -16,7 +16,7 @@ extern crate sr_primitives as runtime_primitives;
 #[cfg(feature = "std")]
 #[macro_use]
 extern crate serde_derive;
-extern crate substrate_primitives as primitives;
+extern crate shasper_primitives as primitives;
 extern crate parity_codec;
 #[macro_use]
 extern crate parity_codec_derive;
@@ -34,11 +34,10 @@ extern crate substrate_consensus_aura_primitives as consensus_aura;
 use rstd::prelude::*;
 #[cfg(feature = "std")]
 use primitives::bytes;
-use primitives::AuthorityId;
-use primitives::OpaqueMetadata;
+use primitives::{opaque, ValidatorId, AccountId, Nonce, BlockNumber, Hash, OpaqueMetadata};
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity,
-	Ed25519Signature, generic, traits::{self, BlakeTwo256, Block as BlockT, ProvideInherent},
+	Ed25519Signature, generic, traits::{BlakeTwo256, Block as BlockT, ProvideInherent},
 	BasicInherentData, CheckInherentError
 };
 use client::{
@@ -61,42 +60,6 @@ pub use srml_support::{StorageValue, RuntimeMetadata};
 
 const TIMESTAMP_SET_POSITION: u32 = 0;
 const NOTE_OFFLINE_POSITION: u32 = 1;
-
-/// Alias to Ed25519 pubkey that identifies an account on the chain.
-pub type AccountId = primitives::H256;
-
-/// A hash of some data used by the chain.
-pub type Hash = primitives::H256;
-
-/// Index of a block number in the chain.
-pub type BlockNumber = u64;
-
-/// Index of an account's extrinsic in the chain.
-pub type Nonce = u64;
-
-/// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
-/// the specifics of the runtime. They can then be made to be agnostic over specific formats
-/// of data like extrinsics, allowing for them to continue syncing the network through upgrades
-/// to even the core datastructures.
-pub mod opaque {
-	use super::*;
-
-	/// Opaque, encoded, unchecked extrinsic.
-	#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-	pub struct UncheckedExtrinsic(#[cfg_attr(feature = "std", serde(with="bytes"))] pub Vec<u8>);
-	impl traits::Extrinsic for UncheckedExtrinsic {
-		fn is_signed(&self) -> Option<bool> {
-			None
-		}
-	}
-	/// Opaque block header type.
-	pub type Header = generic::Header<BlockNumber, BlakeTwo256, generic::DigestItem<Hash, AuthorityId>>;
-	/// Opaque block type.
-	pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-	/// Opaque block identifier type.
-	pub type BlockId = generic::BlockId<Block>;
-}
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -144,7 +107,7 @@ impl consensus::Trait for Runtime {
 	/// The position in the block's extrinsics that the note-offline inherent must be placed.
 	const NOTE_OFFLINE_POSITION: u32 = NOTE_OFFLINE_POSITION;
 	/// The identifier we use to refer to authorities.
-	type SessionKey = AuthorityId;
+	type SessionKey = ValidatorId;
 	/// No action in case an authority was determined to be offline.
 	type InherentOfflineReport = ();
 	/// The ubiquitous log type.
@@ -184,7 +147,7 @@ impl aura::Trait for Runtime {
 }
 
 construct_runtime!(
-	pub enum Runtime with Log(InternalLog: DigestItem<Hash, AuthorityId>) where
+	pub enum Runtime with Log(InternalLog: DigestItem<Hash, ValidatorId>) where
 		Block = Block,
 		NodeBlock = opaque::Block,
 		InherentData = BasicInherentData
@@ -222,7 +185,7 @@ impl_runtime_apis! {
 			VERSION
 		}
 
-		fn authorities() -> Vec<AuthorityId> {
+		fn authorities() -> Vec<ValidatorId> {
 			Consensus::authorities()
 		}
 

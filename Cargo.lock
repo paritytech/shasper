@@ -2325,6 +2325,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "shasper-primitives"
+version = "0.1.0"
+dependencies = [
+ "fixed-hash 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parity-codec 2.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parity-codec-derive 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sr-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
+ "sr-std 0.1.0 (git+https://github.com/paritytech/substrate)",
+ "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
+]
+
+[[package]]
 name = "shell32-sys"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3351,6 +3363,7 @@ dependencies = [
  "safe-mix 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shasper-primitives 0.1.0",
  "sr-io 0.1.0 (git+https://github.com/paritytech/substrate)",
  "sr-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
  "sr-std 0.1.0 (git+https://github.com/paritytech/substrate)",
@@ -3366,7 +3379,6 @@ dependencies = [
  "substrate-client 0.1.0 (git+https://github.com/paritytech/substrate)",
  "substrate-consensus-aura-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
  "substrate-keyring 0.1.0 (git+https://github.com/paritytech/substrate)",
- "substrate-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
 ]
 
 [[package]]
