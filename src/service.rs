@@ -21,7 +21,7 @@ native_executor_instance!(
 	pub Executor,
 	template_node_runtime::api::dispatch,
 	template_node_runtime::native_version,
-	include_bytes!("../runtime/wasm/target/wasm32-unknown-unknown/release/template_node_runtime.compact.wasm")
+	include_bytes!("../runtime/wasm/target/wasm32-unknown-unknown/release/shasper_runtime.compact.wasm")
 );
 
 construct_simple_protocol! {

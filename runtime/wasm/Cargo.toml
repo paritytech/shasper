@@ -4,6 +4,7 @@ version = "0.9.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 
 [lib]
+name = "shasper_runtime"
 crate-type = ["cdylib"]
 
 [dependencies]
