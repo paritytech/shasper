@@ -25,6 +25,9 @@ extern crate sr_primitives as runtime_primitives;
 #[macro_use]
 extern crate fixed_hash;
 extern crate sr_std as rstd;
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate serde_derive;
 
 construct_fixed_hash! {
 	/// Fixed 384-bit hash.
