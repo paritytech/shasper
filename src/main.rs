@@ -22,6 +22,7 @@ extern crate substrate_transaction_pool as transaction_pool;
 #[macro_use]
 extern crate substrate_service;
 extern crate shasper_runtime;
+extern crate shasper_primitives;
 extern crate structopt;
 
 mod chain_spec;
@@ -34,9 +35,9 @@ fn run() -> cli::error::Result<()> {
 	let version = VersionInfo {
 		commit: env!("VERGEN_SHA_SHORT"),
 		version: env!("CARGO_PKG_VERSION"),
-		executable_name: "template-node",
-		author: "Anonymous",
-		description: "Template Node",
+		executable_name: "shasper",
+		author: "Parity Technologies <admin@parity.io>",
+		description: "Substrate Shasper",
 	};
 	cli::run(::std::env::args(), cli::Exit, version)
 }

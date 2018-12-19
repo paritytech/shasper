@@ -32,8 +32,6 @@ extern crate srml_upgrade_key as upgrade_key;
 extern crate substrate_consensus_aura_primitives as consensus_aura;
 
 use rstd::prelude::*;
-#[cfg(feature = "std")]
-use primitives::bytes;
 use primitives::{opaque, ValidatorId, AccountId, Nonce, BlockNumber, Hash, OpaqueMetadata};
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity,

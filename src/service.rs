@@ -5,7 +5,8 @@
 use std::sync::Arc;
 use runtime_primitives::BasicInherentData;
 use transaction_pool::{self, txpool::{Pool as TransactionPool}};
-use template_node_runtime::{self, GenesisConfig, opaque::Block, RuntimeApi};
+use shasper_primitives::opaque::Block;
+use shasper_runtime::{self, GenesisConfig, RuntimeApi};
 use substrate_service::{
 	FactoryFullConfiguration, LightComponents, FullComponents, FullBackend,
 	FullClient, LightClient, LightBackend, FullExecutor, LightExecutor,
@@ -19,8 +20,8 @@ pub use substrate_executor::NativeExecutor;
 // Our native executor instance.
 native_executor_instance!(
 	pub Executor,
-	template_node_runtime::api::dispatch,
-	template_node_runtime::native_version,
+	shasper_runtime::api::dispatch,
+	shasper_runtime::native_version,
 	include_bytes!("../runtime/wasm/target/wasm32-unknown-unknown/release/shasper_runtime.compact.wasm")
 );
 

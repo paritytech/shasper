@@ -1,5 +1,6 @@
 use primitives::{AuthorityId, ed25519};
-use template_node_runtime::{AccountId, GenesisConfig, ConsensusConfig, TimestampConfig, BalancesConfig, UpgradeKeyConfig};
+use shasper_primitives::AccountId;
+use shasper_runtime::{GenesisConfig, ConsensusConfig, TimestampConfig, BalancesConfig, UpgradeKeyConfig};
 use substrate_service;
 
 // Note this is the URL for the telemetry server
