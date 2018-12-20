@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 pub extern crate bls_aggregates;
 
 pub mod bls {
