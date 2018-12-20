@@ -40,7 +40,7 @@ pub use primitives::{H256, OpaqueMetadata};
 pub use primitives::bytes;
 
 /// Shasper validator public key.
-pub type ValidatorId = primitives::AuthorityId;
+pub type ValidatorId = primitives::Ed25519AuthorityId;
 
 /// Alias to Ed25519 pubkey that identifies an account on the chain.
 pub type AccountId = primitives::H256;

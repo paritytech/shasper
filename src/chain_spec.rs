@@ -1,5 +1,5 @@
-use primitives::{AuthorityId, ed25519};
-use shasper_primitives::AccountId;
+use primitives::ed25519;
+use shasper_primitives::{ValidatorId, AccountId};
 use shasper_runtime::{GenesisConfig, ConsensusConfig, TimestampConfig, BalancesConfig, UpgradeKeyConfig};
 use substrate_service;
 
@@ -74,7 +74,7 @@ impl Alternative {
 	}
 }
 
-fn testnet_genesis(initial_authorities: Vec<AuthorityId>, endowed_accounts: Vec<AccountId>, upgrade_key: AccountId) -> GenesisConfig {
+fn testnet_genesis(initial_authorities: Vec<ValidatorId>, endowed_accounts: Vec<AccountId>, upgrade_key: AccountId) -> GenesisConfig {
 	GenesisConfig {
 		consensus: Some(ConsensusConfig {
 			code: include_bytes!("../runtime/wasm/target/wasm32-unknown-unknown/release/shasper_runtime.compact.wasm").to_vec(),
