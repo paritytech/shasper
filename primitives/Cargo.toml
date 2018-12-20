@@ -12,6 +12,7 @@ substrate-primitives = { git = "https://github.com/paritytech/substrate", defaul
 sr-std = { git = "https://github.com/paritytech/substrate", default-features = false }
 serde = { version = "1.0", optional = true, default-features = false }
 serde_derive = { version = "1.0", optional = true }
+shasper-crypto = { path = "../crypto", default-features = false }
 
 [features]
 default = ["std"]
@@ -24,4 +25,5 @@ std = [
 	"serde",
 	"serde/std",
 	"serde_derive",
+	"shasper-crypto/std",
 ]

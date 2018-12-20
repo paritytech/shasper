@@ -16,97 +16,57 @@
 
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
-use H256;
+
+use crypto::bls;
 
 #[cfg(feature = "std")]
-use primitives::{ed25519, hexdisplay};
+use primitives::bytes;
 
-/// An identifier for an authority in the consensus algorithm. The same size as ed25519::Public.
-#[derive(Clone, Copy, PartialEq, Eq, Default, Encode, Decode)]
-pub struct AuthorityId(pub [u8; 32]);
+construct_fixed_hash! {
+	/// Fixed 384-bit hash.
+	pub struct H384(48);
+}
+
+pub type AuthorityId = H384;
 
 #[cfg(feature = "std")]
-impl ::std::fmt::Display for AuthorityId {
-	fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-		write!(f, "{}", ed25519::Public(self.0).to_ss58check())
-	}
-}
-
-#[cfg(feature = "std")]
-impl ::std::fmt::Debug for AuthorityId {
-	fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-		let h = format!("{}", hexdisplay::HexDisplay::from(&self.0));
-		write!(f, "{} ({}…{})", ed25519::Public(self.0).to_ss58check(), &h[0..8], &h[60..])
-	}
-}
-
-#[cfg(feature = "std")]
-impl ::std::hash::Hash for AuthorityId {
-	fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
-		self.0.hash(state);
-	}
-}
-
-impl AsRef<[u8; 32]> for AuthorityId {
-	fn as_ref(&self) -> &[u8; 32] {
-		&self.0
-	}
-}
-
-impl AsRef<[u8]> for AuthorityId {
-	fn as_ref(&self) -> &[u8] {
-		&self.0[..]
-	}
-}
-
-impl Into<[u8; 32]> for AuthorityId {
-	fn into(self) -> [u8; 32] {
-		self.0
-	}
-}
-
-impl From<[u8; 32]> for AuthorityId {
-	fn from(a: [u8; 32]) -> Self {
-		AuthorityId(a)
-	}
-}
-
-impl AsRef<AuthorityId> for AuthorityId {
-	fn as_ref(&self) -> &AuthorityId {
-		&self
-	}
-}
-
-impl Into<H256> for AuthorityId {
-	fn into(self) -> H256 {
-		self.0.into()
-	}
-}
-
-#[cfg(feature = "std")]
-impl Into<AuthorityId> for ed25519::Public {
-	fn into(self) -> AuthorityId {
-		AuthorityId(self.0)
-	}
-}
-
-#[cfg(feature = "std")]
-impl From<AuthorityId> for ed25519::Public {
-	fn from(id: AuthorityId) -> Self {
-		ed25519::Public(id.0)
-	}
-}
-
-#[cfg(feature = "std")]
-impl Serialize for AuthorityId {
+impl Serialize for H384 {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-		ed25519::serialize(&self, serializer)
+		bytes::serialize(&self.0, serializer)
 	}
 }
 
 #[cfg(feature = "std")]
-impl<'de> Deserialize<'de> for AuthorityId {
+impl<'de> Deserialize<'de> for H384 {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
-		ed25519::deserialize(deserializer)
+		bytes::deserialize_check_len(deserializer, bytes::ExpectedLen::Exact(48))
+			.map(|x| H384::from_slice(&x))
+	}
+}
+
+impl ::parity_codec::Encode for H384 {
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		self.0.using_encoded(f)
+	}
+}
+impl ::parity_codec::Decode for H384 {
+	fn decode<I: ::parity_codec::Input>(input: &mut I) -> Option<Self> {
+		<[u8; 48] as ::parity_codec::Decode>::decode(input).map(H384)
+	}
+}
+
+impl H384 {
+	pub fn into_public(&self) -> Option<bls::Public> {
+		bls::Public::from_bytes(self.as_ref()).ok()
+	}
+
+	pub fn from_public(public: bls::Public) -> Self {
+		H384::from_slice(&public.as_bytes())
+	}
+}
+
+impl Into<AuthorityId> for bls::Public {
+	fn into(self) -> AuthorityId {
+		AuthorityId::from_public(self)
 	}
 }

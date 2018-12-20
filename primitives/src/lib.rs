@@ -30,15 +30,12 @@ extern crate sr_std as rstd;
 extern crate serde_derive;
 #[cfg(feature = "std")]
 extern crate serde;
+pub extern crate shasper_crypto as crypto;
 
 mod authority_id;
 
 pub use authority_id::AuthorityId;
 
-construct_fixed_hash! {
-	/// Fixed 384-bit hash.
-	pub struct H384(48);
-}
 
 pub use primitives::{H256, OpaqueMetadata};
 
