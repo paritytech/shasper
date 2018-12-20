@@ -34,8 +34,7 @@ pub extern crate shasper_crypto as crypto;
 
 mod authority_id;
 
-pub use authority_id::AuthorityId;
-
+pub use authority_id::{H384, AuthorityId};
 
 pub use primitives::{H256, OpaqueMetadata};
 

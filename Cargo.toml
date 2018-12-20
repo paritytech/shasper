@@ -32,6 +32,7 @@ shasper-consensus = { path = "consensus" }
 substrate-client = { git = "https://github.com/paritytech/substrate", default-features = false }
 shasper-primitives = { path = "primitives" }
 shasper-runtime = { path = "runtime" }
+shasper-crypto = { path = "crypto" }
 structopt = "0.2.13"
 
 [build-dependencies]

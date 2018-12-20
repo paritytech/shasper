@@ -16,15 +16,18 @@
 
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
-
+use primitives::H256;
 use crypto::bls;
+use rstd::vec::Vec;
 
 #[cfg(feature = "std")]
 use primitives::bytes;
 
+const SIZE: usize = 192;
+
 construct_fixed_hash! {
 	/// Fixed 384-bit hash.
-	pub struct H384(48);
+	pub struct H384(SIZE);
 }
 
 pub type AuthorityId = H384;
@@ -39,7 +42,7 @@ impl Serialize for H384 {
 #[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for H384 {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
-		bytes::deserialize_check_len(deserializer, bytes::ExpectedLen::Exact(48))
+		bytes::deserialize_check_len(deserializer, bytes::ExpectedLen::Exact(SIZE))
 			.map(|x| H384::from_slice(&x))
 	}
 }
@@ -51,7 +54,13 @@ impl ::parity_codec::Encode for H384 {
 }
 impl ::parity_codec::Decode for H384 {
 	fn decode<I: ::parity_codec::Input>(input: &mut I) -> Option<Self> {
-		<[u8; 48] as ::parity_codec::Decode>::decode(input).map(H384)
+		<Vec<u8> as ::parity_codec::Decode>::decode(input).and_then(|raw| {
+			if raw.len() == SIZE {
+				Some(H384::from_slice(&raw))
+			} else {
+				None
+			}
+		})
 	}
 }
 
@@ -61,6 +70,7 @@ impl H384 {
 	}
 
 	pub fn from_public(public: bls::Public) -> Self {
+		println!("{:?}", public.as_bytes());
 		H384::from_slice(&public.as_bytes())
 	}
 }
@@ -68,5 +78,11 @@ impl H384 {
 impl Into<AuthorityId> for bls::Public {
 	fn into(self) -> AuthorityId {
 		AuthorityId::from_public(self)
+	}
+}
+
+impl Into<H256> for H384 {
+	fn into(self) -> H256 {
+		H256::from_slice(&self[0..32])
 	}
 }

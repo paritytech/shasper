@@ -3,9 +3,10 @@
 #![warn(unused_extern_crates)]
 
 use std::sync::Arc;
+use primitives::ed25519;
 use runtime_primitives::BasicInherentData;
 use transaction_pool::{self, txpool::{Pool as TransactionPool}};
-use shasper_primitives::opaque::Block;
+use shasper_primitives::{ValidatorId, opaque::Block};
 use shasper_runtime::{self, GenesisConfig, RuntimeApi};
 use substrate_service::{
 	FactoryFullConfiguration, LightComponents, FullComponents, FullBackend,
@@ -14,7 +15,7 @@ use substrate_service::{
 };
 use consensus::{import_queue, start_aura, AuraImportQueue, NothingExtra, SlotDuration};
 use client;
-use primitives::ed25519::Pair;
+use crypto::bls;
 
 pub use substrate_executor::NativeExecutor;
 // Our native executor instance.
@@ -31,8 +32,17 @@ construct_simple_protocol! {
 }
 
 /// Node specific configuration
-#[derive(Default)]
-pub struct NodeConfig;
+pub struct NodeConfig {
+	pub validator_key: Option<bls::Secret>,
+}
+
+impl Default for NodeConfig {
+	fn default() -> Self {
+		Self {
+			validator_key: Some(bls::Secret::from_bytes(b"Alice                                           ").unwrap())
+		}
+	}
+}
 
 construct_service_factory! {
 	struct Factory {
@@ -50,9 +60,9 @@ construct_service_factory! {
 			{ |config: FactoryFullConfiguration<Self>, executor: TaskExecutor|
 				FullComponents::<Factory>::new(config, executor) },
 		AuthoritySetup = {
-			|service: Self::FullService, executor: TaskExecutor, key: Option<Arc<Pair>>| {
-				if let Some(key) = key {
-					info!("Using authority key {}", key.public());
+			|service: Self::FullService, executor: TaskExecutor, _: Option<Arc<ed25519::Pair>>| {
+				if let Some(ref key) = service.config.custom.validator_key {
+					info!("Using authority key {}", ValidatorId::from_public(bls::Public::from_secret_key(key)));
 					let proposer = Arc::new(consensus::ProposerFactory {
 						client: service.client(),
 						transaction_pool: service.transaction_pool(),
@@ -61,7 +71,12 @@ construct_service_factory! {
 					let client = service.client();
 					executor.spawn(start_aura(
 						SlotDuration::get_or_compute(&*client)?,
-						key.clone(),
+						Arc::new(
+							bls::Pair {
+								pk: bls::Public::from_secret_key(key),
+								sk: key.clone(),
+							}
+						),
 						client.clone(),
 						client,
 						proposer,

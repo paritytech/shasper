@@ -1,7 +1,7 @@
-use primitives::ed25519;
 use shasper_primitives::{ValidatorId, AccountId};
 use shasper_runtime::{GenesisConfig, ConsensusConfig, TimestampConfig, BalancesConfig, UpgradeKeyConfig};
 use substrate_service;
+use crypto::bls;
 
 // Note this is the URL for the telemetry server
 //const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -27,13 +27,25 @@ impl Alternative {
 			Alternative::Development => ChainSpec::from_genesis(
 				"Development",
 				"development",
-				|| testnet_genesis(vec![
-					ed25519::Pair::from_seed(b"Alice                           ").public().into(),
-				], vec![
-					ed25519::Pair::from_seed(b"Alice                           ").public().0.into(),
-				],
-					ed25519::Pair::from_seed(b"Alice                           ").public().0.into()
-				),
+				|| {
+					let alice_sec = bls::Secret::from_bytes(b"Alice                                           ").unwrap();
+
+					let alice = bls::Pair {
+						pk: bls::Public::from_secret_key(&alice_sec),
+						sk: alice_sec,
+					};
+
+					let alice_id = ValidatorId::from_public(alice.pk.clone());
+
+					testnet_genesis(
+						vec![
+							alice_id
+						], vec![
+							alice_id.into()
+						],
+						alice_id.into()
+					)
+				},
 				vec![],
 				None,
 				None,
@@ -43,19 +55,33 @@ impl Alternative {
 			Alternative::LocalTestnet => ChainSpec::from_genesis(
 				"Local Testnet",
 				"local_testnet",
-				|| testnet_genesis(vec![
-					ed25519::Pair::from_seed(b"Alice                           ").public().into(),
-					ed25519::Pair::from_seed(b"Bob                             ").public().into(),
-				], vec![
-					ed25519::Pair::from_seed(b"Alice                           ").public().0.into(),
-					ed25519::Pair::from_seed(b"Bob                             ").public().0.into(),
-					ed25519::Pair::from_seed(b"Charlie                         ").public().0.into(),
-					ed25519::Pair::from_seed(b"Dave                            ").public().0.into(),
-					ed25519::Pair::from_seed(b"Eve                             ").public().0.into(),
-					ed25519::Pair::from_seed(b"Ferdie                          ").public().0.into(),
-				],
-					ed25519::Pair::from_seed(b"Alice                           ").public().0.into()
-				),
+				|| {
+					let alice_sec = bls::Secret::from_bytes(b"Alice                                           ").unwrap();
+					let bob_sec = bls::Secret::from_bytes(b"Bob                                           ").unwrap();
+
+					let alice = bls::Pair {
+						pk: bls::Public::from_secret_key(&alice_sec),
+						sk: alice_sec,
+					};
+					let bob = bls::Pair {
+						pk: bls::Public::from_secret_key(&bob_sec),
+						sk: bob_sec,
+					};
+
+					let alice_id = ValidatorId::from_public(alice.pk.clone());
+					let bob_id = ValidatorId::from_public(bob.pk.clone());
+
+					testnet_genesis(
+						vec![
+							alice_id,
+							bob_id,
+						], vec![
+							alice_id.into(),
+							bob_id.into(),
+						],
+						alice_id.into(),
+					)
+				},
 				vec![],
 				None,
 				None,

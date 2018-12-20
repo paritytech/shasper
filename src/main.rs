@@ -24,6 +24,7 @@ extern crate substrate_service;
 extern crate shasper_runtime;
 extern crate shasper_primitives;
 extern crate structopt;
+extern crate shasper_crypto as crypto;
 
 mod chain_spec;
 mod service;
