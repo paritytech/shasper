@@ -43,6 +43,7 @@ extern crate substrate_network as network;
 extern crate futures;
 extern crate parking_lot;
 extern crate shasper_primitives;
+extern crate shasper_crypto as crypto;
 
 #[macro_use]
 extern crate log;
@@ -54,7 +55,7 @@ pub use aura_primitives::*;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use codec::Encode;
+use codec::{Encode, Decode};
 use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT};
 use client::ChainHead;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
@@ -62,12 +63,12 @@ use consensus_common::{ImportBlock, BlockOrigin};
 use runtime_primitives::{generic, generic::BlockId, Justification, BasicInherentData};
 use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
 use network::import_queue::{Verifier, BasicQueue};
-use primitives::ed25519;
 use shasper_primitives::ValidatorId;
 
 use futures::{Stream, Future, IntoFuture, future::{self, Either}};
 use tokio::timer::{Delay, Timeout};
 use api::AuraApi;
+use crypto::bls;
 
 pub use consensus_common::SyncOracle;
 pub use proposer::{ProposerFactory, Proposer};
@@ -134,22 +135,33 @@ fn slot_now(slot_duration: u64) -> Option<u64> {
 pub trait CompatibleDigestItem: Sized {
 	/// Construct a digest item which is a slot number and a signature on the
 	/// hash.
-	fn aura_seal(slot_number: u64, signature: ed25519::Signature) -> Self;
+	fn aura_seal(slot_number: u64, signature: bls::Signature) -> Self;
 
 	/// If this item is an Aura seal, return the slot number and signature.
-	fn as_aura_seal(&self) -> Option<(u64, &ed25519::Signature)>;
+	fn as_aura_seal(&self) -> Option<(u64, bls::Signature)>;
 }
+
+type Seal = (u64, Vec<u8>);
 
 impl<Hash, AuthorityId> CompatibleDigestItem for generic::DigestItem<Hash, AuthorityId> {
 	/// Construct a digest item which is a slot number and a signature on the
 	/// hash.
-	fn aura_seal(slot_number: u64, signature: ed25519::Signature) -> Self {
-		generic::DigestItem::Seal(slot_number, signature)
+	fn aura_seal(slot_number: u64, signature: bls::Signature) -> Self {
+		let signature_bytes = signature.as_bytes();
+		generic::DigestItem::Other((slot_number, signature_bytes).encode())
 	}
 	/// If this item is an Aura seal, return the slot number and signature.
-	fn as_aura_seal(&self) -> Option<(u64, &ed25519::Signature)> {
+	fn as_aura_seal(&self) -> Option<(u64, bls::Signature)> {
 		match self {
-			generic::DigestItem::Seal(slot, ref sign) => Some((*slot, sign)),
+			generic::DigestItem::Other(raw) => {
+				Seal::decode(&mut &raw[..]).and_then(|(slot, signature_bytes)| {
+					if let Ok(signature) = bls::Signature::from_bytes(&signature_bytes) {
+						Some((slot, signature))
+					} else {
+						None
+					}
+				})
+			}
 			_ => None
 		}
 	}
@@ -158,7 +170,7 @@ impl<Hash, AuthorityId> CompatibleDigestItem for generic::DigestItem<Hash, Autho
 /// Start the aura worker in a separate thread.
 pub fn start_aura_thread<B, C, E, I, SO, Error>(
 	slot_duration: SlotDuration,
-	local_key: Arc<ed25519::Pair>,
+	local_key: Arc<bls::Pair>,
 	client: Arc<C>,
 	block_import: Arc<I>,
 	env: Arc<E>,
@@ -202,7 +214,7 @@ pub fn start_aura_thread<B, C, E, I, SO, Error>(
 /// Start the aura worker. The returned future should be run in a tokio runtime.
 pub fn start_aura<B, C, E, I, SO, Error>(
 	slot_duration: SlotDuration,
-	local_key: Arc<ed25519::Pair>,
+	local_key: Arc<bls::Pair>,
 	client: Arc<C>,
 	block_import: Arc<I>,
 	env: Arc<E>,
@@ -245,7 +257,7 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 			let block_import = block_import.clone();
 			let env = env.clone();
 			let sync_oracle = sync_oracle.clone();
-			let public_key = pair.public();
+			let public_key = pair.pk.clone();
 
 			Delay::new(next_slot_start)
 				.map_err(|e| debug!(target: "aura", "Faulty timer: {:?}", e))
@@ -282,7 +294,7 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 
 					let proposal_work = match slot_author(slot_num, &authorities) {
 						None => return Either::B(future::ok(())),
-						Some(author) => if author.0 == public_key.0 {
+						Some(author) => if author == ValidatorId::from_public(public_key.clone()) {
 							debug!(target: "aura", "Starting authorship at slot {}; timestamp = {}",
 								slot_num, timestamp);
 
@@ -331,7 +343,7 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 							// sign the pre-sealed hash of the block and then
 							// add it to a digest item.
 							let to_sign = (slot_num, pre_hash).encode();
-							let signature = pair.sign(&to_sign[..]);
+							let signature = bls::Signature::new(&to_sign[..], &pair.sk);
 							let item = <DigestItemFor<B> as CompatibleDigestItem>::aura_seal(
 								slot_num,
 								signature,
@@ -386,7 +398,7 @@ enum CheckedHeader<H> {
 	Deferred(H, u64),
 	// a header which is fully checked, including signature. This is the pre-header
 	// accompanied by the seal components.
-	Checked(H, u64, ed25519::Signature),
+	Checked(H, u64, bls::Signature),
 }
 
 /// check a header has been signed by the right key. If the slot is too far in the future, an error will be returned.
@@ -401,7 +413,7 @@ fn check_header<B: Block>(slot_now: u64, mut header: B::Header, hash: B::Hash, a
 		Some(x) => x,
 		None => return Err(format!("Header {:?} is unsealed", hash)),
 	};
-	let (slot_num, &sig) = match digest_item.as_aura_seal() {
+	let (slot_num, sig) = match digest_item.as_aura_seal() {
 		Some(x) => x,
 		None => return Err(format!("Header {:?} is unsealed", hash)),
 	};
@@ -420,9 +432,14 @@ fn check_header<B: Block>(slot_now: u64, mut header: B::Header, hash: B::Hash, a
 
 		let pre_hash = header.hash();
 		let to_sign = (slot_num, pre_hash).encode();
-		let public = ed25519::Public(expected_author.0);
+		let public = if let Some(public) = expected_author.into_public() {
+			public
+		} else {
+			return Err("Bad public key for header author".to_string())
+		};
 
-		if ed25519::verify_strong(&sig, &to_sign[..], public) {
+
+		if sig.verify(&to_sign[..], &public) {
 			Ok(CheckedHeader::Checked(header, slot_num, sig))
 		} else {
 			Err(format!("Bad signature on {:?}", hash))
