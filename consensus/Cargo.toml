@@ -8,6 +8,7 @@ description = "Aura consensus algorithm for substrate"
 parity-codec = "2.1"
 substrate-client = { git = "https://github.com/paritytech/substrate" }
 substrate-primitives = { git = "https://github.com/paritytech/substrate" }
+shasper-primitives = { path = "../primitives" }
 srml-support = { git = "https://github.com/paritytech/substrate" }
 sr-primitives = { git = "https://github.com/paritytech/substrate" }
 sr-version = { git = "https://github.com/paritytech/substrate" }
