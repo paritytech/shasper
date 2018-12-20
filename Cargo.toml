@@ -42,6 +42,7 @@ members = [
 	"runtime",
 	"primitives",
 	"consensus",
+	"crypto",
 ]
 exclude = [
 	"runtime/wasm",
