@@ -1,9 +1,10 @@
-pub extern crate bls;
-pub extern crate pairing;
+pub extern crate bls_aggregates;
 
-use pairing::bls12_381::Bls12;
-
-pub type BlsPair = bls::Keypair<Bls12>;
-pub type BlsPublicKey = bls::PublicKey<Bls12>;
-pub type BlsSignature = bls::Signature<Bls12>;
-pub type BlsAggregateSignature = bls::AggregateSignature<Bls12>;
+mod bls {
+	pub use bls_aggregates::AggregatePublicKey;
+	pub use bls_aggregates::AggregateSignature;
+	pub use bls_aggregates::Keypair as Pair;
+	pub use bls_aggregates::PublicKey;
+	pub use bls_aggregates::SecretKey;
+	pub use bls_aggregates::Signature;
+}

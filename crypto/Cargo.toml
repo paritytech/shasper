@@ -4,12 +4,10 @@ version = "0.1.0"
 authors = ["Wei Tang <hi@that.world>"]
 
 [dependencies]
-bls = { git = "https://github.com/sorpaas/bls", default-features = false }
-pairing = { git = "https://github.com/sorpaas/pairing", default-features = false }
+bls-aggregates = { git = "https://github.com/sorpaas/signature-schemes", default-features = false }
 
 [features]
 default = ["std"]
 std = [
-	"bls/std",
-	"pairing/std",
+	"bls-aggregates/std",
 ]
