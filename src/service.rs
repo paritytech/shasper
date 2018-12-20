@@ -53,7 +53,7 @@ construct_service_factory! {
 			|service: Self::FullService, executor: TaskExecutor, key: Option<Arc<Pair>>| {
 				if let Some(key) = key {
 					info!("Using authority key {}", key.public());
-					let proposer = Arc::new(substrate_service::ProposerFactory {
+					let proposer = Arc::new(consensus::ProposerFactory {
 						client: service.client(),
 						transaction_pool: service.transaction_pool(),
 					});

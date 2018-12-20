@@ -21,7 +21,7 @@ sr-primitives = { git = "https://github.com/paritytech/substrate", default-featu
 srml-system = { git = "https://github.com/paritytech/substrate", default-features = false }
 srml-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false }
 srml-upgrade-key = { git = "https://github.com/paritytech/substrate", default-features = false }
-substrate-consensus-aura-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
+shasper-consensus-primitives = { path = "../consensus/primitives", default-features = false }
 sr-version = { git = "https://github.com/paritytech/substrate", default-features = false }
 rustc-hex = { version = "1.0", optional = true }
 hex-literal = { version = "0.1.0", optional = true }
@@ -48,7 +48,7 @@ std = [
 	"srml-system/std",
 	"srml-timestamp/std",
 	"srml-upgrade-key/std",
-	"substrate-consensus-aura-primitives/std",
+	"shasper-consensus-primitives/std",
 	"sr-version/std",
 	"substrate-keyring",
 	"serde_derive",

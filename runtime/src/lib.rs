@@ -29,7 +29,7 @@ extern crate srml_consensus as consensus;
 extern crate srml_timestamp as timestamp;
 extern crate srml_balances as balances;
 extern crate srml_upgrade_key as upgrade_key;
-extern crate substrate_consensus_aura_primitives as consensus_aura;
+extern crate shasper_consensus_primitives as consensus_primitives;
 
 use rstd::prelude::*;
 use primitives::{opaque, ValidatorId, AccountId, Nonce, BlockNumber, Hash, OpaqueMetadata};
@@ -41,7 +41,7 @@ use runtime_primitives::{
 use client::{
 	block_builder::api as block_builder_api, runtime_api as client_api
 };
-use consensus_aura::api as aura_api;
+use consensus_primitives::api as consensus_api;
 use version::RuntimeVersion;
 #[cfg(feature = "std")]
 use version::NativeVersion;
@@ -264,7 +264,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl aura_api::AuraApi<Block> for Runtime {
+	impl consensus_api::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
 			Aura::slot_duration()
 		}

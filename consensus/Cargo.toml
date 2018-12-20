@@ -1,0 +1,26 @@
+[package]
+name = "shasper-consensus"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+description = "Aura consensus algorithm for substrate"
+
+[dependencies]
+parity-codec = "2.1"
+substrate-client = { git = "https://github.com/paritytech/substrate" }
+substrate-primitives = { git = "https://github.com/paritytech/substrate" }
+srml-support = { git = "https://github.com/paritytech/substrate" }
+sr-primitives = { git = "https://github.com/paritytech/substrate" }
+sr-version = { git = "https://github.com/paritytech/substrate" }
+sr-io = { git = "https://github.com/paritytech/substrate" }
+shasper-consensus-primitives = { path = "primitives" }
+
+srml-consensus = { git = "https://github.com/paritytech/substrate" }
+futures = "0.1.17"
+tokio = "0.1.7"
+parking_lot = "0.4"
+error-chain = "0.12"
+log = "0.3"
+substrate-service = { git = "https://github.com/paritytech/substrate" }
+substrate-consensus-common = { git = "https://github.com/paritytech/substrate" }
+substrate-network = { git = "https://github.com/paritytech/substrate" }
+substrate-transaction-pool = { git = "https://github.com/paritytech/substrate" }

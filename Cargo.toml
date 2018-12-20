@@ -28,7 +28,7 @@ substrate-executor = { git = "https://github.com/paritytech/substrate" }
 substrate-service = { git = "https://github.com/paritytech/substrate" }
 substrate-transaction-pool = { git = "https://github.com/paritytech/substrate" }
 substrate-network = { git = "https://github.com/paritytech/substrate" }
-substrate-consensus-aura = { git = "https://github.com/paritytech/substrate" }
+shasper-consensus = { path = "consensus" }
 substrate-client = { git = "https://github.com/paritytech/substrate", default-features = false }
 shasper-primitives = { path = "primitives" }
 shasper-runtime = { path = "runtime" }
@@ -38,8 +38,14 @@ structopt = "0.2.13"
 vergen = "2"
 
 [workspace]
-members = [ "runtime", "primitives" ]
-exclude = [ "runtime/wasm" ]
+members = [
+	"runtime",
+	"primitives",
+	"consensus",
+]
+exclude = [
+	"runtime/wasm",
+]
 
 [profile.release]
 # Substrate runtime requires unwinding.

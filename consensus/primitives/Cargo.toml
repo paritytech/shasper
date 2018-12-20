@@ -1,0 +1,26 @@
+[package]
+name = "shasper-consensus-primitives"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+description = "Primitives for Aura consensus"
+
+[dependencies]
+parity-codec = { version = "2.1", default-features = false }
+substrate-client = { git = "https://github.com/paritytech/substrate", default-features = false }
+substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
+srml-support = { git = "https://github.com/paritytech/substrate", default-features = false }
+sr-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
+sr-version = { git = "https://github.com/paritytech/substrate", default-features = false }
+sr-io = { git = "https://github.com/paritytech/substrate", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"parity-codec/std",
+	"substrate-client/std",
+	"substrate-primitives/std",
+	"srml-support/std",
+	"sr-primitives/std",
+	"sr-version/std",
+	"sr-io/std",
+]
