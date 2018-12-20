@@ -39,7 +39,7 @@ pub struct NodeConfig {
 impl Default for NodeConfig {
 	fn default() -> Self {
 		Self {
-			validator_key: Some(bls::Secret::from_bytes(b"Alice                                           ").unwrap())
+			validator_key: Some(bls::Secret::from_bytes(b"Alice").unwrap())
 		}
 	}
 }
@@ -62,7 +62,7 @@ construct_service_factory! {
 		AuthoritySetup = {
 			|service: Self::FullService, executor: TaskExecutor, _: Option<Arc<ed25519::Pair>>| {
 				if let Some(ref key) = service.config.custom.validator_key {
-					info!("Using authority key {}", ValidatorId::from_public(bls::Public::from_secret_key(key)));
+					info!("Using authority key {}", ValidatorId::from_public(bls::Public::from_secret(key)));
 					let proposer = Arc::new(consensus::ProposerFactory {
 						client: service.client(),
 						transaction_pool: service.transaction_pool(),
@@ -72,10 +72,7 @@ construct_service_factory! {
 					executor.spawn(start_aura(
 						SlotDuration::get_or_compute(&*client)?,
 						Arc::new(
-							bls::Pair {
-								pk: bls::Public::from_secret_key(key),
-								sk: key.clone(),
-							}
+							bls::Pair::from_secret(key.clone())
 						),
 						client.clone(),
 						client,

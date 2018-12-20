@@ -28,14 +28,9 @@ impl Alternative {
 				"Development",
 				"development",
 				|| {
-					let alice_sec = bls::Secret::from_bytes(b"Alice                                           ").unwrap();
-
-					let alice = bls::Pair {
-						pk: bls::Public::from_secret_key(&alice_sec),
-						sk: alice_sec,
-					};
-
-					let alice_id = ValidatorId::from_public(alice.pk.clone());
+					let alice_sec = bls::Secret::from_bytes(b"Alice").unwrap();
+					let alice = bls::Pair::from_secret(alice_sec);
+					let alice_id = ValidatorId::from_public(alice.public.clone());
 
 					testnet_genesis(
 						vec![
@@ -56,20 +51,14 @@ impl Alternative {
 				"Local Testnet",
 				"local_testnet",
 				|| {
-					let alice_sec = bls::Secret::from_bytes(b"Alice                                           ").unwrap();
-					let bob_sec = bls::Secret::from_bytes(b"Bob                                           ").unwrap();
+					let alice_sec = bls::Secret::from_bytes(b"Alice").unwrap();
+					let bob_sec = bls::Secret::from_bytes(b"Bob").unwrap();
 
-					let alice = bls::Pair {
-						pk: bls::Public::from_secret_key(&alice_sec),
-						sk: alice_sec,
-					};
-					let bob = bls::Pair {
-						pk: bls::Public::from_secret_key(&bob_sec),
-						sk: bob_sec,
-					};
+					let alice = bls::Pair::from_secret(alice_sec);
+					let bob = bls::Pair::from_secret(bob_sec);
 
-					let alice_id = ValidatorId::from_public(alice.pk.clone());
-					let bob_id = ValidatorId::from_public(bob.pk.clone());
+					let alice_id = ValidatorId::from_public(alice.public.clone());
+					let bob_id = ValidatorId::from_public(bob.public.clone());
 
 					testnet_genesis(
 						vec![

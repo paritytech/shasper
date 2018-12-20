@@ -1,12 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub extern crate bls_aggregates;
+extern crate bls as bls_crate;
+extern crate pairing;
 
 pub mod bls {
-	pub use bls_aggregates::AggregatePublicKey as AggregatePublic;
-	pub use bls_aggregates::AggregateSignature;
-	pub use bls_aggregates::Keypair as Pair;
-	pub use bls_aggregates::PublicKey as Public;
-	pub use bls_aggregates::SecretKey as Secret;
-	pub use bls_aggregates::Signature;
+	use bls_crate;
+	use pairing::bls12_381::Bls12;
+
+	pub type Public = bls_crate::Public<Bls12>;
+	pub type Secret = bls_crate::Secret<Bls12>;
+	pub type Pair = bls_crate::Pair<Bls12>;
+	pub type Signature = bls_crate::Signature<Bls12>;
 }

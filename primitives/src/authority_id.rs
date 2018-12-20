@@ -23,7 +23,7 @@ use rstd::vec::Vec;
 #[cfg(feature = "std")]
 use primitives::bytes;
 
-const SIZE: usize = 192;
+const SIZE: usize = 48;
 
 construct_fixed_hash! {
 	/// Fixed 384-bit hash.
@@ -54,24 +54,17 @@ impl ::parity_codec::Encode for H384 {
 }
 impl ::parity_codec::Decode for H384 {
 	fn decode<I: ::parity_codec::Input>(input: &mut I) -> Option<Self> {
-		<Vec<u8> as ::parity_codec::Decode>::decode(input).and_then(|raw| {
-			if raw.len() == SIZE {
-				Some(H384::from_slice(&raw))
-			} else {
-				None
-			}
-		})
+		<[u8; SIZE] as ::parity_codec::Decode>::decode(input).map(H384)
 	}
 }
 
 impl H384 {
 	pub fn into_public(&self) -> Option<bls::Public> {
-		bls::Public::from_bytes(self.as_ref()).ok()
+		bls::Public::from_compressed_bytes(self.as_ref())
 	}
 
 	pub fn from_public(public: bls::Public) -> Self {
-		println!("{:?}", public.as_bytes());
-		H384::from_slice(&public.as_bytes())
+		H384::from_slice(&public.to_compressed_bytes())
 	}
 }
 

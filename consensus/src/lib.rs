@@ -147,7 +147,7 @@ impl<Hash, AuthorityId> CompatibleDigestItem for generic::DigestItem<Hash, Autho
 	/// Construct a digest item which is a slot number and a signature on the
 	/// hash.
 	fn aura_seal(slot_number: u64, signature: bls::Signature) -> Self {
-		let signature_bytes = signature.as_bytes();
+		let signature_bytes: Vec<_> = signature.to_compressed_bytes().into_iter().cloned().collect();
 		generic::DigestItem::Other((slot_number, signature_bytes).encode())
 	}
 	/// If this item is an Aura seal, return the slot number and signature.
@@ -155,7 +155,7 @@ impl<Hash, AuthorityId> CompatibleDigestItem for generic::DigestItem<Hash, Autho
 		match self {
 			generic::DigestItem::Other(raw) => {
 				Seal::decode(&mut &raw[..]).and_then(|(slot, signature_bytes)| {
-					if let Ok(signature) = bls::Signature::from_bytes(&signature_bytes) {
+					if let Some(signature) = bls::Signature::from_compressed_bytes(&signature_bytes) {
 						Some((slot, signature))
 					} else {
 						None
@@ -257,7 +257,7 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 			let block_import = block_import.clone();
 			let env = env.clone();
 			let sync_oracle = sync_oracle.clone();
-			let public_key = pair.pk.clone();
+			let public_key = pair.public.clone();
 
 			Delay::new(next_slot_start)
 				.map_err(|e| debug!(target: "aura", "Faulty timer: {:?}", e))
@@ -343,7 +343,7 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 							// sign the pre-sealed hash of the block and then
 							// add it to a digest item.
 							let to_sign = (slot_num, pre_hash).encode();
-							let signature = bls::Signature::new(&to_sign[..], &pair.sk);
+							let signature = pair.secret.sign(&to_sign[..]);
 							let item = <DigestItemFor<B> as CompatibleDigestItem>::aura_seal(
 								slot_num,
 								signature,
@@ -439,7 +439,7 @@ fn check_header<B: Block>(slot_now: u64, mut header: B::Header, hash: B::Hash, a
 		};
 
 
-		if sig.verify(&to_sign[..], &public) {
+		if public.verify(&to_sign[..], &sig) {
 			Ok(CheckedHeader::Checked(header, slot_num, sig))
 		} else {
 			Err(format!("Bad signature on {:?}", hash))
