@@ -36,7 +36,6 @@ mod storage;
 
 use rstd::prelude::*;
 use primitives::{opaque, H256, ValidatorId, BlockNumber, Hash, OpaqueMetadata};
-use primitives::storage::well_known_keys;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity,
 	generic, traits::{Extrinsic as ExtrinsicT, Header as HeaderT, BlakeTwo256, Block as BlockT, GetNodeBlockType, GetRuntimeBlockType},
@@ -45,6 +44,7 @@ use runtime_primitives::{
 use client::{
 	block_builder::api as block_builder_api, runtime_api as client_api
 };
+use srml_support::storage::unhashed::StorageVec;
 use consensus_primitives::api as consensus_api;
 use version::RuntimeVersion;
 #[cfg(feature = "std")]
@@ -54,7 +54,7 @@ use version::NativeVersion;
 #[cfg(any(feature = "std", test))]
 pub use runtime_primitives::BuildStorage;
 pub use runtime_primitives::{Permill, Perbill};
-pub use srml_support::{StorageValue, StorageVec, RuntimeMetadata};
+pub use srml_support::{StorageValue, RuntimeMetadata};
 #[cfg(feature = "std")]
 pub use genesis::GenesisConfig;
 
@@ -107,12 +107,6 @@ impl ExtrinsicT for UncheckedExtrinsic {
 	}
 }
 
-struct AuthorityStorageVec;
-impl StorageVec for AuthorityStorageVec {
-	type Item = ValidatorId;
-	const PREFIX: &'static [u8] = well_known_keys::AUTHORITY_PREFIX;
-}
-
 pub struct Runtime;
 
 impl GetNodeBlockType for Runtime {
@@ -131,7 +125,7 @@ impl_runtime_apis! {
 		}
 
 		fn authorities() -> Vec<ValidatorId> {
-			AuthorityStorageVec::items()
+			<storage::Authorities>::items()
 		}
 
 		fn execute_block(_block: Block) {
@@ -209,7 +203,7 @@ impl_runtime_apis! {
 
 	impl consensus_api::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
-			10
+			4
 		}
 	}
 }
