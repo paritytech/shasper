@@ -44,6 +44,11 @@ members = [
 	"primitives",
 	"consensus",
 	"crypto",
+	"util/ssz",
+	"util/ssz-derive",
+	"util/ssz-hash",
+	"util/ssz-hash-derive",
+	"util/keccak-hasher",
 ]
 exclude = [
 	"runtime/wasm",
