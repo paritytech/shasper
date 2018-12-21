@@ -13,14 +13,7 @@ substrate-client = { git = "https://github.com/paritytech/substrate", default-fe
 sr-std = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-io = { git = "https://github.com/paritytech/substrate", default-features = false }
 srml-support = { git = "https://github.com/paritytech/substrate", default-features = false }
-srml-aura = { git = "https://github.com/paritytech/substrate", default-features = false }
-srml-balances = { git = "https://github.com/paritytech/substrate", default-features = false }
-srml-consensus = { git = "https://github.com/paritytech/substrate", default-features = false }
-srml-executive = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
-srml-system = { git = "https://github.com/paritytech/substrate", default-features = false }
-srml-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false }
-srml-upgrade-key = { git = "https://github.com/paritytech/substrate", default-features = false }
 shasper-consensus-primitives = { path = "../consensus/primitives", default-features = false }
 sr-version = { git = "https://github.com/paritytech/substrate", default-features = false }
 rustc-hex = { version = "1.0", optional = true }
@@ -48,15 +41,8 @@ std = [
 	"substrate-client/std",
 	"sr-std/std",
 	"sr-io/std",
-    "srml-aura/std",
 	"srml-support/std",
-	"srml-balances/std",
-	"srml-consensus/std",
-	"srml-executive/std",
 	"sr-primitives/std",
-	"srml-system/std",
-	"srml-timestamp/std",
-	"srml-upgrade-key/std",
 	"shasper-consensus-primitives/std",
 	"sr-version/std",
 	"substrate-keyring",
