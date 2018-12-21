@@ -58,6 +58,29 @@ impl ::parity_codec::Decode for H384 {
 	}
 }
 
+impl ::ssz::Encode for H384 {
+	fn encode_to<W: ::ssz::Output>(&self, dest: &mut W) {
+		dest.write(self.as_ref())
+	}
+}
+impl ::ssz::Decode for H384 {
+	fn decode<I: ::ssz::Input>(input: &mut I) -> Option<Self> {
+		let mut vec = [0u8; SIZE];
+		if input.read(&mut vec[..SIZE]) != SIZE {
+			None
+		} else {
+			Some(H384::from(&vec))
+		}
+	}
+}
+
+impl ::ssz_hash::SpecHash for H384 {
+	fn spec_hash<H: ::hash_db::Hasher>(&self) -> H::Out {
+		let encoded = ssz::Encode::encode(self);
+		H::hash(&encoded)
+	}
+}
+
 impl H384 {
 	pub fn into_public(&self) -> Option<bls::Public> {
 		bls::Public::from_compressed_bytes(self.as_ref())

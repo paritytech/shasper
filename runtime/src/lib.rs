@@ -45,8 +45,9 @@ mod genesis;
 mod storage;
 mod consts;
 mod attestation;
-mod spec;
+pub mod spec;
 mod extrinsic;
+mod validators;
 
 use rstd::prelude::*;
 use primitives::{H256, ValidatorId, OpaqueMetadata};
@@ -76,6 +77,7 @@ pub use genesis::GenesisConfig;
 pub use attestation::AttestationRecord;
 pub use extrinsic::UncheckedExtrinsic;
 pub use primitives::BlockNumber;
+pub use validators::{ValidatorRecord, ShardAndCommittee};
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {

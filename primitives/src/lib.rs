@@ -75,3 +75,5 @@ pub type Count = u64;
 
 /// Slot value in Shapser.
 pub type Slot = u64;
+
+pub type EthereumAddress = primitives::H160;
