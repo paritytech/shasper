@@ -15,6 +15,7 @@ sr-version = { git = "https://github.com/paritytech/substrate" }
 sr-io = { git = "https://github.com/paritytech/substrate" }
 shasper-consensus-primitives = { path = "primitives" }
 shasper-crypto = { path = "../crypto" }
+shasper-runtime = { path = "../runtime" }
 
 srml-consensus = { git = "https://github.com/paritytech/substrate" }
 futures = "0.1.17"

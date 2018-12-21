@@ -44,6 +44,7 @@ extern crate futures;
 extern crate parking_lot;
 extern crate shasper_primitives;
 extern crate shasper_crypto as crypto;
+extern crate shasper_runtime;
 
 #[macro_use]
 extern crate log;
@@ -55,12 +56,12 @@ pub use aura_primitives::*;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use codec::{Encode, Decode};
+use codec::Encode;
 use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT};
 use client::ChainHead;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
 use consensus_common::{ImportBlock, BlockOrigin};
-use runtime_primitives::{generic, generic::BlockId, Justification, BasicInherentData};
+use runtime_primitives::{generic::BlockId, Justification, BasicInherentData};
 use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
 use network::import_queue::{Verifier, BasicQueue};
 use shasper_primitives::ValidatorId;
@@ -141,26 +142,22 @@ pub trait CompatibleDigestItem: Sized {
 	fn as_aura_seal(&self) -> Option<(u64, bls::Signature)>;
 }
 
-type Seal = (u64, Vec<u8>);
-
-impl<Hash, AuthorityId> CompatibleDigestItem for generic::DigestItem<Hash, AuthorityId> {
+impl CompatibleDigestItem for shasper_runtime::DigestItem {
 	/// Construct a digest item which is a slot number and a signature on the
 	/// hash.
 	fn aura_seal(slot_number: u64, signature: bls::Signature) -> Self {
 		let signature_bytes: Vec<_> = signature.to_compressed_bytes().into_iter().cloned().collect();
-		generic::DigestItem::Other((slot_number, signature_bytes).encode())
+		shasper_runtime::DigestItem::Seal(slot_number, signature_bytes)
 	}
 	/// If this item is an Aura seal, return the slot number and signature.
 	fn as_aura_seal(&self) -> Option<(u64, bls::Signature)> {
 		match self {
-			generic::DigestItem::Other(raw) => {
-				Seal::decode(&mut &raw[..]).and_then(|(slot, signature_bytes)| {
-					if let Some(signature) = bls::Signature::from_compressed_bytes(&signature_bytes) {
-						Some((slot, signature))
-					} else {
-						None
-					}
-				})
+			shasper_runtime::DigestItem::Seal(slot_number, signature_bytes) => {
+				if let Some(signature) = bls::Signature::from_compressed_bytes(&signature_bytes) {
+					Some((*slot_number, signature))
+				} else {
+					None
+				}
 			}
 			_ => None
 		}
