@@ -29,10 +29,10 @@ cd shasper && ./build.sh
 You can then execute the client:
 
 ```bash
-cargo run -- --chain dev
+cargo run -- --dev
 ```
 
-However, before the block authoring logic is added, there's probably not much you can do!
+The client will run and then start proposing and importing blocks.
 
 ## License
 
