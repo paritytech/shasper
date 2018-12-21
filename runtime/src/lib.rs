@@ -45,6 +45,7 @@ mod genesis;
 mod storage;
 mod consts;
 mod attestation;
+mod spec;
 
 use rstd::prelude::*;
 use primitives::{H256, ValidatorId, OpaqueMetadata};
