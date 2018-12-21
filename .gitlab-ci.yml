@@ -1,0 +1,54 @@
+stages:
+  - test
+  - build
+
+image:                             parity/rust:nightly
+
+variables:
+  CI_SERVER_NAME:                  "GitLab CI"
+  CARGO_HOME:                      "${CI_PROJECT_DIR}/.cargo"
+  RUST_TOOLCHAIN:                  "stable"
+
+cache:
+  key:                             "${CI_JOB_NAME}"
+  paths:
+    - ./target/
+    - ./.cargo/
+
+
+before_script:
+  - ./scripts/init.sh
+  - export PATH="${CI_PROJECT_DIR}/cargo/bin/:$PATH"
+  - ./scripts/build.sh
+
+
+#### stage:                        test
+
+test-rust-stable:
+  stage:                           test
+  script:
+    - time cargo test --all --release --locked
+  only:
+    - triggers
+    - tags
+    - master
+    - schedules
+    - web
+    - /^[0-9]+$/
+  tags:
+    - rust-stable
+
+
+#### stage:                        build
+
+build-linux:
+  stage:                           build
+  script:
+    - cargo build --release
+  tags:
+    - rust-stable
+  only:
+    - master
+    - tags
+    - web
+
