@@ -36,7 +36,7 @@ mod authority_id;
 
 pub use authority_id::{H384, AuthorityId};
 
-pub use primitives::{H256, OpaqueMetadata};
+pub use primitives::{storage, H256, OpaqueMetadata};
 
 #[cfg(feature = "std")]
 pub use primitives::bytes;

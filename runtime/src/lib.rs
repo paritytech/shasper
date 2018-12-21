@@ -11,7 +11,6 @@ extern crate sr_io as runtime_io;
 extern crate substrate_client as client;
 #[macro_use]
 extern crate srml_support;
-#[macro_use]
 extern crate sr_primitives as runtime_primitives;
 #[cfg(feature = "std")]
 #[macro_use]
@@ -31,12 +30,17 @@ extern crate srml_balances as balances;
 extern crate srml_upgrade_key as upgrade_key;
 extern crate shasper_consensus_primitives as consensus_primitives;
 
+#[cfg(feature = "std")]
+mod genesis;
+mod storage;
+
 use rstd::prelude::*;
-use primitives::{opaque, ValidatorId, AccountId, Nonce, BlockNumber, Hash, OpaqueMetadata};
+use primitives::{opaque, H256, ValidatorId, BlockNumber, Hash, OpaqueMetadata};
+use primitives::storage::well_known_keys;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity,
-	Ed25519Signature, generic, traits::{BlakeTwo256, Block as BlockT, ProvideInherent},
-	BasicInherentData, CheckInherentError
+	generic, traits::{Extrinsic as ExtrinsicT, Header as HeaderT, BlakeTwo256, Block as BlockT, GetNodeBlockType, GetRuntimeBlockType},
+	BasicInherentData, CheckInherentError, ApplyOutcome,
 };
 use client::{
 	block_builder::api as block_builder_api, runtime_api as client_api
@@ -49,20 +53,17 @@ use version::NativeVersion;
 // A few exports that help ease life for downstream crates.
 #[cfg(any(feature = "std", test))]
 pub use runtime_primitives::BuildStorage;
-pub use consensus::Call as ConsensusCall;
-pub use timestamp::Call as TimestampCall;
-pub use balances::Call as BalancesCall;
 pub use runtime_primitives::{Permill, Perbill};
-pub use timestamp::BlockPeriod;
-pub use srml_support::{StorageValue, RuntimeMetadata};
+pub use srml_support::{StorageValue, StorageVec, RuntimeMetadata};
+#[cfg(feature = "std")]
+pub use genesis::GenesisConfig;
 
 const TIMESTAMP_SET_POSITION: u32 = 0;
-const NOTE_OFFLINE_POSITION: u32 = 1;
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("template-node"),
-	impl_name: create_runtime_str!("template-node"),
+	spec_name: create_runtime_str!("shasper"),
+	impl_name: create_runtime_str!("shasper"),
 	authoring_version: 1,
 	spec_version: 1,
 	impl_version: 0,
@@ -78,103 +79,49 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
-impl system::Trait for Runtime {
-	/// The identifier used to distinguish between accounts.
-	type AccountId = AccountId;
-	/// The index type for storing how many extrinsics an account has signed.
-	type Index = Nonce;
-	/// The index type for blocks.
-	type BlockNumber = BlockNumber;
-	/// The type for hashing blocks and tries.
-	type Hash = Hash;
-	/// The hashing algorithm used.
-	type Hashing = BlakeTwo256;
-	/// The header digest type.
-	type Digest = generic::Digest<Log>;
-	/// The header type.
-	type Header = generic::Header<BlockNumber, BlakeTwo256, Log>;
-	/// The ubiquitous event type.
-	type Event = Event;
-	/// The ubiquitous log type.
-	type Log = Log;
-	/// The ubiquitous origin type.
-	type Origin = Origin;
-}
-
-impl consensus::Trait for Runtime {
-	/// The position in the block's extrinsics that the note-offline inherent must be placed.
-	const NOTE_OFFLINE_POSITION: u32 = NOTE_OFFLINE_POSITION;
-	/// The identifier we use to refer to authorities.
-	type SessionKey = ValidatorId;
-	/// No action in case an authority was determined to be offline.
-	type InherentOfflineReport = ();
-	/// The ubiquitous log type.
-	type Log = Log;
-}
-
-impl timestamp::Trait for Runtime {
-	/// The position in the block's extrinsics that the timestamp-set inherent must be placed.
-	const TIMESTAMP_SET_POSITION: u32 = TIMESTAMP_SET_POSITION;
-	/// A timestamp: seconds since the unix epoch.
-	type Moment = u64;
-
-	type OnTimestampSet = Aura;
-}
-
-impl balances::Trait for Runtime {
-	/// The type for recording an account's balance.
-	type Balance = u128;
-	/// The type for recording indexing into the account enumeration. If this ever overflows, there
-	/// will be problems!
-	type AccountIndex = u32;
-	/// What to do if an account's free balance gets zeroed.
-	type OnFreeBalanceZero = ();
-	/// Restrict whether an account can transfer funds. We don't place any further restrictions.
-	type EnsureAccountLiquid = ();
-	/// The uniquitous event type.
-	type Event = Event;
-}
-
-impl upgrade_key::Trait for Runtime {
-	/// The uniquitous event type.
-	type Event = Event;
-}
-
-impl aura::Trait for Runtime {
-	type HandleReport = ();
-}
-
-construct_runtime!(
-	pub enum Runtime with Log(InternalLog: DigestItem<Hash, ValidatorId>) where
-		Block = Block,
-		NodeBlock = opaque::Block,
-		InherentData = BasicInherentData
-	{
-		System: system::{default, Log(ChangesTrieRoot)},
-		Aura: aura::{Module},
-		Timestamp: timestamp::{Module, Call, Storage, Config<T>, Inherent},
-		Consensus: consensus::{Module, Call, Storage, Config<T>, Log(AuthoritiesChange), Inherent},
-		Balances: balances,
-		UpgradeKey: upgrade_key,
-	}
-);
-
-/// The type used as a helper for interpreting the sender of transactions.
-type Context = balances::ChainContext<Runtime>;
-/// The address format for describing accounts.
-type Address = balances::Address<Runtime>;
+pub type DigestItem = generic::DigestItem<H256, ValidatorId>;
+pub type Log = DigestItem;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256, Log>;
 /// Block type as expected by this runtime.
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 /// BlockId type as expected by this runtime.
 pub type BlockId = generic::BlockId<Block>;
-/// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = generic::UncheckedMortalExtrinsic<Address, Nonce, Call, Ed25519Signature>;
-/// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Nonce, Call>;
-/// Executive: handles dispatch to the various modules.
-pub type Executive = executive::Executive<Runtime, Block, Context, Balances, AllModules>;
+pub type Digest = generic::Digest<DigestItem>;
+
+#[derive(Decode, Encode, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub enum UncheckedExtrinsic {
+	Timestamp(u64),
+	Consensus(u64),
+	Attestation
+}
+
+impl ExtrinsicT for UncheckedExtrinsic {
+	fn is_signed(&self) -> Option<bool> {
+		match self {
+			UncheckedExtrinsic::Timestamp(_) => Some(false),
+			UncheckedExtrinsic::Consensus(_) => Some(false),
+			UncheckedExtrinsic::Attestation => None,
+		}
+	}
+}
+
+struct AuthorityStorageVec;
+impl StorageVec for AuthorityStorageVec {
+	type Item = ValidatorId;
+	const PREFIX: &'static [u8] = well_known_keys::AUTHORITY_PREFIX;
+}
+
+pub struct Runtime;
+
+impl GetNodeBlockType for Runtime {
+	type NodeBlock = opaque::Block;
+}
+
+impl GetRuntimeBlockType for Runtime {
+	type RuntimeBlock = Block;
+}
 
 // Implement our runtime API endpoints. This is just a bunch of proxying.
 impl_runtime_apis! {
@@ -184,89 +131,85 @@ impl_runtime_apis! {
 		}
 
 		fn authorities() -> Vec<ValidatorId> {
-			Consensus::authorities()
+			AuthorityStorageVec::items()
 		}
 
-		fn execute_block(block: Block) {
-			Executive::execute_block(block)
+		fn execute_block(_block: Block) {
+
 		}
 
 		fn initialise_block(header: <Block as BlockT>::Header) {
-			Executive::initialise_block(&header)
+			<storage::Number>::put(header.number);
+			<storage::ParentHash>::put(header.parent_hash);
+			<storage::ExtrinsicsRoot>::put(header.extrinsics_root);
+			<storage::Digest>::put(header.digest.clone());
 		}
 	}
 
 	impl client_api::Metadata<Block> for Runtime {
 		fn metadata() -> OpaqueMetadata {
-			Runtime::metadata().into()
+			OpaqueMetadata::new(Default::default())
 		}
 	}
 
 	impl block_builder_api::BlockBuilder<Block, BasicInherentData> for Runtime {
-		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
-			Executive::apply_extrinsic(extrinsic)
+		fn apply_extrinsic(_extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
+			Ok(ApplyOutcome::Success)
 		}
 
 		fn finalise_block() -> <Block as BlockT>::Header {
-			Executive::finalise_block()
+			Header::new(
+				<storage::Number>::take(),
+				<storage::ExtrinsicsRoot>::take(),
+				Hash::from(runtime_io::storage_root()),
+				<storage::ParentHash>::take(),
+				<storage::Digest>::take()
+			)
 		}
 
 		fn inherent_extrinsics(data: BasicInherentData) -> Vec<<Block as BlockT>::Extrinsic> {
 			let mut inherent = Vec::new();
 
-			inherent.extend(
-				Timestamp::create_inherent_extrinsics(data.timestamp)
-					.into_iter()
-					.map(|v| (v.0, UncheckedExtrinsic::new_unsigned(Call::Timestamp(v.1))))
-			);
-
-			inherent.extend(
-				Consensus::create_inherent_extrinsics(data.consensus)
-					.into_iter()
-					.map(|v| (v.0, UncheckedExtrinsic::new_unsigned(Call::Consensus(v.1))))
+			inherent.push(
+				(TIMESTAMP_SET_POSITION, UncheckedExtrinsic::Timestamp(data.timestamp))
 			);
 
 			inherent.as_mut_slice().sort_unstable_by_key(|v| v.0);
 			inherent.into_iter().map(|v| v.1).collect()
 		}
 
-		fn check_inherents(block: Block, data: BasicInherentData) -> Result<(), CheckInherentError> {
-			let expected_slot = data.aura_expected_slot;
-
+		fn check_inherents(block: Block, _data: BasicInherentData) -> Result<(), CheckInherentError> {
 			// draw timestamp out from extrinsics.
-			let set_timestamp = block.extrinsics()
+			block.extrinsics()
 				.get(TIMESTAMP_SET_POSITION as usize)
-				.and_then(|xt: &UncheckedExtrinsic| match xt.function {
-					Call::Timestamp(TimestampCall::set(ref t)) => Some(t.clone()),
+				.and_then(|xt: &UncheckedExtrinsic| match xt {
+					UncheckedExtrinsic::Timestamp(ref t) => Some(t.clone()),
 					_ => None,
 				})
 				.ok_or_else(|| CheckInherentError::Other("No valid timestamp in block.".into()))?;
 
-			// take the "worse" result of normal verification and the timestamp vs. seal
-			// check.
-			CheckInherentError::combine_results(
-				Runtime::check_inherents(block, data),
-				|| {
-					Aura::verify_inherent(set_timestamp.into(), expected_slot)
-						.map_err(|s| CheckInherentError::Other(s.into()))
-				},
-			)
+			Ok(())
 		}
 
 		fn random_seed() -> <Block as BlockT>::Hash {
-			System::random_seed()
+			Default::default()
 		}
 	}
 
 	impl client_api::TaggedTransactionQueue<Block> for Runtime {
-		fn validate_transaction(tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
-			Executive::validate_transaction(tx)
+		fn validate_transaction(_tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
+			TransactionValidity::Valid {
+				priority: 0,
+				requires: Vec::new(),
+				provides: Vec::new(),
+				longevity: u64::max_value(),
+			}
 		}
 	}
 
 	impl consensus_api::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
-			Aura::slot_duration()
+			10
 		}
 	}
 }
