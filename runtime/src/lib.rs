@@ -58,12 +58,16 @@ use runtime_primitives::{
 use client::{
 	block_builder::api as block_builder_api, runtime_api as client_api
 };
+use srml_support::StorageMap;
 use srml_support::storage::unhashed::StorageVec;
 use consensus_primitives::api as consensus_api;
 use version::RuntimeVersion;
 #[cfg(feature = "std")]
 use version::NativeVersion;
 use parity_codec::Encode;
+use keccak_hasher::KeccakHasher;
+use spec::SpecHeader;
+use ssz_hash::SpecHash;
 
 // A few exports that help ease life for downstream crates.
 #[cfg(any(feature = "std", test))]
@@ -154,7 +158,24 @@ impl_runtime_apis! {
 
 	impl block_builder_api::BlockBuilder<Block, BasicInherentData> for Runtime {
 		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
-			let _extrinsic_index = <storage::UncheckedExtrinsics>::count();
+			let extrinsic_index = <storage::UncheckedExtrinsics>::count();
+
+			if extrinsic_index == consts::TIMESTAMP_POSITION {
+				<storage::Timestamp>::put(extrinsic.clone().timestamp().expect("Invalid timestamp"));
+			} else if extrinsic_index == consts::SLOT_POSITION {
+				let parent_slot = <storage::Slot>::get();
+				<storage::ParentSlot>::put(parent_slot);
+				<storage::Slot>::put(extrinsic.clone().slot().expect("Invalid slot"));
+			} else if extrinsic_index == consts::RANDAO_REVEAL_POSITION {
+				<storage::RandaoReveal>::put(extrinsic.clone().randao_reveal().expect("Invalid randao reveal"));
+			} else if extrinsic_index == consts::POW_CHAIN_REF_POSITION {
+				<storage::PowChainRef>::put(extrinsic.clone().pow_chain_ref().expect("Invalid pow chain ref"));
+			} else {
+				let attestation = extrinsic.clone().attestation().expect("Invalid attestation");
+				let mut attestations = <storage::Attestations>::items();
+				attestations.push(attestation);
+				<storage::Attestations>::set_items(attestations);
+			}
 
 			let mut extrinsics = <storage::UncheckedExtrinsics>::items();
 			extrinsics.push(extrinsic);
@@ -164,6 +185,7 @@ impl_runtime_apis! {
 			<storage::ExtrinsicsRoot>::put(H256::from(extrinsics_root));
 
 			<storage::UncheckedExtrinsics>::set_items(extrinsics);
+
 			Ok(ApplyOutcome::Success)
 		}
 
@@ -174,6 +196,54 @@ impl_runtime_apis! {
 			let extrinsics_root = <storage::ExtrinsicsRoot>::take();
 			let parent_hash = <storage::ParentHash>::take();
 			let digest = <storage::Digest>::take();
+			let _timestamp = <storage::Timestamp>::take();
+			let slot = <storage::Slot>::get();
+			let parent_slot = <storage::ParentSlot>::get();
+			let parent_header_hash = <storage::LastHeaderHash>::get();
+			let randao_reveal = <storage::RandaoReveal>::take();
+			let pow_chain_ref = <storage::PowChainRef>::take();
+			let attestations = <storage::Attestations>::items();
+
+			<storage::Attestations>::set_count(0);
+
+			let mut active_state = <storage::Active>::get();
+			let mut crystallized_state = <storage::Crystallized>::get();
+
+			validation::validate_block_pre_processing_conditions();
+			active_state.update_recent_block_hashes(parent_slot, slot, parent_header_hash);
+
+			validation::process_block::<storage::BlockHashesBySlot, storage::BlockVoteCache>(
+				slot,
+				parent_slot,
+				&crystallized_state,
+				&mut active_state,
+				&attestations
+			);
+
+			validation::process_cycle_transitions::<storage::BlockHashesBySlot, storage::BlockVoteCache>(
+				slot,
+				parent_header_hash,
+				&mut crystallized_state,
+				&mut active_state
+			);
+
+			let active_state_root = active_state.spec_hash::<KeccakHasher>();
+			let crystallized_state_root = crystallized_state.spec_hash::<KeccakHasher>();
+
+			let spec_header = SpecHeader {
+				randao_reveal, attestations, pow_chain_ref,
+				active_state_root, crystallized_state_root,
+				slot_number: slot,
+				parent_hash: parent_header_hash,
+			};
+			let block_hash = ssz_hash::SpecHash::spec_hash::<KeccakHasher>(&spec_header);
+
+			<storage::BlockHashesBySlot>::insert(slot, block_hash);
+			<storage::Active>::put(&active_state);
+			<storage::ActiveRoot>::put(&active_state_root);
+			<storage::Crystallized>::put(&crystallized_state);
+			<storage::CrystallizedRoot>::put(&crystallized_state_root);
+			<storage::LastHeaderHash>::put(&block_hash);
 
 			let state_root = BlakeTwo256::storage_root();
 
