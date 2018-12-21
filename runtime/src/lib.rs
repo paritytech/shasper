@@ -144,7 +144,7 @@ impl traits::DigestItem for DigestItem {
 		}
 	}
 
-	fn as_changes_trie_root(&self) -> Option<&H256> {
+	fn as_changes_trie_root(&self) -> Option<&Self::Hash> {
 		match self {
 			DigestItem::ChangesTrieRoot(ref root) => Some(root),
 			_ => None,
