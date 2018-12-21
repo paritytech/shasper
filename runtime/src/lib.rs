@@ -34,10 +34,11 @@ mod genesis;
 mod storage;
 
 use rstd::prelude::*;
-use primitives::{H256, ValidatorId, Hash, OpaqueMetadata};
+use primitives::{H256, ValidatorId, OpaqueMetadata};
+use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity,
-	traits::{Header as HeaderT, Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
+	traits::{Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
 	BasicInherentData, CheckInherentError, ApplyOutcome,
 };
 use client::{
@@ -101,8 +102,14 @@ impl_runtime_apis! {
 			<storage::Authorities>::items()
 		}
 
-		fn execute_block(_block: Block) {
+		fn execute_block(block: Block) {
+			let (header, extrinsics) = block.deconstruct();
+			Runtime::initialise_block(header);
+			extrinsics.into_iter().for_each(|e| {
+				Runtime::apply_extrinsic(e).ok().expect("Extrinsic in block execution must be valid");
+			});
 
+			Runtime::finalise_block();
 		}
 
 		fn initialise_block(header: <Block as BlockT>::Header) {
@@ -137,13 +144,16 @@ impl_runtime_apis! {
 		fn finalise_block() -> <Block as BlockT>::Header {
 			<storage::UncheckedExtrinsics>::set_count(0);
 
-			Header::new(
-				<storage::Number>::take(),
-				<storage::ExtrinsicsRoot>::take(),
-				Hash::from(runtime_io::storage_root()),
-				<storage::ParentHash>::take(),
-				<storage::Digest>::take()
-			)
+			let number = <storage::Number>::take();
+			let extrinsics_root = <storage::ExtrinsicsRoot>::take();
+			let parent_hash = <storage::ParentHash>::take();
+			let digest = <storage::Digest>::take();
+
+			let state_root = BlakeTwo256::storage_root();
+
+			Header {
+				number, extrinsics_root, state_root, parent_hash, digest
+			}
 		}
 
 		fn inherent_extrinsics(data: BasicInherentData) -> Vec<<Block as BlockT>::Extrinsic> {
