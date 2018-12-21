@@ -6,8 +6,8 @@ use std::sync::Arc;
 use primitives::ed25519;
 use runtime_primitives::BasicInherentData;
 use transaction_pool::{self, txpool::{Pool as TransactionPool}};
-use shasper_primitives::{ValidatorId, Block};
-use shasper_runtime::{self, GenesisConfig, RuntimeApi};
+use shasper_primitives::ValidatorId;
+use shasper_runtime::{self, GenesisConfig, RuntimeApi, Block};
 use substrate_service::{
 	FactoryFullConfiguration, LightComponents, FullComponents, FullBackend,
 	FullClient, LightClient, LightBackend, FullExecutor, LightExecutor,
