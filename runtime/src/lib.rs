@@ -68,7 +68,7 @@ use primitives::{H256, ValidatorId, OpaqueMetadata};
 use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity, generic,
-	traits::{Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
+	traits::{self, Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
 	BasicInherentData, CheckInherentError, ApplyOutcome,
 };
 use client::{
@@ -117,7 +117,41 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
-pub type DigestItem = generic::DigestItem<H256, ValidatorId>;
+#[derive(PartialEq, Eq, Clone, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize))]
+pub enum DigestItem {
+	/// System digest item announcing that authorities set has been changed
+	/// in the block. Contains the new set of authorities.
+	AuthoritiesChange(Vec<ValidatorId>),
+	/// System digest item that contains the root of changes trie at given
+	/// block. It is created for every block iff runtime supports changes
+	/// trie creation.
+	ChangesTrieRoot(H256),
+	/// Put a Seal on it
+	Seal(u64, Vec<u8>),
+	/// Any 'non-system' digest item, opaque to the native code.
+	Other(Vec<u8>),
+}
+
+impl traits::DigestItem for DigestItem {
+	type Hash = H256;
+	type AuthorityId = ValidatorId;
+
+	fn as_authorities_change(&self) -> Option<&[Self::AuthorityId]> {
+		match self {
+			DigestItem::AuthoritiesChange(ref validators) => Some(validators),
+			_ => None,
+		}
+	}
+
+	fn as_changes_trie_root(&self) -> Option<&H256> {
+		match self {
+			DigestItem::ChangesTrieRoot(ref root) => Some(root),
+			_ => None,
+		}
+	}
+}
+
 pub type Log = DigestItem;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256, Log>;
