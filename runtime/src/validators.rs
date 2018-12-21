@@ -18,6 +18,7 @@ use primitives::{H256, ValidatorId, EthereumAddress};
 use rstd::prelude::*;
 
 #[derive(Clone, PartialEq, Eq, Default, Encode, Decode, SszEncode, SszDecode, SszHash)]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]
 pub struct ValidatorRecord {
 	pub pubkey: ValidatorId,
@@ -30,6 +31,7 @@ pub struct ValidatorRecord {
 }
 
 #[derive(Clone, Encode, Decode, SszEncode, SszDecode, SszHash)]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]
 pub struct ShardAndCommittee {
 	pub shard_id: u16,

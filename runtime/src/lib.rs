@@ -209,6 +209,10 @@ impl_runtime_apis! {
 			let mut active_state = <storage::Active>::get();
 			let mut crystallized_state = <storage::Crystallized>::get();
 
+			if number == 1 {
+				crystallized_state.last_state_recalc = slot;
+			}
+
 			validation::validate_block_pre_processing_conditions();
 			active_state.update_recent_block_hashes(parent_slot, slot, parent_header_hash);
 
@@ -260,7 +264,7 @@ impl_runtime_apis! {
 			);
 
 			inherent.push(
-				(consts::SLOT_POSITION, UncheckedExtrinsic::Slot(data.timestamp / 10))
+				(consts::SLOT_POSITION, UncheckedExtrinsic::Slot(data.aura_expected_slot))
 			);
 
 			inherent.push(
@@ -329,7 +333,7 @@ impl_runtime_apis! {
 
 	impl consensus_api::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
-			4
+			10
 		}
 	}
 }

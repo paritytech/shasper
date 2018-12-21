@@ -24,6 +24,7 @@ use shuffling;
 use utils;
 
 #[derive(Encode, Decode, Default, SszEncode, SszDecode, SszHash)]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]
 pub struct CrosslinkRecord {
 	pub dynasty: u64,
@@ -32,6 +33,7 @@ pub struct CrosslinkRecord {
 }
 
 #[derive(Encode, Decode, Default, SszEncode, SszDecode, SszHash)]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]
 pub struct ActiveState {
 	pub pending_attestations: Vec<AttestationRecord>,
@@ -39,6 +41,7 @@ pub struct ActiveState {
 }
 
 #[derive(Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct BlockVoteInfo {
 	pub voter_indices: Vec<usize>,
 	pub total_voter_deposits: u128,
@@ -84,7 +87,11 @@ impl ActiveState {
 
 	pub fn update_recent_block_hashes(&mut self, parent_slot: u64, current_slot: u64, parent_hash: H256) {
 		let d = (current_slot - parent_slot) as usize;
-		let mut ret = self.recent_block_hashes[d..].iter().cloned().collect::<Vec<H256>>();
+		let mut ret = if d < self.recent_block_hashes.len() {
+			self.recent_block_hashes[d..].iter().cloned().collect::<Vec<H256>>()
+		} else {
+			Vec::new()
+		};
 		for _ in 0..::rstd::cmp::min(d, self.recent_block_hashes.len()) {
 			ret.push(parent_hash);
 		}
@@ -93,6 +100,7 @@ impl ActiveState {
 }
 
 #[derive(Encode, Decode, Default, SszEncode, SszDecode, SszHash)]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]
 pub struct CrystallizedState {
 	pub validators: Vec<ValidatorRecord>,
@@ -111,7 +119,7 @@ impl CrystallizedState {
 	pub fn shards_and_committees_for_slot(&self, slot: u64) -> &[ShardAndCommittee] {
 		let slot = slot as usize;
 		let start = (self.last_state_recalc as usize).saturating_sub(CYCLE_LENGTH);
-		assert!(start <= slot && slot > start + CYCLE_LENGTH * 2);
+		assert!(start <= slot && slot < start + CYCLE_LENGTH * 2);
 		&self.shards_and_committees_for_slots[slot - start]
 	}
 

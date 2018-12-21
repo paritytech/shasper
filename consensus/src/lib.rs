@@ -327,15 +327,6 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 					let block_import = block_import.clone();
 					Either::A(proposal_work
 						.map(move |b| {
-							// minor hack since we don't have access to the timestamp
-							// that is actually set by the proposer.
-							let slot_after_building = slot_now(slot_duration);
-							if slot_after_building != Some(slot_num) {
-								info!("Discarding proposal for slot {}; block production took too long",
-									slot_num);
-								return
-							}
-
 							let (header, body) = b.deconstruct();
 							let pre_hash = header.hash();
 							let parent_hash = header.parent_hash().clone();
