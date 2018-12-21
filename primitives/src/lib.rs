@@ -34,6 +34,9 @@ pub extern crate shasper_crypto as crypto;
 
 mod authority_id;
 
+use runtime_primitives::generic;
+use runtime_primitives::traits::{BlakeTwo256, Extrinsic as ExtrinsicT};
+
 pub use authority_id::{H384, AuthorityId};
 
 pub use primitives::{storage, H256, OpaqueMetadata};
@@ -62,28 +65,36 @@ pub type Count = u64;
 /// Slot value in Shapser.
 pub type Slot = u64;
 
-/// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
-/// the specifics of the runtime. They can then be made to be agnostic over specific formats
-/// of data like extrinsics, allowing for them to continue syncing the network through upgrades
-/// to even the core datastructures.
-pub mod opaque {
-	use super::*;
-	use rstd::prelude::*;
-	use runtime_primitives::{traits::{self, BlakeTwo256}, generic};
+pub type DigestItem = generic::DigestItem<H256, ValidatorId>;
+pub type Log = DigestItem;
+/// Block header type as expected by this runtime.
+pub type Header = generic::Header<BlockNumber, BlakeTwo256, Log>;
+/// Block type as expected by this runtime.
+pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+/// BlockId type as expected by this runtime.
+pub type BlockId = generic::BlockId<Block>;
+pub type Digest = generic::Digest<DigestItem>;
 
-	/// Opaque, encoded, unchecked extrinsic.
-	#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-	pub struct UncheckedExtrinsic(#[cfg_attr(feature = "std", serde(with="bytes"))] pub Vec<u8>);
-	impl traits::Extrinsic for UncheckedExtrinsic {
-		fn is_signed(&self) -> Option<bool> {
-			None
+#[derive(Decode, Encode, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub enum UncheckedExtrinsic {
+	Timestamp(u64),
+	Consensus(u64),
+	Attestation
+}
+
+impl Default for UncheckedExtrinsic {
+	fn default() -> UncheckedExtrinsic {
+		UncheckedExtrinsic::Attestation
+	}
+}
+
+impl ExtrinsicT for UncheckedExtrinsic {
+	fn is_signed(&self) -> Option<bool> {
+		match self {
+			UncheckedExtrinsic::Timestamp(_) => Some(false),
+			UncheckedExtrinsic::Consensus(_) => Some(false),
+			UncheckedExtrinsic::Attestation => None,
 		}
 	}
-	/// Opaque block header type.
-	pub type Header = generic::Header<BlockNumber, BlakeTwo256, generic::DigestItem<Hash, ValidatorId>>;
-	/// Opaque block type.
-	pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-	/// Opaque block identifier type.
-	pub type BlockId = generic::BlockId<Block>;
 }

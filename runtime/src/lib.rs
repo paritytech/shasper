@@ -17,7 +17,6 @@ extern crate sr_primitives as runtime_primitives;
 extern crate serde_derive;
 extern crate shasper_primitives as primitives;
 extern crate parity_codec;
-#[macro_use]
 extern crate parity_codec_derive;
 #[macro_use]
 extern crate sr_version as version;
@@ -35,10 +34,10 @@ mod genesis;
 mod storage;
 
 use rstd::prelude::*;
-use primitives::{opaque, H256, ValidatorId, BlockNumber, Hash, OpaqueMetadata};
+use primitives::{H256, ValidatorId, Hash, OpaqueMetadata};
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity,
-	generic, traits::{Extrinsic as ExtrinsicT, Header as HeaderT, BlakeTwo256, Block as BlockT, GetNodeBlockType, GetRuntimeBlockType},
+	traits::{Header as HeaderT, Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
 	BasicInherentData, CheckInherentError, ApplyOutcome,
 };
 use client::{
@@ -49,6 +48,7 @@ use consensus_primitives::api as consensus_api;
 use version::RuntimeVersion;
 #[cfg(feature = "std")]
 use version::NativeVersion;
+use parity_codec::Encode;
 
 // A few exports that help ease life for downstream crates.
 #[cfg(any(feature = "std", test))]
@@ -57,6 +57,7 @@ pub use runtime_primitives::{Permill, Perbill};
 pub use srml_support::{StorageValue, RuntimeMetadata};
 #[cfg(feature = "std")]
 pub use genesis::GenesisConfig;
+pub use primitives::{DigestItem, Log, Header, Block, BlockId, Digest, UncheckedExtrinsic};
 
 const TIMESTAMP_SET_POSITION: u32 = 0;
 
@@ -79,38 +80,10 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
-pub type DigestItem = generic::DigestItem<H256, ValidatorId>;
-pub type Log = DigestItem;
-/// Block header type as expected by this runtime.
-pub type Header = generic::Header<BlockNumber, BlakeTwo256, Log>;
-/// Block type as expected by this runtime.
-pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-/// BlockId type as expected by this runtime.
-pub type BlockId = generic::BlockId<Block>;
-pub type Digest = generic::Digest<DigestItem>;
-
-#[derive(Decode, Encode, Clone, Eq, PartialEq)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub enum UncheckedExtrinsic {
-	Timestamp(u64),
-	Consensus(u64),
-	Attestation
-}
-
-impl ExtrinsicT for UncheckedExtrinsic {
-	fn is_signed(&self) -> Option<bool> {
-		match self {
-			UncheckedExtrinsic::Timestamp(_) => Some(false),
-			UncheckedExtrinsic::Consensus(_) => Some(false),
-			UncheckedExtrinsic::Attestation => None,
-		}
-	}
-}
-
 pub struct Runtime;
 
 impl GetNodeBlockType for Runtime {
-	type NodeBlock = opaque::Block;
+	type NodeBlock = Block;
 }
 
 impl GetRuntimeBlockType for Runtime {
@@ -147,11 +120,23 @@ impl_runtime_apis! {
 	}
 
 	impl block_builder_api::BlockBuilder<Block, BasicInherentData> for Runtime {
-		fn apply_extrinsic(_extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
+		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
+			let _extrinsic_index = <storage::UncheckedExtrinsics>::count();
+
+			let mut extrinsics = <storage::UncheckedExtrinsics>::items();
+			extrinsics.push(extrinsic);
+
+			let extrinsics_data: Vec<Vec<u8>> = extrinsics.iter().map(Encode::encode).collect();
+			let extrinsics_root = BlakeTwo256::enumerated_trie_root(&extrinsics_data.iter().map(Vec::as_slice).collect::<Vec<_>>());
+			<storage::ExtrinsicsRoot>::put(H256::from(extrinsics_root));
+
+			<storage::UncheckedExtrinsics>::set_items(extrinsics);
 			Ok(ApplyOutcome::Success)
 		}
 
 		fn finalise_block() -> <Block as BlockT>::Header {
+			<storage::UncheckedExtrinsics>::set_count(0);
+
 			Header::new(
 				<storage::Number>::take(),
 				<storage::ExtrinsicsRoot>::take(),

@@ -1,4 +1,4 @@
-use primitives::{BlockNumber, Hash, ValidatorId};
+use primitives::{BlockNumber, Hash, ValidatorId, UncheckedExtrinsic};
 use primitives::storage::well_known_keys;
 use srml_support::storage::unhashed;
 use super::Digest as DigestT;
@@ -8,6 +8,12 @@ storage_items! {
 	pub ParentHash: b"sys:parenthash" => default Hash;
 	pub ExtrinsicsRoot: b"sys:extrinsicsroot" => default Hash;
 	pub Digest: b"sys:digest" => default DigestT;
+}
+
+pub struct UncheckedExtrinsics;
+impl unhashed::StorageVec for UncheckedExtrinsics {
+	type Item = UncheckedExtrinsic;
+	const PREFIX: &'static [u8] = b"sys:extrinsics";
 }
 
 pub struct Authorities;
