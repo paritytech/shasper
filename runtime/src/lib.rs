@@ -39,6 +39,7 @@ extern crate ssz_hash_derive;
 extern crate byteorder;
 extern crate hash_db;
 extern crate shasper_crypto as crypto;
+extern crate shuffling;
 
 #[cfg(feature = "std")]
 mod genesis;
@@ -48,6 +49,8 @@ mod attestation;
 pub mod spec;
 mod extrinsic;
 mod validators;
+mod state;
+mod utils;
 
 use rstd::prelude::*;
 use primitives::{H256, ValidatorId, OpaqueMetadata};
@@ -78,6 +81,7 @@ pub use attestation::AttestationRecord;
 pub use extrinsic::UncheckedExtrinsic;
 pub use primitives::BlockNumber;
 pub use validators::{ValidatorRecord, ShardAndCommittee};
+pub use state::{CrosslinkRecord, ActiveState, BlockVoteInfo, CrystallizedState};
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {

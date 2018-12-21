@@ -36,6 +36,7 @@ ssz-hash-derive = { path = "../util/ssz-hash-derive", default-features = false }
 byteorder = { version = "1.2", default-features = false }
 hash-db = { git = "https://github.com/paritytech/trie", default-features = false }
 shasper-crypto = { path = "../crypto", default-features = false }
+shuffling = { path = "../util/shuffling", default-features = false }
 
 [features]
 default = ["std"]
@@ -71,4 +72,5 @@ std = [
 	"byteorder/std",
 	"hash-db/std",
 	"shasper-crypto/std",
+	"shuffling/std",
 ]
