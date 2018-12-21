@@ -75,37 +75,3 @@ pub type Count = u64;
 
 /// Slot value in Shapser.
 pub type Slot = u64;
-
-pub type DigestItem = generic::DigestItem<H256, ValidatorId>;
-pub type Log = DigestItem;
-/// Block header type as expected by this runtime.
-pub type Header = generic::Header<BlockNumber, BlakeTwo256, Log>;
-/// Block type as expected by this runtime.
-pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-/// BlockId type as expected by this runtime.
-pub type BlockId = generic::BlockId<Block>;
-pub type Digest = generic::Digest<DigestItem>;
-
-#[derive(Decode, Encode, Clone, Eq, PartialEq)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub enum UncheckedExtrinsic {
-	Timestamp(u64),
-	Consensus(u64),
-	Attestation
-}
-
-impl Default for UncheckedExtrinsic {
-	fn default() -> UncheckedExtrinsic {
-		UncheckedExtrinsic::Attestation
-	}
-}
-
-impl ExtrinsicT for UncheckedExtrinsic {
-	fn is_signed(&self) -> Option<bool> {
-		match self {
-			UncheckedExtrinsic::Timestamp(_) => Some(false),
-			UncheckedExtrinsic::Consensus(_) => Some(false),
-			UncheckedExtrinsic::Attestation => None,
-		}
-	}
-}

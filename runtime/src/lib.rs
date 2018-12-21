@@ -46,12 +46,13 @@ mod storage;
 mod consts;
 mod attestation;
 mod spec;
+mod extrinsic;
 
 use rstd::prelude::*;
 use primitives::{H256, ValidatorId, OpaqueMetadata};
 use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
-	ApplyResult, transaction_validity::TransactionValidity,
+	ApplyResult, transaction_validity::TransactionValidity, generic,
 	traits::{Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
 	BasicInherentData, CheckInherentError, ApplyOutcome,
 };
@@ -72,9 +73,9 @@ pub use runtime_primitives::{Permill, Perbill};
 pub use srml_support::{StorageValue, RuntimeMetadata};
 #[cfg(feature = "std")]
 pub use genesis::GenesisConfig;
-pub use primitives::{DigestItem, Log, Header, Block, BlockId, Digest, UncheckedExtrinsic};
-
-const TIMESTAMP_SET_POSITION: u32 = 0;
+pub use attestation::AttestationRecord;
+pub use extrinsic::UncheckedExtrinsic;
+pub use primitives::BlockNumber;
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -94,6 +95,16 @@ pub fn native_version() -> NativeVersion {
 		can_author_with: Default::default(),
 	}
 }
+
+pub type DigestItem = generic::DigestItem<H256, ValidatorId>;
+pub type Log = DigestItem;
+/// Block header type as expected by this runtime.
+pub type Header = generic::Header<BlockNumber, BlakeTwo256, Log>;
+/// Block type as expected by this runtime.
+pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+/// BlockId type as expected by this runtime.
+pub type BlockId = generic::BlockId<Block>;
+pub type Digest = generic::Digest<DigestItem>;
 
 pub struct Runtime;
 
@@ -174,7 +185,19 @@ impl_runtime_apis! {
 			let mut inherent = Vec::new();
 
 			inherent.push(
-				(TIMESTAMP_SET_POSITION, UncheckedExtrinsic::Timestamp(data.timestamp))
+				(consts::TIMESTAMP_POSITION, UncheckedExtrinsic::Timestamp(data.timestamp))
+			);
+
+			inherent.push(
+				(consts::SLOT_POSITION, UncheckedExtrinsic::Slot(data.timestamp / 10))
+			);
+
+			inherent.push(
+				(consts::RANDAO_REVEAL_POSITION, UncheckedExtrinsic::RandaoReveal(Default::default()))
+			);
+
+			inherent.push(
+				(consts::POW_CHAIN_REF_POSITION, UncheckedExtrinsic::PowChainRef(Default::default()))
 			);
 
 			inherent.as_mut_slice().sort_unstable_by_key(|v| v.0);
@@ -182,11 +205,34 @@ impl_runtime_apis! {
 		}
 
 		fn check_inherents(block: Block, _data: BasicInherentData) -> Result<(), CheckInherentError> {
-			// draw timestamp out from extrinsics.
 			block.extrinsics()
-				.get(TIMESTAMP_SET_POSITION as usize)
+				.get(consts::TIMESTAMP_POSITION as usize)
 				.and_then(|xt: &UncheckedExtrinsic| match xt {
 					UncheckedExtrinsic::Timestamp(ref t) => Some(t.clone()),
+					_ => None,
+				})
+				.ok_or_else(|| CheckInherentError::Other("No valid timestamp in block.".into()))?;
+
+			block.extrinsics()
+				.get(consts::SLOT_POSITION as usize)
+				.and_then(|xt: &UncheckedExtrinsic| match xt {
+					UncheckedExtrinsic::Slot(ref t) => Some(t.clone()),
+					_ => None,
+				})
+				.ok_or_else(|| CheckInherentError::Other("No valid timestamp in block.".into()))?;
+
+			block.extrinsics()
+				.get(consts::RANDAO_REVEAL_POSITION as usize)
+				.and_then(|xt: &UncheckedExtrinsic| match xt {
+					UncheckedExtrinsic::RandaoReveal(ref t) => Some(t.clone()),
+					_ => None,
+				})
+				.ok_or_else(|| CheckInherentError::Other("No valid timestamp in block.".into()))?;
+
+			block.extrinsics()
+				.get(consts::POW_CHAIN_REF_POSITION as usize)
+				.and_then(|xt: &UncheckedExtrinsic| match xt {
+					UncheckedExtrinsic::PowChainRef(ref t) => Some(t.clone()),
 					_ => None,
 				})
 				.ok_or_else(|| CheckInherentError::Other("No valid timestamp in block.".into()))?;

@@ -1,6 +1,7 @@
-use primitives::{BlockNumber, Hash, ValidatorId, UncheckedExtrinsic};
+use primitives::{BlockNumber, Hash, ValidatorId};
 use primitives::storage::well_known_keys;
 use srml_support::storage::unhashed;
+use super::UncheckedExtrinsic;
 use super::Digest as DigestT;
 
 storage_items! {
