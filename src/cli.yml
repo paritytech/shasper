@@ -1,6 +1,6 @@
-name: shasper-node
-author: "Parity Team <admin@parity.io>"
-about: Substrate Shasper Node Rust Implementation
+name: template-node
+author: "Anonymous"
+about: Template Node
 args:
   - log:
       short: l

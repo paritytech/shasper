@@ -16,9 +16,10 @@
 
 use rstd::prelude::*;
 
-use primitives::H256;
-use bitfield::BitField;
-use super::{PublicKey, ShardId};
+use primitives::{H256, ValidatorId, ShardId, BitField};
+use hash_db::Hasher;
+use keccak_hasher::KeccakHasher;
+use crypto::bls;
 
 #[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode, SszHash)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -55,7 +56,6 @@ impl Default for AttestationRecord {
 
 impl AttestationRecord {
 	pub fn message(&self, parent_hashes: &[H256]) -> H256 {
-		use blake2::{Blake2b, crypto_mac::Mac};
 		use byteorder::{ByteOrder, BigEndian};
 
 		let mut attestation_slot_bytes = [0u8; 8];
@@ -67,29 +67,34 @@ impl AttestationRecord {
 		let mut justified_slot_bytes = [0u8; 8];
 		BigEndian::write_u64(&mut justified_slot_bytes, self.justified_slot);
 
-		let mut hasher = Blake2b::new_keyed(&[], 64);
-		hasher.input(&attestation_slot_bytes);
-		for hash in parent_hashes {
-			hasher.input(hash.as_ref());
+		let mut v = Vec::new();
+		for b in &attestation_slot_bytes {
+			v.push(*b);
 		}
-		hasher.input(&shard_id_bytes);
-		hasher.input(self.shard_block_hash.as_ref());
-		hasher.input(&justified_slot_bytes);
+		for hash in parent_hashes {
+			for b in hash.as_ref() {
+				v.push(*b);
+			}
+		}
+		for b in &shard_id_bytes {
+			v.push(*b);
+		}
+		for b in self.shard_block_hash.as_ref() {
+			v.push(*b);
+		}
+		for b in &justified_slot_bytes {
+			v.push(*b);
+		}
 
-		H256::from_slice(&hasher.result().code()[0..32])
+		KeccakHasher::hash(&v)
 	}
 
-	pub fn verify_signatures(&self, parent_hashes: &[H256], pubkeys: &[PublicKey]){
-		use bls_aggregates::{AggregateSignature, AggregatePublicKey,
-							 PublicKey as BlsPublicKey};
+	pub fn verify_signatures(&self, parent_hashes: &[H256], pubkeys: &[ValidatorId]){
+		assert!(pubkeys.len() == 1, "Aggregate signatures are not yet supported.");
 
 		let message = self.message(parent_hashes);
-		let aggsig = AggregateSignature::from_bytes(&self.aggregate_sig).expect("Aggregate signature decoding failed, attestation is invalid");
-		let pubkeys = pubkeys
-			.iter()
-			.map(|bytes| BlsPublicKey::from_bytes(bytes).expect("Public key decoding failed, attestation is invalid"))
-			.collect();
-		let aggpub = AggregatePublicKey::from_public_keys(&pubkeys);
-		assert!(aggsig.verify(message.as_ref(), &aggpub));
+		let sig = bls::Signature::from_compressed_bytes(&self.aggregate_sig[1..97]).expect("Signature decoding failed, attestation is invalid");
+		let pubkey = bls::Public::from_compressed_bytes(pubkeys[0].as_ref()).expect("Public key provided is invalid");
+		assert!(pubkey.verify(message.as_ref(), &sig));
 	}
 }

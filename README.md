@@ -6,7 +6,7 @@ This is an implementation of [Shasper](https://github.com/ethereum/eth2.0-specs)
 
 ## Status
 
-Currently we have a (mostly complete, but untested) implementation of Shasper state transition validation algorithms. This is then combined with Substrate's embedded consensus engine to provide a simple Substrate node implementation. In the future, this consensus engine will be replaced to comply with Shasper's fork choice rule specification.
+Currently we have an implementation of Shasper state transition validation algorithms. This is then combined with Substrate's Aura consensus engine to provide a simple Substrate node implementation with block authoring. In the future, this consensus engine will be replaced to comply with Shasper's fork choice rule specification LMD-GHOST.
 
 ## Get Started
 
@@ -23,7 +23,7 @@ After that, clone the repo and compile the WebAssembly runtime:
 
 ```bash
 git clone https://github.com/paritytech/shasper.git
-cd shasper/runtime/wasm && ./build.sh && cd ../..
+cd shasper && ./build.sh
 ```
 
 You can then execute the client:

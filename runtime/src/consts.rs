@@ -22,3 +22,9 @@ pub const BASE_REWARD_QUOTIENT: u128 = 32768;
 pub const SQRT_E_DROP_TIME: u128 = 1048576;
 pub const SLOT_DURATION: u128 = 8;
 pub const MIN_DYNASTY_LENGTH: u64 = 256;
+
+pub const TIMESTAMP_POSITION: u32 = 0;
+pub const SLOT_POSITION: u32 = 1;
+pub const RANDAO_REVEAL_POSITION: u32 = 2;
+pub const POW_CHAIN_REF_POSITION: u32 = 3;
+pub const ATTESTATION_START_POSITION: u32 = 4;

@@ -23,7 +23,7 @@ use state::{ActiveState, CrystallizedState, BlockVoteInfo, CrosslinkRecord};
 use attestation::AttestationRecord;
 use consts::{CYCLE_LENGTH, WEI_PER_ETH, BASE_REWARD_QUOTIENT, SQRT_E_DROP_TIME, SLOT_DURATION, MIN_DYNASTY_LENGTH, SHARD_COUNT};
 use utils::sqrt;
-use ::ShardId;
+use primitives::ShardId;
 
 pub fn validate_block_pre_processing_conditions() { }
 
@@ -34,7 +34,9 @@ pub fn validate_parent_block_proposer(slot: u64, parent_slot: u64, crystallized_
 
 	let (proposer_index_in_committee, shard_id) = crystallized_state.proposer_position(parent_slot);
 
-	assert!(attestations.len() > 0);
+	if attestations.len() == 0 {
+		return;
+	}
 	let attestation = &attestations[0];
 
 	assert!(attestation.shard_id == shard_id &&
@@ -169,6 +171,10 @@ pub fn calculate_ffg_rewards<BlockHashesBySlot: StorageMap<u64, H256, Query=Opti
 
 	let total_deposits = crystallized_state.total_deposits();
 	let total_deposits_in_eth = total_deposits / WEI_PER_ETH;
+
+	if total_deposits_in_eth == 0 {
+		return rewards_and_penalties;
+	}
 
 	let reward_quotient = BASE_REWARD_QUOTIENT * sqrt(total_deposits_in_eth);
 	let quadratic_penalty_quotient = (SQRT_E_DROP_TIME / SLOT_DURATION).pow(2);

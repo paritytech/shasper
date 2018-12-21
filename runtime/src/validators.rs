@@ -14,17 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
+use primitives::{H256, ValidatorId, EthereumAddress};
 use rstd::prelude::*;
 
-use super::{Address, PublicKey};
-
 #[derive(Clone, PartialEq, Eq, Default, Encode, Decode, SszEncode, SszDecode, SszHash)]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]
 pub struct ValidatorRecord {
-	pub pubkey: PublicKey,
+	pub pubkey: ValidatorId,
 	pub withdrawal_shard: u16,
-	pub withdrawal_address: Address,
+	pub withdrawal_address: EthereumAddress,
 	pub randao_commitment: H256,
 	pub balance: u128,
 	pub start_dynasty: u64,
@@ -32,6 +31,7 @@ pub struct ValidatorRecord {
 }
 
 #[derive(Clone, Encode, Decode, SszEncode, SszDecode, SszHash)]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]
 pub struct ShardAndCommittee {
 	pub shard_id: u16,

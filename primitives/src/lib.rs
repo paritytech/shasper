@@ -14,16 +14,66 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-extern crate substrate_primitives;
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "std"), feature(alloc))]
+
+extern crate parity_codec;
+#[macro_use]
+extern crate parity_codec_derive;
+extern crate substrate_primitives as primitives;
+extern crate sr_primitives as runtime_primitives;
 #[macro_use]
 extern crate fixed_hash;
+extern crate sr_std as rstd;
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate serde_derive;
+#[cfg(feature = "std")]
+extern crate serde;
+extern crate ssz;
+#[macro_use]
+extern crate ssz_derive;
+extern crate ssz_hash;
+#[macro_use]
+extern crate ssz_hash_derive;
+extern crate hash_db;
+pub extern crate shasper_crypto as crypto;
 
-construct_fixed_hash! {
-	/// Fixed 384-bit hash.
-	pub struct H384(48);
-}
+mod authority_id;
+mod bitfield;
 
-pub use substrate_primitives::H256;
+use runtime_primitives::generic;
+use runtime_primitives::traits::{BlakeTwo256, Extrinsic as ExtrinsicT};
 
+pub use authority_id::{H384, AuthorityId};
+pub use bitfield::BitField;
+
+pub use primitives::{storage, H256, OpaqueMetadata};
+
+#[cfg(feature = "std")]
+pub use primitives::bytes;
+
+pub type ShardId = u16;
+
+/// Shasper validator public key.
+pub type ValidatorId = AuthorityId;
+
+/// Alias to Ed25519 pubkey that identifies an account on the chain.
+pub type AccountId = primitives::H256;
+
+/// A hash of some data used by the chain.
+pub type Hash = primitives::H256;
+
+/// Index of a block number in the chain.
+pub type BlockNumber = u64;
+
+/// Index of an account's extrinsic in the chain.
+pub type Nonce = u64;
+
+/// Count value in Shasper.
 pub type Count = u64;
+
+/// Slot value in Shapser.
 pub type Slot = u64;
+
+pub type EthereumAddress = primitives::H160;
