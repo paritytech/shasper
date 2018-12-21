@@ -28,6 +28,14 @@ hex-literal = { version = "0.1.0", optional = true }
 serde = { version = "1.0", optional = true, default-features = false }
 serde_derive = { version = "1.0", optional = true }
 substrate-keyring = { git = "https://github.com/paritytech/substrate", optional = true }
+keccak-hasher = { path = "../util/keccak-hasher", default-features = false }
+ssz = { path = "../util/ssz", default-features = false }
+ssz-hash = { path = "../util/ssz-hash", default-features = false }
+ssz-derive = { path = "../util/ssz-derive", default-features = false }
+ssz-hash-derive = { path = "../util/ssz-hash-derive", default-features = false }
+byteorder = { version = "1.2", default-features = false }
+hash-db = { git = "https://github.com/paritytech/trie", default-features = false }
+shasper-crypto = { path = "../crypto", default-features = false }
 
 [features]
 default = ["std"]
@@ -54,5 +62,13 @@ std = [
 	"serde_derive",
 	"serde",
 	"serde/std",
-	"safe-mix/std"
+	"safe-mix/std",
+	"keccak-hasher/std",
+	"ssz/std",
+	"ssz-hash/std",
+	"ssz-derive/std",
+	"ssz-hash-derive/std",
+	"byteorder/std",
+	"hash-db/std",
+	"shasper-crypto/std",
 ]

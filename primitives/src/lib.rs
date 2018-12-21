@@ -30,19 +30,30 @@ extern crate sr_std as rstd;
 extern crate serde_derive;
 #[cfg(feature = "std")]
 extern crate serde;
+extern crate ssz;
+#[macro_use]
+extern crate ssz_derive;
+extern crate ssz_hash;
+#[macro_use]
+extern crate ssz_hash_derive;
+extern crate hash_db;
 pub extern crate shasper_crypto as crypto;
 
 mod authority_id;
+mod bitfield;
 
 use runtime_primitives::generic;
 use runtime_primitives::traits::{BlakeTwo256, Extrinsic as ExtrinsicT};
 
 pub use authority_id::{H384, AuthorityId};
+pub use bitfield::BitField;
 
 pub use primitives::{storage, H256, OpaqueMetadata};
 
 #[cfg(feature = "std")]
 pub use primitives::bytes;
+
+pub type ShardId = u16;
 
 /// Shasper validator public key.
 pub type ValidatorId = AuthorityId;

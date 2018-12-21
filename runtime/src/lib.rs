@@ -17,6 +17,7 @@ extern crate sr_primitives as runtime_primitives;
 extern crate serde_derive;
 extern crate shasper_primitives as primitives;
 extern crate parity_codec;
+#[macro_use]
 extern crate parity_codec_derive;
 #[macro_use]
 extern crate sr_version as version;
@@ -28,10 +29,22 @@ extern crate srml_timestamp as timestamp;
 extern crate srml_balances as balances;
 extern crate srml_upgrade_key as upgrade_key;
 extern crate shasper_consensus_primitives as consensus_primitives;
+extern crate keccak_hasher;
+extern crate ssz;
+#[macro_use]
+extern crate ssz_derive;
+extern crate ssz_hash;
+#[macro_use]
+extern crate ssz_hash_derive;
+extern crate byteorder;
+extern crate hash_db;
+extern crate shasper_crypto as crypto;
 
 #[cfg(feature = "std")]
 mod genesis;
 mod storage;
+mod consts;
+mod attestation;
 
 use rstd::prelude::*;
 use primitives::{H256, ValidatorId, OpaqueMetadata};
