@@ -55,6 +55,7 @@ pub use aura_primitives::*;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use std::collections::HashMap;
 
 use codec::Encode;
 use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT};
@@ -162,6 +163,12 @@ impl CompatibleDigestItem for shasper_runtime::DigestItem {
 			_ => None
 		}
 	}
+}
+
+pub trait CompatibleExtrinsic: Sized {
+	fn as_validator_attestation_map<B: Block, C>(&self, client: &C, id: &BlockId<B>) -> Option<HashMap<ValidatorId, B::Hash>> where
+		C: ProvideRuntimeApi,
+		C::Api: AuraApi<B>;
 }
 
 /// Start the aura worker in a separate thread.
