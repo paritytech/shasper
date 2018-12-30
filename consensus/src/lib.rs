@@ -641,6 +641,36 @@ impl SlotDuration {
 	}
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct LatestAttestations(HashMap<ValidatorId, H256>);
+
+const LATEST_ATTESTATIONS_SLOT_KEY: &[u8] = b"lmd_latest_attestations";
+
+impl LatestAttestations {
+	pub fn get_or_default<B: Block, C>(client: &C) -> ::client::error::Result<Self> where
+		C: ::client::backend::AuxStore
+	{
+		use codec::Decode;
+
+		match client.get_aux(LATEST_ATTESTATIONS_SLOT_KEY)? {
+			Some(v) => Vec::<(ValidatorId, H256)>::decode(&mut &v[..])
+				.map(|v| LatestAttestations(v.into_iter().collect()))
+				.ok_or_else(|| ::client::error::ErrorKind::Backend(
+					format!("Aura slot duration kept in invalid format"),
+				).into()),
+			None => Ok(Default::default()),
+		}
+	}
+
+	pub fn save<B: Block, C>(&self, client: &C) -> ::client::error::Result<()> where
+		C: ::client::backend::AuxStore
+	{
+		self.0.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Vec<_>>().using_encoded(|s| {
+			client.insert_aux(&[(LATEST_ATTESTATIONS_SLOT_KEY, &s[..])], &[])
+		})
+	}
+}
+
 /// Start an import queue for the Aura consensus algorithm.
 pub fn import_queue<B, C, E, MakeInherent, Inherent>(
 	slot_duration: SlotDuration,
