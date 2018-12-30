@@ -16,7 +16,7 @@
 
 use primitives::H256;
 use runtime_primitives::traits::{Extrinsic as ExtrinsicT};
-use attestation::AttestationRecord;
+use super::AttestationRecord;
 
 #[derive(Decode, Encode, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]

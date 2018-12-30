@@ -55,7 +55,6 @@ extern crate srml_support as runtime_support;
 mod genesis;
 mod storage;
 mod consts;
-mod attestation;
 pub mod spec;
 mod extrinsic;
 mod validators;
@@ -93,9 +92,8 @@ pub use runtime_primitives::{Permill, Perbill};
 pub use srml_support::{StorageValue, RuntimeMetadata};
 #[cfg(feature = "std")]
 pub use genesis::GenesisConfig;
-pub use attestation::AttestationRecord;
 pub use extrinsic::UncheckedExtrinsic;
-pub use primitives::BlockNumber;
+pub use primitives::{AttestationRecord, BlockNumber};
 pub use validators::{ValidatorRecord, ShardAndCommittee};
 pub use state::{CrosslinkRecord, ActiveState, BlockVoteInfo, CrystallizedState};
 pub use digest::DigestItem;
@@ -352,6 +350,18 @@ impl_runtime_apis! {
 	impl consensus_api::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
 			10
+		}
+
+		fn validator_ids_from_attestation(attestation: AttestationRecord) -> Vec<ValidatorId> {
+			let crystallized_state = <storage::Crystallized>::get();
+			let attestation_indices = crystallized_state.attestation_indices(&attestation);
+
+			attestation_indices
+				.iter()
+				.enumerate()
+				.filter(|(i, _)| attestation.attester_bitfield.has_voted(*i))
+				.map(|(_, index)| crystallized_state.validators[*index].pubkey.clone())
+				.collect()
 		}
 	}
 }

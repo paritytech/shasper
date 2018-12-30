@@ -12,6 +12,8 @@ srml-support = { git = "https://github.com/paritytech/substrate", default-featur
 sr-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-version = { git = "https://github.com/paritytech/substrate", default-features = false }
 sr-io = { git = "https://github.com/paritytech/substrate", default-features = false }
+sr-std = { git = "https://github.com/paritytech/substrate", default-features = false }
+shasper-primitives = { path = "../../primitives", default-features = false }
 
 [features]
 default = ["std"]
@@ -23,4 +25,6 @@ std = [
 	"sr-primitives/std",
 	"sr-version/std",
 	"sr-io/std",
+	"shasper-primitives/std",
+	"sr-std/std",
 ]

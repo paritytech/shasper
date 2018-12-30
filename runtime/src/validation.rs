@@ -20,7 +20,7 @@ use rstd::prelude::*;
 use rstd::collections::btree_map::BTreeMap;
 
 use state::{ActiveState, CrystallizedState, BlockVoteInfo, CrosslinkRecord};
-use attestation::AttestationRecord;
+use super::AttestationRecord;
 use consts::{CYCLE_LENGTH, WEI_PER_ETH, BASE_REWARD_QUOTIENT, SQRT_E_DROP_TIME, SLOT_DURATION, MIN_DYNASTY_LENGTH, SHARD_COUNT};
 use utils::sqrt;
 use primitives::ShardId;

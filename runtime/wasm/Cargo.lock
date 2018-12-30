@@ -966,8 +966,10 @@ name = "shasper-consensus-primitives"
 version = "0.1.0"
 dependencies = [
  "parity-codec 2.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shasper-primitives 0.1.0",
  "sr-io 0.1.0 (git+https://github.com/paritytech/substrate)",
  "sr-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
+ "sr-std 0.1.0 (git+https://github.com/paritytech/substrate)",
  "sr-version 0.1.0 (git+https://github.com/paritytech/substrate)",
  "srml-support 0.1.0 (git+https://github.com/paritytech/substrate)",
  "substrate-client 0.1.0 (git+https://github.com/paritytech/substrate)",
@@ -986,8 +988,10 @@ dependencies = [
 name = "shasper-primitives"
 version = "0.1.0"
 dependencies = [
+ "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "fixed-hash 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hash-db 0.9.0 (git+https://github.com/paritytech/trie)",
+ "keccak-hasher 0.1.1",
  "parity-codec 2.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec-derive 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",

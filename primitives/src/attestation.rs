@@ -16,7 +16,7 @@
 
 use rstd::prelude::*;
 
-use primitives::{H256, ValidatorId, ShardId, BitField};
+use super::{H256, ValidatorId, ShardId, BitField};
 use hash_db::Hasher;
 use keccak_hasher::KeccakHasher;
 use crypto::bls;

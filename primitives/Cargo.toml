@@ -18,6 +18,8 @@ ssz-hash = { path = "../util/ssz-hash", default-features = false }
 ssz-derive = { path = "../util/ssz-derive", default-features = false }
 ssz-hash-derive = { path = "../util/ssz-hash-derive", default-features = false }
 hash-db = { git = "https://github.com/paritytech/trie", default-features = false }
+keccak-hasher = { path = "../util/keccak-hasher", default-features = false }
+byteorder = { version = "1.2", default-features = false }
 
 [features]
 default = ["std"]
@@ -36,4 +38,6 @@ std = [
 	"ssz-derive/std",
 	"ssz-hash-derive/std",
 	"hash-db/std",
+	"keccak-hasher/std",
+	"byteorder/std",
 ]
