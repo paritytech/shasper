@@ -65,7 +65,7 @@ use consensus_common::{ImportBlock, BlockOrigin};
 use runtime_primitives::{generic::BlockId, Justification, BasicInherentData};
 use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
 use network::import_queue::{Verifier, BasicQueue};
-use shasper_primitives::ValidatorId;
+use shasper_primitives::{ValidatorId, H256};
 
 use futures::{Stream, Future, IntoFuture, future::{self, Either}};
 use tokio::timer::{Delay, Timeout};
@@ -166,9 +166,29 @@ impl CompatibleDigestItem for shasper_runtime::DigestItem {
 }
 
 pub trait CompatibleExtrinsic: Sized {
-	fn as_validator_attestation_map<B: Block, C>(&self, client: &C, id: &BlockId<B>) -> Option<HashMap<ValidatorId, B::Hash>> where
+	fn as_validator_attestation_map<B: Block<Hash=H256>, C>(&self, client: &C, id: &BlockId<B>) -> Option<HashMap<ValidatorId, B::Hash>> where
 		C: ProvideRuntimeApi,
 		C::Api: AuraApi<B>;
+}
+
+impl CompatibleExtrinsic for shasper_runtime::UncheckedExtrinsic {
+	fn as_validator_attestation_map<B: Block<Hash=H256>, C>(&self, client: &C, id: &BlockId<B>) -> Option<HashMap<ValidatorId, B::Hash>> where
+		C: ProvideRuntimeApi,
+		C::Api: AuraApi<B>
+	{
+		match self {
+			&shasper_runtime::UncheckedExtrinsic::Attestation(ref attestation) => {
+				let validators = match client.runtime_api().validator_ids_from_attestation(id, attestation) {
+					Ok(validators) => validators,
+					Err(_) => return None,
+				};
+
+				Some(validators.into_iter().map(|v| (v, attestation.justified_block_hash))
+					 .collect())
+			},
+			_ => None,
+		}
+	}
 }
 
 /// Start the aura worker in a separate thread.
