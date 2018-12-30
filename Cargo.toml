@@ -49,7 +49,6 @@ members = [
 	"util/ssz-hash",
 	"util/ssz-hash-derive",
 	"util/keccak-hasher",
-	"lmd-ghost",
 ]
 exclude = [
 	"runtime/wasm",
