@@ -6,7 +6,7 @@ This is an implementation of [Shasper](https://github.com/ethereum/eth2.0-specs)
 
 ## Status
 
-Currently we have an implementation of Shasper state transition validation algorithms. This is then combined with Substrate's Aura consensus engine to provide a simple Substrate node implementation with block authoring. In the future, this consensus engine will be replaced to comply with Shasper's fork choice rule specification LMD-GHOST.
+Currently we have an implementation of Shasper state transition validation algorithms. This is then combined with LMD-GHOST consensus engine to provide a simple Substrate node implementation with block authoring.
 
 ## Get Started
 
