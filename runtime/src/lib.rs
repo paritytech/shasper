@@ -363,5 +363,13 @@ impl_runtime_apis! {
 				.map(|(_, index)| crystallized_state.validators[*index].pubkey.clone())
 				.collect()
 		}
+
+		fn last_finalized_slot() -> u64 {
+			<storage::Crystallized>::get().last_finalized_slot
+		}
+
+		fn last_justified_slot() -> u64 {
+			<storage::Crystallized>::get().last_justified_slot
+		}
 	}
 }

@@ -38,7 +38,7 @@ pub mod id {
 /// Runtime-APIs
 pub mod api {
 	use rstd::prelude::*;
-	use shasper_primitives::{AttestationRecord, ValidatorId};
+	use shasper_primitives::{AttestationRecord, ValidatorId, Slot};
 	use client::decl_runtime_apis;
 
 	decl_runtime_apis! {
@@ -53,6 +53,12 @@ pub mod api {
 
 			/// Return validator attestation map.
 			fn validator_ids_from_attestation(attestation: AttestationRecord) -> Vec<ValidatorId>;
+
+			/// Return the last finalized slot.
+			fn last_finalized_slot() -> Slot;
+
+			/// Return the last justified slot.
+			fn last_justified_slot() -> Slot;
 		}
 	}
 }
