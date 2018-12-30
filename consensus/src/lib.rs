@@ -55,7 +55,7 @@ pub use aura_primitives::*;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::collections::HashMap;
+use std::collections::hash_map::{HashMap, Entry};
 
 use codec::Encode;
 use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT};
@@ -65,7 +65,7 @@ use consensus_common::{ImportBlock, BlockOrigin};
 use runtime_primitives::{generic::BlockId, Justification, BasicInherentData};
 use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
 use network::import_queue::{Verifier, BasicQueue};
-use shasper_primitives::{ValidatorId, H256};
+use shasper_primitives::{ValidatorId, H256, Slot};
 
 use futures::{Stream, Future, IntoFuture, future::{self, Either}};
 use tokio::timer::{Delay, Timeout};
@@ -166,13 +166,13 @@ impl CompatibleDigestItem for shasper_runtime::DigestItem {
 }
 
 pub trait CompatibleExtrinsic: Sized {
-	fn as_validator_attestation_map<B: Block<Hash=H256>, C>(&self, client: &C, id: &BlockId<B>) -> Option<HashMap<ValidatorId, B::Hash>> where
+	fn as_validator_attestation_map<B: Block<Hash=H256>, C>(&self, client: &C, id: &BlockId<B>) -> Option<HashMap<ValidatorId, (Slot, H256)>> where
 		C: ProvideRuntimeApi,
 		C::Api: AuraApi<B>;
 }
 
 impl CompatibleExtrinsic for shasper_runtime::UncheckedExtrinsic {
-	fn as_validator_attestation_map<B: Block<Hash=H256>, C>(&self, client: &C, id: &BlockId<B>) -> Option<HashMap<ValidatorId, B::Hash>> where
+	fn as_validator_attestation_map<B: Block<Hash=H256>, C>(&self, client: &C, id: &BlockId<B>) -> Option<HashMap<ValidatorId, (Slot, H256)>> where
 		C: ProvideRuntimeApi,
 		C::Api: AuraApi<B>
 	{
@@ -183,7 +183,9 @@ impl CompatibleExtrinsic for shasper_runtime::UncheckedExtrinsic {
 					Err(_) => return None,
 				};
 
-				Some(validators.into_iter().map(|v| (v, attestation.justified_block_hash))
+				Some(validators
+					 .into_iter()
+					 .map(|v| (v, (attestation.justified_slot, attestation.justified_block_hash)))
 					 .collect())
 			},
 			_ => None,
@@ -642,7 +644,7 @@ impl SlotDuration {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct LatestAttestations(HashMap<ValidatorId, H256>);
+pub struct LatestAttestations(HashMap<ValidatorId, (Slot, H256)>);
 
 const LATEST_ATTESTATIONS_SLOT_KEY: &[u8] = b"lmd_latest_attestations";
 
@@ -653,7 +655,7 @@ impl LatestAttestations {
 		use codec::Decode;
 
 		match client.get_aux(LATEST_ATTESTATIONS_SLOT_KEY)? {
-			Some(v) => Vec::<(ValidatorId, H256)>::decode(&mut &v[..])
+			Some(v) => Vec::<(ValidatorId, (Slot, H256))>::decode(&mut &v[..])
 				.map(|v| LatestAttestations(v.into_iter().collect()))
 				.ok_or_else(|| ::client::error::ErrorKind::Backend(
 					format!("Aura slot duration kept in invalid format"),
@@ -668,6 +670,36 @@ impl LatestAttestations {
 		self.0.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Vec<_>>().using_encoded(|s| {
 			client.insert_aux(&[(LATEST_ATTESTATIONS_SLOT_KEY, &s[..])], &[])
 		})
+	}
+
+	pub fn note_validator_attestation(&mut self, validator_id: ValidatorId, block_slot: Slot, block_hash: H256) {
+		let entry = self.0.entry(validator_id);
+		match entry {
+			Entry::Occupied(mut entry) => {
+				if entry.get().0 < block_slot {
+					entry.insert((block_slot, block_hash));
+				}
+			},
+			Entry::Vacant(entry) => {
+				entry.insert((block_slot, block_hash));
+			},
+		}
+	}
+
+	pub fn note_block<B: Block<Hash=H256>, C>(&mut self, client: &C, parent_id: &BlockId<B>, body: Option<&[B::Extrinsic]>) where
+		C: ProvideRuntimeApi,
+		C::Api: AuraApi<B>,
+		B::Extrinsic: CompatibleExtrinsic,
+	{
+		if let Some(extrinsics) = body {
+			for extrinsic in extrinsics {
+				let map = extrinsic.as_validator_attestation_map(client, parent_id).unwrap_or_default();
+
+				for (validator_id, (block_slot, block_hash)) in map {
+					self.note_validator_attestation(validator_id, block_slot, block_hash);
+				}
+			}
+		}
 	}
 }
 
