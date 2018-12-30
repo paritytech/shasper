@@ -59,7 +59,7 @@ use std::collections::hash_map::{HashMap, Entry};
 
 use codec::Encode;
 use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT};
-use client::ChainHead;
+use client::{blockchain::HeaderBackend, ChainHead};
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
 use consensus_common::{ImportBlock, BlockOrigin};
 use runtime_primitives::{generic::BlockId, Justification, BasicInherentData};
@@ -700,6 +700,83 @@ impl LatestAttestations {
 				}
 			}
 		}
+	}
+
+	pub fn is_new_best<B: Block<Hash=H256>, C>(&self, client: &C, current: &BlockId<B>, new_parent: &BlockId<B>) -> ::client::error::Result<bool> where
+		C: ChainHead<B> + HeaderBackend<B> + ProvideRuntimeApi,
+		C::Api: AuraApi<B>,
+	{
+		let leaves = client.leaves()?;
+		let leaves_with_justified_slots: Vec<(B::Hash, Slot)> = leaves
+			.clone()
+			.into_iter()
+			.map(|leaf| {
+				client.runtime_api().last_justified_slot(&BlockId::Hash(leaf)).map(|slot| (leaf, slot))
+			})
+			.collect::<Result<_, _>>()?;
+
+		let highest_justified_leaf_and_slot = leaves_with_justified_slots.iter().max_by_key(|(_, slot)| slot).cloned();
+		let highest_justified_hash = highest_justified_leaf_and_slot
+			.map(|(hleaf, hslot)| {
+				let mut header = client.header(BlockId::Hash(hleaf))?
+					.expect("Leaf header must exist; qed");
+				let mut slot = client.runtime_api().slot(&BlockId::Hash(hleaf))?;
+
+				while slot > hslot {
+					header = client.header(BlockId::Hash(*header.parent_hash()))?
+						.expect("Leaf's parent must exist; qed");
+					slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
+				}
+
+				Ok(header.hash())
+			})
+			.map_or(Ok(None), |v: ::client::error::Result<B::Hash>| v.map(Some))?;
+
+		let chain_head_hash = client.best_block_header()?.hash();
+		let last_finalized_slot = client.runtime_api().last_finalized_slot(&BlockId::Hash(chain_head_hash))?;
+		let last_finalized_hash = {
+			let mut header = client.header(*current)?
+				.expect("Chain head header must exist; qed");
+			let mut slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
+
+			while slot > last_finalized_slot {
+				header = client.header(BlockId::Hash(*header.parent_hash()))?
+					.expect("Chain head's parent must exist; qed");
+				slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
+			}
+
+			header.hash()
+		};
+
+		let start_block_hash = highest_justified_hash.unwrap_or(last_finalized_hash);
+
+		let current_route = ::client::blockchain::tree_route(client, BlockId::Hash(start_block_hash), *current)?;
+		let new_route = ::client::blockchain::tree_route(client, BlockId::Hash(start_block_hash), *new_parent)?;
+
+		let mut current_score = 0;
+		let mut new_score = 0;
+
+		for (_, block_hash) in self.0.values() {
+			if current_route.enacted().iter().any(|entry| entry.hash == *block_hash) {
+				current_score += 1;
+			}
+			if new_route.enacted().iter().any(|entry| entry.hash == *block_hash) {
+				new_score += 1;
+			}
+		}
+
+		let current_height = *client.header(*current)?
+			.expect("Chain head header must exist; qed").number();
+		let new_height = *client.header(*new_parent)?
+			.expect("New parent must exist; qed").number();
+
+		Ok(if current_score > new_score {
+			false
+		} else if current_score < new_score {
+			true
+		} else {
+			new_height > current_height
+		})
 	}
 }
 

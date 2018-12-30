@@ -64,7 +64,7 @@ mod digest;
 pub mod validation;
 
 use rstd::prelude::*;
-use primitives::{H256, ValidatorId, OpaqueMetadata};
+use primitives::{Slot, H256, ValidatorId, OpaqueMetadata};
 use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity, generic,
@@ -116,7 +116,6 @@ pub fn native_version() -> NativeVersion {
 		can_author_with: Default::default(),
 	}
 }
-
 
 pub type Log = DigestItem;
 /// Block header type as expected by this runtime.
@@ -350,6 +349,10 @@ impl_runtime_apis! {
 	impl consensus_api::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
 			10
+		}
+
+		fn slot() -> Slot {
+			<storage::Slot>::get()
 		}
 
 		fn validator_ids_from_attestation(attestation: AttestationRecord) -> Vec<ValidatorId> {

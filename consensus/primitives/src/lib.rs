@@ -59,6 +59,9 @@ pub mod api {
 
 			/// Return the last justified slot.
 			fn last_justified_slot() -> Slot;
+
+			/// Return the current slot;
+			fn slot() -> Slot;
 		}
 	}
 }
