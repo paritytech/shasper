@@ -60,6 +60,7 @@ use std::collections::hash_map::{HashMap, Entry};
 use codec::Encode;
 use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT};
 use client::{blockchain::HeaderBackend, ChainHead};
+use client::backend::AuxStore;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
 use consensus_common::{ImportBlock, BlockOrigin, ForkChoiceStrategy};
 use runtime_primitives::{generic::BlockId, Justification, BasicInherentData};
@@ -206,7 +207,7 @@ pub fn start_aura_thread<B, C, E, I, SO, Error>(
 	on_exit: impl Future<Item=(),Error=()> + Send + 'static,
 ) where
 	B: Block<Hash=H256> + 'static,
-	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + ProvideRuntimeApi + Send + Sync + 'static,
+	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync + 'static,
 	C::Api: AuraApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
 	E: Environment<B, AuraConsensusData, Error=Error> + Send + Sync + 'static,
@@ -253,7 +254,7 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 	sync_oracle: SO,
 ) -> impl Future<Item=(),Error=()> where
 	B: Block<Hash=H256>,
-	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + ProvideRuntimeApi,
+	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi,
 	C::Api: AuraApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
 	E: Environment<B, AuraConsensusData, Error=Error>,
@@ -392,6 +393,8 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 								fork_choice: ForkChoiceStrategy::Custom(is_new_best),
 							};
 
+							latest_attestations.save::<B, C>(&client);
+
 							if let Err(e) = block_import.import_block(import_block, None) {
 								warn!(target: "aura", "Error with block built on {:?}: {:?}",
 									parent_hash, e);
@@ -515,7 +518,7 @@ impl<B: Block> ExtraVerification<B> for NothingExtra {
 }
 
 impl<B: Block<Hash=H256>, C, E, MakeInherent, Inherent> Verifier<B> for AuraVerifier<C, E, MakeInherent> where
-	C: Authorities<B> + BlockImport<B> + ChainHead<B> + HeaderBackend<B> + ProvideRuntimeApi + Send + Sync,
+	C: Authorities<B> + BlockImport<B> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
 	C::Api: BlockBuilderApi<B, Inherent> + AuraApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
@@ -604,6 +607,8 @@ impl<B: Block<Hash=H256>, C, E, MakeInherent, Inherent> Verifier<B> for AuraVeri
 					auxiliary: Vec::new(),
 					fork_choice: ForkChoiceStrategy::Custom(is_new_best),
 				};
+
+				latest_attestations.save::<B, C>(&self.client);
 
 				// FIXME: extract authorities - https://github.com/paritytech/substrate/issues/1019
 				Ok((import_block, None))
@@ -813,7 +818,7 @@ pub fn import_queue<B, C, E, MakeInherent, Inherent>(
 	make_inherent: MakeInherent,
 ) -> AuraImportQueue<B, C, E, MakeInherent> where
 	B: Block<Hash=H256>,
-	C: Authorities<B> + BlockImport<B,Error=::client::error::Error> + ChainHead<B> + HeaderBackend<B> + ProvideRuntimeApi + Send + Sync,
+	C: Authorities<B> + BlockImport<B,Error=::client::error::Error> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
 	C::Api: BlockBuilderApi<B, Inherent> + AuraApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,

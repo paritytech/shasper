@@ -1425,14 +1425,6 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "lmd-ghost"
-version = "0.1.0"
-dependencies = [
- "shasper-primitives 0.1.0",
- "sr-std 0.1.0 (git+https://github.com/paritytech/substrate)",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
