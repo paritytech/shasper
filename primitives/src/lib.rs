@@ -37,16 +37,20 @@ extern crate ssz_hash;
 #[macro_use]
 extern crate ssz_hash_derive;
 extern crate hash_db;
+extern crate keccak_hasher;
+extern crate byteorder;
 pub extern crate shasper_crypto as crypto;
 
 mod authority_id;
 mod bitfield;
+mod attestation;
 
 use runtime_primitives::generic;
 use runtime_primitives::traits::{BlakeTwo256, Extrinsic as ExtrinsicT};
 
 pub use authority_id::{H384, AuthorityId};
 pub use bitfield::BitField;
+pub use attestation::AttestationRecord;
 
 pub use primitives::{storage, H256, OpaqueMetadata};
 

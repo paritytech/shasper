@@ -24,6 +24,8 @@ extern crate substrate_primitives as primitives;
 extern crate srml_support as runtime_support;
 extern crate sr_io as runtime_io;
 extern crate sr_primitives as runtime_primitives;
+extern crate shasper_primitives;
+extern crate sr_std as rstd;
 
 /// The ApiIds for Aura authorship API.
 pub mod id {
@@ -35,7 +37,10 @@ pub mod id {
 
 /// Runtime-APIs
 pub mod api {
+	use rstd::prelude::*;
+	use shasper_primitives::{AttestationRecord, ValidatorId, Slot};
 	use client::decl_runtime_apis;
+
 	decl_runtime_apis! {
 		/// API necessary for block authorship with aura.
 		pub trait AuraApi {
@@ -45,6 +50,18 @@ pub mod api {
 			///
 			/// Dynamic slot duration may be supported in the future.
 			fn slot_duration() -> u64;
+
+			/// Return validator attestation map.
+			fn validator_ids_from_attestation(attestation: AttestationRecord) -> Vec<ValidatorId>;
+
+			/// Return the last finalized slot.
+			fn last_finalized_slot() -> Slot;
+
+			/// Return the last justified slot.
+			fn last_justified_slot() -> Slot;
+
+			/// Return the current slot;
+			fn slot() -> Slot;
 		}
 	}
 }

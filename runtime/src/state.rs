@@ -18,7 +18,7 @@ use primitives::H256;
 use rstd::prelude::*;
 
 use consts::CYCLE_LENGTH;
-use attestation::AttestationRecord;
+use super::AttestationRecord;
 use validators::{ValidatorRecord, ShardAndCommittee};
 use shuffling;
 use utils;

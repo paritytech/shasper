@@ -55,16 +55,16 @@ extern crate srml_support as runtime_support;
 mod genesis;
 mod storage;
 mod consts;
-mod attestation;
 pub mod spec;
 mod extrinsic;
 mod validators;
 mod state;
 mod utils;
+mod digest;
 pub mod validation;
 
 use rstd::prelude::*;
-use primitives::{H256, ValidatorId, OpaqueMetadata};
+use primitives::{Slot, H256, ValidatorId, OpaqueMetadata};
 use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity, generic,
@@ -92,11 +92,11 @@ pub use runtime_primitives::{Permill, Perbill};
 pub use srml_support::{StorageValue, RuntimeMetadata};
 #[cfg(feature = "std")]
 pub use genesis::GenesisConfig;
-pub use attestation::AttestationRecord;
 pub use extrinsic::UncheckedExtrinsic;
-pub use primitives::BlockNumber;
+pub use primitives::{AttestationRecord, BlockNumber};
 pub use validators::{ValidatorRecord, ShardAndCommittee};
 pub use state::{CrosslinkRecord, ActiveState, BlockVoteInfo, CrystallizedState};
+pub use digest::DigestItem;
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -114,41 +114,6 @@ pub fn native_version() -> NativeVersion {
 	NativeVersion {
 		runtime_version: VERSION,
 		can_author_with: Default::default(),
-	}
-}
-
-#[derive(PartialEq, Eq, Clone, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize))]
-pub enum DigestItem {
-	/// System digest item announcing that authorities set has been changed
-	/// in the block. Contains the new set of authorities.
-	AuthoritiesChange(Vec<ValidatorId>),
-	/// System digest item that contains the root of changes trie at given
-	/// block. It is created for every block iff runtime supports changes
-	/// trie creation.
-	ChangesTrieRoot(H256),
-	/// Put a Seal on it
-	Seal(u64, Vec<u8>),
-	/// Any 'non-system' digest item, opaque to the native code.
-	Other(Vec<u8>),
-}
-
-impl traits::DigestItem for DigestItem {
-	type Hash = H256;
-	type AuthorityId = ValidatorId;
-
-	fn as_authorities_change(&self) -> Option<&[Self::AuthorityId]> {
-		match self {
-			DigestItem::AuthoritiesChange(ref validators) => Some(validators),
-			_ => None,
-		}
-	}
-
-	fn as_changes_trie_root(&self) -> Option<&Self::Hash> {
-		match self {
-			DigestItem::ChangesTrieRoot(ref root) => Some(root),
-			_ => None,
-		}
 	}
 }
 
@@ -384,6 +349,30 @@ impl_runtime_apis! {
 	impl consensus_api::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
 			10
+		}
+
+		fn slot() -> Slot {
+			<storage::Slot>::get()
+		}
+
+		fn validator_ids_from_attestation(attestation: AttestationRecord) -> Vec<ValidatorId> {
+			let crystallized_state = <storage::Crystallized>::get();
+			let attestation_indices = crystallized_state.attestation_indices(&attestation);
+
+			attestation_indices
+				.iter()
+				.enumerate()
+				.filter(|(i, _)| attestation.attester_bitfield.has_voted(*i))
+				.map(|(_, index)| crystallized_state.validators[*index].pubkey.clone())
+				.collect()
+		}
+
+		fn last_finalized_slot() -> u64 {
+			<storage::Crystallized>::get().last_finalized_slot
+		}
+
+		fn last_justified_slot() -> u64 {
+			<storage::Crystallized>::get().last_justified_slot
 		}
 	}
 }

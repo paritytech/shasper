@@ -29,7 +29,7 @@ use substrate_service::{
 	FullClient, LightClient, LightBackend, FullExecutor, LightExecutor,
 	TaskExecutor,
 };
-use consensus::{import_queue, start_aura, AuraImportQueue, NothingExtra, SlotDuration};
+use consensus::{import_queue, start_aura, AuraImportQueue, NothingExtra, SlotDuration, LatestAttestations};
 use client;
 use crypto::bls;
 
@@ -87,6 +87,7 @@ construct_service_factory! {
 					let client = service.client();
 					executor.spawn(start_aura(
 						SlotDuration::get_or_compute(&*client)?,
+						LatestAttestations::get_or_default::<Block, _>(&*client)?,
 						Arc::new(
 							bls::Pair::from_secret(key.clone())
 						),
@@ -111,6 +112,7 @@ construct_service_factory! {
 			{ |config: &mut FactoryFullConfiguration<Self>, client: Arc<FullClient<Self>>| {
 				Ok(import_queue(
 					SlotDuration::get_or_compute(&*client)?,
+					LatestAttestations::get_or_default::<Block, _>(&*client)?,
 					client,
 					NothingExtra,
 					::consensus::make_basic_inherent as _,
@@ -125,6 +127,7 @@ construct_service_factory! {
 			{ |config: &mut FactoryFullConfiguration<Self>, client: Arc<LightClient<Self>>|
 				Ok(import_queue(
 					SlotDuration::get_or_compute(&*client)?,
+					LatestAttestations::get_or_default::<Block, _>(&*client)?,
 					client,
 					NothingExtra,
 					::consensus::make_basic_inherent as _,
