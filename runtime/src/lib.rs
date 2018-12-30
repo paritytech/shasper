@@ -61,6 +61,7 @@ mod extrinsic;
 mod validators;
 mod state;
 mod utils;
+mod digest;
 pub mod validation;
 
 use rstd::prelude::*;
@@ -97,6 +98,7 @@ pub use extrinsic::UncheckedExtrinsic;
 pub use primitives::BlockNumber;
 pub use validators::{ValidatorRecord, ShardAndCommittee};
 pub use state::{CrosslinkRecord, ActiveState, BlockVoteInfo, CrystallizedState};
+pub use digest::DigestItem;
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -117,40 +119,6 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize))]
-pub enum DigestItem {
-	/// System digest item announcing that authorities set has been changed
-	/// in the block. Contains the new set of authorities.
-	AuthoritiesChange(Vec<ValidatorId>),
-	/// System digest item that contains the root of changes trie at given
-	/// block. It is created for every block iff runtime supports changes
-	/// trie creation.
-	ChangesTrieRoot(H256),
-	/// Put a Seal on it
-	Seal(u64, Vec<u8>),
-	/// Any 'non-system' digest item, opaque to the native code.
-	Other(Vec<u8>),
-}
-
-impl traits::DigestItem for DigestItem {
-	type Hash = H256;
-	type AuthorityId = ValidatorId;
-
-	fn as_authorities_change(&self) -> Option<&[Self::AuthorityId]> {
-		match self {
-			DigestItem::AuthoritiesChange(ref validators) => Some(validators),
-			_ => None,
-		}
-	}
-
-	fn as_changes_trie_root(&self) -> Option<&Self::Hash> {
-		match self {
-			DigestItem::ChangesTrieRoot(ref root) => Some(root),
-			_ => None,
-		}
-	}
-}
 
 pub type Log = DigestItem;
 /// Block header type as expected by this runtime.
