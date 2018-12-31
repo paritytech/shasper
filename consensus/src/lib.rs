@@ -64,7 +64,7 @@ use client::backend::AuxStore;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
 use consensus_common::{ImportBlock, BlockOrigin, ForkChoiceStrategy};
 use runtime_primitives::{generic::BlockId, Justification, BasicInherentData};
-use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
+use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi, One};
 use network::import_queue::{Verifier, BasicQueue};
 use shasper_primitives::{ValidatorId, H256, Slot};
 use parking_lot::Mutex;
@@ -797,7 +797,7 @@ impl LatestAttestations {
 		let current_height = *client.header(*current)?
 			.expect("Chain head header must exist; qed").number();
 		let new_height = *client.header(*new_parent)?
-			.expect("New parent must exist; qed").number();
+			.expect("New parent must exist; qed").number() + One::one();
 
 		Ok(if current_score > new_score {
 			false
