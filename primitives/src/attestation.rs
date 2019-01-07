@@ -16,7 +16,7 @@
 
 use rstd::prelude::*;
 
-use super::{H256, ValidatorId, ShardId, BitField};
+use super::{H256, ValidatorId, ShardId, BitField, Signature};
 use hash_db::Hasher;
 use keccak_hasher::KeccakHasher;
 use crypto::bls;
@@ -32,7 +32,7 @@ pub struct AttestationRecord {
 	pub attester_bitfield: BitField,
 	pub justified_slot: u64,
 	pub justified_block_hash: H256,
-	pub aggregate_sig: Vec<u8>,
+	pub aggregate_sig: Signature,
 }
 
 impl Default for AttestationRecord {
@@ -45,11 +45,7 @@ impl Default for AttestationRecord {
 			attester_bitfield: BitField::new(0),
 			justified_slot: 0,
 			justified_block_hash: H256::default(),
-			aggregate_sig: {
-				let mut ret = Vec::with_capacity(2 * 48 + 1);
-				ret.resize(2 * 48 + 1, 0);
-				ret
-			},
+			aggregate_sig: Signature::default(),
 		}
 	}
 }
@@ -89,12 +85,16 @@ impl AttestationRecord {
 		KeccakHasher::hash(&v)
 	}
 
-	pub fn verify_signatures(&self, parent_hashes: &[H256], pubkeys: &[ValidatorId]){
-		assert!(pubkeys.len() == 1, "Aggregate signatures are not yet supported.");
-
+	pub fn verify_signatures(&self, parent_hashes: &[H256], pubkeys: &[ValidatorId]) {
+		let sig = self.aggregate_sig.into_aggregate_signature().expect("Signature decoding failed, attestation is invalid");
 		let message = self.message(parent_hashes);
-		let sig = bls::Signature::from_compressed_bytes(&self.aggregate_sig[1..97]).expect("Signature decoding failed, attestation is invalid");
-		let pubkey = bls::Public::from_compressed_bytes(pubkeys[0].as_ref()).expect("Public key provided is invalid");
-		assert!(pubkey.verify(message.as_ref(), &sig));
+
+		let mut inputs = Vec::new();
+		for pubkey in pubkeys {
+			let pubkey = pubkey.into_public().expect("Public key provided is invalid");
+			inputs.push((pubkey, message.as_ref().to_vec()));
+		}
+
+		assert!(sig.verify(&inputs.iter().map(|(p, m)| (p, &m[..])).collect::<Vec<_>>()));
 	}
 }

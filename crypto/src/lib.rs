@@ -27,4 +27,6 @@ pub mod bls {
 	pub type Secret = bls_crate::Secret<Bls12>;
 	pub type Pair = bls_crate::Pair<Bls12>;
 	pub type Signature = bls_crate::Signature<Bls12>;
+	pub type AggregatePublic = bls_crate::AggregatePublic<Bls12>;
+	pub type AggregateSignature = bls_crate::AggregateSignature<Bls12>;
 }
