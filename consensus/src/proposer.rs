@@ -18,7 +18,7 @@ use std::sync::Arc;
 use std::time;
 
 use AuraConsensusData;
-use service::consensus::AuthoringApi;
+use basic_authorship::AuthoringApi;
 use client::{self, error};
 use client::{block_builder::api::BlockBuilder as BlockBuilderApi};
 use codec::{Decode, Encode};

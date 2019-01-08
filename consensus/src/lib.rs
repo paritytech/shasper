@@ -35,8 +35,8 @@ extern crate sr_primitives as runtime_primitives;
 extern crate shasper_consensus_primitives as aura_primitives;
 extern crate substrate_transaction_pool as transaction_pool;
 extern crate substrate_service as service;
-
 extern crate substrate_consensus_common as consensus_common;
+extern crate substrate_basic_authorship as basic_authorship;
 extern crate tokio;
 extern crate sr_version as runtime_version;
 extern crate substrate_network as network;
@@ -59,13 +59,13 @@ use std::collections::hash_map::{HashMap, Entry};
 
 use codec::Encode;
 use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT};
+use consensus_common::import_queue::{Verifier, BasicQueue};
 use client::{blockchain::HeaderBackend, ChainHead};
 use client::backend::AuxStore;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
 use consensus_common::{ImportBlock, BlockOrigin, ForkChoiceStrategy};
 use runtime_primitives::{generic::BlockId, Justification, BasicInherentData};
 use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi, One};
-use network::import_queue::{Verifier, BasicQueue};
 use shasper_primitives::{ValidatorId, H256, Slot};
 use parking_lot::Mutex;
 
@@ -818,7 +818,7 @@ pub fn import_queue<B, C, E, MakeInherent, Inherent>(
 	make_inherent: MakeInherent,
 ) -> AuraImportQueue<B, C, E, MakeInherent> where
 	B: Block<Hash=H256>,
-	C: Authorities<B> + BlockImport<B,Error=::client::error::Error> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
+	C: Authorities<B> + BlockImport<B, Error=::consensus_common::Error> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
 	C::Api: BlockBuilderApi<B, Inherent> + AuraApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
