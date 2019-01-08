@@ -50,8 +50,10 @@ extern crate shasper_runtime;
 extern crate log;
 
 mod proposer;
+mod block_import;
 
 pub use aura_primitives::*;
+pub use block_import::ShasperBlockImport;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
