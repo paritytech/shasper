@@ -50,20 +50,23 @@ extern crate shasper_runtime;
 extern crate log;
 
 mod proposer;
+mod block_import;
 
 pub use aura_primitives::*;
+pub use block_import::{ShasperBlockImport, LatestAttestations};
+pub use consensus_common::SyncOracle;
+pub use proposer::{ProposerFactory, Proposer};
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::collections::hash_map::{HashMap, Entry};
 
 use codec::Encode;
-use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT};
+use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT, ImportBlock, BlockOrigin, ForkChoiceStrategy, Error as ConsensusError};
 use consensus_common::import_queue::{Verifier, BasicQueue};
 use client::{blockchain::HeaderBackend, ChainHead};
 use client::backend::AuxStore;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
-use consensus_common::{ImportBlock, BlockOrigin, ForkChoiceStrategy};
 use runtime_primitives::{generic::BlockId, Justification, BasicInherentData};
 use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi, One};
 use shasper_primitives::{ValidatorId, H256, Slot};
@@ -73,9 +76,6 @@ use futures::{Stream, Future, IntoFuture, future::{self, Either}};
 use tokio::timer::{Delay, Timeout};
 use api::AuraApi;
 use crypto::bls;
-
-pub use consensus_common::SyncOracle;
-pub use proposer::{ProposerFactory, Proposer};
 
 /// Aura consensus environmental data. Useful for block-proposing code.
 pub struct AuraConsensusData {
@@ -198,7 +198,6 @@ impl CompatibleExtrinsic for shasper_runtime::UncheckedExtrinsic {
 /// Start the aura worker in a separate thread.
 pub fn start_aura_thread<B, C, E, I, SO, Error>(
 	slot_duration: SlotDuration,
-	latest_attestations: LatestAttestations,
 	local_key: Arc<bls::Pair>,
 	client: Arc<C>,
 	block_import: Arc<I>,
@@ -231,7 +230,6 @@ pub fn start_aura_thread<B, C, E, I, SO, Error>(
 
 		runtime.spawn(start_aura(
 			slot_duration,
-			latest_attestations,
 			local_key,
 			client,
 			block_import,
@@ -246,7 +244,6 @@ pub fn start_aura_thread<B, C, E, I, SO, Error>(
 /// Start the aura worker. The returned future should be run in a tokio runtime.
 pub fn start_aura<B, C, E, I, SO, Error>(
 	slot_duration: SlotDuration,
-	latest_attestations: LatestAttestations,
 	local_key: Arc<bls::Pair>,
 	client: Arc<C>,
 	block_import: Arc<I>,
@@ -273,7 +270,6 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 		let block_import = block_import.clone();
 		let env = env.clone();
 		let sync_oracle = sync_oracle.clone();
-		let latest_attestations = Arc::new(Mutex::new(latest_attestations.clone()));
 		let SlotDuration(slot_duration) = slot_duration;
 
 		fn time_until_next(now: Duration, slot_duration: u64) -> Duration {
@@ -294,7 +290,6 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 			let env = env.clone();
 			let sync_oracle = sync_oracle.clone();
 			let public_key = pair.public.clone();
-			let latest_attestations = latest_attestations.clone();
 
 			Delay::new(next_slot_start)
 				.map_err(|e| debug!(target: "aura", "Faulty timer: {:?}", e))
@@ -377,11 +372,6 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 								signature,
 							);
 
-							let mut latest_attestations = latest_attestations.lock();
-							latest_attestations.note_block::<B, C>(&client, &BlockId::Hash(parent_hash), Some(&body));
-							// FIXME: remove unwrap
-							let is_new_best = latest_attestations.is_new_best::<B, C>(&client, &BlockId::Hash(client.best_block_header().unwrap().hash()), &BlockId::Hash(parent_hash)).unwrap();
-
 							let import_block = ImportBlock {
 								origin: BlockOrigin::Own,
 								header,
@@ -390,10 +380,8 @@ pub fn start_aura<B, C, E, I, SO, Error>(
 								body: Some(body),
 								finalized: false,
 								auxiliary: Vec::new(),
-								fork_choice: ForkChoiceStrategy::Custom(is_new_best),
+								fork_choice: ForkChoiceStrategy::LongestChain,
 							};
-
-							latest_attestations.save::<B, C>(&client);
 
 							if let Err(e) = block_import.import_block(import_block, None) {
 								warn!(target: "aura", "Error with block built on {:?}: {:?}",
@@ -499,7 +487,6 @@ pub trait ExtraVerification<B: Block>: Send + Sync {
 /// A verifier for Aura blocks.
 pub struct AuraVerifier<C, E, MakeInherent> {
 	slot_duration: SlotDuration,
-	latest_attestations: Mutex<LatestAttestations>,
 	client: Arc<C>,
 	make_inherent: MakeInherent,
 	extra: E,
@@ -592,11 +579,6 @@ impl<B: Block<Hash=H256>, C, E, MakeInherent, Inherent> Verifier<B> for AuraVeri
 
 				extra_verification.into_future().wait()?;
 
-				// FIXME: remove unwrap
-				let mut latest_attestations = self.latest_attestations.lock();
-				latest_attestations.note_block::<B, C>(&self.client, &BlockId::Hash(parent_hash), body.as_ref().map(|x| &x[..]));
-				let is_new_best = latest_attestations.is_new_best::<B, C>(&self.client, &BlockId::Hash(self.client.best_block_header().unwrap().hash()), &BlockId::Hash(parent_hash)).unwrap();
-
 				let import_block = ImportBlock {
 					origin,
 					header: pre_header,
@@ -605,10 +587,8 @@ impl<B: Block<Hash=H256>, C, E, MakeInherent, Inherent> Verifier<B> for AuraVeri
 					finalized: false,
 					justification,
 					auxiliary: Vec::new(),
-					fork_choice: ForkChoiceStrategy::Custom(is_new_best),
+					fork_choice: ForkChoiceStrategy::LongestChain,
 				};
-
-				latest_attestations.save::<B, C>(&self.client);
 
 				// FIXME: extract authorities - https://github.com/paritytech/substrate/issues/1019
 				Ok((import_block, None))
@@ -672,148 +652,11 @@ impl SlotDuration {
 	}
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct LatestAttestations(HashMap<ValidatorId, (Slot, H256)>);
-
-const LATEST_ATTESTATIONS_SLOT_KEY: &[u8] = b"lmd_latest_attestations";
-
-impl LatestAttestations {
-	pub fn get_or_default<B: Block, C>(client: &C) -> ::client::error::Result<Self> where
-		C: ::client::backend::AuxStore
-	{
-		use codec::Decode;
-
-		match client.get_aux(LATEST_ATTESTATIONS_SLOT_KEY)? {
-			Some(v) => Vec::<(ValidatorId, (Slot, H256))>::decode(&mut &v[..])
-				.map(|v| LatestAttestations(v.into_iter().collect()))
-				.ok_or_else(|| ::client::error::ErrorKind::Backend(
-					format!("Aura slot duration kept in invalid format"),
-				).into()),
-			None => Ok(Default::default()),
-		}
-	}
-
-	pub fn save<B: Block, C>(&self, client: &C) -> ::client::error::Result<()> where
-		C: ::client::backend::AuxStore
-	{
-		self.0.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Vec<_>>().using_encoded(|s| {
-			client.insert_aux(&[(LATEST_ATTESTATIONS_SLOT_KEY, &s[..])], &[])
-		})
-	}
-
-	pub fn note_validator_attestation(&mut self, validator_id: ValidatorId, block_slot: Slot, block_hash: H256) {
-		let entry = self.0.entry(validator_id);
-		match entry {
-			Entry::Occupied(mut entry) => {
-				if entry.get().0 < block_slot {
-					entry.insert((block_slot, block_hash));
-				}
-			},
-			Entry::Vacant(entry) => {
-				entry.insert((block_slot, block_hash));
-			},
-		}
-	}
-
-	pub fn note_block<B: Block<Hash=H256>, C>(&mut self, client: &C, parent_id: &BlockId<B>, body: Option<&[B::Extrinsic]>) where
-		C: ProvideRuntimeApi,
-		C::Api: AuraApi<B>,
-		B::Extrinsic: CompatibleExtrinsic,
-	{
-		if let Some(extrinsics) = body {
-			for extrinsic in extrinsics {
-				let map = extrinsic.as_validator_attestation_map(client, parent_id).unwrap_or_default();
-
-				for (validator_id, (block_slot, block_hash)) in map {
-					self.note_validator_attestation(validator_id, block_slot, block_hash);
-				}
-			}
-		}
-	}
-
-	pub fn is_new_best<B: Block<Hash=H256>, C>(&self, client: &C, current: &BlockId<B>, new_parent: &BlockId<B>) -> ::client::error::Result<bool> where
-		C: ChainHead<B> + HeaderBackend<B> + ProvideRuntimeApi,
-		C::Api: AuraApi<B>,
-	{
-		let leaves = client.leaves()?;
-		let leaves_with_justified_slots: Vec<(B::Hash, Slot)> = leaves
-			.clone()
-			.into_iter()
-			.map(|leaf| {
-				client.runtime_api().last_justified_slot(&BlockId::Hash(leaf)).map(|slot| (leaf, slot))
-			})
-			.collect::<Result<_, _>>()?;
-
-		let highest_justified_leaf_and_slot = leaves_with_justified_slots.iter().max_by_key(|(_, slot)| slot).cloned();
-		let highest_justified_hash = highest_justified_leaf_and_slot
-			.map(|(hleaf, hslot)| {
-				let mut header = client.header(BlockId::Hash(hleaf))?
-					.expect("Leaf header must exist; qed");
-				let mut slot = client.runtime_api().slot(&BlockId::Hash(hleaf))?;
-
-				while slot > hslot {
-					header = client.header(BlockId::Hash(*header.parent_hash()))?
-						.expect("Leaf's parent must exist; qed");
-					slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
-				}
-
-				Ok(header.hash())
-			})
-			.map_or(Ok(None), |v: ::client::error::Result<B::Hash>| v.map(Some))?;
-
-		let chain_head_hash = client.best_block_header()?.hash();
-		let last_finalized_slot = client.runtime_api().last_finalized_slot(&BlockId::Hash(chain_head_hash))?;
-		let last_finalized_hash = {
-			let mut header = client.header(*current)?
-				.expect("Chain head header must exist; qed");
-			let mut slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
-
-			while slot > last_finalized_slot {
-				header = client.header(BlockId::Hash(*header.parent_hash()))?
-					.expect("Chain head's parent must exist; qed");
-				slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
-			}
-
-			header.hash()
-		};
-
-		let start_block_hash = highest_justified_hash.unwrap_or(last_finalized_hash);
-
-		let current_route = ::client::blockchain::tree_route(client, BlockId::Hash(start_block_hash), *current)?;
-		let new_route = ::client::blockchain::tree_route(client, BlockId::Hash(start_block_hash), *new_parent)?;
-
-		let mut current_score = 0;
-		let mut new_score = 0;
-
-		for (_, block_hash) in self.0.values() {
-			if current_route.enacted().iter().any(|entry| entry.hash == *block_hash) {
-				current_score += 1;
-			}
-			if new_route.enacted().iter().any(|entry| entry.hash == *block_hash) {
-				new_score += 1;
-			}
-		}
-
-		let current_height = *client.header(*current)?
-			.expect("Chain head header must exist; qed").number();
-		let new_height = *client.header(*new_parent)?
-			.expect("New parent must exist; qed").number() + One::one();
-
-		Ok(if current_score > new_score {
-			false
-		} else if current_score < new_score {
-			true
-		} else {
-			new_height > current_height
-		})
-	}
-}
-
 /// Start an import queue for the Aura consensus algorithm.
-pub fn import_queue<B, C, E, MakeInherent, Inherent>(
+pub fn import_queue<B, C, E, I, MakeInherent, Inherent>(
 	slot_duration: SlotDuration,
-	latest_attestations: LatestAttestations,
 	client: Arc<C>,
+	block_import: Arc<I>,
 	extra: E,
 	make_inherent: MakeInherent,
 ) -> AuraImportQueue<B, C, E, MakeInherent> where
@@ -823,8 +666,9 @@ pub fn import_queue<B, C, E, MakeInherent, Inherent>(
 	B::Extrinsic: CompatibleExtrinsic,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
 	E: ExtraVerification<B>,
+	I: 'static + BlockImport<B, Error=ConsensusError> + Send + Sync,
 	MakeInherent: Fn(u64, u64) -> Inherent + Send + Sync,
 {
-	let verifier = Arc::new(AuraVerifier { slot_duration, latest_attestations: Mutex::new(latest_attestations), client: client.clone(), extra, make_inherent });
-	BasicQueue::new(verifier, client)
+	let verifier = Arc::new(AuraVerifier { slot_duration, client: client.clone(), extra, make_inherent });
+	BasicQueue::new(verifier, block_import)
 }
