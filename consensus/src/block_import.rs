@@ -18,7 +18,7 @@ use std::sync::Arc;
 use std::collections::hash_map::{HashMap, Entry};
 use std::marker::PhantomData;
 
-use consensus_common::{Authorities, ImportBlock, BlockImport, ImportResult, Error as ConsensusError};
+use consensus_common::{ForkChoiceStrategy, Authorities, ImportBlock, BlockImport, ImportResult, Error as ConsensusError, ErrorKind as ConsensusErrorKind};
 use primitives::H256;
 use client::ChainHead;
 use client::backend::AuxStore;
@@ -28,12 +28,13 @@ use runtime_primitives::traits::{Block, DigestItem, DigestItemFor, ProvideRuntim
 use shasper_primitives::{Slot, ValidatorId};
 use aura_primitives::api::AuraApi;
 use codec::Encode;
+use parking_lot::Mutex;
 
 use super::{CompatibleExtrinsic, CompatibleDigestItem};
 
 pub struct ShasperBlockImport<B, C> {
 	client: Arc<C>,
-	latest_attestations: LatestAttestations,
+	latest_attestations: Mutex<LatestAttestations>,
 	_phantom: PhantomData<B>,
 }
 
@@ -41,7 +42,7 @@ impl<B: Block<Hash=H256>, C> ShasperBlockImport<B, C> where
 	C: BlockImport<B, Error=ConsensusError> + ::client::backend::AuxStore
 {
 	pub fn new(client: Arc<C>) -> ::client::error::Result<Self> {
-		let latest_attestations = LatestAttestations::get_or_default::<B, _>(client.as_ref())?;
+		let latest_attestations = Mutex::new(LatestAttestations::get_or_default::<B, _>(client.as_ref())?);
 		Ok(Self {
 			client, latest_attestations,
 			_phantom: PhantomData,
@@ -51,6 +52,8 @@ impl<B: Block<Hash=H256>, C> ShasperBlockImport<B, C> where
 
 impl<B: Block<Hash=H256>, C> BlockImport<B> for ShasperBlockImport<B, C> where
 	C: Authorities<B> + BlockImport<B, Error=ConsensusError> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
+	B::Extrinsic: CompatibleExtrinsic,
+	C::Api: AuraApi<B>,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
 {
 	type Error = ConsensusError;
@@ -58,7 +61,25 @@ impl<B: Block<Hash=H256>, C> BlockImport<B> for ShasperBlockImport<B, C> where
 	fn import_block(&self, mut block: ImportBlock<B>, new_authorities: Option<Vec<ValidatorId>>)
 		-> Result<ImportResult, Self::Error>
 	{
-		self.client.import_block(block, new_authorities)
+		let parent_hash = block.header.parent_hash().clone();
+
+		let mut latest_attestations = self.latest_attestations.lock();
+		latest_attestations.note_block::<B, C>(&self.client, &BlockId::Hash(parent_hash), block.body.as_ref().map(|a| &a[..]));
+
+		let best_header = self.client.best_block_header().map_err::<ConsensusError, _>(|e| ConsensusErrorKind::ClientImport(e.to_string()).into())?;
+		let is_new_best = latest_attestations.is_new_best::<B, C>(&self.client, &BlockId::Hash(best_header.hash()), &BlockId::Hash(parent_hash)).map_err::<ConsensusError, _>(|e| ConsensusErrorKind::ClientImport(e.to_string()).into())?;
+		block.fork_choice = ForkChoiceStrategy::Custom(is_new_best);
+
+		match self.client.import_block(block, new_authorities) {
+			Ok(result) => {
+				latest_attestations.save::<B, C>(&self.client).map_err::<ConsensusError, _>(|e| ConsensusErrorKind::ClientImport(e.to_string()).into())?;
+				Ok(result)
+			},
+			Err(e) => {
+				*latest_attestations = LatestAttestations::get_or_default::<B, _>(self.client.as_ref()).map_err::<ConsensusError, _>(|e| ConsensusErrorKind::ClientImport(e.to_string()).into())?;
+				Err(e)
+			},
+		}
 	}
 }
 
