@@ -92,7 +92,7 @@ construct_service_factory! {
 							bls::Pair::from_secret(key.clone())
 						),
 						client.clone(),
-						Arc::new(ShasperBlockImport::new(client)),
+						Arc::new(ShasperBlockImport::new(client)?),
 						proposer,
 						service.network(),
 					));
@@ -114,7 +114,7 @@ construct_service_factory! {
 					SlotDuration::get_or_compute(&*client)?,
 					LatestAttestations::get_or_default::<Block, _>(&*client)?,
 					client.clone(),
-					Arc::new(ShasperBlockImport::new(client)),
+					Arc::new(ShasperBlockImport::new(client)?),
 					NothingExtra,
 					::consensus::make_basic_inherent as _,
 				))
@@ -130,7 +130,7 @@ construct_service_factory! {
 					SlotDuration::get_or_compute(&*client)?,
 					LatestAttestations::get_or_default::<Block, _>(&*client)?,
 					client.clone(),
-					Arc::new(ShasperBlockImport::new(client)),
+					Arc::new(ShasperBlockImport::new(client)?),
 					NothingExtra,
 					::consensus::make_basic_inherent as _,
 				))

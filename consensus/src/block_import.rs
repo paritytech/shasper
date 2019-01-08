@@ -16,6 +16,7 @@
 
 use std::sync::Arc;
 use std::collections::hash_map::{HashMap, Entry};
+use std::marker::PhantomData;
 
 use consensus_common::{Authorities, ImportBlock, BlockImport, ImportResult, Error as ConsensusError};
 use primitives::H256;
@@ -30,25 +31,31 @@ use codec::Encode;
 
 use super::{CompatibleExtrinsic, CompatibleDigestItem};
 
-pub struct ShasperBlockImport<C> {
+pub struct ShasperBlockImport<B, C> {
 	client: Arc<C>,
+	latest_attestations: LatestAttestations,
+	_phantom: PhantomData<B>,
 }
 
-impl<C> ShasperBlockImport<C> {
-	pub fn new(client: Arc<C>) -> Self {
-		Self {
-			client
-		}
+impl<B: Block<Hash=H256>, C> ShasperBlockImport<B, C> where
+	C: BlockImport<B, Error=ConsensusError> + ::client::backend::AuxStore
+{
+	pub fn new(client: Arc<C>) -> ::client::error::Result<Self> {
+		let latest_attestations = LatestAttestations::get_or_default::<B, _>(client.as_ref())?;
+		Ok(Self {
+			client, latest_attestations,
+			_phantom: PhantomData,
+		})
 	}
 }
 
-impl<B: Block<Hash=H256>, C> BlockImport<B> for ShasperBlockImport<C> where
+impl<B: Block<Hash=H256>, C> BlockImport<B> for ShasperBlockImport<B, C> where
 	C: Authorities<B> + BlockImport<B, Error=ConsensusError> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
 {
 	type Error = ConsensusError;
 
-	fn import_block(&self, block: ImportBlock<B>, new_authorities: Option<Vec<ValidatorId>>)
+	fn import_block(&self, mut block: ImportBlock<B>, new_authorities: Option<Vec<ValidatorId>>)
 		-> Result<ImportResult, Self::Error>
 	{
 		self.client.import_block(block, new_authorities)
