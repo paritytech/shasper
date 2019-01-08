@@ -30,6 +30,14 @@ pub struct ShasperBlockImport<C> {
 	client: Arc<C>,
 }
 
+impl<C> ShasperBlockImport<C> {
+	pub fn new(client: Arc<C>) -> Self {
+		Self {
+			client
+		}
+	}
+}
+
 impl<B: Block<Hash=H256>, C> BlockImport<B> for ShasperBlockImport<C> where
 	C: Authorities<B> + BlockImport<B, Error=ConsensusError> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,

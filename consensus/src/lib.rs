@@ -60,12 +60,11 @@ use std::time::{Duration, Instant};
 use std::collections::hash_map::{HashMap, Entry};
 
 use codec::Encode;
-use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT};
+use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT, ImportBlock, BlockOrigin, ForkChoiceStrategy, Error as ConsensusError};
 use consensus_common::import_queue::{Verifier, BasicQueue};
 use client::{blockchain::HeaderBackend, ChainHead};
 use client::backend::AuxStore;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
-use consensus_common::{ImportBlock, BlockOrigin, ForkChoiceStrategy};
 use runtime_primitives::{generic::BlockId, Justification, BasicInherentData};
 use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi, One};
 use shasper_primitives::{ValidatorId, H256, Slot};
@@ -812,10 +811,11 @@ impl LatestAttestations {
 }
 
 /// Start an import queue for the Aura consensus algorithm.
-pub fn import_queue<B, C, E, MakeInherent, Inherent>(
+pub fn import_queue<B, C, E, I, MakeInherent, Inherent>(
 	slot_duration: SlotDuration,
 	latest_attestations: LatestAttestations,
 	client: Arc<C>,
+	block_import: Arc<I>,
 	extra: E,
 	make_inherent: MakeInherent,
 ) -> AuraImportQueue<B, C, E, MakeInherent> where
@@ -825,8 +825,9 @@ pub fn import_queue<B, C, E, MakeInherent, Inherent>(
 	B::Extrinsic: CompatibleExtrinsic,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
 	E: ExtraVerification<B>,
+	I: 'static + BlockImport<B, Error=ConsensusError> + Send + Sync,
 	MakeInherent: Fn(u64, u64) -> Inherent + Send + Sync,
 {
 	let verifier = Arc::new(AuraVerifier { slot_duration, latest_attestations: Mutex::new(latest_attestations), client: client.clone(), extra, make_inherent });
-	BasicQueue::new(verifier, client)
+	BasicQueue::new(verifier, block_import)
 }

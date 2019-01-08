@@ -29,7 +29,7 @@ use substrate_service::{
 	FullClient, LightClient, LightBackend, FullExecutor, LightExecutor,
 	TaskExecutor,
 };
-use consensus::{import_queue, start_aura, AuraImportQueue, NothingExtra, SlotDuration, LatestAttestations};
+use consensus::{import_queue, start_aura, AuraImportQueue, NothingExtra, SlotDuration, LatestAttestations, ShasperBlockImport};
 use client;
 use crypto::bls;
 
@@ -92,7 +92,7 @@ construct_service_factory! {
 							bls::Pair::from_secret(key.clone())
 						),
 						client.clone(),
-						client,
+						Arc::new(ShasperBlockImport::new(client)),
 						proposer,
 						service.network(),
 					));
@@ -113,7 +113,8 @@ construct_service_factory! {
 				Ok(import_queue(
 					SlotDuration::get_or_compute(&*client)?,
 					LatestAttestations::get_or_default::<Block, _>(&*client)?,
-					client,
+					client.clone(),
+					Arc::new(ShasperBlockImport::new(client)),
 					NothingExtra,
 					::consensus::make_basic_inherent as _,
 				))
@@ -128,7 +129,8 @@ construct_service_factory! {
 				Ok(import_queue(
 					SlotDuration::get_or_compute(&*client)?,
 					LatestAttestations::get_or_default::<Block, _>(&*client)?,
-					client,
+					client.clone(),
+					Arc::new(ShasperBlockImport::new(client)),
 					NothingExtra,
 					::consensus::make_basic_inherent as _,
 				))
