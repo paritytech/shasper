@@ -18,7 +18,6 @@
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use primitives::H256;
 use crypto::bls;
-use rstd::vec::Vec;
 
 #[cfg(feature = "std")]
 use primitives::bytes;

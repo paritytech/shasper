@@ -27,4 +27,3 @@ pub const TIMESTAMP_POSITION: u32 = 0;
 pub const SLOT_POSITION: u32 = 1;
 pub const RANDAO_REVEAL_POSITION: u32 = 2;
 pub const POW_CHAIN_REF_POSITION: u32 = 3;
-pub const ATTESTATION_START_POSITION: u32 = 4;

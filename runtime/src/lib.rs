@@ -68,7 +68,7 @@ use primitives::{Slot, H256, ValidatorId, OpaqueMetadata};
 use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity, generic,
-	traits::{self, Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
+	traits::{Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
 	BasicInherentData, CheckInherentError, ApplyOutcome,
 };
 use client::{
