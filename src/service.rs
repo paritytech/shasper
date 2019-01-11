@@ -29,7 +29,7 @@ use substrate_service::{
 	FullClient, LightClient, LightBackend, FullExecutor, LightExecutor,
 	TaskExecutor,
 };
-use consensus::{import_queue, start_aura, AuraImportQueue, NothingExtra, SlotDuration, LatestAttestations, ShasperBlockImport};
+use consensus::{import_queue, start_aura, AuraImportQueue, NothingExtra, SlotDuration, ShasperBlockImport};
 use client;
 use crypto::bls;
 
