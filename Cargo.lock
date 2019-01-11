@@ -276,6 +276,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "casper"
+version = "0.1.0"
+dependencies = [
+ "hash-db 0.9.0 (git+https://github.com/paritytech/trie)",
+ "plain_hasher 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
