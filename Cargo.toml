@@ -44,6 +44,7 @@ members = [
 	"primitives",
 	"consensus",
 	"crypto",
+	"casper",
 	"util/ssz",
 	"util/ssz-derive",
 	"util/ssz-hash",

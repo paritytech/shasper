@@ -1,0 +1,17 @@
+[package]
+name = "casper"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2018"
+
+[dependencies]
+hash-db = { git = "https://github.com/paritytech/trie", default-features = false }
+
+[dev-dependencies]
+plain_hasher = "0.2"
+
+[features]
+default = ["std"]
+std = [
+	"hash-db/std",
+]
