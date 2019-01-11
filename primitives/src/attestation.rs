@@ -19,7 +19,6 @@ use rstd::prelude::*;
 use super::{H256, ValidatorId, ShardId, BitField, Signature};
 use hash_db::Hasher;
 use keccak_hasher::KeccakHasher;
-use crypto::bls;
 
 #[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode, SszHash)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]

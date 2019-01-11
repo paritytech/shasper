@@ -46,9 +46,6 @@ mod bitfield;
 mod attestation;
 mod signature;
 
-use runtime_primitives::generic;
-use runtime_primitives::traits::{BlakeTwo256, Extrinsic as ExtrinsicT};
-
 pub use signature::{H768, Signature};
 pub use authority_id::{H384, AuthorityId};
 pub use bitfield::BitField;
