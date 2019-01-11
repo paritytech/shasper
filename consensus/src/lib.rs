@@ -59,7 +59,7 @@ pub use proposer::{ProposerFactory, Proposer};
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::collections::hash_map::{HashMap, Entry};
+use std::collections::hash_map::{HashMap};
 
 use codec::Encode;
 use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT, ImportBlock, BlockOrigin, ForkChoiceStrategy, Error as ConsensusError};
@@ -68,9 +68,8 @@ use client::{blockchain::HeaderBackend, ChainHead};
 use client::backend::AuxStore;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
 use runtime_primitives::{generic::BlockId, Justification, BasicInherentData};
-use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi, One};
+use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
 use shasper_primitives::{ValidatorId, H256, Slot};
-use parking_lot::Mutex;
 
 use futures::{Stream, Future, IntoFuture, future::{self, Either}};
 use tokio::timer::{Delay, Timeout};
@@ -131,7 +130,7 @@ fn timestamp_and_slot_now(slot_duration: u64) -> Option<(u64, u64)> {
 }
 
 /// Get the slot for now.
-fn slot_now(slot_duration: u64) -> Option<u64> {
+pub fn slot_now(slot_duration: u64) -> Option<u64> {
 	duration_now().map(|s| s.as_secs() / slot_duration)
 }
 

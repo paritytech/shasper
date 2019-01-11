@@ -16,7 +16,6 @@
 
 use primitives::{H256, ValidatorId};
 use runtime_primitives::traits;
-use crypto::bls;
 use rstd::prelude::*;
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode)]

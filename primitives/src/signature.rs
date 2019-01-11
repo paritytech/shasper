@@ -17,7 +17,6 @@
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use crypto::bls;
-use rstd::vec::Vec;
 
 #[cfg(feature = "std")]
 use primitives::bytes;
