@@ -16,9 +16,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-extern crate bls as bls_crate;
-extern crate pairing;
-
 pub mod bls {
 	use bls_crate;
 	use pairing::bls12_381::Bls12;
