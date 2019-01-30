@@ -17,6 +17,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(not(feature = "std"), feature(alloc))]
 
-extern crate shasper_runtime;
-
 pub use shasper_runtime::*;

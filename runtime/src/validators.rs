@@ -17,6 +17,10 @@
 use primitives::{H256, ValidatorId, EthereumAddress};
 use rstd::prelude::*;
 
+use codec_derive::{Encode, Decode};
+use ssz_derive::{SszEncode, SszDecode};
+use ssz_hash_derive::SszHash;
+
 #[derive(Clone, PartialEq, Eq, Default, Encode, Decode, SszEncode, SszDecode, SszHash)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]

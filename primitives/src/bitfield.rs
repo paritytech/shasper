@@ -14,6 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+use codec_derive::{Encode, Decode};
+use ssz_derive::{SszEncode, SszDecode};
+use ssz_hash_derive::SszHash;
+
+#[cfg(feature = "std")]
+use serde_derive::{Serialize, Deserialize};
+
 use rstd::prelude::*;
 use rstd::ops::BitOr;
 

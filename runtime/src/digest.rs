@@ -18,6 +18,8 @@ use primitives::{H256, ValidatorId};
 use runtime_primitives::traits;
 use rstd::prelude::*;
 
+use codec_derive::{Encode, Decode};
+
 #[derive(PartialEq, Eq, Clone, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize))]
 pub enum DigestItem {

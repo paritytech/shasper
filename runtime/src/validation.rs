@@ -14,16 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
+use primitives::{H256, ShardId};
 use runtime_support::storage::StorageMap;
 use rstd::prelude::*;
 use rstd::collections::btree_map::BTreeMap;
 
-use state::{ActiveState, CrystallizedState, BlockVoteInfo, CrosslinkRecord};
-use super::AttestationRecord;
-use consts::{CYCLE_LENGTH, WEI_PER_ETH, BASE_REWARD_QUOTIENT, SQRT_E_DROP_TIME, SLOT_DURATION, MIN_DYNASTY_LENGTH, SHARD_COUNT};
-use utils::sqrt;
-use primitives::ShardId;
+use crate::state::{ActiveState, CrystallizedState, BlockVoteInfo, CrosslinkRecord};
+use crate::AttestationRecord;
+use crate::consts::{CYCLE_LENGTH, WEI_PER_ETH, BASE_REWARD_QUOTIENT, SQRT_E_DROP_TIME, SLOT_DURATION, MIN_DYNASTY_LENGTH, SHARD_COUNT};
+use crate::utils::sqrt;
 
 pub fn validate_block_pre_processing_conditions() { }
 

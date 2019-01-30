@@ -19,13 +19,20 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate parity_codec as codec;
+extern crate parity_codec_derive as codec_derive;
 extern crate substrate_client as client;
-extern crate substrate_primitives as primitives;
-extern crate srml_support as runtime_support;
-extern crate sr_io as runtime_io;
-extern crate sr_primitives as runtime_primitives;
-extern crate shasper_primitives;
-extern crate sr_std as rstd;
+
+use codec_derive::{Encode, Decode};
+use inherents::InherentIdentifier;
+
+pub const INHERENT_IDENTIFIER: InherentIdentifier = *b"shasper0";
+
+/// Consensus inherent data
+#[derive(Encode, Decode)]
+pub struct InherentData {
+	pub timestamp: u64,
+	pub slot: primitives::Slot,
+}
 
 /// The ApiIds for Aura authorship API.
 pub mod id {
@@ -38,7 +45,7 @@ pub mod id {
 /// Runtime-APIs
 pub mod api {
 	use rstd::prelude::*;
-	use shasper_primitives::{AttestationRecord, ValidatorId, Slot};
+	use primitives::{AttestationRecord, ValidatorId, Slot};
 	use client::decl_runtime_apis;
 
 	decl_runtime_apis! {

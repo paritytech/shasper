@@ -16,9 +16,10 @@
 
 use primitives::{H256, BlockNumber, Hash, ValidatorId};
 use primitives::storage::well_known_keys;
-use srml_support::storage::unhashed;
-use state::{ActiveState, CrystallizedState, BlockVoteInfo};
-use super::{UncheckedExtrinsic, Digest as DigestT, AttestationRecord};
+use runtime_support::storage_items;
+use runtime_support::storage::unhashed;
+use crate::state::{ActiveState, CrystallizedState, BlockVoteInfo};
+use crate::{UncheckedExtrinsic, Digest as DigestT, AttestationRecord};
 
 storage_items! {
 	pub Number: b"sys:num" => default BlockNumber;

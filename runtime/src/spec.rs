@@ -18,6 +18,9 @@ use primitives::H256;
 use rstd::prelude::Vec;
 use super::AttestationRecord;
 
+use ssz_derive::{SszEncode, SszDecode};
+use ssz_hash_derive::SszHash;
+
 #[derive(Clone, PartialEq, Eq, Default, SszEncode, SszDecode, SszHash)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[ssz_codec(sorted)]

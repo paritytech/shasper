@@ -17,9 +17,10 @@
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use crypto::bls;
+use fixed_hash::construct_fixed_hash;
 
 #[cfg(feature = "std")]
-use primitives::bytes;
+use substrate_primitives::bytes;
 
 const SIZE: usize = 96;
 
@@ -45,23 +46,23 @@ impl<'de> Deserialize<'de> for H768 {
 	}
 }
 
-impl ::parity_codec::Encode for H768 {
+impl codec::Encode for H768 {
 	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
 		self.0.using_encoded(f)
 	}
 }
-impl ::parity_codec::Decode for H768 {
-	fn decode<I: ::parity_codec::Input>(input: &mut I) -> Option<Self> {
-		<[u8; SIZE] as ::parity_codec::Decode>::decode(input).map(H768)
+impl codec::Decode for H768 {
+	fn decode<I: codec::Input>(input: &mut I) -> Option<Self> {
+		<[u8; SIZE] as codec::Decode>::decode(input).map(H768)
 	}
 }
 
-impl ::ssz::Encode for H768 {
+impl ssz::Encode for H768 {
 	fn encode_to<W: ::ssz::Output>(&self, dest: &mut W) {
 		dest.write(self.as_ref())
 	}
 }
-impl ::ssz::Decode for H768 {
+impl ssz::Decode for H768 {
 	fn decode<I: ::ssz::Input>(input: &mut I) -> Option<Self> {
 		let mut vec = [0u8; SIZE];
 		if input.read(&mut vec[..SIZE]) != SIZE {
@@ -72,7 +73,7 @@ impl ::ssz::Decode for H768 {
 	}
 }
 
-impl ::ssz_hash::SpecHash for H768 {
+impl ssz_hash::SpecHash for H768 {
 	fn spec_hash<H: ::hash_db::Hasher>(&self) -> H::Out {
 		let encoded = ssz::Encode::encode(self);
 		H::hash(&encoded)

@@ -16,11 +16,12 @@
 
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
-use primitives::H256;
+use substrate_primitives::H256;
 use crypto::bls;
+use fixed_hash::construct_fixed_hash;
 
 #[cfg(feature = "std")]
-use primitives::bytes;
+use substrate_primitives::bytes;
 
 const SIZE: usize = 48;
 
@@ -46,23 +47,23 @@ impl<'de> Deserialize<'de> for H384 {
 	}
 }
 
-impl ::parity_codec::Encode for H384 {
+impl codec::Encode for H384 {
 	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
 		self.0.using_encoded(f)
 	}
 }
-impl ::parity_codec::Decode for H384 {
-	fn decode<I: ::parity_codec::Input>(input: &mut I) -> Option<Self> {
-		<[u8; SIZE] as ::parity_codec::Decode>::decode(input).map(H384)
+impl codec::Decode for H384 {
+	fn decode<I: codec::Input>(input: &mut I) -> Option<Self> {
+		<[u8; SIZE] as codec::Decode>::decode(input).map(H384)
 	}
 }
 
-impl ::ssz::Encode for H384 {
+impl ssz::Encode for H384 {
 	fn encode_to<W: ::ssz::Output>(&self, dest: &mut W) {
 		dest.write(self.as_ref())
 	}
 }
-impl ::ssz::Decode for H384 {
+impl ssz::Decode for H384 {
 	fn decode<I: ::ssz::Input>(input: &mut I) -> Option<Self> {
 		let mut vec = [0u8; SIZE];
 		if input.read(&mut vec[..SIZE]) != SIZE {
@@ -73,7 +74,7 @@ impl ::ssz::Decode for H384 {
 	}
 }
 
-impl ::ssz_hash::SpecHash for H384 {
+impl ssz_hash::SpecHash for H384 {
 	fn spec_hash<H: ::hash_db::Hasher>(&self) -> H::Out {
 		let encoded = ssz::Encode::encode(self);
 		H::hash(&encoded)

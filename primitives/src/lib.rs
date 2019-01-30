@@ -17,44 +17,24 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(not(feature = "std"), feature(alloc))]
 
-extern crate parity_codec;
-#[macro_use]
-extern crate parity_codec_derive;
-extern crate substrate_primitives as primitives;
-extern crate sr_primitives as runtime_primitives;
-#[macro_use]
-extern crate fixed_hash;
-extern crate sr_std as rstd;
-#[cfg(feature = "std")]
-#[macro_use]
-extern crate serde_derive;
-#[cfg(feature = "std")]
-extern crate serde;
-extern crate ssz;
-#[macro_use]
-extern crate ssz_derive;
-extern crate ssz_hash;
-#[macro_use]
-extern crate ssz_hash_derive;
-extern crate hash_db;
-extern crate keccak_hasher;
-extern crate byteorder;
-pub extern crate shasper_crypto as crypto;
+extern crate parity_codec as codec;
+extern crate parity_codec_derive as codec_derive;
 
 mod authority_id;
 mod bitfield;
 mod attestation;
 mod signature;
 
+pub use crypto;
 pub use signature::{H768, Signature};
 pub use authority_id::{H384, AuthorityId};
 pub use bitfield::BitField;
 pub use attestation::AttestationRecord;
 
-pub use primitives::{storage, H256, OpaqueMetadata};
+pub use substrate_primitives::{storage, H256, OpaqueMetadata};
 
 #[cfg(feature = "std")]
-pub use primitives::bytes;
+pub use substrate_primitives::bytes;
 
 pub type ShardId = u16;
 
@@ -62,10 +42,10 @@ pub type ShardId = u16;
 pub type ValidatorId = AuthorityId;
 
 /// Alias to Ed25519 pubkey that identifies an account on the chain.
-pub type AccountId = primitives::H256;
+pub type AccountId = substrate_primitives::H256;
 
 /// A hash of some data used by the chain.
-pub type Hash = primitives::H256;
+pub type Hash = substrate_primitives::H256;
 
 /// Index of a block number in the chain.
 pub type BlockNumber = u64;
@@ -79,4 +59,4 @@ pub type Count = u64;
 /// Slot value in Shapser.
 pub type Slot = u64;
 
-pub type EthereumAddress = primitives::H160;
+pub type EthereumAddress = substrate_primitives::H160;
