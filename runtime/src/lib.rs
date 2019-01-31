@@ -155,9 +155,10 @@ impl_runtime_apis! {
 			if extrinsic_index == consts::TIMESTAMP_POSITION {
 				<storage::Timestamp>::put(extrinsic.clone().timestamp().expect("Invalid timestamp"));
 			} else if extrinsic_index == consts::SLOT_POSITION {
+				let start_slot = <storage::StartSlot>::get();
 				let parent_slot = <storage::Slot>::get();
 				<storage::ParentSlot>::put(parent_slot);
-				<storage::Slot>::put(extrinsic.clone().slot().expect("Invalid slot"));
+				<storage::Slot>::put(extrinsic.clone().slot().expect("Invalid slot") - start_slot);
 			} else if extrinsic_index == consts::RANDAO_REVEAL_POSITION {
 				<storage::RandaoReveal>::put(extrinsic.clone().randao_reveal().expect("Invalid randao reveal"));
 			} else if extrinsic_index == consts::POW_CHAIN_REF_POSITION {

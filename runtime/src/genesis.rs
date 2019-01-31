@@ -49,6 +49,12 @@ impl BuildStorage for GenesisConfig {
 		}
 		storage.insert(twox_128(b"sys:active").to_vec(), active.encode());
 
+		let start_time = match ::std::time::SystemTime::now().duration_since(::std::time::SystemTime::UNIX_EPOCH) {
+			Ok(start_time) => start_time.as_secs(),
+			Err(e) => return Err(format!("{:?}", e)),
+		};
+		storage.insert(twox_128(b"sys:startslot").to_vec(), (start_time / 10).encode());
+
 		let mut crystallized = CrystallizedState::default();
 		for authority in self.authorities.clone() {
 			let validator = ValidatorRecord {
