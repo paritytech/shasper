@@ -17,10 +17,12 @@
 use runtime_primitives::{BuildStorage, StorageMap, ChildrenStorageMap};
 use primitives::{ValidatorId, storage::well_known_keys};
 use runtime_io::twox_128;
-use parity_codec::{Encode, KeyedVec};
-use state::{ActiveState, CrystallizedState};
-use validators::{ValidatorRecord, ShardAndCommittee};
-use consts;
+use codec::{Encode, KeyedVec};
+use crate::state::{ActiveState, CrystallizedState};
+use crate::validators::{ValidatorRecord, ShardAndCommittee};
+use crate::consts;
+
+use serde_derive::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct GenesisConfig {

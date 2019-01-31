@@ -19,6 +19,8 @@ use runtime_primitives::traits;
 use rstd::prelude::*;
 
 use codec_derive::{Encode, Decode};
+#[cfg(feature = "std")]
+use serde_derive::Serialize;
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize))]

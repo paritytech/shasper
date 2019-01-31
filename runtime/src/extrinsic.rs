@@ -19,6 +19,8 @@ use runtime_primitives::traits::{Extrinsic as ExtrinsicT};
 use crate::AttestationRecord;
 
 use codec_derive::{Encode, Decode};
+#[cfg(feature = "std")]
+use serde_derive::{Serialize, Deserialize};
 
 #[derive(Decode, Encode, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]

@@ -31,7 +31,7 @@ pub use authority_id::{H384, AuthorityId};
 pub use bitfield::BitField;
 pub use attestation::AttestationRecord;
 
-pub use substrate_primitives::{storage, H256, OpaqueMetadata};
+pub use substrate_primitives::{storage, H256, OpaqueMetadata, Blake2Hasher};
 
 #[cfg(feature = "std")]
 pub use substrate_primitives::bytes;

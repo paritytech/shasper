@@ -18,6 +18,7 @@ runtime-support = { package = "srml-support", git = "https://github.com/parityte
 runtime-primitives = { package = "sr-primitives", git = "https://github.com/paritytech/substrate", default-features = false }
 runtime-version = { package = "sr-version", git = "https://github.com/paritytech/substrate", default-features = false }
 consensus-primitives = { package = "shasper-consensus-primitives", path = "../consensus/primitives", default-features = false }
+aura-primitives = { package = "substrate-consensus-aura-primitives", git = "https://github.com/paritytech/substrate", default-features = false }
 rustc-hex = { version = "1.0", optional = true }
 hex-literal = { version = "0.1.0", optional = true }
 serde = { version = "1.0", optional = true, default-features = false }
@@ -61,4 +62,5 @@ std = [
 	"hash-db/std",
 	"crypto/std",
 	"shuffling/std",
+	"aura-primitives/std",
 ]

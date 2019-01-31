@@ -14,147 +14,61 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Aura (Authority-round) consensus in substrate.
-//!
-//! Aura works by having a list of authorities A who are expected to roughly
-//! agree on the current time. Time is divided up into discrete slots of t
-//! seconds each. For each slot s, the author of that slot is A[s % |A|].
-//!
-//! The author is allowed to issue one block but not more during that slot,
-//! and it will be built upon the longest valid chain that has been seen.
-//!
-//! Blocks from future steps will be either deferred or rejected depending on how
-//! far in the future they are.
+//! Shasper consensus engine.
 
 extern crate parity_codec as codec;
 extern crate substrate_client as client;
-extern crate substrate_primitives as primitives;
-extern crate srml_support as runtime_support;
-extern crate sr_io as runtime_io;
-extern crate sr_primitives as runtime_primitives;
-extern crate shasper_consensus_primitives as aura_primitives;
-extern crate substrate_transaction_pool as transaction_pool;
-extern crate substrate_service as service;
-extern crate substrate_consensus_common as consensus_common;
-extern crate substrate_basic_authorship as basic_authorship;
-extern crate tokio;
-extern crate sr_version as runtime_version;
-extern crate substrate_network as network;
-extern crate futures;
-extern crate parking_lot;
-extern crate shasper_primitives;
-extern crate shasper_crypto as crypto;
-extern crate shasper_runtime;
 
 #[macro_use]
 extern crate log;
 
-mod proposer;
 mod block_import;
 
-pub use aura_primitives::*;
+pub use consensus_primitives::*;
 pub use block_import::{ShasperBlockImport, LatestAttestations};
 pub use consensus_common::SyncOracle;
-pub use proposer::{ProposerFactory, Proposer};
+pub use aura_slots::SlotDuration;
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use std::collections::hash_map::{HashMap};
 
 use codec::Encode;
-use consensus_common::{Authorities, BlockImport, Environment, Proposer as ProposerT, ImportBlock, BlockOrigin, ForkChoiceStrategy, Error as ConsensusError};
+use consensus_common::{Authorities, BlockImport, Environment, Proposer, ImportBlock, BlockOrigin, ForkChoiceStrategy, Error as ConsensusError};
 use consensus_common::import_queue::{Verifier, BasicQueue};
 use client::{blockchain::HeaderBackend, ChainHead};
 use client::backend::AuxStore;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
-use runtime_primitives::{generic::BlockId, Justification, BasicInherentData};
+use runtime_primitives::{generic::BlockId, Justification, RuntimeString};
 use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
-use shasper_primitives::{ValidatorId, H256, Slot};
+use primitives::{ValidatorId, H256, Slot};
+use aura_slots::{SlotCompatible, CheckedHeader, SlotWorker, SlotInfo};
+use inherents::InherentDataProviders;
 
-use futures::{Stream, Future, IntoFuture, future::{self, Either}};
-use tokio::timer::{Delay, Timeout};
-use api::AuraApi;
+use futures::{Future, IntoFuture, future};
+use tokio::timer::Timeout;
+use api::ShasperApi;
 use crypto::bls;
-
-/// Aura consensus environmental data. Useful for block-proposing code.
-pub struct AuraConsensusData {
-	/// The timestamp the block should be authored with.
-	pub timestamp: u64,
-	/// The slot number.
-	pub slot: u64,
-	/// The duration of the slot, in seconds.
-	pub slot_duration: u64,
-}
-
-/// A handle to the network. This is generally implemented by providing some
-/// handle to a gossip service or similar.
-///
-/// Intended to be a lightweight handle such as an `Arc`.
-pub trait Network: Clone {
-	/// A stream of input messages for a topic.
-	type In: Stream<Item=Vec<u8>,Error=()>;
-
-	/// Send a message at a specific round out.
-	fn send_message(&self, slot: u64, message: Vec<u8>);
-}
-
-/// Get slot author for given block along with authorities.
-fn slot_author(slot_num: u64, authorities: &[ValidatorId]) -> Option<ValidatorId> {
-	if authorities.is_empty() { return None }
-
-	let idx = slot_num % (authorities.len() as u64);
-	assert!(idx <= usize::max_value() as u64,
-		"It is impossible to have a vector with length beyond the address space; qed");
-
-	let current_author = *authorities.get(idx as usize)
-		.expect("authorities not empty; index constrained to list length;\
-				this is a valid index; qed");
-
-	Some(current_author)
-}
-
-fn duration_now() -> Option<Duration> {
-	use std::time::SystemTime;
-
-	let now = SystemTime::now();
-	now.duration_since(SystemTime::UNIX_EPOCH).map_err(|e| {
-			warn!("Current time {:?} is before unix epoch. Something is wrong: {:?}", now, e);
-	}).ok()
-}
-
-fn timestamp_and_slot_now(slot_duration: u64) -> Option<(u64, u64)> {
-	duration_now().map(|s| {
-		let s = s.as_secs();
-		(s, s / slot_duration)
-	})
-}
-
-/// Get the slot for now.
-pub fn slot_now(slot_duration: u64) -> Option<u64> {
-	duration_now().map(|s| s.as_secs() / slot_duration)
-}
 
 /// A digest item which is usable with aura consensus.
 pub trait CompatibleDigestItem: Sized {
 	/// Construct a digest item which is a slot number and a signature on the
 	/// hash.
-	fn aura_seal(slot_number: u64, signature: bls::Signature) -> Self;
+	fn shasper_seal(slot_number: u64, signature: bls::Signature) -> Self;
 
 	/// If this item is an Aura seal, return the slot number and signature.
-	fn as_aura_seal(&self) -> Option<(u64, bls::Signature)>;
+	fn as_shasper_seal(&self) -> Option<(u64, bls::Signature)>;
 }
 
-impl CompatibleDigestItem for shasper_runtime::DigestItem {
-	/// Construct a digest item which is a slot number and a signature on the
-	/// hash.
-	fn aura_seal(slot_number: u64, signature: bls::Signature) -> Self {
+impl CompatibleDigestItem for runtime::DigestItem {
+	fn shasper_seal(slot_number: u64, signature: bls::Signature) -> Self {
 		let signature_bytes: Vec<_> = signature.to_compressed_bytes().into_iter().cloned().collect();
-		shasper_runtime::DigestItem::Seal(slot_number, signature_bytes)
+		runtime::DigestItem::Seal(slot_number, signature_bytes)
 	}
-	/// If this item is an Aura seal, return the slot number and signature.
-	fn as_aura_seal(&self) -> Option<(u64, bls::Signature)> {
+
+	fn as_shasper_seal(&self) -> Option<(u64, bls::Signature)> {
 		match self {
-			shasper_runtime::DigestItem::Seal(slot_number, signature_bytes) => {
+			runtime::DigestItem::Seal(slot_number, signature_bytes) => {
 				if let Some(signature) = bls::Signature::from_compressed_bytes(&signature_bytes) {
 					Some((*slot_number, signature))
 				} else {
@@ -169,16 +83,16 @@ impl CompatibleDigestItem for shasper_runtime::DigestItem {
 pub trait CompatibleExtrinsic: Sized {
 	fn as_validator_attestation_map<B: Block<Hash=H256>, C>(&self, client: &C, id: &BlockId<B>) -> Option<HashMap<ValidatorId, (Slot, H256)>> where
 		C: ProvideRuntimeApi,
-		C::Api: AuraApi<B>;
+		C::Api: ShasperApi<B>;
 }
 
-impl CompatibleExtrinsic for shasper_runtime::UncheckedExtrinsic {
+impl CompatibleExtrinsic for runtime::UncheckedExtrinsic {
 	fn as_validator_attestation_map<B: Block<Hash=H256>, C>(&self, client: &C, id: &BlockId<B>) -> Option<HashMap<ValidatorId, (Slot, H256)>> where
 		C: ProvideRuntimeApi,
-		C::Api: AuraApi<B>
+		C::Api: ShasperApi<B>
 	{
 		match self {
-			&shasper_runtime::UncheckedExtrinsic::Attestation(ref attestation) => {
+			&runtime::UncheckedExtrinsic::Attestation(ref attestation) => {
 				let validators = match client.runtime_api().validator_ids_from_attestation(id, attestation) {
 					Ok(validators) => validators,
 					Err(_) => return None,
@@ -194,249 +108,217 @@ impl CompatibleExtrinsic for shasper_runtime::UncheckedExtrinsic {
 	}
 }
 
-/// Start the aura worker in a separate thread.
-pub fn start_aura_thread<B, C, E, I, SO, Error>(
-	slot_duration: SlotDuration,
-	local_key: Arc<bls::Pair>,
-	client: Arc<C>,
-	block_import: Arc<I>,
-	env: Arc<E>,
-	sync_oracle: SO,
-	on_exit: impl Future<Item=(),Error=()> + Send + 'static,
-) where
-	B: Block<Hash=H256> + 'static,
-	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync + 'static,
-	C::Api: AuraApi<B>,
-	B::Extrinsic: CompatibleExtrinsic,
-	E: Environment<B, AuraConsensusData, Error=Error> + Send + Sync + 'static,
-	E::Proposer: ProposerT<B, AuraConsensusData, Error=Error> + 'static,
-	I: BlockImport<B> + Send + Sync + 'static,
-	Error: From<C::Error> + From<I::Error> + 'static,
-	SO: SyncOracle + Send + Clone + 'static,
-	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId> + 'static,
-	Error: ::std::error::Error + Send + From<::consensus_common::Error> + 'static,
-{
-	use tokio::runtime::current_thread::Runtime;
-
-	::std::thread::spawn(move || {
-		let mut runtime = match Runtime::new() {
-			Ok(r) => r,
-			Err(e) => {
-				warn!("Unable to start authorship: {:?}", e);
-				return;
-			}
-		};
-
-		runtime.spawn(start_aura(
-			slot_duration,
-			local_key,
-			client,
-			block_import,
-			env,
-			sync_oracle,
-		));
-
-		runtime.block_on(on_exit).expect("Exit future should not fail");
-	});
+fn inherent_to_common_error(err: RuntimeString) -> consensus_common::Error {
+	consensus_common::ErrorKind::InherentData(err.into()).into()
 }
 
-/// Start the aura worker. The returned future should be run in a tokio runtime.
-pub fn start_aura<B, C, E, I, SO, Error>(
+/// Register the shasper inherent data provider.
+pub fn register_shasper_inherent_data_provider(
+	inherent_data_providers: &InherentDataProviders,
+	slot_duration: u64,
+) -> Result<(), consensus_common::Error> {
+	if !inherent_data_providers.has_provider(&consensus_primitives::INHERENT_IDENTIFIER) {
+		inherent_data_providers
+			.register_provider(consensus_primitives::InherentDataProvider::new(slot_duration))
+			.map_err(inherent_to_common_error)
+	} else {
+		Ok(())
+	}
+}
+
+struct ShasperSlotCompatible;
+
+impl SlotCompatible for ShasperSlotCompatible {
+	fn extract_timestamp_and_slot(
+		data: &inherents::InherentData
+	) -> Result<(u64, u64), consensus_common::Error> {
+		match data.get_data::<consensus_primitives::InherentData>(
+			&consensus_primitives::INHERENT_IDENTIFIER
+		) {
+			Ok(Some(data)) => Ok((data.timestamp, data.slot)),
+			_ => Err(consensus_common::ErrorKind::InherentData("Decode inherent failed".into()).into()),
+		}
+	}
+}
+
+fn replace_inherent_data_slot(
+	data: &mut inherents::InherentData,
+	slot: Slot,
+) -> Result<(), consensus_common::Error> {
+	let mut inherent_data = match data.get_data::<consensus_primitives::InherentData>(
+		&consensus_primitives::INHERENT_IDENTIFIER
+	) {
+		Ok(Some(data)) => data,
+		_ => return Err(consensus_common::ErrorKind::InherentData("Decode inherent failed".into()).into()),
+	};
+
+	inherent_data.slot = slot;
+	data.replace_data(consensus_primitives::INHERENT_IDENTIFIER, &inherent_data);
+
+	Ok(())
+}
+
+/// Start the shasper worker. The returned future should be run in a tokio runtime.
+pub fn start_shasper<B, C, E, I, SO, Error, OnExit>(
 	slot_duration: SlotDuration,
 	local_key: Arc<bls::Pair>,
 	client: Arc<C>,
 	block_import: Arc<I>,
 	env: Arc<E>,
 	sync_oracle: SO,
-) -> impl Future<Item=(),Error=()> where
+	on_exit: OnExit,
+	inherent_data_providers: InherentDataProviders,
+) -> Result<impl Future<Item=(), Error=()>, consensus_common::Error> where
 	B: Block<Hash=H256>,
 	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi,
-	C::Api: AuraApi<B>,
+	C::Api: ShasperApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
-	E: Environment<B, AuraConsensusData, Error=Error>,
-	E::Proposer: ProposerT<B, AuraConsensusData, Error=Error>,
-	I: BlockImport<B>,
+	E: Environment<B, Error=Error>,
+	E::Proposer: Proposer<B, Error=Error>,
+	<<E::Proposer as Proposer<B>>::Create as IntoFuture>::Future: Send + 'static,
+	I: BlockImport<B> + Send + Sync + 'static,
 	Error: From<C::Error> + From<I::Error>,
 	SO: SyncOracle + Send + Clone,
+	OnExit: Future<Item=(), Error=()> + Send + 'static,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
 	Error: ::std::error::Error + Send + 'static + From<::consensus_common::Error>,
 {
-	let make_authorship = move || {
-		use futures::future;
-
-		let client = client.clone();
-		let pair = local_key.clone();
-		let block_import = block_import.clone();
-		let env = env.clone();
-		let sync_oracle = sync_oracle.clone();
-		let SlotDuration(slot_duration) = slot_duration;
-
-		fn time_until_next(now: Duration, slot_duration: u64) -> Duration {
-			let remaining_full_secs = slot_duration - (now.as_secs() % slot_duration) - 1;
-			let remaining_nanos = 1_000_000_000 - now.subsec_nanos();
-			Duration::new(remaining_full_secs, remaining_nanos)
-		};
-
-		// rather than use an interval, we schedule our waits ourselves
-		future::loop_fn((), move |()| {
-			let next_slot_start = duration_now()
-				.map(|now| Instant::now() + time_until_next(now, slot_duration))
-				.unwrap_or_else(|| Instant::now());
-
-			let client = client.clone();
-			let pair = pair.clone();
-			let block_import = block_import.clone();
-			let env = env.clone();
-			let sync_oracle = sync_oracle.clone();
-			let public_key = pair.public.clone();
-
-			Delay::new(next_slot_start)
-				.map_err(|e| debug!(target: "aura", "Faulty timer: {:?}", e))
-				.and_then(move |_| {
-					// only propose when we are not syncing.
-					if sync_oracle.is_major_syncing() {
-						debug!(target: "aura", "Skipping proposal slot due to sync.");
-						return Either::B(future::ok(()));
-					}
-
-					let pair = pair.clone();
-					let (timestamp, slot_num) = match timestamp_and_slot_now(slot_duration) {
-						Some(n) => n,
-						None => return Either::B(future::err(())),
-					};
-
-					let chain_head = match client.best_block_header() {
-						Ok(x) => x,
-						Err(e) => {
-							warn!(target:"aura", "Unable to author block in slot {}. \
-								no best block header: {:?}", slot_num, e);
-							return Either::B(future::ok(()))
-						}
-					};
-
-					let authorities = match client.authorities(&BlockId::Hash(chain_head.hash())) {
-						Ok(authorities) => authorities,
-						Err(e) => {
-							warn!("Unable to fetch authorities at\
-								block {:?}: {:?}", chain_head.hash(), e);
-							return Either::B(future::ok(()));
-						}
-					};
-
-					let proposal_work = match slot_author(slot_num, &authorities) {
-						None => return Either::B(future::ok(())),
-						Some(author) => if author == ValidatorId::from_public(public_key.clone()) {
-							debug!(target: "aura", "Starting authorship at slot {}; timestamp = {}",
-								slot_num, timestamp);
-
-							// we are the slot author. make a block and sign it.
-							let proposer = match env.init(&chain_head, &authorities) {
-								Ok(p) => p,
-								Err(e) => {
-									warn!("Unable to author block in slot {:?}: {:?}", slot_num, e);
-									return Either::B(future::ok(()))
-								}
-							};
-
-							let consensus_data = AuraConsensusData {
-								timestamp,
-								slot: slot_num,
-								slot_duration,
-							};
-
-							// deadline our production to approx. the end of the
-							// slot
-							Timeout::new(
-								proposer.propose(consensus_data).into_future(),
-								time_until_next(Duration::from_secs(timestamp), slot_duration),
-							)
-						} else {
-							return Either::B(future::ok(()));
-						}
-					};
-
-					let block_import = block_import.clone();
-					Either::A(proposal_work
-						.map(move |b| {
-							let (header, body) = b.deconstruct();
-							let pre_hash = header.hash();
-							let parent_hash = header.parent_hash().clone();
-
-							// sign the pre-sealed hash of the block and then
-							// add it to a digest item.
-							let to_sign = (slot_num, pre_hash).encode();
-							let signature = pair.secret.sign(&to_sign[..]);
-							let item = <DigestItemFor<B> as CompatibleDigestItem>::aura_seal(
-								slot_num,
-								signature,
-							);
-
-							let import_block = ImportBlock {
-								origin: BlockOrigin::Own,
-								header,
-								justification: None,
-								post_digests: vec![item],
-								body: Some(body),
-								finalized: false,
-								auxiliary: Vec::new(),
-								fork_choice: ForkChoiceStrategy::LongestChain,
-							};
-
-							if let Err(e) = block_import.import_block(import_block, None) {
-								warn!(target: "aura", "Error with block built on {:?}: {:?}",
-									parent_hash, e);
-							}
-						})
-						.map_err(|e| warn!("Failed to construct block: {:?}", e))
-					)
-				})
-				.map(|_| future::Loop::Continue(()))
-		})
+	let worker = ShasperWorker {
+		client: client.clone(), block_import, env, local_key, inherent_data_providers: inherent_data_providers.clone()
 	};
 
-	future::loop_fn((), move |()| {
-		let authorship_task = ::std::panic::AssertUnwindSafe(make_authorship());
-		authorship_task.catch_unwind().then(|res| {
-			match res {
-				Ok(Ok(())) => (),
-				Ok(Err(())) => warn!("Aura authorship task terminated unexpectedly. Restarting"),
-				Err(e) => {
-					if let Some(s) = e.downcast_ref::<&'static str>() {
-						warn!("Aura authorship task panicked at {:?}", s);
-					}
-
-					warn!("Restarting Aura authorship task");
-				}
-			}
-
-			Ok(future::Loop::Continue(()))
-		})
-	})
+	aura_slots::start_slot_worker::<_, _, _, _, ShasperSlotCompatible, _>(
+		slot_duration,
+		client,
+		Arc::new(worker),
+		sync_oracle,
+		on_exit,
+		inherent_data_providers
+	)
 }
 
-// a header which has been checked
-enum CheckedHeader<H> {
-	// a header which has slot in the future. this is the full header (not stripped)
-	// and the slot in which it should be processed.
-	Deferred(H, u64),
-	// a header which is fully checked, including signature. This is the pre-header
-	// accompanied by the seal components.
-	Checked(H, u64, bls::Signature),
+struct ShasperWorker<C, E, I> {
+	client: Arc<C>,
+	block_import: Arc<I>,
+	env: Arc<E>,
+	local_key: Arc<bls::Pair>,
+	inherent_data_providers: InherentDataProviders,
+}
+
+impl<B: Block, C, E, I, Error> SlotWorker<B> for ShasperWorker<C, E, I> where
+	C: Authorities<B>,
+	E: Environment<B, Error=Error>,
+	E::Proposer: Proposer<B, Error=Error>,
+	<<E::Proposer as Proposer<B>>::Create as IntoFuture>::Future: Send + 'static,
+	I: BlockImport<B> + Send + Sync + 'static,
+	Error: From<C::Error> + From<I::Error>,
+	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
+	Error: ::std::error::Error + Send + 'static + From<::consensus_common::Error>,
+{
+	type OnSlot = Box<Future<Item=(), Error=consensus_common::Error> + Send>;
+
+	fn on_start(
+		&self,
+		slot_duration: u64
+	) -> Result<(), consensus_common::Error> {
+		register_shasper_inherent_data_provider(&self.inherent_data_providers, slot_duration)
+	}
+
+	fn on_slot(
+		&self,
+		chain_head: B::Header,
+		slot_info: SlotInfo,
+	) -> Self::OnSlot {
+		let public_key = self.local_key.public.clone();
+		let (timestamp, slot_num, slot_duration) =
+			(slot_info.timestamp, slot_info.number, slot_info.duration);
+
+		let authorities = match self.client.authorities(&BlockId::Hash(chain_head.hash())) {
+			Ok(authorities) => authorities,
+			Err(e) => {
+				warn!("Unable to fetch authorities at\
+					   block {:?}: {:?}", chain_head.hash(), e);
+				return Box::new(future::ok(()));
+			}
+		};
+
+		let proposal_work = match utils::slot_author(slot_num, &authorities) {
+			None => return Box::new(future::ok(())),
+			Some(author) => if author == ValidatorId::from_public(public_key.clone()) {
+				debug!(target: "aura", "Starting authorship at slot {}; timestamp = {}",
+					   slot_num, timestamp);
+
+				// we are the slot author. make a block and sign it.
+				let proposer = match self.env.init(&chain_head, &authorities) {
+					Ok(p) => p,
+					Err(e) => {
+						warn!("Unable to author block in slot {:?}: {:?}", slot_num, e);
+						return Box::new(future::ok(()))
+					}
+				};
+
+				// deadline our production to approx. the end of the
+				// slot
+				Timeout::new(
+					proposer.propose(slot_info.inherent_data).into_future(),
+					utils::time_until_next(Duration::from_secs(timestamp), slot_duration),
+				)
+			} else {
+				return Box::new(future::ok(()));
+			}
+		};
+
+		let block_import = self.block_import.clone();
+		let pair = self.local_key.clone();
+		Box::new(
+			proposal_work
+				.map(move |b| {
+					let (header, body) = b.deconstruct();
+					let pre_hash = header.hash();
+					let parent_hash = header.parent_hash().clone();
+
+					// sign the pre-sealed hash of the block and then
+					// add it to a digest item.
+					let to_sign = (slot_num, pre_hash).encode();
+					let signature = pair.secret.sign(&to_sign[..]);
+					let item = <DigestItemFor<B> as CompatibleDigestItem>::shasper_seal(
+						slot_num,
+						signature,
+					);
+
+					let import_block = ImportBlock {
+						origin: BlockOrigin::Own,
+						header,
+						justification: None,
+						post_digests: vec![item],
+						body: Some(body),
+						finalized: false,
+						auxiliary: Vec::new(),
+						fork_choice: ForkChoiceStrategy::LongestChain,
+					};
+
+					if let Err(e) = block_import.import_block(import_block, None) {
+						warn!(target: "aura", "Error with block built on {:?}: {:?}",
+							  parent_hash, e);
+					}
+				})
+				.map_err(|e| consensus_common::ErrorKind::ClientImport(format!("{:?}", e)).into())
+		)
+	}
 }
 
 /// check a header has been signed by the right key. If the slot is too far in the future, an error will be returned.
 /// if it's successful, returns the pre-header, the slot number, and the signat.
 //
 // FIXME: needs misbehavior types - https://github.com/paritytech/substrate/issues/1018
-fn check_header<B: Block>(slot_now: u64, mut header: B::Header, hash: B::Hash, authorities: &[ValidatorId])
-	-> Result<CheckedHeader<B::Header>, String>
+fn check_header<B: Block>(slot_now: u64, mut header: B::Header, hash: B::Hash, authorities: &[ValidatorId]) -> Result<CheckedHeader<B::Header, bls::Signature>, String>
 	where DigestItemFor<B>: CompatibleDigestItem
 {
 	let digest_item = match header.digest_mut().pop() {
 		Some(x) => x,
 		None => return Err(format!("Header {:?} is unsealed", hash)),
 	};
-	let (slot_num, sig) = match digest_item.as_aura_seal() {
+	let (slot_num, sig) = match digest_item.as_shasper_seal() {
 		Some(x) => x,
 		None => return Err(format!("Header {:?} is unsealed", hash)),
 	};
@@ -448,7 +330,7 @@ fn check_header<B: Block>(slot_now: u64, mut header: B::Header, hash: B::Hash, a
 		// check the signature is valid under the expected authority and
 		// chain state.
 
-		let expected_author = match slot_author(slot_num, &authorities) {
+		let expected_author = match utils::slot_author(slot_num, &authorities) {
 			None => return Err("Slot Author not found".to_string()),
 			Some(author) => author
 		};
@@ -470,46 +352,38 @@ fn check_header<B: Block>(slot_now: u64, mut header: B::Header, hash: B::Hash, a
 	}
 }
 
-/// Extra verification for Aura blocks.
-pub trait ExtraVerification<B: Block>: Send + Sync {
-	/// Future that resolves when the block is verified or fails with error if not.
-	type Verified: IntoFuture<Item=(),Error=String>;
-
-	/// Do additional verification for this block.
-	fn verify(
-		&self,
-		header: &B::Header,
-		body: Option<&[B::Extrinsic]>,
-	) -> Self::Verified;
-}
-
 /// A verifier for Aura blocks.
-pub struct AuraVerifier<C, E, MakeInherent> {
-	slot_duration: SlotDuration,
+pub struct ShasperVerifier<C> {
 	client: Arc<C>,
-	make_inherent: MakeInherent,
-	extra: E,
+	inherent_data_providers: InherentDataProviders,
 }
 
-/// No-op extra verification.
-#[derive(Debug, Clone, Copy)]
-pub struct NothingExtra;
+impl<C> ShasperVerifier<C> {
+	fn check_inherents<B: Block>(
+		&self,
+		block: B,
+		block_id: BlockId<B>,
+		inherent_data: inherents::InherentData,
+	) -> Result<(), String> where C: ProvideRuntimeApi, C::Api: BlockBuilderApi<B> {
+		let inherent_res = self.client.runtime_api().check_inherents(
+			&block_id,
+			block,
+			inherent_data,
+		).map_err(|e| format!("{:?}", e))?;
 
-impl<B: Block> ExtraVerification<B> for NothingExtra {
-	type Verified = Result<(), String>;
-
-	fn verify(&self, _: &B::Header, _: Option<&[B::Extrinsic]>) -> Self::Verified {
-		Ok(())
+		if !inherent_res.ok() {
+			Err("Inherent data checking error".into())
+		} else {
+			Ok(())
+		}
 	}
 }
 
-impl<B: Block<Hash=H256>, C, E, MakeInherent, Inherent> Verifier<B> for AuraVerifier<C, E, MakeInherent> where
+impl<B: Block<Hash=H256>, C> Verifier<B> for ShasperVerifier<C> where
 	C: Authorities<B> + BlockImport<B> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
-	C::Api: BlockBuilderApi<B, Inherent> + AuraApi<B>,
+	C::Api: BlockBuilderApi<B> + ShasperApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
-	E: ExtraVerification<B>,
-	MakeInherent: Fn(u64, u64) -> Inherent + Send + Sync,
 {
 	fn verify(
 		&self,
@@ -518,20 +392,14 @@ impl<B: Block<Hash=H256>, C, E, MakeInherent, Inherent> Verifier<B> for AuraVeri
 		justification: Option<Justification>,
 		mut body: Option<Vec<B::Extrinsic>>,
 	) -> Result<(ImportBlock<B>, Option<Vec<ValidatorId>>), String> {
-		use runtime_primitives::CheckInherentError;
-		const MAX_TIMESTAMP_DRIFT_SECS: u64 = 60;
-
-		let (timestamp_now, slot_now) = timestamp_and_slot_now(self.slot_duration.0)
-			.ok_or("System time is before UnixTime?".to_owned())?;
+		let mut inherent_data = self.inherent_data_providers.create_inherent_data().map_err(String::from)?;
+		let slot_now = ShasperSlotCompatible::extract_timestamp_and_slot(&inherent_data)
+			.map(|v| v.1)
+			.map_err(|e| format!("Could not extract timestamp and slot: {:?}", e))?;
 		let hash = header.hash();
 		let parent_hash = *header.parent_hash();
 		let authorities = self.client.authorities(&BlockId::Hash(parent_hash))
 			.map_err(|e| format!("Could not fetch authorities at {:?}: {:?}", parent_hash, e))?;
-
-		let extra_verification = self.extra.verify(
-			&header,
-			body.as_ref().map(|x| &x[..]),
-		);
 
 		// we add one to allow for some small drift.
 		// FIXME: in the future, alter this queue to allow deferring of headers
@@ -539,44 +407,27 @@ impl<B: Block<Hash=H256>, C, E, MakeInherent, Inherent> Verifier<B> for AuraVeri
 		let checked_header = check_header::<B>(slot_now + 1, header, hash, &authorities[..])?;
 		match checked_header {
 			CheckedHeader::Checked(pre_header, slot_num, sig) => {
-				let item = <DigestItemFor<B>>::aura_seal(slot_num, sig);
+				let item = <DigestItemFor<B>>::shasper_seal(slot_num, sig);
 
 				// if the body is passed through, we need to use the runtime
 				// to check that the internally-set timestamp in the inherents
 				// actually matches the slot set in the seal.
 				if let Some(inner_body) = body.take() {
-					let inherent = (self.make_inherent)(timestamp_now, slot_num);
-					let block = Block::new(pre_header.clone(), inner_body);
+					replace_inherent_data_slot(&mut inherent_data, slot_num)
+						.map_err(|e| format!("{:?}", e))?;
+					let block = B::new(pre_header.clone(), inner_body);
 
-					let inherent_res = self.client.runtime_api().check_inherents(
-						&BlockId::Hash(parent_hash),
-						&block,
-						&inherent,
-					).map_err(|e| format!("{:?}", e))?;
-
-					match inherent_res {
-						Ok(()) => {}
-						Err(CheckInherentError::ValidAtTimestamp(timestamp)) => {
-							// halt import until timestamp is valid.
-							// reject when too far ahead.
-							if timestamp > timestamp_now + MAX_TIMESTAMP_DRIFT_SECS {
-								return Err("Rejecting block too far in future".into());
-							}
-
-							let diff = timestamp.saturating_sub(timestamp_now);
-							info!(target: "aura", "halting for block {} seconds in the future", diff);
-							::std::thread::sleep(Duration::from_secs(diff));
-						},
-						Err(CheckInherentError::Other(s)) => return Err(s.into_owned()),
-					}
+					self.check_inherents(
+						block.clone(),
+						BlockId::Hash(parent_hash),
+						inherent_data,
+					)?;
 
 					let (_, inner_body) = block.deconstruct();
 					body = Some(inner_body);
 				}
 
 				trace!(target: "aura", "Checked {:?}; importing.", pre_header);
-
-				extra_verification.into_future().wait()?;
 
 				let import_block = ImportBlock {
 					origin,
@@ -589,7 +440,7 @@ impl<B: Block<Hash=H256>, C, E, MakeInherent, Inherent> Verifier<B> for AuraVeri
 					fork_choice: ForkChoiceStrategy::LongestChain,
 				};
 
-				// FIXME: extract authorities - https://github.com/paritytech/substrate/issues/1019
+				// FIXME #1019 extract authorities
 				Ok((import_block, None))
 			}
 			CheckedHeader::Deferred(a, b) => {
@@ -600,74 +451,25 @@ impl<B: Block<Hash=H256>, C, E, MakeInherent, Inherent> Verifier<B> for AuraVeri
 	}
 }
 
-/// A utility for making the basic-inherent data.
-pub fn make_basic_inherent(timestamp: u64, slot_now: u64) -> BasicInherentData {
-	BasicInherentData::new(timestamp, slot_now)
-}
-
-/// A type for a function which produces inherent.
-pub type InherentProducingFn<I> = fn(u64, u64) -> I;
-
 /// The Aura import queue type.
-pub type AuraImportQueue<B, C, E, MakeInherent> = BasicQueue<B, AuraVerifier<C, E, MakeInherent>>;
-
-/// A slot duration. Create with `get_or_compute`.
-// The internal member should stay private here.
-#[derive(Clone, Copy, Debug)]
-pub struct SlotDuration(u64);
-
-impl SlotDuration {
-	/// Either fetch the slot duration from disk or compute it from the genesis
-	/// state.
-	pub fn get_or_compute<B: Block, C>(client: &C) -> ::client::error::Result<Self> where
-		C: ::client::backend::AuxStore,
-		C: ProvideRuntimeApi,
-		C::Api: AuraApi<B>,
-	{
-		use codec::Decode;
-		const SLOT_KEY: &[u8] = b"aura_slot_duration";
-
-		match client.get_aux(SLOT_KEY)? {
-			Some(v) => u64::decode(&mut &v[..])
-				.map(SlotDuration)
-				.ok_or_else(|| ::client::error::ErrorKind::Backend(
-					format!("Aura slot duration kept in invalid format"),
-				).into()),
-			None => {
-				use runtime_primitives::traits::Zero;
-				let genesis_slot_duration = client.runtime_api()
-					.slot_duration(&BlockId::number(Zero::zero()))?;
-
-				info!("Loaded block-time = {:?} seconds from genesis on first-launch",
-					genesis_slot_duration);
-
-				genesis_slot_duration.using_encoded(|s| {
-					client.insert_aux(&[(SLOT_KEY, &s[..])], &[])
-				})?;
-
-				Ok(SlotDuration(genesis_slot_duration))
-			}
-		}
-	}
-}
+pub type ShasperImportQueue<B, C> = BasicQueue<B, ShasperVerifier<C>>;
 
 /// Start an import queue for the Aura consensus algorithm.
-pub fn import_queue<B, C, E, I, MakeInherent, Inherent>(
+pub fn import_queue<B, C, I>(
 	slot_duration: SlotDuration,
 	client: Arc<C>,
 	block_import: Arc<I>,
-	extra: E,
-	make_inherent: MakeInherent,
-) -> AuraImportQueue<B, C, E, MakeInherent> where
+	inherent_data_providers: InherentDataProviders,
+) -> Result<ShasperImportQueue<B, C>, consensus_common::Error> where
 	B: Block<Hash=H256>,
 	C: Authorities<B> + BlockImport<B, Error=::consensus_common::Error> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
-	C::Api: BlockBuilderApi<B, Inherent> + AuraApi<B>,
+	C::Api: BlockBuilderApi<B> + ShasperApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
-	E: ExtraVerification<B>,
 	I: 'static + BlockImport<B, Error=ConsensusError> + Send + Sync,
-	MakeInherent: Fn(u64, u64) -> Inherent + Send + Sync,
 {
-	let verifier = Arc::new(AuraVerifier { slot_duration, client: client.clone(), extra, make_inherent });
-	BasicQueue::new(verifier, block_import)
+	register_shasper_inherent_data_provider(&inherent_data_providers, slot_duration.get())?;
+
+	let verifier = Arc::new(ShasperVerifier { client: client.clone(), inherent_data_providers });
+	Ok(BasicQueue::new(verifier, block_import, None))
 }

@@ -66,7 +66,7 @@ use client::impl_runtime_apis;
 #[cfg(any(feature = "std", test))]
 pub use runtime_primitives::BuildStorage;
 pub use runtime_primitives::{Permill, Perbill};
-pub use runtime_support::{StorageValue, RuntimeMetadata};
+pub use runtime_support::StorageValue;
 #[cfg(feature = "std")]
 pub use genesis::GenesisConfig;
 pub use extrinsic::UncheckedExtrinsic;
@@ -355,18 +355,20 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl consensus_api::AuraApi<Block> for Runtime {
+	impl aura_primitives::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
 			10
 		}
+	}
 
+	impl consensus_api::ShasperApi<Block> for Runtime {
 		fn slot() -> Slot {
 			<storage::Slot>::get()
 		}
 
-		fn validator_ids_from_attestation(attestation: AttestationRecord) -> Vec<ValidatorId> {
+		fn validator_ids_from_attestation(attestation: &AttestationRecord) -> Vec<ValidatorId> {
 			let crystallized_state = <storage::Crystallized>::get();
-			let attestation_indices = crystallized_state.attestation_indices(&attestation);
+			let attestation_indices = crystallized_state.attestation_indices(attestation);
 
 			attestation_indices
 				.iter()

@@ -19,26 +19,28 @@
 #![warn(unused_extern_crates)]
 
 use std::sync::Arc;
-use primitives::ed25519;
-use runtime_primitives::BasicInherentData;
 use transaction_pool::{self, txpool::{Pool as TransactionPool}};
-use shasper_primitives::ValidatorId;
-use shasper_runtime::{self, GenesisConfig, RuntimeApi, Block};
-use substrate_service::{
+use primitives::ValidatorId;
+use substrate_primitives::ed25519;
+use runtime::{self, GenesisConfig, RuntimeApi, Block};
+use service::{
 	FactoryFullConfiguration, LightComponents, FullComponents, FullBackend,
 	FullClient, LightClient, LightBackend, FullExecutor, LightExecutor,
-	TaskExecutor,
+	TaskExecutor, construct_service_factory,
 };
-use consensus::{import_queue, start_aura, AuraImportQueue, NothingExtra, SlotDuration, ShasperBlockImport};
-use client;
+use consensus::{import_queue, start_shasper, ShasperImportQueue, SlotDuration, ShasperBlockImport};
 use crypto::bls;
+use executor::native_executor_instance;
+use network::construct_simple_protocol;
+use inherents::InherentDataProviders;
+use log::info;
 
-pub use substrate_executor::NativeExecutor;
+pub use executor::NativeExecutor;
 // Our native executor instance.
 native_executor_instance!(
 	pub Executor,
-	shasper_runtime::api::dispatch,
-	shasper_runtime::native_version,
+	runtime::api::dispatch,
+	runtime::native_version,
 	include_bytes!("../runtime/wasm/target/wasm32-unknown-unknown/release/shasper_runtime.compact.wasm")
 );
 
@@ -50,12 +52,14 @@ construct_simple_protocol! {
 /// Node specific configuration
 pub struct NodeConfig {
 	pub validator_key: Option<bls::Secret>,
+	inherent_data_providers: InherentDataProviders,
 }
 
 impl Default for NodeConfig {
 	fn default() -> Self {
 		Self {
-			validator_key: Some(bls::Secret::from_bytes(b"Alice").unwrap())
+			validator_key: Some(bls::Secret::from_bytes(b"Alice").unwrap()),
+			inherent_data_providers: InherentDataProviders::new(),
 		}
 	}
 }
@@ -79,13 +83,13 @@ construct_service_factory! {
 			|service: Self::FullService, executor: TaskExecutor, _: Option<Arc<ed25519::Pair>>| {
 				if let Some(ref key) = service.config.custom.validator_key {
 					info!("Using authority key {}", ValidatorId::from_public(bls::Public::from_secret(key)));
-					let proposer = Arc::new(consensus::ProposerFactory {
+					let proposer = Arc::new(basic_authorship::ProposerFactory {
 						client: service.client(),
 						transaction_pool: service.transaction_pool(),
 					});
 
 					let client = service.client();
-					executor.spawn(start_aura(
+					executor.spawn(start_shasper(
 						SlotDuration::get_or_compute(&*client)?,
 						Arc::new(
 							bls::Pair::from_secret(key.clone())
@@ -94,7 +98,9 @@ construct_service_factory! {
 						Arc::new(ShasperBlockImport::new(client)?),
 						proposer,
 						service.network(),
-					));
+						service.on_exit(),
+						service.config.custom.inherent_data_providers.clone(),
+					)?);
 				}
 
 				Ok(service)
@@ -102,35 +108,29 @@ construct_service_factory! {
 		},
 		LightService = LightComponents<Self>
 			{ |config, executor| <LightComponents<Factory>>::new(config, executor) },
-		FullImportQueue = AuraImportQueue<
+		FullImportQueue = ShasperImportQueue<
 			Self::Block,
 			FullClient<Self>,
-			NothingExtra,
-			::consensus::InherentProducingFn<BasicInherentData>,
 		>
 			{ |config: &mut FactoryFullConfiguration<Self>, client: Arc<FullClient<Self>>| {
 				Ok(import_queue(
 					SlotDuration::get_or_compute(&*client)?,
 					client.clone(),
 					Arc::new(ShasperBlockImport::new(client)?),
-					NothingExtra,
-					::consensus::make_basic_inherent as _,
-				))
+					config.custom.inherent_data_providers.clone(),
+				)?)
 			}},
-		LightImportQueue = AuraImportQueue<
+		LightImportQueue = ShasperImportQueue<
 			Self::Block,
 			LightClient<Self>,
-			NothingExtra,
-			::consensus::InherentProducingFn<BasicInherentData>,
 		>
 			{ |config: &mut FactoryFullConfiguration<Self>, client: Arc<LightClient<Self>>|
 				Ok(import_queue(
 					SlotDuration::get_or_compute(&*client)?,
 					client.clone(),
 					Arc::new(ShasperBlockImport::new(client)?),
-					NothingExtra,
-					::consensus::make_basic_inherent as _,
-				))
+					config.custom.inherent_data_providers.clone(),
+				)?)
 			},
 	}
 }

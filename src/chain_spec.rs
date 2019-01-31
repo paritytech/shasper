@@ -14,16 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use shasper_primitives::{ValidatorId, AccountId};
-use shasper_runtime::{GenesisConfig};
-use substrate_service;
+use primitives::{ValidatorId, AccountId};
+use runtime::GenesisConfig;
 use crypto::bls;
 
 // Note this is the URL for the telemetry server
 //const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Specialised `ChainSpec`. This is a specialisation of the general Substrate ChainSpec type.
-pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
+pub type ChainSpec = service::ChainSpec<GenesisConfig>;
 
 /// The chain specification option. This is expected to come in from the CLI and
 /// is little more than one of a number of alternatives which can easily be converted
