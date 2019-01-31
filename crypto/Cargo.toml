@@ -2,14 +2,15 @@
 name = "shasper-crypto"
 version = "0.1.0"
 authors = ["Wei Tang <hi@that.world>"]
+edition = "2018"
 
 [dependencies]
-bls = { git = "https://github.com/sorpaas/bls", default-features = false }
+bls-crate = { package = "bls", git = "https://github.com/sorpaas/bls", default-features = false }
 pairing = { git = "https://github.com/sorpaas/pairing", default-features = false }
 
 [features]
 default = ["std"]
 std = [
-	"bls/std",
+	"bls-crate/std",
 	"pairing/std",
 ]

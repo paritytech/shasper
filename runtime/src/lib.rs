@@ -21,35 +21,9 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit="256"]
 
-extern crate sr_std as rstd;
-extern crate sr_io as runtime_io;
-#[macro_use]
+extern crate parity_codec as codec;
+extern crate parity_codec_derive as codec_derive;
 extern crate substrate_client as client;
-#[macro_use]
-extern crate srml_support;
-extern crate sr_primitives as runtime_primitives;
-#[cfg(feature = "std")]
-#[macro_use]
-extern crate serde_derive;
-extern crate shasper_primitives as primitives;
-extern crate parity_codec;
-#[macro_use]
-extern crate parity_codec_derive;
-#[macro_use]
-extern crate sr_version as version;
-extern crate shasper_consensus_primitives as consensus_primitives;
-extern crate keccak_hasher;
-extern crate ssz;
-#[macro_use]
-extern crate ssz_derive;
-extern crate ssz_hash;
-#[macro_use]
-extern crate ssz_hash_derive;
-extern crate byteorder;
-extern crate hash_db;
-extern crate shasper_crypto as crypto;
-extern crate shuffling;
-extern crate srml_support as runtime_support;
 
 #[cfg(feature = "std")]
 mod genesis;
@@ -69,27 +43,30 @@ use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity, generic,
 	traits::{Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
-	BasicInherentData, CheckInherentError, ApplyOutcome,
+	ApplyOutcome,
 };
 use client::{
-	block_builder::api as block_builder_api, runtime_api as client_api
+	block_builder::api as block_builder_api,
+	runtime_api as client_api
 };
-use srml_support::StorageMap;
-use srml_support::storage::unhashed::StorageVec;
+use inherents::{CheckInherentsResult, InherentData, MakeFatalError};
+use runtime_support::StorageMap;
+use runtime_support::storage::unhashed::StorageVec;
 use consensus_primitives::api as consensus_api;
-use version::RuntimeVersion;
+use runtime_version::RuntimeVersion;
 #[cfg(feature = "std")]
-use version::NativeVersion;
-use parity_codec::Encode;
+use runtime_version::NativeVersion;
+use codec::Encode;
 use keccak_hasher::KeccakHasher;
 use spec::SpecHeader;
 use ssz_hash::SpecHash;
+use client::impl_runtime_apis;
 
 // A few exports that help ease life for downstream crates.
 #[cfg(any(feature = "std", test))]
 pub use runtime_primitives::BuildStorage;
 pub use runtime_primitives::{Permill, Perbill};
-pub use srml_support::{StorageValue, RuntimeMetadata};
+pub use runtime_support::StorageValue;
 #[cfg(feature = "std")]
 pub use genesis::GenesisConfig;
 pub use extrinsic::UncheckedExtrinsic;
@@ -100,8 +77,8 @@ pub use digest::DigestItem;
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("shasper"),
-	impl_name: create_runtime_str!("shasper"),
+	spec_name: runtime_primitives::create_runtime_str!("shasper"),
+	impl_name: runtime_primitives::create_runtime_str!("shasper"),
 	authoring_version: 1,
 	spec_version: 1,
 	impl_version: 0,
@@ -149,7 +126,7 @@ impl_runtime_apis! {
 
 		fn execute_block(block: Block) {
 			let (header, extrinsics) = block.deconstruct();
-			Runtime::initialise_block(header);
+			Runtime::initialise_block(&header);
 			extrinsics.into_iter().for_each(|e| {
 				Runtime::apply_extrinsic(e).ok().expect("Extrinsic in block execution must be valid");
 			});
@@ -157,7 +134,7 @@ impl_runtime_apis! {
 			Runtime::finalise_block();
 		}
 
-		fn initialise_block(header: <Block as BlockT>::Header) {
+		fn initialise_block(header: &<Block as BlockT>::Header) {
 			<storage::Number>::put(header.number);
 			<storage::ParentHash>::put(header.parent_hash);
 			<storage::ExtrinsicsRoot>::put(header.extrinsics_root);
@@ -171,16 +148,17 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl block_builder_api::BlockBuilder<Block, BasicInherentData> for Runtime {
+	impl block_builder_api::BlockBuilder<Block> for Runtime {
 		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
 			let extrinsic_index = <storage::UncheckedExtrinsics>::count();
 
 			if extrinsic_index == consts::TIMESTAMP_POSITION {
 				<storage::Timestamp>::put(extrinsic.clone().timestamp().expect("Invalid timestamp"));
 			} else if extrinsic_index == consts::SLOT_POSITION {
+				let start_slot = <storage::StartSlot>::get();
 				let parent_slot = <storage::Slot>::get();
 				<storage::ParentSlot>::put(parent_slot);
-				<storage::Slot>::put(extrinsic.clone().slot().expect("Invalid slot"));
+				<storage::Slot>::put(extrinsic.clone().slot().expect("Invalid slot") - start_slot);
 			} else if extrinsic_index == consts::RANDAO_REVEAL_POSITION {
 				<storage::RandaoReveal>::put(extrinsic.clone().randao_reveal().expect("Invalid randao reveal"));
 			} else if extrinsic_index == consts::POW_CHAIN_REF_POSITION {
@@ -271,7 +249,13 @@ impl_runtime_apis! {
 			}
 		}
 
-		fn inherent_extrinsics(data: BasicInherentData) -> Vec<<Block as BlockT>::Extrinsic> {
+		fn inherent_extrinsics(data: InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
+			let data = data.get_data::<consensus_primitives::InherentData>(
+				&consensus_primitives::INHERENT_IDENTIFIER
+			)
+				.expect("Decode inherent data failed")
+				.expect("Inherent does not exist");
+
 			let mut inherent = Vec::new();
 
 			inherent.push(
@@ -279,7 +263,7 @@ impl_runtime_apis! {
 			);
 
 			inherent.push(
-				(consts::SLOT_POSITION, UncheckedExtrinsic::Slot(data.aura_expected_slot))
+				(consts::SLOT_POSITION, UncheckedExtrinsic::Slot(data.slot))
 			);
 
 			inherent.push(
@@ -294,40 +278,66 @@ impl_runtime_apis! {
 			inherent.into_iter().map(|v| v.1).collect()
 		}
 
-		fn check_inherents(block: Block, _data: BasicInherentData) -> Result<(), CheckInherentError> {
-			block.extrinsics()
+		fn check_inherents(block: Block, _data: InherentData) -> CheckInherentsResult {
+			let mut result = CheckInherentsResult::new();
+
+			if block.extrinsics()
 				.get(consts::TIMESTAMP_POSITION as usize)
 				.and_then(|xt: &UncheckedExtrinsic| match xt {
 					UncheckedExtrinsic::Timestamp(ref t) => Some(t.clone()),
 					_ => None,
-				})
-				.ok_or_else(|| CheckInherentError::Other("No valid timestamp in block.".into()))?;
+				}).is_none()
+			{
+				result.put_error(
+					consensus_primitives::INHERENT_IDENTIFIER,
+					&MakeFatalError::from(())
+				).expect("Putting error failed");
+				return result;
+			}
 
-			block.extrinsics()
+			if block.extrinsics()
 				.get(consts::SLOT_POSITION as usize)
 				.and_then(|xt: &UncheckedExtrinsic| match xt {
 					UncheckedExtrinsic::Slot(ref t) => Some(t.clone()),
 					_ => None,
-				})
-				.ok_or_else(|| CheckInherentError::Other("No valid timestamp in block.".into()))?;
+				}).is_none()
+			{
+				result.put_error(
+					consensus_primitives::INHERENT_IDENTIFIER,
+					&MakeFatalError::from(())
+				).expect("Putting error failed");
+				return result;
+			}
 
-			block.extrinsics()
+			if block.extrinsics()
 				.get(consts::RANDAO_REVEAL_POSITION as usize)
 				.and_then(|xt: &UncheckedExtrinsic| match xt {
 					UncheckedExtrinsic::RandaoReveal(ref t) => Some(t.clone()),
 					_ => None,
-				})
-				.ok_or_else(|| CheckInherentError::Other("No valid timestamp in block.".into()))?;
+				}).is_none()
+			{
+				result.put_error(
+					consensus_primitives::INHERENT_IDENTIFIER,
+					&MakeFatalError::from(())
+				).expect("Putting error failed");
+				return result;
+			}
 
-			block.extrinsics()
+			if block.extrinsics()
 				.get(consts::POW_CHAIN_REF_POSITION as usize)
 				.and_then(|xt: &UncheckedExtrinsic| match xt {
 					UncheckedExtrinsic::PowChainRef(ref t) => Some(t.clone()),
 					_ => None,
-				})
-				.ok_or_else(|| CheckInherentError::Other("No valid timestamp in block.".into()))?;
+				}).is_none()
+			{
+				result.put_error(
+					consensus_primitives::INHERENT_IDENTIFIER,
+					&MakeFatalError::from(())
+				).expect("Putting error failed");
+				return result;
+			}
 
-			Ok(())
+			result
 		}
 
 		fn random_seed() -> <Block as BlockT>::Hash {
@@ -346,18 +356,20 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl consensus_api::AuraApi<Block> for Runtime {
+	impl aura_primitives::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
 			10
 		}
+	}
 
+	impl consensus_api::ShasperApi<Block> for Runtime {
 		fn slot() -> Slot {
 			<storage::Slot>::get()
 		}
 
-		fn validator_ids_from_attestation(attestation: AttestationRecord) -> Vec<ValidatorId> {
+		fn validator_ids_from_attestation(attestation: &AttestationRecord) -> Vec<ValidatorId> {
 			let crystallized_state = <storage::Crystallized>::get();
-			let attestation_indices = crystallized_state.attestation_indices(&attestation);
+			let attestation_indices = crystallized_state.attestation_indices(attestation);
 
 			attestation_indices
 				.iter()

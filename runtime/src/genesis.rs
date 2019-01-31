@@ -17,10 +17,12 @@
 use runtime_primitives::{BuildStorage, StorageMap, ChildrenStorageMap};
 use primitives::{ValidatorId, storage::well_known_keys};
 use runtime_io::twox_128;
-use parity_codec::{Encode, KeyedVec};
-use state::{ActiveState, CrystallizedState};
-use validators::{ValidatorRecord, ShardAndCommittee};
-use consts;
+use codec::{Encode, KeyedVec};
+use crate::state::{ActiveState, CrystallizedState};
+use crate::validators::{ValidatorRecord, ShardAndCommittee};
+use crate::consts;
+
+use serde_derive::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct GenesisConfig {
@@ -46,6 +48,12 @@ impl BuildStorage for GenesisConfig {
 			active.recent_block_hashes.push(Default::default());
 		}
 		storage.insert(twox_128(b"sys:active").to_vec(), active.encode());
+
+		let start_time = match ::std::time::SystemTime::now().duration_since(::std::time::SystemTime::UNIX_EPOCH) {
+			Ok(start_time) => start_time.as_secs(),
+			Err(e) => return Err(format!("{:?}", e)),
+		};
+		storage.insert(twox_128(b"sys:startslot").to_vec(), (start_time / 10).encode());
 
 		let mut crystallized = CrystallizedState::default();
 		for authority in self.authorities.clone() {

@@ -16,9 +16,10 @@
 
 use primitives::{H256, BlockNumber, Hash, ValidatorId};
 use primitives::storage::well_known_keys;
-use srml_support::storage::unhashed;
-use state::{ActiveState, CrystallizedState, BlockVoteInfo};
-use super::{UncheckedExtrinsic, Digest as DigestT, AttestationRecord};
+use runtime_support::storage_items;
+use runtime_support::storage::unhashed;
+use crate::state::{ActiveState, CrystallizedState, BlockVoteInfo};
+use crate::{UncheckedExtrinsic, Digest as DigestT, AttestationRecord};
 
 storage_items! {
 	pub Number: b"sys:num" => default BlockNumber;
@@ -32,6 +33,7 @@ storage_items! {
 	pub RandaoReveal: b"sys:randaoreveal" => default H256;
 	pub PowChainRef: b"sys:powchainref" => default H256;
 
+	pub StartSlot: b"sys:startslot" => default u64;
 	pub BlockHashesBySlot: b"sys:blockhashesbyslot" => map [ u64 => H256 ];
 	pub Active: b"sys:active" => default ActiveState;
 	pub ActiveRoot: b"sys:activeroot" => default H256;

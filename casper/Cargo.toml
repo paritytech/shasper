@@ -5,7 +5,7 @@ authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2018"
 
 [dependencies]
-hash-db = { git = "https://github.com/paritytech/trie", default-features = false }
+hash-db = { version = "0.9", default-features = false }
 
 [dev-dependencies]
 plain_hasher = "0.2"

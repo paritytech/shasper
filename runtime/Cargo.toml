@@ -2,33 +2,36 @@
 name = "shasper-runtime"
 version = "0.9.0"
 authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2018"
 
 [dependencies]
 integer-sqrt = { git = "https://github.com/paritytech/integer-sqrt-rs.git" }
 safe-mix = { version = "1.0", default-features = false }
-parity-codec = { version = "2.0", default-features = false }
-parity-codec-derive = "2.0"
-shasper-primitives = { path = "../primitives", default-features = false }
+parity-codec = { version = "3.0", default-features = false }
+parity-codec-derive = "3.0"
+primitives = { package = "shasper-primitives", path = "../primitives", default-features = false }
 substrate-client = { git = "https://github.com/paritytech/substrate", default-features = false }
-sr-std = { git = "https://github.com/paritytech/substrate", default-features = false }
-sr-io = { git = "https://github.com/paritytech/substrate", default-features = false }
-srml-support = { git = "https://github.com/paritytech/substrate", default-features = false }
-sr-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
-shasper-consensus-primitives = { path = "../consensus/primitives", default-features = false }
-sr-version = { git = "https://github.com/paritytech/substrate", default-features = false }
+inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate", default-features = false }
+rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate", default-features = false }
+runtime-io = { package = "sr-io", git = "https://github.com/paritytech/substrate", default-features = false }
+runtime-support = { package = "srml-support", git = "https://github.com/paritytech/substrate", default-features = false }
+runtime-primitives = { package = "sr-primitives", git = "https://github.com/paritytech/substrate", default-features = false }
+runtime-version = { package = "sr-version", git = "https://github.com/paritytech/substrate", default-features = false }
+consensus-primitives = { package = "shasper-consensus-primitives", path = "../consensus/primitives", default-features = false }
+aura-primitives = { package = "substrate-consensus-aura-primitives", git = "https://github.com/paritytech/substrate", default-features = false }
 rustc-hex = { version = "1.0", optional = true }
 hex-literal = { version = "0.1.0", optional = true }
 serde = { version = "1.0", optional = true, default-features = false }
 serde_derive = { version = "1.0", optional = true }
-substrate-keyring = { git = "https://github.com/paritytech/substrate", optional = true }
+keyring = { package = "substrate-keyring", git = "https://github.com/paritytech/substrate", optional = true }
 keccak-hasher = { path = "../util/keccak-hasher", default-features = false }
 ssz = { path = "../util/ssz", default-features = false }
 ssz-hash = { path = "../util/ssz-hash", default-features = false }
 ssz-derive = { path = "../util/ssz-derive", default-features = false }
 ssz-hash-derive = { path = "../util/ssz-hash-derive", default-features = false }
 byteorder = { version = "1.2", default-features = false }
-hash-db = { git = "https://github.com/paritytech/trie", default-features = false }
-shasper-crypto = { path = "../crypto", default-features = false }
+hash-db = { version = "0.9", default-features = false }
+crypto = { package = "shasper-crypto", path = "../crypto", default-features = false }
 shuffling = { path = "../util/shuffling", default-features = false }
 
 [features]
@@ -37,15 +40,15 @@ std = [
 	"hex-literal",
 	"rustc-hex",
 	"parity-codec/std",
-	"shasper-primitives/std",
+	"primitives/std",
 	"substrate-client/std",
-	"sr-std/std",
-	"sr-io/std",
-	"srml-support/std",
-	"sr-primitives/std",
-	"shasper-consensus-primitives/std",
-	"sr-version/std",
-	"substrate-keyring",
+	"rstd/std",
+	"runtime-io/std",
+	"runtime-support/std",
+	"runtime-primitives/std",
+	"runtime-version/std",
+	"consensus-primitives/std",
+	"keyring",
 	"serde_derive",
 	"serde",
 	"serde/std",
@@ -57,6 +60,7 @@ std = [
 	"ssz-hash-derive/std",
 	"byteorder/std",
 	"hash-db/std",
-	"shasper-crypto/std",
+	"crypto/std",
 	"shuffling/std",
+	"aura-primitives/std",
 ]

@@ -14,7 +14,7 @@ proc-macro2 = "0.4"
 [dev-dependencies]
 ssz-hash = { path = "../ssz-hash" }
 substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
-hash-db = { git = "https://github.com/paritytech/trie", default-features = false }
+hash-db = { version = "0.9", default-features = false }
 
 [features]
 default = ["std"]

@@ -17,11 +17,15 @@
 use primitives::H256;
 use rstd::prelude::*;
 
-use consts::CYCLE_LENGTH;
-use super::AttestationRecord;
-use validators::{ValidatorRecord, ShardAndCommittee};
+use crate::consts::CYCLE_LENGTH;
+use crate::AttestationRecord;
+use crate::validators::{ValidatorRecord, ShardAndCommittee};
+use crate::utils;
 use shuffling;
-use utils;
+
+use codec_derive::{Encode, Decode};
+use ssz_derive::{SszEncode, SszDecode};
+use ssz_hash_derive::SszHash;
 
 #[derive(Encode, Decode, Default, SszEncode, SszDecode, SszHash)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -154,7 +158,7 @@ impl CrystallizedState {
 		seed: H256,
 		crosslinking_start_shard: u16
 	) -> Vec<Vec<ShardAndCommittee>> {
-		use consts::{CYCLE_LENGTH, MIN_COMMITTEE_SIZE, SHARD_COUNT};
+		use crate::consts::{CYCLE_LENGTH, MIN_COMMITTEE_SIZE, SHARD_COUNT};
 
 		let avs = self.active_validator_indices();
 		let (committees_per_slot, slots_per_committee) = if avs.len() >= CYCLE_LENGTH * MIN_COMMITTEE_SIZE {

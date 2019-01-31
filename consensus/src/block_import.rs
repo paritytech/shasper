@@ -18,6 +18,7 @@ use std::sync::Arc;
 use std::collections::hash_map::{HashMap, Entry};
 use std::marker::PhantomData;
 
+use codec::Encode;
 use consensus_common::{ForkChoiceStrategy, Authorities, ImportBlock, BlockImport, ImportResult, Error as ConsensusError, ErrorKind as ConsensusErrorKind};
 use primitives::H256;
 use client::ChainHead;
@@ -25,9 +26,8 @@ use client::backend::AuxStore;
 use client::blockchain::HeaderBackend;
 use runtime_primitives::generic::BlockId;
 use runtime_primitives::traits::{Block, DigestItem, DigestItemFor, ProvideRuntimeApi, Header, One};
-use shasper_primitives::{Slot, ValidatorId};
-use aura_primitives::api::AuraApi;
-use codec::Encode;
+use primitives::{Slot, ValidatorId};
+use consensus_primitives::api::ShasperApi;
 use parking_lot::Mutex;
 
 use super::{CompatibleExtrinsic, CompatibleDigestItem};
@@ -53,7 +53,7 @@ impl<B: Block<Hash=H256>, C> ShasperBlockImport<B, C> where
 impl<B: Block<Hash=H256>, C> BlockImport<B> for ShasperBlockImport<B, C> where
 	C: Authorities<B> + BlockImport<B, Error=ConsensusError> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
 	B::Extrinsic: CompatibleExtrinsic,
-	C::Api: AuraApi<B>,
+	C::Api: ShasperApi<B>,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
 {
 	type Error = ConsensusError;
@@ -99,7 +99,7 @@ impl LatestAttestations {
 			Some(v) => Vec::<(ValidatorId, (Slot, H256))>::decode(&mut &v[..])
 				.map(|v| LatestAttestations(v.into_iter().collect()))
 				.ok_or_else(|| ::client::error::ErrorKind::Backend(
-					format!("Aura slot duration kept in invalid format"),
+					format!("Shasper latest attestations kept in invalid format"),
 				).into()),
 			None => Ok(Default::default()),
 		}
@@ -129,7 +129,7 @@ impl LatestAttestations {
 
 	pub fn note_block<B: Block<Hash=H256>, C>(&mut self, client: &C, parent_id: &BlockId<B>, body: Option<&[B::Extrinsic]>) where
 		C: ProvideRuntimeApi,
-		C::Api: AuraApi<B>,
+		C::Api: ShasperApi<B>,
 		B::Extrinsic: CompatibleExtrinsic,
 	{
 		if let Some(extrinsics) = body {
@@ -145,7 +145,7 @@ impl LatestAttestations {
 
 	pub fn is_new_best<B: Block<Hash=H256>, C>(&self, client: &C, current: &BlockId<B>, new_parent: &BlockId<B>) -> ::client::error::Result<bool> where
 		C: ChainHead<B> + HeaderBackend<B> + ProvideRuntimeApi,
-		C::Api: AuraApi<B>,
+		C::Api: ShasperApi<B>,
 	{
 		let leaves = client.leaves()?;
 		let leaves_with_justified_slots: Vec<(B::Hash, Slot)> = leaves

@@ -14,7 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+use ssz_derive::{SszEncode, SszDecode};
+use ssz_hash_derive::SszHash;
+use codec_derive::{Encode, Decode};
 use rstd::prelude::*;
+
+#[cfg(feature = "std")]
+use serde_derive::{Serialize, Deserialize};
 
 use super::{H256, ValidatorId, ShardId, BitField, Signature};
 use hash_db::Hasher;
