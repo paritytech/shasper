@@ -19,3 +19,4 @@
 #![warn(missing_docs)]
 
 pub mod randao;
+pub mod casper;
