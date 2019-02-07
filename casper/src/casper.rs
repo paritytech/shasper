@@ -176,7 +176,7 @@ impl<'a, A, S> Casper<'a, A, S> where
 	}
 
 	/// Prune pending attestation list.
-	pub fn prune_pending_attestations(&mut self) {
+	fn prune_pending_attestations(&mut self) {
 		let current_epoch = self.current_epoch();
 		self.data.pending_attestations.retain(|attestation| {
 			attestation.target_epoch() >= current_epoch
@@ -211,11 +211,11 @@ impl<'a, A, S> Casper<'a, A, S> where
 			self.data.finalized_epoch = self.data.justified_epoch;
 		}
 
+		self.prune_pending_attestations();
+
 		self.data.previous_justified_epoch = self.data.justified_epoch;
 		self.data.justified_epoch = new_justified_epoch;
 		self.data.epoch += One::one();
-
-		self.prune_pending_attestations();
 	}
 }
 
