@@ -44,7 +44,7 @@ pub trait Attestation: PartialEq + Eq {
 	/// Get validator Id of this attestation.
 	fn validator_id(&self) -> &Self::ValidatorId;
 	/// Whether this attestation's source and target is on canon chain.
-	fn is_canon(&self) -> bool;
+	fn is_casper_canon(&self) -> bool;
 	/// Get the source epoch of this attestation.
 	fn source_epoch(&self) -> Self::Epoch;
 	/// Get the target epoch of this attestation.
@@ -74,13 +74,14 @@ pub fn slashable<C: Attestation>(a: &C, b: &C) -> bool {
 	false
 }
 
+/// Pending attestations.
+pub type PendingAttestations<A> = Vec<A>;
+
 /// Data needed for casper consensus.
 #[derive(Default, Clone, Eq, PartialEq)]
 pub struct CasperData<A: Attestation> {
 	/// Bitfield holding justification information.
 	pub justification_bitfield: u64,
-	/// Pending attestation to be processed.
-	pub pending_attestations: Vec<A>,
 	/// Current epoch.
 	pub epoch: A::Epoch,
 	/// Current justified epoch.
@@ -91,10 +92,23 @@ pub struct CasperData<A: Attestation> {
 	pub previous_justified_epoch: A::Epoch,
 }
 
+/// Rewards for Casper.
+pub enum CasperRewardType {
+	/// The attestation has an expected source.
+	ExpectedSource,
+	/// The validator is active, but does not have an attestation with expected source.
+	NoExpectedSource,
+	/// The attestation has an expected target.
+	ExpectedTarget,
+	/// The validator is active, but does not have an attestation with expected target.
+	NoExpectedTarget,
+}
+
 /// Casper struct holding pending attestation, justification and finalization information.
 pub struct Casper<'a, A: Attestation, S: ValidatorStore> {
 	data: CasperData<A>,
 	store: &'a S,
+	pending_attestations: &'a mut PendingAttestations<A>,
 }
 
 impl<'a, A, S> Casper<'a, A, S> where
@@ -102,8 +116,13 @@ impl<'a, A, S> Casper<'a, A, S> where
 	S: ValidatorStore<ValidatorId=A::ValidatorId, Epoch=A::Epoch>,
 {
 	/// Create a new casper context.
-	pub fn new(data: CasperData<A>, store: &'a S) -> Self {
-		Self { data, store }
+	pub fn new(data: CasperData<A>, store: &'a S, pending_attestations: &'a mut PendingAttestations<A>) -> Self {
+		Self { data, store, pending_attestations }
+	}
+
+	/// Get a mutable handler to pending attestations.
+	pub fn pending_attestations(&mut self) -> &mut PendingAttestations<A> {
+		self.pending_attestations
 	}
 
 	/// Get the current epoch.
@@ -142,8 +161,8 @@ impl<'a, A, S> Casper<'a, A, S> where
 
 	fn attesting_balance(&self, target_epoch: A::Epoch) -> S::Balance {
 		let mut validators = Vec::new();
-		for attestation in &self.data.pending_attestations {
-			if attestation.is_canon() && attestation.target_epoch() == target_epoch {
+		for attestation in self.pending_attestations.iter() {
+			if attestation.is_casper_canon() && attestation.target_epoch() == target_epoch {
 				validators.push(attestation.validator_id().clone());
 			}
 		}
@@ -170,17 +189,51 @@ impl<'a, A, S> Casper<'a, A, S> where
 		self.attesting_balance(self.previous_epoch())
 	}
 
-	/// Push pending attestations to Casper.
-	pub fn push_pending_attestations(&mut self, mut attestations: Vec<A>) {
-		self.data.pending_attestations.append(&mut attestations);
-	}
-
 	/// Prune pending attestation list.
 	fn prune_pending_attestations(&mut self) {
 		let current_epoch = self.current_epoch();
-		self.data.pending_attestations.retain(|attestation| {
+		self.pending_attestations.retain(|attestation| {
 			attestation.target_epoch() >= current_epoch
 		});
+	}
+
+	/// Get rewards in current epoch. Note that this usually needs to be called before `advance_epoch`, but after all
+	/// pending attestations have been pushed.
+	///
+	/// The validator list might duplicate.
+	pub fn rewards(&self) -> Vec<(A::ValidatorId, CasperRewardType)> {
+		let previous_justified_epoch = self.data.previous_justified_epoch;
+		let mut no_expected_source_validators = self.store.active_validators(self.current_epoch());
+		let mut no_expected_target_validators = no_expected_source_validators.clone();
+
+		let mut rewards = Vec::new();
+		for attestation in self.pending_attestations.iter() {
+			// Expected FFG source.
+			if attestation.source_epoch() == previous_justified_epoch {
+				rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedSource));
+				no_expected_source_validators.retain(|validator_id| {
+					validator_id != attestation.validator_id()
+				});
+			}
+
+			// Expected FFG target.
+			if attestation.source_epoch() == previous_justified_epoch && attestation.is_casper_canon() {
+				rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedTarget));
+				no_expected_target_validators.retain(|validator_id| {
+					validator_id != attestation.validator_id()
+				});
+			}
+		}
+
+		for validator in no_expected_source_validators {
+			rewards.push((validator, CasperRewardType::NoExpectedSource));
+		}
+
+		for validator in no_expected_target_validators {
+			rewards.push((validator, CasperRewardType::NoExpectedTarget));
+		}
+
+		rewards
 	}
 
 	/// Advance the current epoch and start a new epoch.
@@ -239,7 +292,7 @@ mod tests {
 			&self.validator_id
 		}
 
-		fn is_canon(&self) -> bool {
+		fn is_casper_canon(&self) -> bool {
 			true
 		}
 
@@ -294,14 +347,16 @@ mod tests {
 		store.push_validator(2, 0, usize::max_value(), 1);
 		store.push_validator(3, 0, usize::max_value(), 1);
 
+		let mut pending_attestations = PendingAttestations::<DummyAttestation>::new();
+
 		let data = CasperData::<DummyAttestation>::default();
-		let mut casper = Casper::new(data, &store);
+		let mut casper = Casper::new(data, &store, &mut pending_attestations);
 
 		// Attesting on the zero round doesn't do anything, because it's already justified and finalized.
 		casper.advance_epoch();
 
 		// First round, four validators attest.
-		casper.push_pending_attestations(vec![
+		casper.pending_attestations().append(&mut vec![
 			DummyAttestation {
 				validator_id: 0,
 				source_epoch: 0,
@@ -329,7 +384,7 @@ mod tests {
 		assert_eq!(casper.finalized_epoch(), 0);
 
 		// Second round, three validators attest.
-		casper.push_pending_attestations(vec![
+		casper.pending_attestations().append(&mut vec![
 			DummyAttestation {
 				validator_id: 0,
 				source_epoch: 1,
@@ -352,7 +407,7 @@ mod tests {
 		assert_eq!(casper.finalized_epoch(), 1);
 
 		// Third round, all four validators attest, but the one missing from previous round skipped an epoch.
-		casper.push_pending_attestations(vec![
+		casper.pending_attestations().append(&mut vec![
 			DummyAttestation {
 				validator_id: 0,
 				source_epoch: 2,
@@ -380,7 +435,7 @@ mod tests {
 		assert_eq!(casper.finalized_epoch(), 2);
 
 		// Fourth round, only two validators attest.
-		casper.push_pending_attestations(vec![
+		casper.pending_attestations().append(&mut vec![
 			DummyAttestation {
 				validator_id: 0,
 				source_epoch: 3,

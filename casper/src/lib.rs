@@ -20,3 +20,4 @@
 
 pub mod randao;
 pub mod casper;
+pub mod reward;
