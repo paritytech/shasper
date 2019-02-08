@@ -61,18 +61,6 @@ pub struct CasperContext<A: Attestation> {
 	pub previous_justified_epoch: A::Epoch,
 }
 
-/// Rewards for Casper.
-pub enum CasperRewardType {
-	/// The attestation has an expected source.
-	ExpectedSource,
-	/// The validator is active, but does not have an attestation with expected source.
-	NoExpectedSource,
-	/// The attestation has an expected target.
-	ExpectedTarget,
-	/// The validator is active, but does not have an attestation with expected target.
-	NoExpectedTarget,
-}
-
 impl<A: Attestation> CasperContext<A> {
 	/// Get the current epoch.
 	pub fn epoch(&self) -> A::Epoch {

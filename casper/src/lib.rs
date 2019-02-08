@@ -20,5 +20,5 @@
 
 pub mod randao;
 pub mod casper;
-// pub mod reward;
+pub mod reward;
 pub mod store;

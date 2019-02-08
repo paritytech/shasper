@@ -18,7 +18,23 @@
 
 use num_traits::{One, Zero};
 use rstd::ops::{Add, AddAssign, Sub, SubAssign};
-use crate::casper::{Attestation, PendingAttestations, ValidatorStore};
+use crate::casper::CasperContext;
+use crate::store::{
+	Attestation, ValidatorStore, PendingAttestationsStore, BlockStore,
+	PendingAttestationsStoreValidatorId, PendingAttestationsStoreEpoch
+};
+
+/// Rewards for Casper.
+pub enum CasperRewardType {
+	/// The attestation has an expected source.
+	ExpectedSource,
+	/// The validator is active, but does not have an attestation with expected source.
+	NoExpectedSource,
+	/// The attestation has an expected target.
+	ExpectedTarget,
+	/// The validator is active, but does not have an attestation with expected target.
+	NoExpectedTarget,
+}
 
 /// Rewards for beacon chain.
 pub enum BeaconRewardType<Slot> {
@@ -38,109 +54,83 @@ pub trait BeaconAttestation: Attestation {
 	/// Get slot of this attestation.
 	fn slot(&self) -> Self::Slot;
 	/// Whether this attestation's slot is on canon chain.
-	fn is_beacon_canon(&self) -> bool;
+	fn is_slot_canon(&self) -> bool;
 	/// This attestation's inclusion distance.
 	fn inclusion_distance(&self) -> Self::Slot;
 }
 
-/// Struct for handle beacon rewards.
-pub struct BeaconReward<'a, A: BeaconAttestation, S: ValidatorStore> {
-	epoch: A::Epoch,
-	store: &'a S,
-	pending_attestations: &'a PendingAttestations<A>,
-}
-
-impl<'a, A, S> BeaconReward<'a, A, S> where
+/// Get rewards for beacon chain.
+pub fn beacon_rewards<A, S>(store: &S) -> Vec<(A::ValidatorId, BeaconRewardType<A::Slot>)> where
 	A: BeaconAttestation,
-	S: ValidatorStore<ValidatorId=A::ValidatorId, Epoch=A::Epoch>,
+	S: PendingAttestationsStore<Attestation=A>,
+	S: BlockStore<Epoch=PendingAttestationsStoreEpoch<S>>,
+	S: ValidatorStore<
+		ValidatorId=PendingAttestationsStoreValidatorId<S>,
+		Epoch=PendingAttestationsStoreEpoch<S>
+	>,
 {
-	/// Get the current epoch.
-	pub fn current_epoch(&self) -> A::Epoch {
-		self.epoch
-	}
+	let mut no_expected_head_validators = store.active_validators(store.epoch());
 
-	/// Get the next epoch.
-	pub fn next_epoch(&self) -> A::Epoch {
-		self.epoch + One::one()
-	}
+	let mut rewards = Vec::new();
+	for attestation in store.attestations() {
+		if attestation.target_epoch() == store.previous_epoch() {
+			rewards.push((attestation.validator_id().clone(), BeaconRewardType::InclusionDistance(attestation.inclusion_distance())));
 
-	/// Get the previous epoch.
-	pub fn previous_epoch(&self) -> A::Epoch {
-		if self.epoch == Zero::zero() {
-			self.epoch
-		} else {
-			self.epoch - One::one()
-		}
-	}
-
-	/// Get rewards for beacon chain.
-	pub fn rewards(&self) -> Vec<(A::ValidatorId, BeaconRewardType<A::Slot>)> {
-		let mut no_expected_head_validators = self.store.active_validators(self.current_epoch());
-
-		let mut rewards = Vec::new();
-		for attestation in self.pending_attestations.iter() {
-			// Expected beacon chain head.
-			if attestation.is_beacon_canon() && attestation.target_epoch() == self.previous_epoch() {
+			if attestation.is_slot_canon() {
 				rewards.push((attestation.validator_id().clone(), BeaconRewardType::ExpectedHead));
 				no_expected_head_validators.retain(|validator_id| {
 					validator_id != attestation.validator_id()
 				});
 			}
-
-			if attestation.target_epoch() == self.previous_epoch() {
-				rewards.push((attestation.validator_id().clone(), BeaconRewardType::InclusionDistance(attestation.inclusion_distance())));
-			}
 		}
-
-		for validator_id in no_expected_head_validators {
-			rewards.push((validator_id, BeaconRewardType::NoExpectedHead));
-		}
-
-		rewards
 	}
+
+	for validator_id in no_expected_head_validators {
+		rewards.push((validator_id, BeaconRewardType::NoExpectedHead));
+	}
+
+	rewards
 }
 
+/// Get rewards for casper. Note that this usually needs to be called before `advance_epoch`, but after all pending
+/// attestations have been pushed.
+pub fn casper_rewards<A, S>(context: &CasperContext<A>, store: &S) -> Vec<(A::ValidatorId, CasperRewardType)> where
+	A: Attestation,
+	S: PendingAttestationsStore<Attestation=A>,
+	S: BlockStore<Epoch=PendingAttestationsStoreEpoch<S>>,
+	S: ValidatorStore<
+		ValidatorId=PendingAttestationsStoreValidatorId<S>,
+		Epoch=PendingAttestationsStoreEpoch<S>
+	>,
+{
+	let previous_justified_epoch = context.previous_justified_epoch;
+	let mut no_expected_source_validators = store.active_validators(context.epoch());
+	let mut no_expected_target_validators = no_expected_source_validators.clone();
 
-	/// Get rewards in current epoch. Note that this usually needs to be called before `advance_epoch`, but after all
-	/// pending attestations have been pushed.
-	///
-	/// The validator list might duplicate.
-	pub fn rewards(&self) -> Vec<(A::ValidatorId, CasperRewardType)> {
-		let previous_justified_epoch = self.data.previous_justified_epoch;
-		let mut no_expected_source_validators = self.store.active_validators(self.current_epoch());
-		let mut no_expected_target_validators = no_expected_source_validators.clone();
+	let mut rewards = Vec::new();
+	for attestation in store.attestations() {
+		if attestation.source_epoch() == previous_justified_epoch {
+			rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedSource));
+			no_expected_source_validators.retain(|validator_id| {
+				validator_id != attestation.validator_id()
+			});
 
-		let mut rewards = Vec::new();
-		for attestation in self.pending_attestations.iter() {
-			// Expected FFG source.
-			if attestation.source_epoch() == previous_justified_epoch {
-				rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedSource));
-				no_expected_source_validators.retain(|validator_id| {
-					validator_id != attestation.validator_id()
-				});
-			}
-
-			// Expected FFG target.
-			if attestation.source_epoch() == previous_justified_epoch && attestation.is_casper_canon() {
+			if attestation.is_casper_canon() {
 				rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedTarget));
 				no_expected_target_validators.retain(|validator_id| {
 					validator_id != attestation.validator_id()
 				});
 			}
 		}
-
-		for validator in no_expected_source_validators {
-			rewards.push((validator, CasperRewardType::NoExpectedSource));
-		}
-
-		for validator in no_expected_target_validators {
-			rewards.push((validator, CasperRewardType::NoExpectedTarget));
-		}
-
-		rewards
 	}
 
-	pub fn advance_epoch(&mut self) {
-
+	for validator in no_expected_source_validators {
+		rewards.push((validator, CasperRewardType::NoExpectedSource));
 	}
+
+	for validator in no_expected_target_validators {
+		rewards.push((validator, CasperRewardType::NoExpectedTarget));
+	}
+
+	rewards
 }
