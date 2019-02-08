@@ -17,6 +17,7 @@
 //! Casper FFG generic consensus algorithm on justification and finalization.
 
 use num_traits::{One, Zero};
+use rstd::ops::{Add, AddAssign, Sub, SubAssign};
 
 use crate::store::{
 	self, Attestation, ValidatorStore, PendingAttestationsStore, BlockStore,
@@ -48,32 +49,34 @@ pub fn slashable<C: Attestation>(a: &C, b: &C) -> bool {
 
 /// Data needed for casper consensus.
 #[derive(Default, Clone, Eq, PartialEq)]
-pub struct CasperContext<A: Attestation> {
+pub struct CasperContext<Epoch> {
 	/// Bitfield holding justification information.
 	pub justification_bitfield: u64,
 	/// Current epoch.
-	pub epoch: A::Epoch,
+	pub epoch: Epoch,
 	/// Current justified epoch.
-	pub justified_epoch: A::Epoch,
+	pub justified_epoch: Epoch,
 	/// Current finalized epoch.
-	pub finalized_epoch: A::Epoch,
+	pub finalized_epoch: Epoch,
 	/// Previous justified epoch.
-	pub previous_justified_epoch: A::Epoch,
+	pub previous_justified_epoch: Epoch,
 }
 
-impl<A: Attestation> CasperContext<A> {
+impl<Epoch> CasperContext<Epoch> where
+	Epoch: Ord + Copy + Clone + Zero + One + Add<Output=Epoch> + AddAssign + Sub<Output=Epoch> + SubAssign
+{
 	/// Get the current epoch.
-	pub fn epoch(&self) -> A::Epoch {
+	pub fn epoch(&self) -> Epoch {
 		self.epoch
 	}
 
 	/// Get the next epoch.
-	pub fn next_epoch(&self) -> A::Epoch {
+	pub fn next_epoch(&self) -> Epoch {
 		self.epoch() + One::one()
 	}
 
 	/// Get the previous epoch.
-	pub fn previous_epoch(&self) -> A::Epoch {
+	pub fn previous_epoch(&self) -> Epoch {
 		if self.epoch() == Zero::zero() {
 			Zero::zero()
 		} else {
@@ -82,7 +85,8 @@ impl<A: Attestation> CasperContext<A> {
 	}
 
 	/// Prune pending attestation list.
-	fn prune_pending_attestations<S>(&self, store: &mut S) where
+	fn prune_pending_attestations<A, S>(&self, store: &mut S) where
+		A: Attestation<Epoch=Epoch>,
 		S: PendingAttestationsStore<Attestation=A>,
 	{
 		let current_epoch = self.epoch();
@@ -92,7 +96,8 @@ impl<A: Attestation> CasperContext<A> {
 	}
 
 	/// Advance the current epoch and start a new epoch.
-	pub fn advance_epoch<S>(&mut self, store: &mut S) where
+	pub fn advance_epoch<A, S>(&mut self, store: &mut S) where
+		A: Attestation<Epoch=Epoch>,
 		S: PendingAttestationsStore<Attestation=A>,
 		S: BlockStore<Epoch=PendingAttestationsStoreEpoch<S>>,
 		S: ValidatorStore<
@@ -238,7 +243,7 @@ mod tests {
 		store.push_validator(2, 0, usize::max_value(), 1);
 		store.push_validator(3, 0, usize::max_value(), 1);
 
-		let mut casper = CasperContext::<DummyAttestation>::default();
+		let mut casper = CasperContext::<usize>::default();
 
 		// Attesting on the zero round doesn't do anything, because it's already justified and finalized.
 		casper.advance_epoch(&mut store);

@@ -94,7 +94,7 @@ pub fn beacon_rewards<A, S>(store: &S) -> Vec<(A::ValidatorId, BeaconRewardType<
 
 /// Get rewards for casper. Note that this usually needs to be called before `advance_epoch`, but after all pending
 /// attestations have been pushed.
-pub fn casper_rewards<A, S>(context: &CasperContext<A>, store: &S) -> Vec<(A::ValidatorId, CasperRewardType)> where
+pub fn casper_rewards<A, S>(context: &CasperContext<A::Epoch>, store: &S) -> Vec<(A::ValidatorId, CasperRewardType)> where
 	A: Attestation,
 	S: PendingAttestationsStore<Attestation=A>,
 	S: BlockStore<Epoch=PendingAttestationsStoreEpoch<S>>,
