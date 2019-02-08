@@ -156,7 +156,11 @@ mod tests {
 			&self.validator_id
 		}
 
-		fn is_casper_canon(&self) -> bool {
+		fn is_source_canon(&self) -> bool {
+			true
+		}
+
+		fn is_target_canon(&self) -> bool {
 			true
 		}
 
@@ -169,9 +173,12 @@ mod tests {
 		}
 	}
 
-	// Value in the order ((valid_from, valid_to), balance).
 	#[derive(Default)]
-	pub struct DummyStore(HashMap<usize, ((usize, usize), usize)>);
+	pub struct DummyStore {
+		pub epoch: usize,
+		pub pending_attestations: Vec<DummyAttestation>,
+		pub validators: HashMap<usize, ((usize, usize), usize)>,
+	}
 
 	impl ValidatorStore for DummyStore {
 		type ValidatorId = usize;
@@ -181,14 +188,14 @@ mod tests {
 		fn total_balance(&self, validators: &[usize]) -> usize {
 			let mut total = 0;
 			for validator_id in validators {
-				total += self.0.get(validator_id).map(|v| v.1).unwrap_or(0);
+				total += self.validators.get(validator_id).map(|v| v.1).unwrap_or(0);
 			}
 			total
 		}
 
 		fn active_validators(&self, epoch: usize) -> Vec<usize> {
 			let mut validators = Vec::new();
-			for (validator_id, ((valid_from, valid_to), _)) in &self.0 {
+			for (validator_id, ((valid_from, valid_to), _)) in &self.validators {
 				if valid_from <= &epoch && &epoch <= valid_to {
 					validators.push(*validator_id);
 				}
@@ -197,9 +204,29 @@ mod tests {
 		}
 	}
 
+	impl PendingAttestationsStore for DummyStore {
+		type Attestation = DummyAttestation;
+
+		fn attestations(&self) -> &[DummyAttestation] {
+			&self.pending_attestations
+		}
+
+		fn retain<F: FnMut(&Self::Attestation) -> bool>(&mut self, f: F) {
+			self.pending_attestations.retain(f)
+		}
+	}
+
+	impl BlockStore for DummyStore {
+		type Epoch = usize;
+
+		fn epoch(&self) -> usize {
+			self.epoch
+		}
+	}
+
 	impl DummyStore {
 		pub fn push_validator(&mut self, validator_id: usize, valid_from: usize, valid_to: usize, balance: usize) {
-			self.0.insert(validator_id, ((valid_from, valid_to), balance));
+			self.validators.insert(validator_id, ((valid_from, valid_to), balance));
 		}
 	}
 
@@ -211,16 +238,14 @@ mod tests {
 		store.push_validator(2, 0, usize::max_value(), 1);
 		store.push_validator(3, 0, usize::max_value(), 1);
 
-		let mut pending_attestations = PendingAttestations::<DummyAttestation>::new();
-
-		let data = CasperData::<DummyAttestation>::default();
-		let mut casper = Casper::new(data, &store, &mut pending_attestations);
+		let mut casper = CasperContext::<DummyAttestation>::default();
 
 		// Attesting on the zero round doesn't do anything, because it's already justified and finalized.
-		casper.advance_epoch();
+		casper.advance_epoch(&mut store);
+		store.epoch += 1;
 
 		// First round, four validators attest.
-		casper.pending_attestations().append(&mut vec![
+		store.pending_attestations.append(&mut vec![
 			DummyAttestation {
 				validator_id: 0,
 				source_epoch: 0,
@@ -242,13 +267,14 @@ mod tests {
 				target_epoch: 1,
 			},
 		]);
-		casper.advance_epoch();
-		assert_eq!(casper.current_epoch(), 2);
-		assert_eq!(casper.justified_epoch(), 1);
-		assert_eq!(casper.finalized_epoch(), 0);
+		casper.advance_epoch(&mut store);
+		store.epoch += 1;
+		assert_eq!(casper.epoch, 2);
+		assert_eq!(casper.justified_epoch, 1);
+		assert_eq!(casper.finalized_epoch, 0);
 
 		// Second round, three validators attest.
-		casper.pending_attestations().append(&mut vec![
+		store.pending_attestations.append(&mut vec![
 			DummyAttestation {
 				validator_id: 0,
 				source_epoch: 1,
@@ -265,13 +291,14 @@ mod tests {
 				target_epoch: 2,
 			},
 		]);
-		casper.advance_epoch();
-		assert_eq!(casper.current_epoch(), 3);
-		assert_eq!(casper.justified_epoch(), 2);
-		assert_eq!(casper.finalized_epoch(), 1);
+		casper.advance_epoch(&mut store);
+		store.epoch += 1;
+		assert_eq!(casper.epoch, 3);
+		assert_eq!(casper.justified_epoch, 2);
+		assert_eq!(casper.finalized_epoch, 1);
 
 		// Third round, all four validators attest, but the one missing from previous round skipped an epoch.
-		casper.pending_attestations().append(&mut vec![
+		store.pending_attestations.append(&mut vec![
 			DummyAttestation {
 				validator_id: 0,
 				source_epoch: 2,
@@ -293,13 +320,14 @@ mod tests {
 				target_epoch: 3,
 			},
 		]);
-		casper.advance_epoch();
-		assert_eq!(casper.current_epoch(), 4);
-		assert_eq!(casper.justified_epoch(), 3);
-		assert_eq!(casper.finalized_epoch(), 2);
+		casper.advance_epoch(&mut store);
+		store.epoch += 1;
+		assert_eq!(casper.epoch, 4);
+		assert_eq!(casper.justified_epoch, 3);
+		assert_eq!(casper.finalized_epoch, 2);
 
 		// Fourth round, only two validators attest.
-		casper.pending_attestations().append(&mut vec![
+		store.pending_attestations.append(&mut vec![
 			DummyAttestation {
 				validator_id: 0,
 				source_epoch: 3,
@@ -311,9 +339,10 @@ mod tests {
 				target_epoch: 4,
 			},
 		]);
-		casper.advance_epoch();
-		assert_eq!(casper.current_epoch(), 5);
-		assert_eq!(casper.justified_epoch(), 3);
-		assert_eq!(casper.finalized_epoch(), 2);
+		casper.advance_epoch(&mut store);
+		store.epoch += 1;
+		assert_eq!(casper.epoch, 5);
+		assert_eq!(casper.justified_epoch, 3);
+		assert_eq!(casper.finalized_epoch, 2);
 	}
 }
