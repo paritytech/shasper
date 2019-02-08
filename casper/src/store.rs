@@ -17,7 +17,7 @@
 //! Common store traits
 
 use num_traits::{One, Zero};
-use rstd::ops::{Add, AddAssign, Sub, SubAssign, Mul};
+use rstd::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div};
 
 /// Casper attestation.
 pub trait Attestation: PartialEq + Eq {
@@ -46,9 +46,9 @@ pub trait Attestation: PartialEq + Eq {
 /// Store that holds validator active and balance information.
 pub trait ValidatorStore {
 	/// Type of validator Id.
-	type ValidatorId: PartialEq + Eq;
+	type ValidatorId: PartialEq + Eq + Clone;
 	/// Type of balance.
-	type Balance: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Mul<Output=Self::Balance> + From<u8>;
+	type Balance: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Balance> + AddAssign + Sub<Output=Self::Balance> + SubAssign + Mul<Output=Self::Balance> + Div<Output=Self::Balance> + From<u8>;
 	/// Type of epoch.
 	type Epoch: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Epoch> + AddAssign + Sub<Output=Self::Epoch> + SubAssign + One + Zero;
 
@@ -98,6 +98,8 @@ pub type PendingAttestationsStoreValidatorId<S> = <<S as PendingAttestationsStor
 pub type ValidatorStoreBalance<S> = <S as ValidatorStore>::Balance;
 /// Epoch of a validator store.
 pub type ValidatorStoreEpoch<S> = <S as ValidatorStore>::Epoch;
+/// Validator id of a validator store.
+pub type ValidatorStoreValidatorId<S> = <S as ValidatorStore>::ValidatorId;
 
 /// Attesting canon target balance at epoch.
 pub fn canon_target_attesting_balance<S>(store: &S, epoch: PendingAttestationsStoreEpoch<S>) -> ValidatorStoreBalance<S> where
