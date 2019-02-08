@@ -99,3 +99,48 @@ impl<'a, A, S> BeaconReward<'a, A, S> where
 		rewards
 	}
 }
+
+
+	/// Get rewards in current epoch. Note that this usually needs to be called before `advance_epoch`, but after all
+	/// pending attestations have been pushed.
+	///
+	/// The validator list might duplicate.
+	pub fn rewards(&self) -> Vec<(A::ValidatorId, CasperRewardType)> {
+		let previous_justified_epoch = self.data.previous_justified_epoch;
+		let mut no_expected_source_validators = self.store.active_validators(self.current_epoch());
+		let mut no_expected_target_validators = no_expected_source_validators.clone();
+
+		let mut rewards = Vec::new();
+		for attestation in self.pending_attestations.iter() {
+			// Expected FFG source.
+			if attestation.source_epoch() == previous_justified_epoch {
+				rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedSource));
+				no_expected_source_validators.retain(|validator_id| {
+					validator_id != attestation.validator_id()
+				});
+			}
+
+			// Expected FFG target.
+			if attestation.source_epoch() == previous_justified_epoch && attestation.is_casper_canon() {
+				rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedTarget));
+				no_expected_target_validators.retain(|validator_id| {
+					validator_id != attestation.validator_id()
+				});
+			}
+		}
+
+		for validator in no_expected_source_validators {
+			rewards.push((validator, CasperRewardType::NoExpectedSource));
+		}
+
+		for validator in no_expected_target_validators {
+			rewards.push((validator, CasperRewardType::NoExpectedTarget));
+		}
+
+		rewards
+	}
+
+	pub fn advance_epoch(&mut self) {
+
+	}
+}

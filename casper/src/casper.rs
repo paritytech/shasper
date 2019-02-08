@@ -17,39 +17,11 @@
 //! Casper FFG generic consensus algorithm on justification and finalization.
 
 use num_traits::{One, Zero};
-use rstd::ops::{Add, AddAssign, Sub, SubAssign, Mul};
 
-/// Store that holds validator active and balance information.
-pub trait ValidatorStore {
-	/// Type of validator Id.
-	type ValidatorId: PartialEq + Eq;
-	/// Type of balance.
-	type Balance: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Mul<Output=Self::Balance> + From<u8>;
-	/// Type of epoch.
-	type Epoch: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Epoch> + AddAssign + Sub<Output=Self::Epoch> + SubAssign + One + Zero;
-
-	/// Get total balance of given validator Ids.
-	fn total_balance(&self, validators: &[Self::ValidatorId]) -> Self::Balance;
-	/// Get all active validators at given epoch.
-	fn active_validators(&self, epoch: Self::Epoch) -> Vec<Self::ValidatorId>;
-}
-
-/// Casper attestation.
-pub trait Attestation: PartialEq + Eq {
-	/// Type of validator Id.
-	type ValidatorId: PartialEq + Eq + Clone;
-	/// Type of epoch.
-	type Epoch: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Epoch> + AddAssign + Sub<Output=Self::Epoch> + SubAssign + One + Zero;
-
-	/// Get validator Id of this attestation.
-	fn validator_id(&self) -> &Self::ValidatorId;
-	/// Whether this attestation's source and target is on canon chain.
-	fn is_casper_canon(&self) -> bool;
-	/// Get the source epoch of this attestation.
-	fn source_epoch(&self) -> Self::Epoch;
-	/// Get the target epoch of this attestation.
-	fn target_epoch(&self) -> Self::Epoch;
-}
+use crate::store::{
+	self, Attestation, ValidatorStore, PendingAttestationsStore, BlockStore,
+	PendingAttestationsStoreEpoch, PendingAttestationsStoreValidatorId,
+};
 
 /// Return whether given two attestations satisfy Casper slashing conditions.
 pub fn slashable<C: Attestation>(a: &C, b: &C) -> bool {
@@ -74,12 +46,9 @@ pub fn slashable<C: Attestation>(a: &C, b: &C) -> bool {
 	false
 }
 
-/// Pending attestations.
-pub type PendingAttestations<A> = Vec<A>;
-
 /// Data needed for casper consensus.
 #[derive(Default, Clone, Eq, PartialEq)]
-pub struct CasperData<A: Attestation> {
+pub struct CasperContext<A: Attestation> {
 	/// Bitfield holding justification information.
 	pub justification_bitfield: u64,
 	/// Current epoch.
@@ -104,171 +73,78 @@ pub enum CasperRewardType {
 	NoExpectedTarget,
 }
 
-/// Casper struct holding pending attestation, justification and finalization information.
-pub struct Casper<'a, A: Attestation, S: ValidatorStore> {
-	data: CasperData<A>,
-	store: &'a S,
-	pending_attestations: &'a mut PendingAttestations<A>,
-}
-
-impl<'a, A, S> Casper<'a, A, S> where
-	A: Attestation,
-	S: ValidatorStore<ValidatorId=A::ValidatorId, Epoch=A::Epoch>,
-{
-	/// Create a new casper context.
-	pub fn new(data: CasperData<A>, store: &'a S, pending_attestations: &'a mut PendingAttestations<A>) -> Self {
-		Self { data, store, pending_attestations }
-	}
-
-	/// Get a mutable handler to pending attestations.
-	pub fn pending_attestations(&mut self) -> &mut PendingAttestations<A> {
-		self.pending_attestations
-	}
-
+impl<A: Attestation> CasperContext<A> {
 	/// Get the current epoch.
-	pub fn current_epoch(&self) -> A::Epoch {
-		self.data.epoch
+	pub fn epoch(&self) -> A::Epoch {
+		self.epoch
 	}
 
 	/// Get the next epoch.
 	pub fn next_epoch(&self) -> A::Epoch {
-		self.data.epoch + One::one()
+		self.epoch() + One::one()
 	}
 
 	/// Get the previous epoch.
 	pub fn previous_epoch(&self) -> A::Epoch {
-		if self.data.epoch == Zero::zero() {
-			self.data.epoch
+		if self.epoch() == Zero::zero() {
+			Zero::zero()
 		} else {
-			self.data.epoch - One::one()
+			self.epoch() - One::one()
 		}
-	}
-
-	/// Get the current justified epoch.
-	pub fn justified_epoch(&self) -> A::Epoch {
-		self.data.justified_epoch
-	}
-
-	/// Get the current finalized epoch.
-	pub fn finalized_epoch(&self) -> A::Epoch {
-		self.data.finalized_epoch
-	}
-
-	fn total_balance(&self, epoch: A::Epoch) -> S::Balance {
-		let validators = self.store.active_validators(epoch);
-		self.store.total_balance(&validators)
-	}
-
-	fn attesting_balance(&self, target_epoch: A::Epoch) -> S::Balance {
-		let mut validators = Vec::new();
-		for attestation in self.pending_attestations.iter() {
-			if attestation.is_casper_canon() && attestation.target_epoch() == target_epoch {
-				validators.push(attestation.validator_id().clone());
-			}
-		}
-		self.store.total_balance(&validators)
-	}
-
-	/// Get total balance of validators at current epoch.
-	pub fn current_total_balance(&self) -> S::Balance {
-		self.total_balance(self.current_epoch())
-	}
-
-	/// Get total balance of attesting validators at current epoch.
-	pub fn current_attesting_balance(&self) -> S::Balance {
-		self.attesting_balance(self.current_epoch())
-	}
-
-	/// Get total balance of validators at previous epoch.
-	pub fn previous_total_balance(&self) -> S::Balance {
-		self.total_balance(self.previous_epoch())
-	}
-
-	/// Get total balance of attesting validators at previous epoch.
-	pub fn previous_attesting_balance(&self) -> S::Balance {
-		self.attesting_balance(self.previous_epoch())
 	}
 
 	/// Prune pending attestation list.
-	fn prune_pending_attestations(&mut self) {
-		let current_epoch = self.current_epoch();
-		self.pending_attestations.retain(|attestation| {
+	fn prune_pending_attestations<S>(&self, store: &mut S) where
+		S: PendingAttestationsStore<Attestation=A>,
+	{
+		let current_epoch = self.epoch();
+		PendingAttestationsStore::retain(store, |attestation| {
 			attestation.target_epoch() >= current_epoch
 		});
 	}
 
-	/// Get rewards in current epoch. Note that this usually needs to be called before `advance_epoch`, but after all
-	/// pending attestations have been pushed.
-	///
-	/// The validator list might duplicate.
-	pub fn rewards(&self) -> Vec<(A::ValidatorId, CasperRewardType)> {
-		let previous_justified_epoch = self.data.previous_justified_epoch;
-		let mut no_expected_source_validators = self.store.active_validators(self.current_epoch());
-		let mut no_expected_target_validators = no_expected_source_validators.clone();
-
-		let mut rewards = Vec::new();
-		for attestation in self.pending_attestations.iter() {
-			// Expected FFG source.
-			if attestation.source_epoch() == previous_justified_epoch {
-				rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedSource));
-				no_expected_source_validators.retain(|validator_id| {
-					validator_id != attestation.validator_id()
-				});
-			}
-
-			// Expected FFG target.
-			if attestation.source_epoch() == previous_justified_epoch && attestation.is_casper_canon() {
-				rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedTarget));
-				no_expected_target_validators.retain(|validator_id| {
-					validator_id != attestation.validator_id()
-				});
-			}
-		}
-
-		for validator in no_expected_source_validators {
-			rewards.push((validator, CasperRewardType::NoExpectedSource));
-		}
-
-		for validator in no_expected_target_validators {
-			rewards.push((validator, CasperRewardType::NoExpectedTarget));
-		}
-
-		rewards
-	}
-
 	/// Advance the current epoch and start a new epoch.
-	pub fn advance_epoch(&mut self) {
+	pub fn advance_epoch<S>(&mut self, store: &mut S) where
+		S: PendingAttestationsStore<Attestation=A>,
+		S: BlockStore<Epoch=PendingAttestationsStoreEpoch<S>>,
+		S: ValidatorStore<
+			ValidatorId=PendingAttestationsStoreValidatorId<S>,
+			Epoch=PendingAttestationsStoreEpoch<S>
+		>,
+	{
+		assert!(self.epoch() == store.epoch(), "Store block epoch must equal to casper context.");
+
 		// Set justification status
-		let mut new_justified_epoch = self.data.justified_epoch;
-		self.data.justification_bitfield <<= 1;
-		if S::Balance::from(3u8) * self.previous_attesting_balance() >= S::Balance::from(2u8) * self.previous_total_balance() {
-			self.data.justification_bitfield |= 2;
+		let mut new_justified_epoch = self.justified_epoch;
+		self.justification_bitfield <<= 1;
+		if S::Balance::from(3u8) * store::canon_target_attesting_balance(store, self.previous_epoch()) >= S::Balance::from(2u8) * store::active_total_balance(store, self.previous_epoch()) {
+			self.justification_bitfield |= 2;
 			new_justified_epoch = self.previous_epoch();
 		}
-		if S::Balance::from(3u8) * self.current_attesting_balance() >= S::Balance::from(2u8) * self.current_total_balance() {
-			self.data.justification_bitfield |= 1;
-			new_justified_epoch = self.current_epoch();
+		if S::Balance::from(3u8) * store::canon_target_attesting_balance(store, self.epoch()) >= S::Balance::from(2u8) * store::active_total_balance(store, self.epoch()) {
+			self.justification_bitfield |= 1;
+			new_justified_epoch = self.epoch();
 		}
 
 		// Set finalization status
-		if (self.data.justification_bitfield >> 1) % 8 == 0b111 && self.previous_epoch() > One::one() && self.data.previous_justified_epoch == self.previous_epoch() - One::one() - One::one() {
-			self.data.finalized_epoch = self.data.previous_justified_epoch;
+		if (self.justification_bitfield >> 1) % 8 == 0b111 && self.previous_epoch() > One::one() && self.previous_justified_epoch == self.previous_epoch() - One::one() - One::one() {
+			self.finalized_epoch = self.previous_justified_epoch;
 		}
-		if (self.data.justification_bitfield >> 1) % 4 == 0b11 && self.previous_epoch() >= One::one() && self.data.previous_justified_epoch == self.previous_epoch() - One::one() {
-			self.data.finalized_epoch = self.data.previous_justified_epoch;
+		if (self.justification_bitfield >> 1) % 4 == 0b11 && self.previous_epoch() >= One::one() && self.previous_justified_epoch == self.previous_epoch() - One::one() {
+			self.finalized_epoch = self.previous_justified_epoch;
 		}
-		if (self.data.justification_bitfield >> 0) % 8 == 0b111 && self.previous_epoch() >= One::one() && self.data.justified_epoch == self.previous_epoch() - One::one() {
-			self.data.finalized_epoch = self.data.justified_epoch;
+		if (self.justification_bitfield >> 0) % 8 == 0b111 && self.previous_epoch() >= One::one() && self.justified_epoch == self.previous_epoch() - One::one() {
+			self.finalized_epoch = self.justified_epoch;
 		}
-		if (self.data.justification_bitfield >> 0) % 4 == 0b11 && self.data.justified_epoch == self.previous_epoch() {
-			self.data.finalized_epoch = self.data.justified_epoch;
+		if (self.justification_bitfield >> 0) % 4 == 0b11 && self.justified_epoch == self.previous_epoch() {
+			self.finalized_epoch = self.justified_epoch;
 		}
 
-		self.prune_pending_attestations();
+		self.prune_pending_attestations(store);
 
-		self.data.previous_justified_epoch = self.data.justified_epoch;
-		self.data.justified_epoch = new_justified_epoch;
-		self.data.epoch += One::one();
+		self.previous_justified_epoch = self.justified_epoch;
+		self.justified_epoch = new_justified_epoch;
+		self.epoch += One::one();
 	}
 }
 
