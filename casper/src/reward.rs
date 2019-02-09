@@ -106,19 +106,18 @@ pub fn casper_rewards<A, S>(context: &CasperContext<A::Epoch>, store: &S) -> Vec
 		Epoch=PendingAttestationsStoreEpoch<S>
 	>,
 {
-	let previous_justified_epoch = context.previous_justified_epoch;
 	let mut no_expected_source_validators = store.active_validators(context.epoch());
 	let mut no_expected_target_validators = no_expected_source_validators.clone();
 
 	let mut rewards = Vec::new();
 	for attestation in store.attestations() {
-		if attestation.source_epoch() == previous_justified_epoch {
+		if attestation.target_epoch() == store.previous_epoch() {
 			rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedSource));
 			no_expected_source_validators.retain(|validator_id| {
 				validator_id != attestation.validator_id()
 			});
 
-			if attestation.is_casper_canon() {
+			if attestation.is_target_canon() {
 				rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedTarget));
 				no_expected_target_validators.retain(|validator_id| {
 					validator_id != attestation.validator_id()
@@ -170,6 +169,23 @@ fn integer_sqrt<Balance>(n: Balance) -> Balance where
 	x
 }
 
+fn combined_validators<ValidatorId, T>(
+	rewards: &[(ValidatorId, T)],
+	a: &T,
+	b: &T,
+) -> Vec<ValidatorId> where
+	ValidatorId: Clone,
+	T: Eq + PartialEq,
+{
+	let mut ret = Vec::new();
+	for (validator_id, reward_type) in rewards {
+		if reward_type == a || reward_type == b {
+			ret.push(validator_id.clone());
+		}
+	}
+	ret
+}
+
 /// Use default scheme for reward calculation. This only contains justification and finalization rewards.
 pub fn default_scheme_rewards<S, Slot>(
 	store: &S,
@@ -195,93 +211,56 @@ pub fn default_scheme_rewards<S, Slot>(
 	let mut rewards = Vec::new();
 
 	if epochs_since_finality <= From::from(4u8) {
-		// Beacon expected head.
-		{
-			let beacon_total_head = {
-				let mut ret = Vec::new();
-				for (validator_id, reward_type) in beacon_rewards {
-					if reward_type == &BeaconRewardType::ExpectedHead ||
-						reward_type == &BeaconRewardType::NoExpectedHead
-					{
-						ret.push(validator_id.clone());
-					}
-				}
-				ret
-			};
+		let beacon_total_head = combined_validators(
+			beacon_rewards,
+			&BeaconRewardType::ExpectedHead,
+			&BeaconRewardType::NoExpectedHead,
+		);
+		let beacon_total_balance = store.total_balance(&beacon_total_head);
 
-			let beacon_total_balance = store.total_balance(&beacon_total_head);
+		let casper_source_total_head = combined_validators(
+			casper_rewards,
+			&CasperRewardType::ExpectedSource,
+			&CasperRewardType::NoExpectedSource,
+		);
+		let casper_source_total_balance = store.total_balance(&casper_source_total_head);
 
-			for (validator_id, reward_type) in beacon_rewards {
-				if reward_type == &BeaconRewardType::ExpectedHead {
-					rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) * beacon_total_balance / previous_total_balance)));
-				}
+		let casper_target_total_head = combined_validators(
+			casper_rewards,
+			&CasperRewardType::ExpectedTarget,
+			&CasperRewardType::NoExpectedTarget,
+		);
+		let casper_target_total_balance = store.total_balance(&casper_target_total_head);
 
-				if reward_type == &BeaconRewardType::NoExpectedHead {
-					rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()))));
-				}
+		for (validator_id, reward_type) in beacon_rewards {
+			if reward_type == &BeaconRewardType::ExpectedHead {
+				rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) * beacon_total_balance / previous_total_balance)));
+			}
+
+			if reward_type == &BeaconRewardType::NoExpectedHead {
+				rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()))));
+			}
+
+			if let BeaconRewardType::InclusionDistance(ref distance) = reward_type {
+				rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) / config.min_attestation_inclusion_delay / From::from(distance.clone()))));
 			}
 		}
 
-		// Beacon inclusion distance.
-		{
-			for (validator_id, reward_type) in beacon_rewards {
-				if let BeaconRewardType::InclusionDistance(ref distance) = reward_type {
-					rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) / config.min_attestation_inclusion_delay / From::from(distance.clone()))));
-				}
+		for (validator_id, reward_type) in casper_rewards {
+			if reward_type == &CasperRewardType::ExpectedSource {
+				rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) * casper_source_total_balance / previous_total_balance)));
 			}
-		}
 
-		// Casper expected source.
-		{
-			let casper_source_total_head = {
-				let mut ret = Vec::new();
-				for (validator_id, reward_type) in casper_rewards {
-					if reward_type == &CasperRewardType::ExpectedSource ||
-						reward_type == &CasperRewardType::NoExpectedSource
-					{
-						ret.push(validator_id.clone());
-					}
-				}
-				ret
-			};
-
-			let casper_source_total_balance = store.total_balance(&casper_source_total_head);
-
-			for (validator_id, reward_type) in casper_rewards {
-				if reward_type == &CasperRewardType::ExpectedSource {
-					rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) * casper_source_total_balance / previous_total_balance)));
-				}
-
-				if reward_type == &CasperRewardType::NoExpectedSource {
-					rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()))));
-				}
+			if reward_type == &CasperRewardType::NoExpectedSource {
+				rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()))));
 			}
-		}
 
-		// Casper expected target.
-		{
-			let casper_target_total_head = {
-				let mut ret = Vec::new();
-				for (validator_id, reward_type) in casper_rewards {
-					if reward_type == &CasperRewardType::ExpectedTarget ||
-						reward_type == &CasperRewardType::NoExpectedTarget
-					{
-						ret.push(validator_id.clone());
-					}
-				}
-				ret
-			};
+			if reward_type == &CasperRewardType::ExpectedTarget {
+				rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) * casper_target_total_balance / previous_total_balance)));
+			}
 
-			let casper_target_total_balance = store.total_balance(&casper_target_total_head);
-
-			for (validator_id, reward_type) in casper_rewards {
-				if reward_type == &CasperRewardType::ExpectedTarget {
-					rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) * casper_target_total_balance / previous_total_balance)));
-				}
-
-				if reward_type == &CasperRewardType::NoExpectedTarget {
-					rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()))));
-				}
+			if reward_type == &CasperRewardType::NoExpectedTarget {
+				rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()))));
 			}
 		}
 	} else {
@@ -289,35 +268,24 @@ pub fn default_scheme_rewards<S, Slot>(
 			base_reward(validator_id.clone()) + store.total_balance(&[validator_id]) * From::from(epochs_since_finality) / config.inactivity_penalty_quotient / From::from(2u8)
 		};
 
-		// Beacon expected head.
 		for (validator_id, reward_type) in beacon_rewards {
 			if reward_type == &BeaconRewardType::NoExpectedHead {
 				rewards.push((validator_id.clone(), RewardAction::Sub(inactivity_penalty(validator_id.clone()))));
 			}
-		}
 
-		// Beacon inclusion distance.
-		for (validator_id, reward_type) in beacon_rewards {
 			if let BeaconRewardType::InclusionDistance(ref distance) = reward_type {
 				rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()) - base_reward(validator_id.clone()) * config.min_attestation_inclusion_delay / From::from(distance.clone()))));
 			}
 		}
 
 		for (validator_id, reward_type) in casper_rewards {
-			// Casper expected source.
 			if reward_type == &CasperRewardType::NoExpectedSource {
 				rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()))));
 			}
 
-			// Casper expected target.
 			if reward_type == &CasperRewardType::NoExpectedSource {
 				rewards.push((validator_id.clone(), RewardAction::Sub(inactivity_penalty(validator_id.clone()))));
 			}
-		}
-
-		// Punish all active validators.
-		for validator_id in previous_active_validators {
-			rewards.push((validator_id.clone(), RewardAction::Sub(inactivity_penalty(validator_id.clone()) * From::from(2u8) + base_reward(validator_id.clone()))));
 		}
 	}
 
