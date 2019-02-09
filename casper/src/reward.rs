@@ -26,7 +26,7 @@ use crate::store::{
 };
 
 /// Rewards for Casper.
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub enum CasperRewardType {
 	/// The attestation has an expected source.
 	ExpectedSource,
@@ -39,7 +39,7 @@ pub enum CasperRewardType {
 }
 
 /// Rewards for beacon chain.
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub enum BeaconRewardType<Slot> {
 	/// The validator attested on the expected head.
 	ExpectedHead,
@@ -62,6 +62,15 @@ pub trait BeaconAttestation: Attestation {
 	fn inclusion_distance(&self) -> Self::Slot;
 }
 
+fn push_rewards<A, T>(rewards: &mut Vec<(A::ValidatorId, T)>, attestation: &A, reward: T) where
+	A: Attestation,
+	T: Clone,
+{
+	for	validator_id in attestation.validator_ids() {
+		rewards.push((validator_id.clone(), reward.clone()));
+	}
+}
+
 /// Get rewards for beacon chain.
 pub fn beacon_rewards<A, S>(store: &S) -> Vec<(A::ValidatorId, BeaconRewardType<A::Slot>)> where
 	A: BeaconAttestation,
@@ -77,12 +86,12 @@ pub fn beacon_rewards<A, S>(store: &S) -> Vec<(A::ValidatorId, BeaconRewardType<
 	let mut rewards = Vec::new();
 	for attestation in store.attestations() {
 		if attestation.target_epoch() == store.previous_epoch() {
-			rewards.push((attestation.validator_id().clone(), BeaconRewardType::InclusionDistance(attestation.inclusion_distance())));
+			push_rewards(&mut rewards, attestation, BeaconRewardType::InclusionDistance(attestation.inclusion_distance()));
 
 			if attestation.is_slot_canon() {
-				rewards.push((attestation.validator_id().clone(), BeaconRewardType::ExpectedHead));
+				push_rewards(&mut rewards, attestation, BeaconRewardType::ExpectedHead);
 				no_expected_head_validators.retain(|validator_id| {
-					validator_id != attestation.validator_id()
+					!attestation.validator_ids().into_iter().any(|v| v == *validator_id)
 				});
 			}
 		}
@@ -112,15 +121,15 @@ pub fn casper_rewards<A, S>(context: &CasperContext<A::Epoch>, store: &S) -> Vec
 	let mut rewards = Vec::new();
 	for attestation in store.attestations() {
 		if attestation.target_epoch() == store.previous_epoch() {
-			rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedSource));
+			push_rewards(&mut rewards, attestation, CasperRewardType::ExpectedSource);
 			no_expected_source_validators.retain(|validator_id| {
-				validator_id != attestation.validator_id()
+				!attestation.validator_ids().into_iter().any(|v| v == *validator_id)
 			});
 
 			if attestation.is_target_canon() {
-				rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedTarget));
+				push_rewards(&mut rewards, attestation, CasperRewardType::ExpectedTarget);
 				no_expected_target_validators.retain(|validator_id| {
-					validator_id != attestation.validator_id()
+					!attestation.validator_ids().into_iter().any(|v| v == *validator_id)
 				});
 			}
 		}

@@ -29,13 +29,8 @@ extern crate substrate_client as client;
 mod genesis;
 mod storage;
 mod consts;
-pub mod spec;
 mod extrinsic;
-mod validators;
-mod state;
-mod utils;
 mod digest;
-pub mod validation;
 
 use rstd::prelude::*;
 use primitives::{Slot, H256, ValidatorId, OpaqueMetadata};
@@ -58,7 +53,6 @@ use runtime_version::RuntimeVersion;
 use runtime_version::NativeVersion;
 use codec::Encode;
 use keccak_hasher::KeccakHasher;
-use spec::SpecHeader;
 use ssz_hash::SpecHash;
 use client::impl_runtime_apis;
 
@@ -70,9 +64,7 @@ pub use runtime_support::StorageValue;
 #[cfg(feature = "std")]
 pub use genesis::GenesisConfig;
 pub use extrinsic::UncheckedExtrinsic;
-pub use primitives::{AttestationRecord, BlockNumber};
-pub use validators::{ValidatorRecord, ShardAndCommittee};
-pub use state::{CrosslinkRecord, ActiveState, BlockVoteInfo, CrystallizedState};
+pub use primitives::BlockNumber;
 pub use digest::DigestItem;
 
 /// This runtime version.
@@ -121,7 +113,7 @@ impl_runtime_apis! {
 		}
 
 		fn authorities() -> Vec<ValidatorId> {
-			<storage::Authorities>::items()
+			unimplemented!()
 		}
 
 		fn execute_block(block: Block) {
@@ -152,24 +144,6 @@ impl_runtime_apis! {
 		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
 			let extrinsic_index = <storage::UncheckedExtrinsics>::count();
 
-			if extrinsic_index == consts::TIMESTAMP_POSITION {
-				<storage::Timestamp>::put(extrinsic.clone().timestamp().expect("Invalid timestamp"));
-			} else if extrinsic_index == consts::SLOT_POSITION {
-				let start_slot = <storage::StartSlot>::get();
-				let parent_slot = <storage::Slot>::get();
-				<storage::ParentSlot>::put(parent_slot);
-				<storage::Slot>::put(extrinsic.clone().slot().expect("Invalid slot") - start_slot);
-			} else if extrinsic_index == consts::RANDAO_REVEAL_POSITION {
-				<storage::RandaoReveal>::put(extrinsic.clone().randao_reveal().expect("Invalid randao reveal"));
-			} else if extrinsic_index == consts::POW_CHAIN_REF_POSITION {
-				<storage::PowChainRef>::put(extrinsic.clone().pow_chain_ref().expect("Invalid pow chain ref"));
-			} else {
-				let attestation = extrinsic.clone().attestation().expect("Invalid attestation");
-				let mut attestations = <storage::Attestations>::items();
-				attestations.push(attestation);
-				<storage::Attestations>::set_items(attestations);
-			}
-
 			let mut extrinsics = <storage::UncheckedExtrinsics>::items();
 			extrinsics.push(extrinsic);
 
@@ -179,6 +153,8 @@ impl_runtime_apis! {
 
 			<storage::UncheckedExtrinsics>::set_items(extrinsics);
 
+			unimplemented!();
+
 			Ok(ApplyOutcome::Success)
 		}
 
@@ -186,158 +162,19 @@ impl_runtime_apis! {
 			<storage::UncheckedExtrinsics>::set_count(0);
 
 			let number = <storage::Number>::take();
-			let extrinsics_root = <storage::ExtrinsicsRoot>::take();
 			let parent_hash = <storage::ParentHash>::take();
+			let extrinsics_root = <storage::ExtrinsicsRoot>::take();
 			let digest = <storage::Digest>::take();
-			let _timestamp = <storage::Timestamp>::take();
-			let slot = <storage::Slot>::get();
-			let parent_slot = <storage::ParentSlot>::get();
-			let parent_header_hash = <storage::LastHeaderHash>::get();
-			let randao_reveal = <storage::RandaoReveal>::take();
-			let pow_chain_ref = <storage::PowChainRef>::take();
-			let attestations = <storage::Attestations>::items();
 
-			<storage::Attestations>::set_count(0);
-
-			let mut active_state = <storage::Active>::get();
-			let mut crystallized_state = <storage::Crystallized>::get();
-
-			if number == 1 {
-				crystallized_state.last_state_recalc = slot;
-			}
-
-			validation::validate_block_pre_processing_conditions();
-			active_state.update_recent_block_hashes(parent_slot, slot, parent_header_hash);
-
-			validation::process_block::<storage::BlockHashesBySlot, storage::BlockVoteCache>(
-				slot,
-				parent_slot,
-				&crystallized_state,
-				&mut active_state,
-				&attestations
-			);
-
-			validation::process_cycle_transitions::<storage::BlockHashesBySlot, storage::BlockVoteCache>(
-				slot,
-				parent_header_hash,
-				&mut crystallized_state,
-				&mut active_state
-			);
-
-			let active_state_root = active_state.spec_hash::<KeccakHasher>();
-			let crystallized_state_root = crystallized_state.spec_hash::<KeccakHasher>();
-
-			let spec_header = SpecHeader {
-				randao_reveal, attestations, pow_chain_ref,
-				active_state_root, crystallized_state_root,
-				slot_number: slot,
-				parent_hash: parent_header_hash,
-			};
-			let block_hash = ssz_hash::SpecHash::spec_hash::<KeccakHasher>(&spec_header);
-
-			<storage::BlockHashesBySlot>::insert(slot, block_hash);
-			<storage::Active>::put(&active_state);
-			<storage::ActiveRoot>::put(&active_state_root);
-			<storage::Crystallized>::put(&crystallized_state);
-			<storage::CrystallizedRoot>::put(&crystallized_state_root);
-			<storage::LastHeaderHash>::put(&block_hash);
-
-			let state_root = BlakeTwo256::storage_root();
-
-			Header {
-				number, extrinsics_root, state_root, parent_hash, digest
-			}
+			unimplemented!()
 		}
 
 		fn inherent_extrinsics(data: InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
-			let data = data.get_data::<consensus_primitives::InherentData>(
-				&consensus_primitives::INHERENT_IDENTIFIER
-			)
-				.expect("Decode inherent data failed")
-				.expect("Inherent does not exist");
-
-			let mut inherent = Vec::new();
-
-			inherent.push(
-				(consts::TIMESTAMP_POSITION, UncheckedExtrinsic::Timestamp(data.timestamp))
-			);
-
-			inherent.push(
-				(consts::SLOT_POSITION, UncheckedExtrinsic::Slot(data.slot))
-			);
-
-			inherent.push(
-				(consts::RANDAO_REVEAL_POSITION, UncheckedExtrinsic::RandaoReveal(Default::default()))
-			);
-
-			inherent.push(
-				(consts::POW_CHAIN_REF_POSITION, UncheckedExtrinsic::PowChainRef(Default::default()))
-			);
-
-			inherent.as_mut_slice().sort_unstable_by_key(|v| v.0);
-			inherent.into_iter().map(|v| v.1).collect()
+			Default::default()
 		}
 
-		fn check_inherents(block: Block, _data: InherentData) -> CheckInherentsResult {
-			let mut result = CheckInherentsResult::new();
-
-			if block.extrinsics()
-				.get(consts::TIMESTAMP_POSITION as usize)
-				.and_then(|xt: &UncheckedExtrinsic| match xt {
-					UncheckedExtrinsic::Timestamp(ref t) => Some(t.clone()),
-					_ => None,
-				}).is_none()
-			{
-				result.put_error(
-					consensus_primitives::INHERENT_IDENTIFIER,
-					&MakeFatalError::from(())
-				).expect("Putting error failed");
-				return result;
-			}
-
-			if block.extrinsics()
-				.get(consts::SLOT_POSITION as usize)
-				.and_then(|xt: &UncheckedExtrinsic| match xt {
-					UncheckedExtrinsic::Slot(ref t) => Some(t.clone()),
-					_ => None,
-				}).is_none()
-			{
-				result.put_error(
-					consensus_primitives::INHERENT_IDENTIFIER,
-					&MakeFatalError::from(())
-				).expect("Putting error failed");
-				return result;
-			}
-
-			if block.extrinsics()
-				.get(consts::RANDAO_REVEAL_POSITION as usize)
-				.and_then(|xt: &UncheckedExtrinsic| match xt {
-					UncheckedExtrinsic::RandaoReveal(ref t) => Some(t.clone()),
-					_ => None,
-				}).is_none()
-			{
-				result.put_error(
-					consensus_primitives::INHERENT_IDENTIFIER,
-					&MakeFatalError::from(())
-				).expect("Putting error failed");
-				return result;
-			}
-
-			if block.extrinsics()
-				.get(consts::POW_CHAIN_REF_POSITION as usize)
-				.and_then(|xt: &UncheckedExtrinsic| match xt {
-					UncheckedExtrinsic::PowChainRef(ref t) => Some(t.clone()),
-					_ => None,
-				}).is_none()
-			{
-				result.put_error(
-					consensus_primitives::INHERENT_IDENTIFIER,
-					&MakeFatalError::from(())
-				).expect("Putting error failed");
-				return result;
-			}
-
-			result
+		fn check_inherents(_block: Block, _data: InherentData) -> CheckInherentsResult {
+			CheckInherentsResult::new()
 		}
 
 		fn random_seed() -> <Block as BlockT>::Hash {
@@ -347,12 +184,7 @@ impl_runtime_apis! {
 
 	impl client_api::TaggedTransactionQueue<Block> for Runtime {
 		fn validate_transaction(_tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
-			TransactionValidity::Valid {
-				priority: 0,
-				requires: Vec::new(),
-				provides: Vec::new(),
-				longevity: u64::max_value(),
-			}
+			unimplemented!()
 		}
 	}
 
@@ -363,28 +195,12 @@ impl_runtime_apis! {
 	}
 
 	impl consensus_api::ShasperApi<Block> for Runtime {
-		fn slot() -> Slot {
-			<storage::Slot>::get()
+		fn finalized_slot() -> u64 {
+			unimplemented!()
 		}
 
-		fn validator_ids_from_attestation(attestation: &AttestationRecord) -> Vec<ValidatorId> {
-			let crystallized_state = <storage::Crystallized>::get();
-			let attestation_indices = crystallized_state.attestation_indices(attestation);
-
-			attestation_indices
-				.iter()
-				.enumerate()
-				.filter(|(i, _)| attestation.attester_bitfield.has_voted(*i))
-				.map(|(_, index)| crystallized_state.validators[*index].pubkey.clone())
-				.collect()
-		}
-
-		fn last_finalized_slot() -> u64 {
-			<storage::Crystallized>::get().last_finalized_slot
-		}
-
-		fn last_justified_slot() -> u64 {
-			<storage::Crystallized>::get().last_justified_slot
+		fn justified_slot() -> u64 {
+			unimplemented!()
 		}
 	}
 }

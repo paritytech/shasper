@@ -25,26 +25,42 @@ use crate::store::{
 };
 
 /// Return whether given two attestations satisfy Casper slashing conditions.
-pub fn slashable<C: Attestation>(a: &C, b: &C) -> bool {
-	// Two attestations must be different, and must be from the same validator.
-	if a == b || a.validator_id() != b.validator_id() {
-		return false;
-	}
+pub fn slashable<C: Attestation>(a: &C, b: &C) -> Vec<C::ValidatorId> {
+	let slashable = {
+		// Two attestations must be different.
+		if a == b {
+			false
+		}
 
-	// If two attestations have the same target, then it is a double vote.
-	if a.target_epoch() == b.target_epoch() {
-		return true;
-	}
+		// If two attestations have the same target, then it is a double vote.
+		else if a.target_epoch() == b.target_epoch() {
+			true
+		}
 
-	// If one attestation surrounds the other, then it is a surround vote.
-	if a.source_epoch() < b.source_epoch() && b.target_epoch() < a.target_epoch() {
-		return true;
-	}
-	if b.source_epoch() < a.source_epoch() && a.target_epoch() < b.target_epoch() {
-		return true;
-	}
+		// If one attestation surrounds the other, then it is a surround vote.
+		else if a.source_epoch() < b.source_epoch() && b.target_epoch() < a.target_epoch() {
+			true
+		}
+		else if b.source_epoch() < a.source_epoch() && a.target_epoch() < b.target_epoch() {
+			true
+		}
 
-	false
+		else {
+			false
+		}
+	};
+
+	if slashable {
+		let mut ret = Vec::new();
+		for validator_id in a.validator_ids() {
+			if b.validator_ids().into_iter().any(|v| v == validator_id) {
+				ret.push(validator_id);
+			}
+		}
+		ret
+	} else {
+		Vec::new()
+	}
 }
 
 /// Data needed for casper consensus.
@@ -172,10 +188,11 @@ mod tests {
 
 	impl Attestation for DummyAttestation {
 		type ValidatorId = usize;
+		type ValidatorIdIterator = Vec<usize>;
 		type Epoch = usize;
 
-		fn validator_id(&self) -> &usize {
-			&self.validator_id
+		fn validator_ids(&self) -> Vec<usize> {
+			vec![self.validator_id]
 		}
 
 		fn is_source_canon(&self) -> bool {
