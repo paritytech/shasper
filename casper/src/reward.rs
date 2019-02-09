@@ -72,7 +72,7 @@ pub fn beacon_rewards<A, S>(store: &S) -> Vec<(A::ValidatorId, BeaconRewardType<
 		Epoch=PendingAttestationsStoreEpoch<S>
 	>,
 {
-	let mut no_expected_head_validators = store.active_validators(store.epoch());
+	let mut no_expected_head_validators = store.active_validators(store.previous_epoch());
 
 	let mut rewards = Vec::new();
 	for attestation in store.attestations() {
@@ -106,7 +106,7 @@ pub fn casper_rewards<A, S>(context: &CasperContext<A::Epoch>, store: &S) -> Vec
 		Epoch=PendingAttestationsStoreEpoch<S>
 	>,
 {
-	let mut no_expected_source_validators = store.active_validators(context.epoch());
+	let mut no_expected_source_validators = store.active_validators(context.previous_epoch());
 	let mut no_expected_target_validators = no_expected_source_validators.clone();
 
 	let mut rewards = Vec::new();
