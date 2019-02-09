@@ -19,7 +19,7 @@
 use num_traits::{One, Zero};
 use rstd::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div};
 
-/// Casper attestation.
+/// Casper attestation. The source should always be canon.
 pub trait Attestation: PartialEq + Eq {
 	/// Type of validator Id.
 	type ValidatorId: PartialEq + Eq + Clone;

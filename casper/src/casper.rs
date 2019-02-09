@@ -84,6 +84,18 @@ impl<Epoch> CasperContext<Epoch> where
 		}
 	}
 
+	/// Validate an attestation to be included in pending attestations.
+	pub fn validate_attestation<A>(&self, attestation: &A) -> bool where
+		A: Attestation<Epoch=Epoch>
+	{
+		attestation.is_source_canon() &&
+			if attestation.target_epoch() == self.epoch {
+				attestation.source_epoch() == self.justified_epoch
+			} else {
+				attestation.source_epoch() == self.previous_justified_epoch
+			}
+	}
+
 	/// Prune pending attestation list.
 	fn prune_pending_attestations<A, S>(&self, store: &mut S) where
 		A: Attestation<Epoch=Epoch>,
@@ -106,6 +118,11 @@ impl<Epoch> CasperContext<Epoch> where
 		>,
 	{
 		assert!(self.epoch() == store.epoch(), "Store block epoch must equal to casper context.");
+		debug_assert!({
+			store.attestations().iter().all(|attestation| {
+				self.validate_attestation(attestation)
+			})
+		});
 
 		// Set justification status
 		let mut new_justified_epoch = self.justified_epoch;
@@ -302,7 +319,7 @@ mod tests {
 		assert_eq!(casper.justified_epoch, 2);
 		assert_eq!(casper.finalized_epoch, 1);
 
-		// Third round, all four validators attest, but the one missing from previous round skipped an epoch.
+		// Third round, three validators attest.
 		store.pending_attestations.append(&mut vec![
 			DummyAttestation {
 				validator_id: 0,
@@ -317,11 +334,6 @@ mod tests {
 			DummyAttestation {
 				validator_id: 2,
 				source_epoch: 2,
-				target_epoch: 3,
-			},
-			DummyAttestation {
-				validator_id: 3,
-				source_epoch: 1,
 				target_epoch: 3,
 			},
 		]);

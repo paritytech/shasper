@@ -106,19 +106,18 @@ pub fn casper_rewards<A, S>(context: &CasperContext<A::Epoch>, store: &S) -> Vec
 		Epoch=PendingAttestationsStoreEpoch<S>
 	>,
 {
-	let previous_justified_epoch = context.previous_justified_epoch;
 	let mut no_expected_source_validators = store.active_validators(context.epoch());
 	let mut no_expected_target_validators = no_expected_source_validators.clone();
 
 	let mut rewards = Vec::new();
 	for attestation in store.attestations() {
-		if attestation.source_epoch() == previous_justified_epoch {
+		if attestation.target_epoch() == store.previous_epoch() {
 			rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedSource));
 			no_expected_source_validators.retain(|validator_id| {
 				validator_id != attestation.validator_id()
 			});
 
-			if attestation.is_casper_canon() {
+			if attestation.is_target_canon() {
 				rewards.push((attestation.validator_id().clone(), CasperRewardType::ExpectedTarget));
 				no_expected_target_validators.retain(|validator_id| {
 					validator_id != attestation.validator_id()
