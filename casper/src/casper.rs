@@ -17,6 +17,7 @@
 //! Casper FFG generic consensus algorithm on justification and finalization.
 
 use num_traits::{One, Zero};
+use codec_derive::{Encode, Decode};
 use rstd::prelude::*;
 use rstd::ops::{Add, AddAssign, Sub, SubAssign};
 
@@ -65,7 +66,7 @@ pub fn slashable<C: Attestation>(a: &C, b: &C) -> Vec<C::ValidatorId> {
 }
 
 /// Data needed for casper consensus.
-#[derive(Default, Clone, Eq, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq, Encode, Decode)]
 pub struct CasperContext<Epoch> {
 	/// Bitfield holding justification information.
 	pub justification_bitfield: u64,
@@ -136,8 +137,8 @@ impl<Epoch> CasperContext<Epoch> where
 	{
 		assert!(self.epoch() == store.epoch(), "Store block epoch must equal to casper context.");
 		debug_assert!({
-			store.attestations().iter().all(|attestation| {
-				self.validate_attestation(attestation)
+			store.attestations().into_iter().all(|attestation| {
+				self.validate_attestation(&attestation)
 			})
 		});
 
@@ -180,7 +181,7 @@ mod tests {
 	use super::*;
 	use std::collections::HashMap;
 
-	#[derive(PartialEq, Eq, Default)]
+	#[derive(PartialEq, Eq, Default, Clone)]
 	pub struct DummyAttestation {
 		pub validator_id: usize,
 		pub source_epoch: usize,
@@ -222,6 +223,7 @@ mod tests {
 
 	impl ValidatorStore for DummyStore {
 		type ValidatorId = usize;
+		type ValidatorIdIterator = Vec<usize>;
 		type Balance = usize;
 		type Epoch = usize;
 
@@ -246,9 +248,10 @@ mod tests {
 
 	impl PendingAttestationsStore for DummyStore {
 		type Attestation = DummyAttestation;
+		type AttestationIterator = Vec<DummyAttestation>;
 
-		fn attestations(&self) -> &[DummyAttestation] {
-			&self.pending_attestations
+		fn attestations(&self) -> Vec<DummyAttestation> {
+			self.pending_attestations.clone()
 		}
 
 		fn retain<F: FnMut(&Self::Attestation) -> bool>(&mut self, f: F) {

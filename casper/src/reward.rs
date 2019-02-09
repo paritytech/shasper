@@ -82,15 +82,15 @@ pub fn beacon_rewards<A, S>(store: &S) -> Vec<(A::ValidatorId, BeaconRewardType<
 		Epoch=PendingAttestationsStoreEpoch<S>
 	>,
 {
-	let mut no_expected_head_validators = store.active_validators(store.previous_epoch());
+	let mut no_expected_head_validators = store.active_validators(store.previous_epoch()).into_iter().collect::<Vec<_>>();
 
 	let mut rewards = Vec::new();
 	for attestation in store.attestations() {
 		if attestation.target_epoch() == store.previous_epoch() {
-			push_rewards(&mut rewards, attestation, BeaconRewardType::InclusionDistance(attestation.inclusion_distance()));
+			push_rewards(&mut rewards, &attestation, BeaconRewardType::InclusionDistance(attestation.inclusion_distance()));
 
 			if attestation.is_slot_canon() {
-				push_rewards(&mut rewards, attestation, BeaconRewardType::ExpectedHead);
+				push_rewards(&mut rewards, &attestation, BeaconRewardType::ExpectedHead);
 				no_expected_head_validators.retain(|validator_id| {
 					!attestation.validator_ids().into_iter().any(|v| v == *validator_id)
 				});
@@ -116,19 +116,19 @@ pub fn casper_rewards<A, S>(context: &CasperContext<A::Epoch>, store: &S) -> Vec
 		Epoch=PendingAttestationsStoreEpoch<S>
 	>,
 {
-	let mut no_expected_source_validators = store.active_validators(context.previous_epoch());
+	let mut no_expected_source_validators = store.active_validators(context.previous_epoch()).into_iter().collect::<Vec<_>>();
 	let mut no_expected_target_validators = no_expected_source_validators.clone();
 
 	let mut rewards = Vec::new();
 	for attestation in store.attestations() {
 		if attestation.target_epoch() == store.previous_epoch() {
-			push_rewards(&mut rewards, attestation, CasperRewardType::ExpectedSource);
+			push_rewards(&mut rewards, &attestation, CasperRewardType::ExpectedSource);
 			no_expected_source_validators.retain(|validator_id| {
 				!attestation.validator_ids().into_iter().any(|v| v == *validator_id)
 			});
 
 			if attestation.is_target_canon() {
-				push_rewards(&mut rewards, attestation, CasperRewardType::ExpectedTarget);
+				push_rewards(&mut rewards, &attestation, CasperRewardType::ExpectedTarget);
 				no_expected_target_validators.retain(|validator_id| {
 					!attestation.validator_ids().into_iter().any(|v| v == *validator_id)
 				});
@@ -148,7 +148,7 @@ pub fn casper_rewards<A, S>(context: &CasperContext<A::Epoch>, store: &S) -> Vec
 }
 
 /// Config for default reward scheme.
-pub struct DefaultSchemeConfig<Balance> {
+pub struct DefaultSchemeConfig<Balance, Slot> {
 	/// Base reward quotient.
 	pub base_reward_quotient: Balance,
 	/// Inactivity penalty quotient.
@@ -156,7 +156,7 @@ pub struct DefaultSchemeConfig<Balance> {
 	/// Includer reward quotient.
 	pub includer_reward_quotient: Balance,
 	/// Min attestation inclusion delay.
-	pub min_attestation_inclusion_delay: Balance,
+	pub min_attestation_inclusion_delay: Slot,
 	/// Whistleblower reward quotient.
 	pub whistleblower_reward_quotient: Balance,
 }
@@ -206,16 +206,16 @@ pub fn default_scheme_rewards<S, Slot>(
 	beacon_rewards: &[(ValidatorStoreValidatorId<S>, BeaconRewardType<Slot>)],
 	casper_rewards: &[(ValidatorStoreValidatorId<S>, CasperRewardType)],
 	epochs_since_finality: ValidatorStoreEpoch<S>,
-	config: &DefaultSchemeConfig<ValidatorStoreBalance<S>>,
+	config: &DefaultSchemeConfig<ValidatorStoreBalance<S>, Slot>,
 ) -> Vec<(ValidatorStoreValidatorId<S>, RewardAction<ValidatorStoreBalance<S>>)> where
 	S: ValidatorStore,
 	S: BlockStore<Epoch=ValidatorStoreEpoch<S>>,
-	Slot: Eq + PartialEq + Clone,
+	Slot: Eq + PartialEq + Clone + Copy,
 	ValidatorStoreBalance<S>: From<ValidatorStoreEpoch<S>> + From<Slot>,
 	ValidatorStoreEpoch<S>: From<u8>,
 {
 	let previous_epoch = store.previous_epoch();
-	let previous_active_validators = store.active_validators(previous_epoch);
+	let previous_active_validators = store.active_validators(previous_epoch).into_iter().collect::<Vec<_>>();
 	let previous_total_balance = store.total_balance(&previous_active_validators);
 
 	let base_reward = |validator_id: ValidatorStoreValidatorId<S>| {
@@ -256,7 +256,7 @@ pub fn default_scheme_rewards<S, Slot>(
 			}
 
 			if let BeaconRewardType::InclusionDistance(ref distance) = reward_type {
-				rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) / config.min_attestation_inclusion_delay / From::from(distance.clone()))));
+				rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) / From::from(config.min_attestation_inclusion_delay) / From::from(distance.clone()))));
 			}
 		}
 
@@ -288,7 +288,7 @@ pub fn default_scheme_rewards<S, Slot>(
 			}
 
 			if let BeaconRewardType::InclusionDistance(ref distance) = reward_type {
-				rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()) - base_reward(validator_id.clone()) * config.min_attestation_inclusion_delay / From::from(distance.clone()))));
+				rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()) - base_reward(validator_id.clone()) * From::from(config.min_attestation_inclusion_delay) / From::from(distance.clone()))));
 			}
 		}
 
@@ -307,12 +307,12 @@ pub fn default_scheme_rewards<S, Slot>(
 }
 
 /// Use default scheme for penalization.
-pub fn default_scheme_penalties<S>(
+pub fn default_scheme_penalties<S, Slot>(
 	store: &S,
 	whistleblower: &ValidatorStoreValidatorId<S>,
 	slashings: &[ValidatorStoreValidatorId<S>],
 	epochs_since_finality: ValidatorStoreEpoch<S>,
-	config: &DefaultSchemeConfig<ValidatorStoreBalance<S>>,
+	config: &DefaultSchemeConfig<ValidatorStoreBalance<S>, Slot>,
 ) -> Vec<(ValidatorStoreValidatorId<S>, RewardAction<ValidatorStoreBalance<S>>)> where
 	S: ValidatorStore,
 	S: BlockStore<Epoch=ValidatorStoreEpoch<S>>,
@@ -330,7 +330,7 @@ pub fn default_scheme_penalties<S>(
 
 	if epochs_since_finality > From::from(4u8) {
 		let previous_epoch = store.previous_epoch();
-		let previous_active_validators = store.active_validators(previous_epoch);
+		let previous_active_validators = store.active_validators(previous_epoch).into_iter().collect::<Vec<_>>();
 		let previous_total_balance = store.total_balance(&previous_active_validators);
 
 		let base_reward = |validator_id: ValidatorStoreValidatorId<S>| {

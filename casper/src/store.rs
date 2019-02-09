@@ -50,6 +50,8 @@ pub trait Attestation: PartialEq + Eq {
 pub trait ValidatorStore {
 	/// Type of validator Id.
 	type ValidatorId: PartialEq + Eq + Clone + Copy;
+	/// Type of validator Id collection.
+	type ValidatorIdIterator: IntoIterator<Item=Self::ValidatorId>;
 	/// Type of balance.
 	type Balance: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Balance> + AddAssign + Sub<Output=Self::Balance> + SubAssign + Mul<Output=Self::Balance> + Div<Output=Self::Balance> + From<u8>;
 	/// Type of epoch.
@@ -58,16 +60,18 @@ pub trait ValidatorStore {
 	/// Get total balance of given validator Ids.
 	fn total_balance(&self, validators: &[Self::ValidatorId]) -> Self::Balance;
 	/// Get all active validators at given epoch.
-	fn active_validators(&self, epoch: Self::Epoch) -> Vec<Self::ValidatorId>;
+	fn active_validators(&self, epoch: Self::Epoch) -> Self::ValidatorIdIterator;
 }
 
 /// Store that holds pending attestations.
 pub trait PendingAttestationsStore {
 	/// Type of attestation.
 	type Attestation: Attestation;
+	/// Type of attestation collection.
+	type AttestationIterator: IntoIterator<Item=Self::Attestation>;
 
 	/// Get the current list of attestations.
-	fn attestations(&self) -> &[Self::Attestation];
+	fn attestations(&self) -> Self::AttestationIterator;
 	/// Retain specific attestations and remove the rest.
 	fn retain<F: FnMut(&Self::Attestation) -> bool>(&mut self, f: F);
 }
@@ -146,6 +150,6 @@ pub fn canon_source_attesting_balance<S>(store: &S, epoch: PendingAttestationsSt
 pub fn active_total_balance<S>(store: &S, epoch: ValidatorStoreEpoch<S>) -> ValidatorStoreBalance<S> where
 	S: ValidatorStore
 {
-	let validators = store.active_validators(epoch);
+	let validators = store.active_validators(epoch).into_iter().collect::<Vec<_>>();
 	store.total_balance(&validators)
 }

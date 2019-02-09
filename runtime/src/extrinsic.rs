@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
 use runtime_primitives::traits::{Extrinsic as ExtrinsicT};
+use crate::attestation::UncheckedAttestation;
 
 use codec_derive::{Encode, Decode};
 #[cfg(feature = "std")]
@@ -24,19 +24,13 @@ use serde_derive::{Serialize, Deserialize};
 #[derive(Decode, Encode, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum UncheckedExtrinsic {
-	Attestation
-}
-
-impl Default for UncheckedExtrinsic {
-	fn default() -> UncheckedExtrinsic {
-		UncheckedExtrinsic::Attestation
-	}
+	Attestation(UncheckedAttestation)
 }
 
 impl ExtrinsicT for UncheckedExtrinsic {
 	fn is_signed(&self) -> Option<bool> {
 		match self {
-			UncheckedExtrinsic::Attestation => None,
+			UncheckedExtrinsic::Attestation(_) => Some(true),
 		}
 	}
 }

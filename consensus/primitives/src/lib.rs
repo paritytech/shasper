@@ -133,18 +133,17 @@ pub mod id {
 
 /// Runtime-APIs
 pub mod api {
-	use rstd::prelude::*;
-	use primitives::{ValidatorId, Slot};
+	use primitives::Epoch;
 	use client::decl_runtime_apis;
 
 	decl_runtime_apis! {
 		/// API necessary for block authorship with Shasper.
 		pub trait ShasperApi {
 			/// Return the last finalized slot.
-			fn finalized_slot() -> Slot;
+			fn finalized_epoch() -> Epoch;
 
 			/// Return the last justified slot.
-			fn justified_slot() -> Slot;
+			fn justified_epoch() -> Epoch;
 		}
 	}
 }

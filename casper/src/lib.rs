@@ -21,9 +21,14 @@
 
 #![warn(missing_docs)]
 
+extern crate parity_codec as codec;
+extern crate parity_codec_derive as codec_derive;
+
 pub mod randao;
 pub mod casper;
 pub mod reward;
 pub mod store;
 
+pub use casper::CasperContext;
 pub use store::Attestation;
+pub use reward::BeaconAttestation;

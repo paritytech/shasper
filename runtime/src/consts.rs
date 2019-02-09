@@ -14,16 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-pub const CYCLE_LENGTH: usize = 64;
-pub const MIN_COMMITTEE_SIZE: usize = 128;
-pub const SHARD_COUNT: u16 = 1024;
-pub const WEI_PER_ETH: u128 = 1000000000000000000;
-pub const BASE_REWARD_QUOTIENT: u128 = 32768;
-pub const SQRT_E_DROP_TIME: u128 = 1048576;
-pub const SLOT_DURATION: u128 = 8;
-pub const MIN_DYNASTY_LENGTH: u64 = 256;
+use primitives::{Slot, Balance};
 
-pub const TIMESTAMP_POSITION: u32 = 0;
-pub const SLOT_POSITION: u32 = 1;
-pub const RANDAO_REVEAL_POSITION: u32 = 2;
-pub const POW_CHAIN_REF_POSITION: u32 = 3;
+pub const CYCLE_LENGTH: Slot = 64;
+pub const BASE_REWARD_QUOTIENT: Balance = 32;
+pub const INACTIVITY_PENALTY_QUOTIENT: Balance = 16777216;
+pub const INCLUDER_REWARD_QUOTIENT: Balance = 8;
+pub const MIN_ATTESTATION_INCLUSION_DELAY: Slot = 4;
+pub const WHISTLEBLOWER_REWARD_QUOTIENT: Balance = 512;
