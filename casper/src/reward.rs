@@ -147,6 +147,8 @@ pub struct DefaultSchemeConfig<Balance> {
 	pub includer_reward_quotient: Balance,
 	/// Min attestation inclusion delay.
 	pub min_attestation_inclusion_delay: Balance,
+	/// Whistleblower reward quotient.
+	pub whistleblower_reward_quotient: Balance,
 }
 
 /// Reward action.
@@ -155,6 +157,8 @@ pub enum RewardAction<Balance> {
 	Add(Balance),
 	/// Sub balance to reward. Should wrap at zero.
 	Sub(Balance),
+	/// Sub balance and exit the validator.
+	Penalize(Balance),
 }
 
 fn integer_sqrt<Balance>(n: Balance) -> Balance where
@@ -285,6 +289,51 @@ pub fn default_scheme_rewards<S, Slot>(
 
 			if reward_type == &CasperRewardType::NoExpectedSource {
 				rewards.push((validator_id.clone(), RewardAction::Sub(inactivity_penalty(validator_id.clone()))));
+			}
+		}
+	}
+
+	rewards
+}
+
+/// Use default scheme for penalization.
+pub fn default_scheme_penalties<S>(
+	store: &S,
+	whistleblower: &ValidatorStoreValidatorId<S>,
+	slashings: &[ValidatorStoreValidatorId<S>],
+	epochs_since_finality: ValidatorStoreEpoch<S>,
+	config: &DefaultSchemeConfig<ValidatorStoreBalance<S>>,
+) -> Vec<(ValidatorStoreValidatorId<S>, RewardAction<ValidatorStoreBalance<S>>)> where
+	S: ValidatorStore,
+	S: BlockStore<Epoch=ValidatorStoreEpoch<S>>,
+	ValidatorStoreBalance<S>: From<ValidatorStoreEpoch<S>>,
+	ValidatorStoreEpoch<S>: From<u8>,
+{
+	let mut rewards = Vec::new();
+
+	for validator_id in slashings {
+		let whistleblower_reward = store.total_balance(&[validator_id.clone()]) / config.whistleblower_reward_quotient;
+
+		rewards.push((whistleblower.clone(), RewardAction::Add(whistleblower_reward)));
+		rewards.push((validator_id.clone(), RewardAction::Penalize(whistleblower_reward)));
+	}
+
+	if epochs_since_finality > From::from(4u8) {
+		let previous_epoch = store.previous_epoch();
+		let previous_active_validators = store.active_validators(previous_epoch);
+		let previous_total_balance = store.total_balance(&previous_active_validators);
+
+		let base_reward = |validator_id: ValidatorStoreValidatorId<S>| {
+			store.total_balance(&[validator_id]) / (integer_sqrt(previous_total_balance) / config.base_reward_quotient) / From::from(5u8)
+		};
+
+		let inactivity_penalty = |validator_id: ValidatorStoreValidatorId<S>| {
+			base_reward(validator_id.clone()) + store.total_balance(&[validator_id]) * From::from(epochs_since_finality) / config.inactivity_penalty_quotient / From::from(2u8)
+		};
+
+		for validator_id in previous_active_validators {
+			if !slashings.contains(&validator_id) {
+				rewards.push((validator_id.clone(), RewardAction::Sub(inactivity_penalty(validator_id.clone()) * From::from(2u8) + base_reward(validator_id.clone()))));
 			}
 		}
 	}
