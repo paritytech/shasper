@@ -33,6 +33,7 @@ byteorder = { version = "1.2", default-features = false }
 hash-db = { version = "0.9", default-features = false }
 crypto = { package = "shasper-crypto", path = "../crypto", default-features = false }
 shuffling = { path = "../util/shuffling", default-features = false }
+casper = { path = "../casper", default-features = false }
 
 [features]
 default = ["std"]
@@ -63,4 +64,5 @@ std = [
 	"crypto/std",
 	"shuffling/std",
 	"aura-primitives/std",
+	"casper/std",
 ]

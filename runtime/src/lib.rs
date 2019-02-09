@@ -31,6 +31,7 @@ mod storage;
 mod consts;
 mod extrinsic;
 mod digest;
+mod attestation;
 
 use rstd::prelude::*;
 use primitives::{Slot, H256, ValidatorId, OpaqueMetadata};

@@ -17,6 +17,7 @@
 //! Common store traits
 
 use num_traits::{One, Zero};
+use rstd::prelude::*;
 use rstd::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div};
 
 /// Casper attestation. The source should always be canon.

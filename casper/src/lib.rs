@@ -16,9 +16,14 @@
 
 //! Generic structs and traits for the Casper FFG.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "std"), feature(alloc))]
+
 #![warn(missing_docs)]
 
 pub mod randao;
 pub mod casper;
 pub mod reward;
 pub mod store;
+
+pub use store::Attestation;

@@ -17,6 +17,7 @@
 //! Casper FFG generic consensus algorithm on justification and finalization.
 
 use num_traits::{One, Zero};
+use rstd::prelude::*;
 use rstd::ops::{Add, AddAssign, Sub, SubAssign};
 
 use crate::store::{
