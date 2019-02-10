@@ -5,6 +5,8 @@ authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2018"
 
 [dependencies]
+parity-codec = { version = "3.0", default-features = false }
+parity-codec-derive = "3.0"
 hash-db = { version = "0.11", default-features = false }
 rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate", default-features = false }
 num-traits = { version = "0.2", default-features = false }
@@ -17,4 +19,5 @@ default = ["std"]
 std = [
 	"hash-db/std",
 	"rstd/std",
+	"parity-codec/std",
 ]

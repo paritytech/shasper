@@ -30,9 +30,10 @@ ssz-hash = { path = "../util/ssz-hash", default-features = false }
 ssz-derive = { path = "../util/ssz-derive", default-features = false }
 ssz-hash-derive = { path = "../util/ssz-hash-derive", default-features = false }
 byteorder = { version = "1.2", default-features = false }
-hash-db = { version = "0.9", default-features = false }
+hash-db = { version = "0.11", default-features = false }
 crypto = { package = "shasper-crypto", path = "../crypto", default-features = false }
 shuffling = { path = "../util/shuffling", default-features = false }
+casper = { path = "../casper", default-features = false }
 
 [features]
 default = ["std"]
@@ -63,4 +64,5 @@ std = [
 	"crypto/std",
 	"shuffling/std",
 	"aura-primitives/std",
+	"casper/std",
 ]

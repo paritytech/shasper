@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{ValidatorId, AccountId};
+use primitives::ValidatorId;
 use runtime::GenesisConfig;
 use crypto::bls;
 
@@ -50,10 +50,7 @@ impl Alternative {
 					testnet_genesis(
 						vec![
 							alice_id
-						], vec![
-							alice_id.into()
-						],
-						alice_id.into()
+						]
 					)
 				},
 				vec![],
@@ -79,11 +76,7 @@ impl Alternative {
 						vec![
 							alice_id,
 							bob_id,
-						], vec![
-							alice_id.into(),
-							bob_id.into(),
-						],
-						alice_id.into(),
+						]
 					)
 				},
 				vec![],
@@ -104,9 +97,9 @@ impl Alternative {
 	}
 }
 
-fn testnet_genesis(initial_authorities: Vec<ValidatorId>, _endowed_accounts: Vec<AccountId>, _upgrade_key: AccountId) -> GenesisConfig {
+fn testnet_genesis(initial_authorities: Vec<ValidatorId>) -> GenesisConfig {
 	GenesisConfig {
 		code: include_bytes!("../runtime/wasm/target/wasm32-unknown-unknown/release/shasper_runtime.compact.wasm").to_vec(),
-		authorities: initial_authorities.clone(),
+		authorities: initial_authorities.into_iter().map(|v| (v, 1000000)).collect(),
 	}
 }

@@ -16,9 +16,19 @@
 
 //! Generic structs and traits for the Casper FFG.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "std"), feature(alloc))]
+
 #![warn(missing_docs)]
+
+extern crate parity_codec as codec;
+extern crate parity_codec_derive as codec_derive;
 
 pub mod randao;
 pub mod casper;
 pub mod reward;
 pub mod store;
+
+pub use crate::casper::CasperContext;
+pub use crate::store::Attestation;
+pub use crate::reward::BeaconAttestation;

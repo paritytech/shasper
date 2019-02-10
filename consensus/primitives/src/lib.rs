@@ -99,7 +99,6 @@ pub mod utils {
 		timestamp_and_slot_now(slot_duration).map(|(_, slot)| slot)
 	}
 
-
 	pub fn time_until_next(now: Duration, slot_duration: u64) -> Duration {
 		let remaining_full_secs = slot_duration - (now.as_secs() % slot_duration) - 1;
 		let remaining_nanos = 1_000_000_000 - now.subsec_nanos();
@@ -133,24 +132,29 @@ pub mod id {
 
 /// Runtime-APIs
 pub mod api {
-	use rstd::prelude::*;
-	use primitives::{AttestationRecord, ValidatorId, Slot};
+	use primitives::{Epoch, UncheckedAttestation, CheckedAttestation, Slot};
 	use client::decl_runtime_apis;
 
 	decl_runtime_apis! {
 		/// API necessary for block authorship with Shasper.
 		pub trait ShasperApi {
-			/// Return validator attestation map.
-			fn validator_ids_from_attestation(attestation: &AttestationRecord) -> Vec<ValidatorId>;
+			/// Return the last finalized epoch.
+			fn finalized_epoch() -> Epoch;
+
+			/// Return the last justified epoch.
+			fn justified_epoch() -> Epoch;
 
 			/// Return the last finalized slot.
-			fn last_finalized_slot() -> Slot;
+			fn finalized_slot() -> Slot;
 
 			/// Return the last justified slot.
-			fn last_justified_slot() -> Slot;
+			fn justified_slot() -> Slot;
 
-			/// Return the current slot;
+			/// Return the current slot.
 			fn slot() -> Slot;
+
+			/// Check an attestation.
+			fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation>;
 		}
 	}
 }

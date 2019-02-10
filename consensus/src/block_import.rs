@@ -58,6 +58,10 @@ impl<B: Block<Hash=H256>, C> BlockImport<B> for ShasperBlockImport<B, C> where
 {
 	type Error = ConsensusError;
 
+	fn check_block(&self, hash: B::Hash, parent_hash: B::Hash) -> Result<ImportResult, Self::Error> {
+		self.client.check_block(hash, parent_hash)
+	}
+
 	fn import_block(&self, mut block: ImportBlock<B>, new_authorities: Option<Vec<ValidatorId>>)
 		-> Result<ImportResult, Self::Error>
 	{
@@ -152,7 +156,7 @@ impl LatestAttestations {
 			.clone()
 			.into_iter()
 			.map(|leaf| {
-				client.runtime_api().last_justified_slot(&BlockId::Hash(leaf)).map(|slot| (leaf, slot))
+				client.runtime_api().justified_slot(&BlockId::Hash(leaf)).map(|slot| (leaf, slot))
 			})
 			.collect::<Result<_, _>>()?;
 
@@ -161,12 +165,12 @@ impl LatestAttestations {
 			.map(|(hleaf, hslot)| {
 				let mut header = client.header(BlockId::Hash(hleaf))?
 					.expect("Leaf header must exist; qed");
-				let mut slot = client.runtime_api().slot(&BlockId::Hash(hleaf))?;
+				let mut slot = client.runtime_api().slot(&BlockId::Hash(hleaf))? - 1;
 
 				while slot > hslot {
 					header = client.header(BlockId::Hash(*header.parent_hash()))?
 						.expect("Leaf's parent must exist; qed");
-					slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
+					slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))? - 1;
 				}
 
 				Ok(header.hash())
@@ -174,16 +178,16 @@ impl LatestAttestations {
 			.map_or(Ok(None), |v: ::client::error::Result<B::Hash>| v.map(Some))?;
 
 		let chain_head_hash = client.best_block_header()?.hash();
-		let last_finalized_slot = client.runtime_api().last_finalized_slot(&BlockId::Hash(chain_head_hash))?;
+		let last_finalized_slot = client.runtime_api().finalized_slot(&BlockId::Hash(chain_head_hash))?;
 		let last_finalized_hash = {
 			let mut header = client.header(*current)?
 				.expect("Chain head header must exist; qed");
-			let mut slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
+			let mut slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))? - 1;
 
 			while slot > last_finalized_slot {
 				header = client.header(BlockId::Hash(*header.parent_hash()))?
 					.expect("Chain head's parent must exist; qed");
-				slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
+				slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))? - 1;
 			}
 
 			header.hash()

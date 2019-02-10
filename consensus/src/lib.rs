@@ -39,11 +39,13 @@ use consensus_common::import_queue::{Verifier, BasicQueue};
 use client::{blockchain::HeaderBackend, ChainHead};
 use client::backend::AuxStore;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
+use runtime::utils::epoch_to_slot;
 use runtime_primitives::{generic::BlockId, Justification, RuntimeString};
 use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
 use primitives::{ValidatorId, H256, Slot};
 use aura_slots::{SlotCompatible, CheckedHeader, SlotWorker, SlotInfo};
 use inherents::InherentDataProviders;
+use casper::Attestation;
 
 use futures::{Future, IntoFuture, future};
 use tokio::timer::Timeout;
@@ -93,17 +95,17 @@ impl CompatibleExtrinsic for runtime::UncheckedExtrinsic {
 	{
 		match self {
 			&runtime::UncheckedExtrinsic::Attestation(ref attestation) => {
-				let validators = match client.runtime_api().validator_ids_from_attestation(id, attestation) {
-					Ok(validators) => validators,
+				let checked = match client.runtime_api().check_attestation(id, attestation.clone()) {
+					Ok(checked) => checked?,
 					Err(_) => return None,
 				};
 
-				Some(validators
+				Some(checked
+					 .validator_ids()
 					 .into_iter()
-					 .map(|v| (v, (attestation.justified_slot, attestation.justified_block_hash)))
+					 .map(|v| (v, (epoch_to_slot(attestation.data.target_epoch), attestation.data.target_epoch_block_hash)))
 					 .collect())
 			},
-			_ => None,
 		}
 	}
 }
@@ -257,10 +259,11 @@ impl<B: Block, C, E, I, Error> SlotWorker<B> for ShasperWorker<C, E, I> where
 					}
 				};
 
+				let remaining_duration = slot_info.remaining_duration();
 				// deadline our production to approx. the end of the
 				// slot
 				Timeout::new(
-					proposer.propose(slot_info.inherent_data).into_future(),
+					proposer.propose(slot_info.inherent_data, remaining_duration).into_future(),
 					utils::time_until_next(Duration::from_secs(timestamp), slot_duration),
 				)
 			} else {

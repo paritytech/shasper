@@ -17,6 +17,8 @@
 //! Casper FFG generic consensus algorithm on justification and finalization.
 
 use num_traits::{One, Zero};
+use codec_derive::{Encode, Decode};
+use rstd::prelude::*;
 use rstd::ops::{Add, AddAssign, Sub, SubAssign};
 
 use crate::store::{
@@ -25,30 +27,46 @@ use crate::store::{
 };
 
 /// Return whether given two attestations satisfy Casper slashing conditions.
-pub fn slashable<C: Attestation>(a: &C, b: &C) -> bool {
-	// Two attestations must be different, and must be from the same validator.
-	if a == b || a.validator_id() != b.validator_id() {
-		return false;
-	}
+pub fn slashable<C: Attestation>(a: &C, b: &C) -> Vec<C::ValidatorId> {
+	let slashable = {
+		// Two attestations must be different.
+		if a == b {
+			false
+		}
 
-	// If two attestations have the same target, then it is a double vote.
-	if a.target_epoch() == b.target_epoch() {
-		return true;
-	}
+		// If two attestations have the same target, then it is a double vote.
+		else if a.target_epoch() == b.target_epoch() {
+			true
+		}
 
-	// If one attestation surrounds the other, then it is a surround vote.
-	if a.source_epoch() < b.source_epoch() && b.target_epoch() < a.target_epoch() {
-		return true;
-	}
-	if b.source_epoch() < a.source_epoch() && a.target_epoch() < b.target_epoch() {
-		return true;
-	}
+		// If one attestation surrounds the other, then it is a surround vote.
+		else if a.source_epoch() < b.source_epoch() && b.target_epoch() < a.target_epoch() {
+			true
+		}
+		else if b.source_epoch() < a.source_epoch() && a.target_epoch() < b.target_epoch() {
+			true
+		}
 
-	false
+		else {
+			false
+		}
+	};
+
+	if slashable {
+		let mut ret = Vec::new();
+		for validator_id in a.validator_ids() {
+			if b.validator_ids().into_iter().any(|v| v == validator_id) {
+				ret.push(validator_id);
+			}
+		}
+		ret
+	} else {
+		Vec::new()
+	}
 }
 
 /// Data needed for casper consensus.
-#[derive(Default, Clone, Eq, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq, Encode, Decode)]
 pub struct CasperContext<Epoch> {
 	/// Bitfield holding justification information.
 	pub justification_bitfield: u64,
@@ -119,8 +137,8 @@ impl<Epoch> CasperContext<Epoch> where
 	{
 		assert!(self.epoch() == store.epoch(), "Store block epoch must equal to casper context.");
 		debug_assert!({
-			store.attestations().iter().all(|attestation| {
-				self.validate_attestation(attestation)
+			store.attestations().into_iter().all(|attestation| {
+				self.validate_attestation(&attestation)
 			})
 		});
 
@@ -163,7 +181,7 @@ mod tests {
 	use super::*;
 	use std::collections::HashMap;
 
-	#[derive(PartialEq, Eq, Default)]
+	#[derive(PartialEq, Eq, Default, Clone)]
 	pub struct DummyAttestation {
 		pub validator_id: usize,
 		pub source_epoch: usize,
@@ -172,10 +190,11 @@ mod tests {
 
 	impl Attestation for DummyAttestation {
 		type ValidatorId = usize;
+		type ValidatorIdIterator = Vec<usize>;
 		type Epoch = usize;
 
-		fn validator_id(&self) -> &usize {
-			&self.validator_id
+		fn validator_ids(&self) -> Vec<usize> {
+			vec![self.validator_id]
 		}
 
 		fn is_source_canon(&self) -> bool {
@@ -204,6 +223,7 @@ mod tests {
 
 	impl ValidatorStore for DummyStore {
 		type ValidatorId = usize;
+		type ValidatorIdIterator = Vec<usize>;
 		type Balance = usize;
 		type Epoch = usize;
 
@@ -228,9 +248,10 @@ mod tests {
 
 	impl PendingAttestationsStore for DummyStore {
 		type Attestation = DummyAttestation;
+		type AttestationIterator = Vec<DummyAttestation>;
 
-		fn attestations(&self) -> &[DummyAttestation] {
-			&self.pending_attestations
+		fn attestations(&self) -> Vec<DummyAttestation> {
+			self.pending_attestations.clone()
 		}
 
 		fn retain<F: FnMut(&Self::Attestation) -> bool>(&mut self, f: F) {
