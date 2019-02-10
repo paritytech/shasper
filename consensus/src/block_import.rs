@@ -165,12 +165,12 @@ impl LatestAttestations {
 			.map(|(hleaf, hslot)| {
 				let mut header = client.header(BlockId::Hash(hleaf))?
 					.expect("Leaf header must exist; qed");
-				let mut slot = client.runtime_api().slot(&BlockId::Hash(hleaf))?;
+				let mut slot = client.runtime_api().slot(&BlockId::Hash(hleaf))? - 1;
 
 				while slot > hslot {
 					header = client.header(BlockId::Hash(*header.parent_hash()))?
 						.expect("Leaf's parent must exist; qed");
-					slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
+					slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))? - 1;
 				}
 
 				Ok(header.hash())
@@ -182,12 +182,12 @@ impl LatestAttestations {
 		let last_finalized_hash = {
 			let mut header = client.header(*current)?
 				.expect("Chain head header must exist; qed");
-			let mut slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
+			let mut slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))? - 1;
 
 			while slot > last_finalized_slot {
 				header = client.header(BlockId::Hash(*header.parent_hash()))?
 					.expect("Chain head's parent must exist; qed");
-				slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))?;
+				slot = client.runtime_api().slot(&BlockId::Hash(header.hash()))? - 1;
 			}
 
 			header.hash()

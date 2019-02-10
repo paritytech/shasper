@@ -50,7 +50,7 @@ impl unhashed::StorageVec for PendingAttestations {
 pub fn note_parent_hash() {
 	let slot = Number::get() - 1;
 	let hash = ParentHash::get();
-	assert!(LatestBlockHashes::count() < slot as u32);
+	assert!(LatestBlockHashes::count() <= slot as u32);
 	for i in LatestBlockHashes::count()..(slot as u32) {
 		LatestBlockHashes::set_item(i, &None);
 	}

@@ -133,6 +133,7 @@ impl_runtime_apis! {
 			storage::ParentHash::put(header.parent_hash);
 			storage::ExtrinsicsRoot::put(header.extrinsics_root);
 			storage::Digest::put(header.digest.clone());
+			storage::ExtrinsicsRoot::put(Hash::from(BlakeTwo256::enumerated_trie_root(&[])));
 
 			storage::note_parent_hash();
 		}
