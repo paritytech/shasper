@@ -1,10 +1,10 @@
 use rstd::prelude::*;
-use primitives::{Epoch, Balance, ValidatorId};
+use primitives::{Epoch, Balance, ValidatorId, UncheckedAttestation, CheckedAttestation};
 use runtime_support::storage::StorageValue;
 use runtime_support::storage::unhashed::StorageVec;
+use codec::Encode;
 use codec_derive::{Encode, Decode};
 use casper::store::{ValidatorStore, PendingAttestationsStore, BlockStore};
-use crate::attestation::CheckedAttestation;
 use crate::{storage, utils};
 
 #[derive(Encode, Decode, PartialEq, Eq, Clone)]
@@ -81,4 +81,33 @@ impl PendingAttestationsStore for Store {
 
 		storage::PendingAttestations::set_items(attestations.into_iter().map(|v| Some(v)).collect::<Vec<_>>());
 	}
+}
+
+pub fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation> {
+	let signature = unchecked.signature.into_signature()?;
+	let validator_id = storage::Validators::item(unchecked.data.validator_index)?.validator_id;
+	let public = validator_id.into_public()?;
+	let current_slot = storage::Number::get();
+
+	if !public.verify(&unchecked.data.encode()[..], &signature) {
+		return None;
+	}
+
+	if current_slot >= unchecked.data.slot {
+		return None;
+	}
+
+	let is_slot_canon = storage::LatestBlockHashes::item(unchecked.data.slot as u32) == Some(unchecked.data.slot_block_hash);
+	let is_source_canon = storage::LatestBlockHashes::item(utils::epoch_to_slot(unchecked.data.source_epoch) as u32) == Some(unchecked.data.source_epoch_block_hash);
+	let is_target_canon = storage::LatestBlockHashes::item(utils::epoch_to_slot(unchecked.data.target_epoch) as u32) == Some(unchecked.data.target_epoch_block_hash);
+	let inclusion_distance = current_slot - unchecked.data.slot;
+
+	Some(CheckedAttestation {
+		data: unchecked.data,
+		is_slot_canon,
+		is_source_canon,
+		is_target_canon,
+		validator_id,
+		inclusion_distance,
+	})
 }

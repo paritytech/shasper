@@ -132,17 +132,29 @@ pub mod id {
 
 /// Runtime-APIs
 pub mod api {
-	use primitives::Epoch;
+	use primitives::{Epoch, UncheckedAttestation, CheckedAttestation, Slot};
 	use client::decl_runtime_apis;
 
 	decl_runtime_apis! {
 		/// API necessary for block authorship with Shasper.
 		pub trait ShasperApi {
-			/// Return the last finalized slot.
+			/// Return the last finalized epoch.
 			fn finalized_epoch() -> Epoch;
 
-			/// Return the last justified slot.
+			/// Return the last justified epoch.
 			fn justified_epoch() -> Epoch;
+
+			/// Return the last finalized slot.
+			fn finalized_slot() -> Slot;
+
+			/// Return the last justified slot.
+			fn justified_slot() -> Slot;
+
+			/// Return the current slot.
+			fn slot() -> Slot;
+
+			/// Check an attestation.
+			fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation>;
 		}
 	}
 }

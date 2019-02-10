@@ -156,7 +156,7 @@ impl LatestAttestations {
 			.clone()
 			.into_iter()
 			.map(|leaf| {
-				client.runtime_api().last_justified_slot(&BlockId::Hash(leaf)).map(|slot| (leaf, slot))
+				client.runtime_api().justified_slot(&BlockId::Hash(leaf)).map(|slot| (leaf, slot))
 			})
 			.collect::<Result<_, _>>()?;
 
@@ -178,7 +178,7 @@ impl LatestAttestations {
 			.map_or(Ok(None), |v: ::client::error::Result<B::Hash>| v.map(Some))?;
 
 		let chain_head_hash = client.best_block_header()?.hash();
-		let last_finalized_slot = client.runtime_api().last_finalized_slot(&BlockId::Hash(chain_head_hash))?;
+		let last_finalized_slot = client.runtime_api().finalized_slot(&BlockId::Hash(chain_head_hash))?;
 		let last_finalized_hash = {
 			let mut header = client.header(*current)?
 				.expect("Chain head header must exist; qed");

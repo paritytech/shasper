@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+use primitives::UncheckedAttestation;
 use runtime_primitives::traits::{Extrinsic as ExtrinsicT};
-use crate::attestation::UncheckedAttestation;
 
 use codec_derive::{Encode, Decode};
 #[cfg(feature = "std")]

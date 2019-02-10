@@ -31,12 +31,11 @@ mod storage;
 mod consts;
 mod extrinsic;
 mod digest;
-mod attestation;
 mod state;
 pub mod utils;
 
 use rstd::prelude::*;
-use primitives::{BlockNumber, ValidatorId, OpaqueMetadata, Hash};
+use primitives::{BlockNumber, ValidatorId, OpaqueMetadata, Hash, UncheckedAttestation, CheckedAttestation};
 use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity, generic,
@@ -65,7 +64,6 @@ pub use runtime_primitives::BuildStorage;
 #[cfg(feature = "std")]
 pub use genesis::GenesisConfig;
 pub use extrinsic::UncheckedExtrinsic;
-pub use attestation::{UncheckedAttestation, CheckedAttestation};
 pub use digest::DigestItem;
 
 /// This runtime version.
@@ -161,7 +159,7 @@ impl_runtime_apis! {
 
 			match extrinsic {
 				UncheckedExtrinsic::Attestation(attestation) => {
-					let checked = attestation::check_attestation(attestation).expect("Extrinsic is invalid.");
+					let checked = state::check_attestation(attestation).expect("Extrinsic is invalid.");
 					let casper = storage::CasperContext::get();
 					if !casper.validate_attestation(&checked) {
 						panic!("Extrinsic does not pass casper check.");
@@ -241,7 +239,7 @@ impl_runtime_apis! {
 		fn validate_transaction(tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
 			match tx {
 				UncheckedExtrinsic::Attestation(attestation) => {
-					let checked = attestation::check_attestation(attestation).expect("Extrinsic is invalid.");
+					let checked = state::check_attestation(attestation).expect("Extrinsic is invalid.");
 					let casper = storage::CasperContext::get();
 					if !casper.validate_attestation(&checked) {
 						panic!("Extrinsic does not pass casper check.");
@@ -273,6 +271,24 @@ impl_runtime_apis! {
 		fn justified_epoch() -> u64 {
 			let casper = storage::CasperContext::get();
 			casper.justified_epoch
+		}
+
+		fn slot() -> u64 {
+			storage::Number::get()
+		}
+
+		fn finalized_slot() -> u64 {
+			let casper = storage::CasperContext::get();
+			utils::epoch_to_slot(casper.finalized_epoch)
+		}
+
+		fn justified_slot() -> u64 {
+			let casper = storage::CasperContext::get();
+			utils::epoch_to_slot(casper.justified_epoch)
+		}
+
+		fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation> {
+			state::check_attestation(unchecked)
 		}
 	}
 }

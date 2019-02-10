@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{BlockNumber, Hash, Epoch, Balance, ValidatorId};
+use primitives::{BlockNumber, Hash, Epoch, Balance, ValidatorId, CheckedAttestation};
 use runtime_support::storage_items;
 use runtime_support::storage::StorageValue;
 use runtime_support::storage::unhashed::{self, StorageVec};
 use crate::state::ValidatorRecord;
-use crate::attestation::CheckedAttestation;
 use crate::{UncheckedExtrinsic, Digest as DigestT, utils};
 
 storage_items! {
@@ -36,10 +35,10 @@ impl unhashed::StorageVec for UncheckedExtrinsics {
 	const PREFIX: &'static [u8] = b"sys:extrinsics";
 }
 
-pub struct LatestStorageRoots;
-impl unhashed::StorageVec for LatestStorageRoots {
+pub struct LatestBlockHashes;
+impl unhashed::StorageVec for LatestBlockHashes {
 	type Item = Option<Hash>;
-	const PREFIX: &'static [u8] = b"sys:lateststorageroots";
+	const PREFIX: &'static [u8] = b"sys:latestblockhashes";
 }
 
 pub struct PendingAttestations;
@@ -51,11 +50,11 @@ impl unhashed::StorageVec for PendingAttestations {
 pub fn note_parent_hash() {
 	let slot = Number::get() - 1;
 	let hash = ParentHash::get();
-	assert!(LatestStorageRoots::count() < slot as u32);
-	for i in LatestStorageRoots::count()..(slot as u32) {
-		LatestStorageRoots::set_item(i, &None);
+	assert!(LatestBlockHashes::count() < slot as u32);
+	for i in LatestBlockHashes::count()..(slot as u32) {
+		LatestBlockHashes::set_item(i, &None);
 	}
-	LatestStorageRoots::set_item(slot as u32, &Some(hash));
+	LatestBlockHashes::set_item(slot as u32, &Some(hash));
 }
 
 pub const VALIDATORS_PREFIX: &[u8] = b"sys:validators";

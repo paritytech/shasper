@@ -23,11 +23,13 @@ extern crate parity_codec_derive as codec_derive;
 mod authority_id;
 mod bitfield;
 mod signature;
+mod attestation;
 
 pub use crypto;
 pub use signature::{H768, Signature};
 pub use authority_id::{H384, AuthorityId};
 pub use bitfield::BitField;
+pub use attestation::{UnsignedAttestation, UncheckedAttestation, CheckedAttestation};
 
 pub use substrate_primitives::{storage, H256, OpaqueMetadata, Blake2Hasher};
 
