@@ -35,6 +35,7 @@ fn run() -> cli::error::Result<()> {
 		executable_name: "shasper",
 		author: "Parity Technologies <admin@parity.io>",
 		description: "Substrate Shasper",
+		support_url: "https://github.com/paritytech/shasper",
 	};
 	cli::run(::std::env::args(), cli::Exit, version)
 }
