@@ -29,6 +29,6 @@ pub mod casper;
 pub mod reward;
 pub mod store;
 
-pub use casper::CasperContext;
-pub use store::Attestation;
-pub use reward::BeaconAttestation;
+pub use crate::casper::CasperContext;
+pub use crate::store::Attestation;
+pub use crate::reward::BeaconAttestation;
