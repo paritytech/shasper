@@ -58,10 +58,12 @@ pub fn note_parent_hash() {
 	LatestStorageRoots::set_item(slot as u32, &Some(hash));
 }
 
+pub const VALIDATORS_PREFIX: &[u8] = b"sys:validators";
+
 pub struct Validators;
 impl unhashed::StorageVec for Validators {
 	type Item = Option<ValidatorRecord>;
-	const PREFIX: &'static [u8] = b"sys:validators";
+	const PREFIX: &'static [u8] = VALIDATORS_PREFIX;
 }
 
 pub fn add_balance(validator_id: &ValidatorId, balance: Balance) {

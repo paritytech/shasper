@@ -33,7 +33,7 @@ mod extrinsic;
 mod digest;
 mod attestation;
 mod state;
-mod utils;
+pub mod utils;
 
 use rstd::prelude::*;
 use primitives::{BlockNumber, ValidatorId, OpaqueMetadata, Hash};

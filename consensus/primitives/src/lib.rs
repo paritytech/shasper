@@ -99,7 +99,6 @@ pub mod utils {
 		timestamp_and_slot_now(slot_duration).map(|(_, slot)| slot)
 	}
 
-
 	pub fn time_until_next(now: Duration, slot_duration: u64) -> Duration {
 		let remaining_full_secs = slot_duration - (now.as_secs() % slot_duration) - 1;
 		let remaining_nanos = 1_000_000_000 - now.subsec_nanos();

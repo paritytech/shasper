@@ -20,13 +20,13 @@ use runtime_io::twox_128;
 use codec::{Encode, KeyedVec};
 use crate::state::{ActiveState, CrystallizedState};
 use crate::validators::{ValidatorRecord, ShardAndCommittee};
-use crate::consts;
+use crate::{consts, storage};
 
 use serde_derive::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct GenesisConfig {
-	pub authorities: Vec<ValidatorId>,
+	pub authorities: Vec<(ValidatorId, Balance)>,
 	pub code: Vec<u8>,
 }
 
@@ -38,10 +38,17 @@ impl BuildStorage for GenesisConfig {
 		storage.insert(well_known_keys::CODE.to_vec(), self.code.clone());
 
 		let auth_count = self.authorities.len() as u32;
-		self.authorities.iter().enumerate().for_each(|(i, v)| {
-			storage.insert((i as u32).to_keyed_vec(well_known_keys::AUTHORITY_PREFIX), v.encode());
+		self.authorities.iter().enumerate().for_each(|(i, (v, b))| {
+			let record = ValidatorRecord {
+				valid_from: 0,
+				valid_to: Epoch::max_value(),
+				balance: b,
+				validator_id: v,
+			};
+
+			storage.insert((i as u32).to_keyed_vec(storage::VALIDATORS_PREFIX), Some(v).encode());
 		});
-		storage.insert(well_known_keys::AUTHORITY_COUNT.to_vec(), auth_count.encode());
+		storage.insert(&b"len".to_keyed_vec(storage::VALIDATORS_PREFIX), auth_count.encode());
 
 		Ok((storage, Default::default()))
 	}
