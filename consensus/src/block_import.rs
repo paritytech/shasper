@@ -58,6 +58,10 @@ impl<B: Block<Hash=H256>, C> BlockImport<B> for ShasperBlockImport<B, C> where
 {
 	type Error = ConsensusError;
 
+	fn check_block(&self, hash: B::Hash, parent_hash: B::Hash) -> Result<ImportResult, Self::Error> {
+		self.client.check_block(hash, parent_hash)
+	}
+
 	fn import_block(&self, mut block: ImportBlock<B>, new_authorities: Option<Vec<ValidatorId>>)
 		-> Result<ImportResult, Self::Error>
 	{

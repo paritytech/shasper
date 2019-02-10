@@ -3,11 +3,13 @@ use runtime_support::storage::StorageValue;
 use runtime_support::storage::unhashed::StorageVec;
 use codec::Encode;
 use codec_derive::{Encode, Decode};
+use serde_derive::{Serialize, Deserialize};
 use primitives::{Slot, Hash, Epoch, ValidatorId, Signature};
 use casper::{Attestation, BeaconAttestation};
 use crate::{storage, utils};
 
 #[derive(Eq, PartialEq, Clone, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct UnsignedAttestation {
 	pub slot: Slot,
 	pub slot_storage_root: Hash,
@@ -19,6 +21,7 @@ pub struct UnsignedAttestation {
 }
 
 #[derive(Eq, PartialEq, Clone, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct UncheckedAttestation {
 	pub data: UnsignedAttestation,
 	pub signature: Signature,
@@ -56,6 +59,7 @@ pub fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttes
 }
 
 #[derive(Eq, PartialEq, Clone, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct CheckedAttestation {
 	pub slot: Slot,
 	pub is_slot_canon: bool,

@@ -15,12 +15,10 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use runtime_primitives::{BuildStorage, StorageMap, ChildrenStorageMap};
-use primitives::{ValidatorId, storage::well_known_keys};
-use runtime_io::twox_128;
+use primitives::{ValidatorId, Epoch, Balance, storage::well_known_keys};
 use codec::{Encode, KeyedVec};
-use crate::state::{ActiveState, CrystallizedState};
-use crate::validators::{ValidatorRecord, ShardAndCommittee};
-use crate::{consts, storage};
+use crate::storage;
+use crate::state::ValidatorRecord;
 
 use serde_derive::{Serialize, Deserialize};
 
@@ -34,7 +32,6 @@ impl BuildStorage for GenesisConfig {
 	fn build_storage(self) -> Result<(StorageMap, ChildrenStorageMap), String> {
 		let mut storage = StorageMap::default();
 
-		storage.insert(well_known_keys::EXTRINSIC_INDEX.to_vec(), 0u32.encode());
 		storage.insert(well_known_keys::CODE.to_vec(), self.code.clone());
 
 		let auth_count = self.authorities.len() as u32;
@@ -42,13 +39,13 @@ impl BuildStorage for GenesisConfig {
 			let record = ValidatorRecord {
 				valid_from: 0,
 				valid_to: Epoch::max_value(),
-				balance: b,
-				validator_id: v,
+				balance: *b,
+				validator_id: *v,
 			};
 
-			storage.insert((i as u32).to_keyed_vec(storage::VALIDATORS_PREFIX), Some(v).encode());
+			storage.insert((i as u32).to_keyed_vec(storage::VALIDATORS_PREFIX), Some(record).encode());
 		});
-		storage.insert(&b"len".to_keyed_vec(storage::VALIDATORS_PREFIX), auth_count.encode());
+		storage.insert(b"len".to_keyed_vec(storage::VALIDATORS_PREFIX), auth_count.encode());
 
 		Ok((storage, Default::default()))
 	}
