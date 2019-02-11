@@ -291,5 +291,16 @@ impl_runtime_apis! {
 		fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation> {
 			state::check_attestation(unchecked)
 		}
+
+		fn validator_index(validator_id: ValidatorId) -> Option<u32> {
+			for (i, record) in storage::Validators::items().into_iter().enumerate() {
+				if let Some(record) = record {
+					if record.validator_id == validator_id {
+						return Some(i as u32);
+					}
+				}
+			}
+			None
+		}
 	}
 }

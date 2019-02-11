@@ -56,3 +56,6 @@ pub type Epoch = u64;
 
 /// Balance value in Shasper.
 pub type Balance = u128;
+
+/// Validator index in Shasper.
+pub type ValidatorIndex = u32;
