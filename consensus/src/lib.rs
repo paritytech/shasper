@@ -46,6 +46,7 @@ use primitives::{ValidatorId, H256, Slot};
 use aura_slots::{SlotCompatible, CheckedHeader, SlotWorker, SlotInfo};
 use inherents::InherentDataProviders;
 use casper::Attestation;
+use transaction_pool::txpool::{ChainApi as PoolChainApi, Pool};
 
 use futures::{Future, IntoFuture, future};
 use tokio::timer::Timeout;
@@ -161,13 +162,14 @@ fn replace_inherent_data_slot(
 }
 
 /// Start the shasper worker. The returned future should be run in a tokio runtime.
-pub fn start_shasper<B, C, E, I, SO, Error, OnExit>(
+pub fn start_shasper<B, C, E, I, SO, P, Error, OnExit>(
 	slot_duration: SlotDuration,
 	local_key: Arc<bls::Pair>,
 	client: Arc<C>,
 	block_import: Arc<I>,
 	env: Arc<E>,
 	sync_oracle: SO,
+	pool: Arc<Pool<P>>,
 	on_exit: OnExit,
 	inherent_data_providers: InherentDataProviders,
 ) -> Result<impl Future<Item=(), Error=()>, consensus_common::Error> where
@@ -181,12 +183,13 @@ pub fn start_shasper<B, C, E, I, SO, Error, OnExit>(
 	I: BlockImport<B> + Send + Sync + 'static,
 	Error: From<C::Error> + From<I::Error>,
 	SO: SyncOracle + Send + Clone,
+	P: PoolChainApi<Block=B>,
 	OnExit: Future<Item=(), Error=()> + Send + 'static,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
 	Error: ::std::error::Error + Send + 'static + From<::consensus_common::Error>,
 {
 	let worker = ShasperWorker {
-		client: client.clone(), block_import, env, local_key, inherent_data_providers: inherent_data_providers.clone()
+		client: client.clone(), block_import, env, local_key, pool, inherent_data_providers: inherent_data_providers.clone()
 	};
 
 	aura_slots::start_slot_worker::<_, _, _, _, ShasperSlotCompatible, _>(
@@ -199,20 +202,22 @@ pub fn start_shasper<B, C, E, I, SO, Error, OnExit>(
 	)
 }
 
-struct ShasperWorker<C, E, I> {
+struct ShasperWorker<C, E, I, P: PoolChainApi> {
 	client: Arc<C>,
 	block_import: Arc<I>,
 	env: Arc<E>,
 	local_key: Arc<bls::Pair>,
 	inherent_data_providers: InherentDataProviders,
+	pool: Arc<Pool<P>>,
 }
 
-impl<B: Block, C, E, I, Error> SlotWorker<B> for ShasperWorker<C, E, I> where
+impl<B: Block, C, E, I, P, Error> SlotWorker<B> for ShasperWorker<C, E, I, P> where
 	C: Authorities<B>,
 	E: Environment<B, Error=Error>,
 	E::Proposer: Proposer<B, Error=Error>,
 	<<E::Proposer as Proposer<B>>::Create as IntoFuture>::Future: Send + 'static,
 	I: BlockImport<B> + Send + Sync + 'static,
+	P: PoolChainApi<Block=B>,
 	Error: From<C::Error> + From<I::Error>,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
 	Error: ::std::error::Error + Send + 'static + From<::consensus_common::Error>,

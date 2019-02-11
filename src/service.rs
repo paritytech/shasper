@@ -98,6 +98,7 @@ construct_service_factory! {
 						Arc::new(ShasperBlockImport::new(client)?),
 						proposer,
 						service.network(),
+						service.transaction_pool(),
 						service.on_exit(),
 						service.config.custom.inherent_data_providers.clone(),
 					)?);
