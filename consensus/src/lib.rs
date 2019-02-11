@@ -39,10 +39,11 @@ use consensus_common::import_queue::{Verifier, BasicQueue};
 use client::{blockchain::HeaderBackend, ChainHead};
 use client::backend::AuxStore;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
+use runtime::UncheckedExtrinsic;
 use runtime::utils::epoch_to_slot;
 use runtime_primitives::{generic::BlockId, Justification, RuntimeString};
-use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
-use primitives::{ValidatorId, H256, Slot, Epoch};
+use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi, NumberFor};
+use primitives::{ValidatorId, H256, Slot, Epoch, BlockNumber, UnsignedAttestation};
 use aura_slots::{SlotCompatible, CheckedHeader, SlotWorker, SlotInfo};
 use inherents::InherentDataProviders;
 use casper::Attestation;
@@ -178,7 +179,8 @@ pub fn start_shasper<B, C, E, I, SO, P, Error, OnExit>(
 	on_exit: OnExit,
 	inherent_data_providers: InherentDataProviders,
 ) -> Result<impl Future<Item=(), Error=()>, consensus_common::Error> where
-	B: Block<Hash=H256>,
+	B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>,
+	NumberFor<B>: From<BlockNumber>,
 	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi,
 	C::Api: ShasperApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
@@ -223,9 +225,10 @@ struct ShasperWorker<C, E, I, P: PoolChainApi> {
 	pool: Arc<Pool<P>>,
 }
 
-impl<B: Block, C, E, I, P, Error> SlotWorker<B> for ShasperWorker<C, E, I, P> where
-	C: Authorities<B> + ChainHead<B> + ProvideRuntimeApi,
+impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotWorker<B> for ShasperWorker<C, E, I, P> where
+	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + ProvideRuntimeApi,
 	C::Api: ShasperApi<B>,
+	NumberFor<B>: From<BlockNumber>,
 	E: Environment<B, Error=Error>,
 	E::Proposer: Proposer<B, Error=Error>,
 	<<E::Proposer as Proposer<B>>::Create as IntoFuture>::Future: Send + 'static,
@@ -269,6 +272,78 @@ impl<B: Block, C, E, I, P, Error> SlotWorker<B> for ShasperWorker<C, E, I, P> wh
 				return Box::new(future::ok(()));
 			}
 		};
+
+		let chain_head = match self.client.best_block_header() {
+			Ok(header) => header,
+			Err(_) => {
+				warn!("Unable to fetch chain head");
+				return Box::new(future::ok(()));
+			}
+		};
+		let current_slot = match self.client.runtime_api().slot(&BlockId::Hash(chain_head.hash())) {
+			Ok(slot) => slot - 1,
+			Err(_) => {
+				warn!("Unable to get current slot");
+				return Box::new(future::ok(()));
+			},
+		};
+		let current_epoch = runtime::utils::slot_to_epoch(current_slot);
+
+		if *self.last_proposed_epoch.lock() < current_epoch {
+			debug!(target: "shasper", "Last proposed epoch {} is less than current epoch {}, submitting a new attestation", *self.last_proposed_epoch.lock(), current_epoch);
+			let validator_id = ValidatorId::from_public(public_key.clone());
+			let validator_index = match self.client.runtime_api().validator_index(&BlockId::Hash(chain_head.hash()), validator_id) {
+				Ok(validator_index) => validator_index,
+				Err(_) => {
+					warn!("Fetching validator index failed");
+					return Box::new(future::ok(()));
+				},
+			};
+
+			if let Some(validator_index) = validator_index {
+				let justified_epoch = match self.client.runtime_api().justified_epoch(&BlockId::Hash(chain_head.hash())) {
+					Ok(v) => v,
+					Err(_) => {
+						warn!("Fetching justified epoch failed");
+						return Box::new(future::ok(()));
+					},
+				};
+				let justified_header = match self.client.header(BlockId::Number(runtime::utils::epoch_to_slot(justified_epoch).into())) {
+					Ok(Some(v)) => v,
+					Err(_) | Ok(None) => {
+						warn!("Fetching justified header failed");
+						return Box::new(future::ok(()));
+					},
+				};
+				let target_header = match self.client.header(BlockId::Number(runtime::utils::epoch_to_slot(current_epoch).into())) {
+					Ok(Some(v)) => v,
+					Err(_) | Ok(None) => {
+						warn!("Fetching current header failed");
+						return Box::new(future::ok(()));
+					},
+				};
+
+				let unsigned = UnsignedAttestation {
+					slot: current_slot,
+					slot_block_hash: chain_head.hash(),
+					source_epoch: justified_epoch,
+					source_epoch_block_hash: justified_header.hash(),
+					target_epoch: current_epoch,
+					target_epoch_block_hash: target_header.hash(),
+					validator_index,
+				};
+				let signed = unsigned.sign_with(&self.local_key.secret);
+
+				if self.pool.submit_one(&BlockId::Hash(chain_head.hash()), UncheckedExtrinsic::Attestation(signed)).is_err() {
+					warn!("Submitting attestation failed");
+					return Box::new(future::ok(()));
+				}
+
+				*self.last_proposed_epoch.lock() = current_epoch;
+			} else {
+				debug!(target: "shasper", "Given public key {} is not in the validator set", validator_id);
+			}
+		}
 
 		let proposal_work = match utils::slot_author(slot_num, &authorities) {
 			None => return Box::new(future::ok(())),
