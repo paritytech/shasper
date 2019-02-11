@@ -133,7 +133,7 @@ impl_runtime_apis! {
 			storage::ParentHash::put(header.parent_hash);
 			storage::ExtrinsicsRoot::put(header.extrinsics_root);
 			storage::Digest::put(header.digest.clone());
-			storage::ExtrinsicsRoot::put(Hash::from(BlakeTwo256::enumerated_trie_root(&[])));
+			storage::ExtrinsicsRoot::put(Hash::from(BlakeTwo256::ordered_trie_root(::rstd::iter::empty::<Vec<_>>())));
 
 			storage::note_parent_hash();
 		}
@@ -152,8 +152,7 @@ impl_runtime_apis! {
 			let mut extrinsics = <storage::UncheckedExtrinsics>::items();
 			extrinsics.push(Some(extrinsic.clone()));
 
-			let extrinsics_data: Vec<Vec<u8>> = extrinsics.iter().map(Encode::encode).collect();
-			let extrinsics_root = BlakeTwo256::enumerated_trie_root(&extrinsics_data.iter().map(Vec::as_slice).collect::<Vec<_>>());
+			let extrinsics_root = BlakeTwo256::ordered_trie_root(extrinsics.iter().map(Encode::encode));
 			<storage::ExtrinsicsRoot>::put(Hash::from(extrinsics_root));
 
 			<storage::UncheckedExtrinsics>::set_items(extrinsics);
@@ -259,7 +258,7 @@ impl_runtime_apis! {
 
 	impl aura_primitives::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
-			10
+			2
 		}
 	}
 
