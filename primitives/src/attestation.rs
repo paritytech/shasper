@@ -1,4 +1,6 @@
 use rstd::prelude::*;
+use crypto::bls;
+use codec::Encode;
 use codec_derive::{Encode, Decode};
 #[cfg(feature = "std")]
 use serde_derive::{Serialize, Deserialize};
@@ -15,6 +17,18 @@ pub struct UnsignedAttestation {
 	pub target_epoch: Epoch,
 	pub target_epoch_block_hash: Hash,
 	pub validator_index: u32,
+}
+
+impl UnsignedAttestation {
+	pub fn sign_with(self, secret: &bls::Secret) -> UncheckedAttestation {
+		let to_sign = self.encode();
+		let signature = secret.sign(&to_sign[..]);
+
+		UncheckedAttestation {
+			signature: signature.into(),
+			data: self,
+		}
+	}
 }
 
 #[derive(Eq, PartialEq, Clone, Encode, Decode)]
