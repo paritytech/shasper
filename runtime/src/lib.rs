@@ -162,7 +162,6 @@ impl_runtime_apis! {
 						panic!("Extrinsic does not pass casper check.");
 					}
 					storage::PendingAttestations::set_item(storage::PendingAttestations::count(), &Some(checked));
-					storage::CasperContext::put(casper);
 				},
 			}
 
@@ -205,6 +204,7 @@ impl_runtime_apis! {
 				}
 
 				casper.advance_epoch(&mut store);
+				storage::CasperContext::put(casper);
 			}
 
 			let extrinsics = storage::UncheckedExtrinsics::items()
