@@ -35,7 +35,7 @@ mod state;
 pub mod utils;
 
 use rstd::prelude::*;
-use primitives::{BlockNumber, ValidatorId, OpaqueMetadata, Hash, UncheckedAttestation, CheckedAttestation};
+use primitives::{BlockNumber, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
 use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity, generic,
@@ -129,11 +129,11 @@ impl_runtime_apis! {
 		}
 
 		fn initialise_block(header: &<Block as BlockT>::Header) {
-			storage::Number::put(header.number);
-			storage::ParentHash::put(header.parent_hash);
-			storage::ExtrinsicsRoot::put(header.extrinsics_root);
+			use runtime_primitives::traits::Header;
+
+			storage::Number::put(header.number());
+			storage::ParentHash::put(header.parent_hash());
 			storage::Digest::put(header.digest.clone());
-			storage::ExtrinsicsRoot::put(Hash::from(BlakeTwo256::ordered_trie_root(::rstd::iter::empty::<Vec<_>>())));
 
 			storage::note_parent_hash();
 		}
@@ -152,9 +152,6 @@ impl_runtime_apis! {
 			let mut extrinsics = <storage::UncheckedExtrinsics>::items();
 			extrinsics.push(Some(extrinsic.clone()));
 
-			let extrinsics_root = BlakeTwo256::ordered_trie_root(extrinsics.iter().map(Encode::encode));
-			<storage::ExtrinsicsRoot>::put(Hash::from(extrinsics_root));
-
 			<storage::UncheckedExtrinsics>::set_items(extrinsics);
 
 			match extrinsic {
@@ -165,6 +162,7 @@ impl_runtime_apis! {
 						panic!("Extrinsic does not pass casper check.");
 					}
 					storage::PendingAttestations::set_item(storage::PendingAttestations::count(), &Some(checked));
+					storage::CasperContext::put(casper);
 				},
 			}
 
@@ -209,11 +207,17 @@ impl_runtime_apis! {
 				casper.advance_epoch(&mut store);
 			}
 
-			<storage::UncheckedExtrinsics>::set_count(0);
+			let extrinsics = storage::UncheckedExtrinsics::items()
+				.into_iter()
+				.filter(|e| e.is_some())
+				.map(|e| e.expect("Checked is_some in filter; qed"))
+				.collect::<Vec<_>>();
+			let extrinsic_data = extrinsics.iter().map(Encode::encode).collect::<Vec<_>>();
+			storage::UncheckedExtrinsics::set_count(0);
 
-			<storage::Number>::take();
-			let parent_hash = <storage::ParentHash>::take();
-			let extrinsics_root = <storage::ExtrinsicsRoot>::take();
+			storage::Number::take();
+			let parent_hash = storage::ParentHash::take();
+			let extrinsics_root = BlakeTwo256::enumerated_trie_root(&extrinsic_data.iter().map(Vec::as_slice).collect::<Vec<_>>());
 			let digest = <storage::Digest>::take();
 			let state_root = BlakeTwo256::storage_root();
 
