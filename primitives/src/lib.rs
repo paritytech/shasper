@@ -48,7 +48,7 @@ pub type BlockNumber = u64;
 /// Count value in Shasper.
 pub type Count = u64;
 
-/// Slot value in Shapser.
+/// Slot value in Shasper.
 pub type Slot = u64;
 
 /// Epoch value in Shasper.
