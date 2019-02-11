@@ -42,7 +42,7 @@ use client::block_builder::api::BlockBuilder as BlockBuilderApi;
 use runtime::utils::epoch_to_slot;
 use runtime_primitives::{generic::BlockId, Justification, RuntimeString};
 use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
-use primitives::{ValidatorId, H256, Slot};
+use primitives::{ValidatorId, H256, Slot, Epoch};
 use aura_slots::{SlotCompatible, CheckedHeader, SlotWorker, SlotInfo};
 use inherents::InherentDataProviders;
 use casper::Attestation;
@@ -50,6 +50,7 @@ use transaction_pool::txpool::{ChainApi as PoolChainApi, Pool};
 
 use futures::{Future, IntoFuture, future};
 use tokio::timer::Timeout;
+use parking_lot::Mutex;
 use api::ShasperApi;
 use crypto::bls;
 
@@ -113,6 +114,10 @@ impl CompatibleExtrinsic for runtime::UncheckedExtrinsic {
 
 fn inherent_to_common_error(err: RuntimeString) -> consensus_common::Error {
 	consensus_common::ErrorKind::InherentData(err.into()).into()
+}
+
+fn client_to_common_error(err: client::error::Error) -> consensus_common::Error {
+	consensus_common::ErrorKind::Other(Box::new(err)).into()
 }
 
 /// Register the shasper inherent data provider.
@@ -189,7 +194,13 @@ pub fn start_shasper<B, C, E, I, SO, P, Error, OnExit>(
 	Error: ::std::error::Error + Send + 'static + From<::consensus_common::Error>,
 {
 	let worker = ShasperWorker {
-		client: client.clone(), block_import, env, local_key, pool, inherent_data_providers: inherent_data_providers.clone()
+		client: client.clone(),
+		block_import,
+		env,
+		local_key,
+		last_proposed_epoch: Default::default(),
+		pool,
+		inherent_data_providers: inherent_data_providers.clone(),
 	};
 
 	aura_slots::start_slot_worker::<_, _, _, _, ShasperSlotCompatible, _>(
@@ -207,12 +218,14 @@ struct ShasperWorker<C, E, I, P: PoolChainApi> {
 	block_import: Arc<I>,
 	env: Arc<E>,
 	local_key: Arc<bls::Pair>,
+	last_proposed_epoch: Mutex<Epoch>,
 	inherent_data_providers: InherentDataProviders,
 	pool: Arc<Pool<P>>,
 }
 
 impl<B: Block, C, E, I, P, Error> SlotWorker<B> for ShasperWorker<C, E, I, P> where
-	C: Authorities<B>,
+	C: Authorities<B> + ChainHead<B> + ProvideRuntimeApi,
+	C::Api: ShasperApi<B>,
 	E: Environment<B, Error=Error>,
 	E::Proposer: Proposer<B, Error=Error>,
 	<<E::Proposer as Proposer<B>>::Create as IntoFuture>::Future: Send + 'static,
@@ -228,7 +241,15 @@ impl<B: Block, C, E, I, P, Error> SlotWorker<B> for ShasperWorker<C, E, I, P> wh
 		&self,
 		slot_duration: u64
 	) -> Result<(), consensus_common::Error> {
-		register_shasper_inherent_data_provider(&self.inherent_data_providers, slot_duration)
+		register_shasper_inherent_data_provider(&self.inherent_data_providers, slot_duration)?;
+
+		let chain_head_hash = self.client.best_block_header().map_err(client_to_common_error)?.hash();
+		let current_epoch = runtime::utils::slot_to_epoch(
+			self.client.runtime_api().slot(&BlockId::Hash(chain_head_hash)).map_err(client_to_common_error)? - 1
+		);
+		*self.last_proposed_epoch.lock() = current_epoch;
+
+		Ok(())
 	}
 
 	fn on_slot(
