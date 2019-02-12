@@ -24,7 +24,6 @@ use crate::{UncheckedExtrinsic, Digest as DigestT, utils};
 storage_items! {
 	pub Number: b"sys:num" => default BlockNumber;
 	pub ParentHash: b"sys:parenthash" => default Hash;
-	pub ExtrinsicsRoot: b"sys:extrinsicsroot" => default Hash;
 	pub Digest: b"sys:digest" => default DigestT;
 	pub CasperContext: b"sys:caspercontext" => default casper::CasperContext<Epoch>;
 }
@@ -50,8 +49,10 @@ impl unhashed::StorageVec for PendingAttestations {
 pub fn note_parent_hash() {
 	let slot = Number::get() - 1;
 	let hash = ParentHash::get();
-	assert!(LatestBlockHashes::count() <= slot as u32);
-	for i in LatestBlockHashes::count()..(slot as u32) {
+	let current_count = LatestBlockHashes::count();
+	assert!(current_count <= slot as u32 + 1);
+	LatestBlockHashes::set_count(slot as u32 + 1);
+	for i in current_count..(slot as u32) {
 		LatestBlockHashes::set_item(i, &None);
 	}
 	LatestBlockHashes::set_item(slot as u32, &Some(hash));

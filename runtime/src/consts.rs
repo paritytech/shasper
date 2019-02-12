@@ -16,9 +16,9 @@
 
 use primitives::{Slot, Balance};
 
-pub const CYCLE_LENGTH: Slot = 64;
+pub const CYCLE_LENGTH: Slot = 4;
 pub const BASE_REWARD_QUOTIENT: Balance = 32;
 pub const INACTIVITY_PENALTY_QUOTIENT: Balance = 16777216;
 pub const INCLUDER_REWARD_QUOTIENT: Balance = 8;
-pub const MIN_ATTESTATION_INCLUSION_DELAY: Slot = 4;
+pub const MIN_ATTESTATION_INCLUSION_DELAY: Slot = 0;
 pub const WHISTLEBLOWER_REWARD_QUOTIENT: Balance = 512;

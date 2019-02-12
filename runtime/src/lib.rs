@@ -35,7 +35,7 @@ mod state;
 pub mod utils;
 
 use rstd::prelude::*;
-use primitives::{BlockNumber, ValidatorId, OpaqueMetadata, Hash, UncheckedAttestation, CheckedAttestation};
+use primitives::{BlockNumber, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
 use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity, generic,
@@ -129,11 +129,11 @@ impl_runtime_apis! {
 		}
 
 		fn initialise_block(header: &<Block as BlockT>::Header) {
-			storage::Number::put(header.number);
-			storage::ParentHash::put(header.parent_hash);
-			storage::ExtrinsicsRoot::put(header.extrinsics_root);
+			use runtime_primitives::traits::Header;
+
+			storage::Number::put(header.number());
+			storage::ParentHash::put(header.parent_hash());
 			storage::Digest::put(header.digest.clone());
-			storage::ExtrinsicsRoot::put(Hash::from(BlakeTwo256::enumerated_trie_root(&[])));
 
 			storage::note_parent_hash();
 		}
@@ -151,10 +151,6 @@ impl_runtime_apis! {
 
 			let mut extrinsics = <storage::UncheckedExtrinsics>::items();
 			extrinsics.push(Some(extrinsic.clone()));
-
-			let extrinsics_data: Vec<Vec<u8>> = extrinsics.iter().map(Encode::encode).collect();
-			let extrinsics_root = BlakeTwo256::enumerated_trie_root(&extrinsics_data.iter().map(Vec::as_slice).collect::<Vec<_>>());
-			<storage::ExtrinsicsRoot>::put(Hash::from(extrinsics_root));
 
 			<storage::UncheckedExtrinsics>::set_items(extrinsics);
 
@@ -208,13 +204,20 @@ impl_runtime_apis! {
 				}
 
 				casper.advance_epoch(&mut store);
+				storage::CasperContext::put(casper);
 			}
 
-			<storage::UncheckedExtrinsics>::set_count(0);
+			let extrinsics = storage::UncheckedExtrinsics::items()
+				.into_iter()
+				.filter(|e| e.is_some())
+				.map(|e| e.expect("Checked is_some in filter; qed"))
+				.collect::<Vec<_>>();
+			let extrinsic_data = extrinsics.iter().map(Encode::encode).collect::<Vec<_>>();
+			storage::UncheckedExtrinsics::set_count(0);
 
-			<storage::Number>::take();
-			let parent_hash = <storage::ParentHash>::take();
-			let extrinsics_root = <storage::ExtrinsicsRoot>::take();
+			storage::Number::take();
+			let parent_hash = storage::ParentHash::take();
+			let extrinsics_root = BlakeTwo256::enumerated_trie_root(&extrinsic_data.iter().map(Vec::as_slice).collect::<Vec<_>>());
 			let digest = <storage::Digest>::take();
 			let state_root = BlakeTwo256::storage_root();
 
@@ -259,7 +262,7 @@ impl_runtime_apis! {
 
 	impl aura_primitives::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
-			10
+			2
 		}
 	}
 
@@ -290,6 +293,17 @@ impl_runtime_apis! {
 
 		fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation> {
 			state::check_attestation(unchecked)
+		}
+
+		fn validator_index(validator_id: ValidatorId) -> Option<u32> {
+			for (i, record) in storage::Validators::items().into_iter().enumerate() {
+				if let Some(record) = record {
+					if record.validator_id == validator_id {
+						return Some(i as u32);
+					}
+				}
+			}
+			None
 		}
 	}
 }

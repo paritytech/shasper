@@ -93,7 +93,7 @@ pub fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttes
 		return None;
 	}
 
-	if current_slot >= unchecked.data.slot {
+	if unchecked.data.slot >= current_slot {
 		return None;
 	}
 

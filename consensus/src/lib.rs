@@ -39,16 +39,19 @@ use consensus_common::import_queue::{Verifier, BasicQueue};
 use client::{blockchain::HeaderBackend, ChainHead};
 use client::backend::AuxStore;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
+use runtime::UncheckedExtrinsic;
 use runtime::utils::epoch_to_slot;
 use runtime_primitives::{generic::BlockId, Justification, RuntimeString};
-use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
-use primitives::{ValidatorId, H256, Slot};
+use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi, NumberFor};
+use primitives::{ValidatorId, H256, Slot, Epoch, BlockNumber, UnsignedAttestation};
 use aura_slots::{SlotCompatible, CheckedHeader, SlotWorker, SlotInfo};
 use inherents::InherentDataProviders;
 use casper::Attestation;
+use transaction_pool::txpool::{ChainApi as PoolChainApi, Pool};
 
 use futures::{Future, IntoFuture, future};
 use tokio::timer::Timeout;
+use parking_lot::Mutex;
 use api::ShasperApi;
 use crypto::bls;
 
@@ -114,6 +117,10 @@ fn inherent_to_common_error(err: RuntimeString) -> consensus_common::Error {
 	consensus_common::ErrorKind::InherentData(err.into()).into()
 }
 
+fn client_to_common_error(err: client::error::Error) -> consensus_common::Error {
+	consensus_common::ErrorKind::Other(Box::new(err)).into()
+}
+
 /// Register the shasper inherent data provider.
 pub fn register_shasper_inherent_data_provider(
 	inherent_data_providers: &InherentDataProviders,
@@ -161,17 +168,19 @@ fn replace_inherent_data_slot(
 }
 
 /// Start the shasper worker. The returned future should be run in a tokio runtime.
-pub fn start_shasper<B, C, E, I, SO, Error, OnExit>(
+pub fn start_shasper<B, C, E, I, SO, P, Error, OnExit>(
 	slot_duration: SlotDuration,
 	local_key: Arc<bls::Pair>,
 	client: Arc<C>,
 	block_import: Arc<I>,
 	env: Arc<E>,
 	sync_oracle: SO,
+	pool: Arc<Pool<P>>,
 	on_exit: OnExit,
 	inherent_data_providers: InherentDataProviders,
 ) -> Result<impl Future<Item=(), Error=()>, consensus_common::Error> where
-	B: Block<Hash=H256>,
+	B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>,
+	NumberFor<B>: From<BlockNumber>,
 	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi,
 	C::Api: ShasperApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
@@ -181,12 +190,19 @@ pub fn start_shasper<B, C, E, I, SO, Error, OnExit>(
 	I: BlockImport<B> + Send + Sync + 'static,
 	Error: From<C::Error> + From<I::Error>,
 	SO: SyncOracle + Send + Clone,
+	P: PoolChainApi<Block=B>,
 	OnExit: Future<Item=(), Error=()> + Send + 'static,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
 	Error: ::std::error::Error + Send + 'static + From<::consensus_common::Error>,
 {
 	let worker = ShasperWorker {
-		client: client.clone(), block_import, env, local_key, inherent_data_providers: inherent_data_providers.clone()
+		client: client.clone(),
+		block_import,
+		env,
+		local_key,
+		last_proposed_epoch: Default::default(),
+		pool,
+		inherent_data_providers: inherent_data_providers.clone(),
 	};
 
 	aura_slots::start_slot_worker::<_, _, _, _, ShasperSlotCompatible, _>(
@@ -199,20 +215,25 @@ pub fn start_shasper<B, C, E, I, SO, Error, OnExit>(
 	)
 }
 
-struct ShasperWorker<C, E, I> {
+struct ShasperWorker<C, E, I, P: PoolChainApi> {
 	client: Arc<C>,
 	block_import: Arc<I>,
 	env: Arc<E>,
 	local_key: Arc<bls::Pair>,
+	last_proposed_epoch: Mutex<Epoch>,
 	inherent_data_providers: InherentDataProviders,
+	pool: Arc<Pool<P>>,
 }
 
-impl<B: Block, C, E, I, Error> SlotWorker<B> for ShasperWorker<C, E, I> where
-	C: Authorities<B>,
+impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotWorker<B> for ShasperWorker<C, E, I, P> where
+	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + ProvideRuntimeApi,
+	C::Api: ShasperApi<B>,
+	NumberFor<B>: From<BlockNumber>,
 	E: Environment<B, Error=Error>,
 	E::Proposer: Proposer<B, Error=Error>,
 	<<E::Proposer as Proposer<B>>::Create as IntoFuture>::Future: Send + 'static,
 	I: BlockImport<B> + Send + Sync + 'static,
+	P: PoolChainApi<Block=B>,
 	Error: From<C::Error> + From<I::Error>,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
 	Error: ::std::error::Error + Send + 'static + From<::consensus_common::Error>,
@@ -223,7 +244,15 @@ impl<B: Block, C, E, I, Error> SlotWorker<B> for ShasperWorker<C, E, I> where
 		&self,
 		slot_duration: u64
 	) -> Result<(), consensus_common::Error> {
-		register_shasper_inherent_data_provider(&self.inherent_data_providers, slot_duration)
+		register_shasper_inherent_data_provider(&self.inherent_data_providers, slot_duration)?;
+
+		let chain_head_hash = self.client.best_block_header().map_err(client_to_common_error)?.hash();
+		let current_epoch = runtime::utils::slot_to_epoch(
+			self.client.runtime_api().slot(&BlockId::Hash(chain_head_hash)).map_err(client_to_common_error)? - 1
+		);
+		*self.last_proposed_epoch.lock() = current_epoch;
+
+		Ok(())
 	}
 
 	fn on_slot(
@@ -243,6 +272,81 @@ impl<B: Block, C, E, I, Error> SlotWorker<B> for ShasperWorker<C, E, I> where
 				return Box::new(future::ok(()));
 			}
 		};
+
+		let chain_head = match self.client.best_block_header() {
+			Ok(header) => header,
+			Err(_) => {
+				warn!("Unable to fetch chain head");
+				return Box::new(future::ok(()));
+			}
+		};
+		let current_slot = match self.client.runtime_api().slot(&BlockId::Hash(chain_head.hash())) {
+			Ok(slot) => slot - 1,
+			Err(_) => {
+				warn!("Unable to get current slot");
+				return Box::new(future::ok(()));
+			},
+		};
+		let current_epoch = runtime::utils::slot_to_epoch(current_slot);
+
+		if *self.last_proposed_epoch.lock() < current_epoch {
+			debug!(target: "shasper", "Last proposed epoch {} is less than current epoch {}, submitting a new attestation", *self.last_proposed_epoch.lock(), current_epoch);
+			let validator_id = ValidatorId::from_public(public_key.clone());
+			let validator_index = match self.client.runtime_api().validator_index(&BlockId::Hash(chain_head.hash()), validator_id) {
+				Ok(validator_index) => validator_index,
+				Err(_) => {
+					warn!("Fetching validator index failed");
+					return Box::new(future::ok(()));
+				},
+			};
+
+			if let Some(validator_index) = validator_index {
+				let justified_epoch = match self.client.runtime_api().justified_epoch(&BlockId::Hash(chain_head.hash())) {
+					Ok(v) => v,
+					Err(_) => {
+						warn!("Fetching justified epoch failed");
+						return Box::new(future::ok(()));
+					},
+				};
+				let justified_header = match self.client.header(BlockId::Number(runtime::utils::epoch_to_slot(justified_epoch).into())) {
+					Ok(Some(v)) => v,
+					Err(_) | Ok(None) => {
+						warn!("Fetching justified header failed");
+						return Box::new(future::ok(()));
+					},
+				};
+				let target_header = match self.client.header(BlockId::Number(runtime::utils::epoch_to_slot(current_epoch).into())) {
+					Ok(Some(v)) => v,
+					Err(_) | Ok(None) => {
+						warn!("Fetching current header failed");
+						return Box::new(future::ok(()));
+					},
+				};
+
+				let unsigned = UnsignedAttestation {
+					slot: current_slot,
+					slot_block_hash: chain_head.hash(),
+					source_epoch: justified_epoch,
+					source_epoch_block_hash: justified_header.hash(),
+					target_epoch: current_epoch,
+					target_epoch_block_hash: target_header.hash(),
+					validator_index,
+				};
+				let signed = unsigned.sign_with(&self.local_key.secret);
+
+				debug!(target: "shasper", "Signed attestation: {:?}", signed);
+				if self.pool.submit_one(&BlockId::Hash(chain_head.hash()), UncheckedExtrinsic::Attestation(signed)).is_err() {
+					warn!("Submitting attestation failed");
+					return Box::new(future::ok(()));
+				}
+				debug!(target: "shasper", "Submitted the attestation to transaction pool");
+
+				*self.last_proposed_epoch.lock() = current_epoch;
+				debug!(target: "shasper", "Successfully submitted attestation for current epoch");
+			} else {
+				debug!(target: "shasper", "Given public key {} is not in the validator set", validator_id);
+			}
+		}
 
 		let proposal_work = match utils::slot_author(slot_num, &authorities) {
 			None => return Box::new(future::ok(())),

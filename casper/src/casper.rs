@@ -135,7 +135,6 @@ impl<Epoch> CasperContext<Epoch> where
 			Epoch=PendingAttestationsStoreEpoch<S>
 		>,
 	{
-		assert!(self.epoch() == store.epoch(), "Store block epoch must equal to casper context.");
 		debug_assert!({
 			store.attestations().into_iter().all(|attestation| {
 				self.validate_attestation(&attestation)
@@ -173,6 +172,8 @@ impl<Epoch> CasperContext<Epoch> where
 		self.previous_justified_epoch = self.justified_epoch;
 		self.justified_epoch = new_justified_epoch;
 		self.epoch += One::one();
+
+		assert!(self.epoch() == store.epoch(), "Store block epoch must equal to casper context.");
 	}
 }
 
@@ -284,8 +285,8 @@ mod tests {
 		let mut casper = CasperContext::<usize>::default();
 
 		// Attesting on the zero round doesn't do anything, because it's already justified and finalized.
-		casper.advance_epoch(&mut store);
 		store.epoch += 1;
+		casper.advance_epoch(&mut store);
 
 		// First round, four validators attest.
 		store.pending_attestations.append(&mut vec![
@@ -310,8 +311,8 @@ mod tests {
 				target_epoch: 1,
 			},
 		]);
-		casper.advance_epoch(&mut store);
 		store.epoch += 1;
+		casper.advance_epoch(&mut store);
 		assert_eq!(casper.epoch, 2);
 		assert_eq!(casper.justified_epoch, 1);
 		assert_eq!(casper.finalized_epoch, 0);
@@ -334,8 +335,8 @@ mod tests {
 				target_epoch: 2,
 			},
 		]);
-		casper.advance_epoch(&mut store);
 		store.epoch += 1;
+		casper.advance_epoch(&mut store);
 		assert_eq!(casper.epoch, 3);
 		assert_eq!(casper.justified_epoch, 2);
 		assert_eq!(casper.finalized_epoch, 1);
@@ -358,8 +359,8 @@ mod tests {
 				target_epoch: 3,
 			},
 		]);
-		casper.advance_epoch(&mut store);
 		store.epoch += 1;
+		casper.advance_epoch(&mut store);
 		assert_eq!(casper.epoch, 4);
 		assert_eq!(casper.justified_epoch, 3);
 		assert_eq!(casper.finalized_epoch, 2);
@@ -377,8 +378,8 @@ mod tests {
 				target_epoch: 4,
 			},
 		]);
-		casper.advance_epoch(&mut store);
 		store.epoch += 1;
+		casper.advance_epoch(&mut store);
 		assert_eq!(casper.epoch, 5);
 		assert_eq!(casper.justified_epoch, 3);
 		assert_eq!(casper.finalized_epoch, 2);

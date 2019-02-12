@@ -132,7 +132,7 @@ pub mod id {
 
 /// Runtime-APIs
 pub mod api {
-	use primitives::{Epoch, UncheckedAttestation, CheckedAttestation, Slot};
+	use primitives::{Epoch, UncheckedAttestation, CheckedAttestation, Slot, ValidatorId, ValidatorIndex};
 	use client::decl_runtime_apis;
 
 	decl_runtime_apis! {
@@ -155,6 +155,9 @@ pub mod api {
 
 			/// Check an attestation.
 			fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation>;
+
+			/// Given an attestation, return the validator index.
+			fn validator_index(validator_id: ValidatorId) -> Option<ValidatorIndex>;
 		}
 	}
 }
