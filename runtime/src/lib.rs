@@ -38,7 +38,7 @@ use rstd::prelude::*;
 use primitives::{BlockNumber, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
 use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
-	ApplyResult, transaction_validity::TransactionValidity, generic,
+	ApplyResult, transaction_validity::{TransactionValidity, TransactionLongevity}, generic,
 	traits::{Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
 	ApplyOutcome,
 };
@@ -161,7 +161,10 @@ impl_runtime_apis! {
 					if !casper.validate_attestation(&checked) {
 						panic!("Extrinsic does not pass casper check.");
 					}
-					storage::PendingAttestations::set_item(storage::PendingAttestations::count(), &Some(checked));
+
+					let mut pending_attestations = storage::PendingAttestations::items();
+					pending_attestations.push(Some(checked));
+					storage::PendingAttestations::set_items(pending_attestations);
 				},
 			}
 
@@ -255,7 +258,7 @@ impl_runtime_apis! {
 				priority: 0,
 				requires: Vec::new(),
 				provides: Vec::new(),
-				longevity: u64::max_value(),
+				longevity: TransactionLongevity::max_value(),
 			}
 		}
 	}
