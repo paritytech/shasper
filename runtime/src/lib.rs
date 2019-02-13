@@ -262,7 +262,7 @@ impl_runtime_apis! {
 
 	impl aura_primitives::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
-			2
+			6
 		}
 	}
 

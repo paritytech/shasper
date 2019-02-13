@@ -177,6 +177,8 @@ impl LatestAttestations {
 			})
 			.map_or(Ok(None), |v: ::client::error::Result<B::Hash>| v.map(Some))?;
 
+		debug!(target: "shasper", "Highest justified slot: {:?}, hash: {:?}", highest_justified_leaf_and_slot.map(|v| v.1), highest_justified_hash);
+
 		let chain_head_hash = client.best_block_header()?.hash();
 		let last_finalized_slot = client.runtime_api().finalized_slot(&BlockId::Hash(chain_head_hash))?;
 		let last_finalized_hash = {
@@ -192,6 +194,8 @@ impl LatestAttestations {
 
 			header.hash()
 		};
+
+		debug!(target: "shasper", "Last finalized slot: {}, hash: {:?}", last_finalized_slot, last_finalized_hash);
 
 		let start_block_hash = highest_justified_hash.unwrap_or(last_finalized_hash);
 
