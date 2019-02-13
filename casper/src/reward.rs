@@ -210,7 +210,7 @@ pub fn default_scheme_rewards<S, Slot>(
 ) -> Vec<(ValidatorStoreValidatorId<S>, RewardAction<ValidatorStoreBalance<S>>)> where
 	S: ValidatorStore,
 	S: BlockStore<Epoch=ValidatorStoreEpoch<S>>,
-	Slot: Eq + PartialEq + Clone + Copy,
+	Slot: Eq + PartialEq + Clone + Copy + Zero + One,
 	ValidatorStoreBalance<S>: From<ValidatorStoreEpoch<S>> + From<Slot>,
 	ValidatorStoreEpoch<S>: From<u8>,
 {
@@ -256,7 +256,10 @@ pub fn default_scheme_rewards<S, Slot>(
 			}
 
 			if let BeaconRewardType::InclusionDistance(ref distance) = reward_type {
-				rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) / From::from(config.min_attestation_inclusion_delay) / From::from(distance.clone()))));
+				let distance = if *distance == Zero::zero() { One::one() } else { *distance };
+				let min_attestation_inclusion_delay = if config.min_attestation_inclusion_delay == Zero::zero() { One::one() } else { config.min_attestation_inclusion_delay };
+
+				rewards.push((validator_id.clone(), RewardAction::Add(base_reward(validator_id.clone()) / From::from(min_attestation_inclusion_delay) / From::from(distance))));
 			}
 		}
 
@@ -288,7 +291,10 @@ pub fn default_scheme_rewards<S, Slot>(
 			}
 
 			if let BeaconRewardType::InclusionDistance(ref distance) = reward_type {
-				rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()) - base_reward(validator_id.clone()) * From::from(config.min_attestation_inclusion_delay) / From::from(distance.clone()))));
+				let distance = if *distance == Zero::zero() { One::one() } else { *distance };
+				let min_attestation_inclusion_delay = if config.min_attestation_inclusion_delay == Zero::zero() { One::one() } else { config.min_attestation_inclusion_delay };
+
+				rewards.push((validator_id.clone(), RewardAction::Sub(base_reward(validator_id.clone()) - base_reward(validator_id.clone()) * From::from(min_attestation_inclusion_delay) / From::from(distance))));
 			}
 		}
 
