@@ -244,20 +244,27 @@ impl_runtime_apis! {
 
 	impl client_api::TaggedTransactionQueue<Block> for Runtime {
 		fn validate_transaction(tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
-			match tx {
+			let checked = match tx {
 				UncheckedExtrinsic::Attestation(attestation) => {
-					let checked = state::check_attestation(attestation).expect("Extrinsic is invalid.");
+					let checked = match state::check_attestation(attestation) {
+						Some(checked) => checked,
+						None => return TransactionValidity::Invalid(0),
+					};
 					let casper = storage::CasperContext::get();
 					if !casper.validate_attestation(&checked) {
-						panic!("Extrinsic does not pass casper check.");
+						return TransactionValidity::Invalid(1)
 					}
+					if storage::PendingAttestations::items().contains(&Some(checked.clone())) {
+						return TransactionValidity::Invalid(2)
+					}
+					checked
 				},
-			}
+			};
 
 			TransactionValidity::Valid {
 				priority: 0,
 				requires: Vec::new(),
-				provides: Vec::new(),
+				provides: vec![(checked.validator_id, checked.data.target_epoch).encode()],
 				longevity: TransactionLongevity::max_value(),
 			}
 		}
