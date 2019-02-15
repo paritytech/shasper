@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use runtime_primitives::{BuildStorage, StorageMap, ChildrenStorageMap};
+use runtime_primitives::{BuildStorage, StorageOverlay, ChildrenStorageOverlay};
 use primitives::{ValidatorId, Epoch, Balance, storage::well_known_keys};
 use codec::{Encode, KeyedVec};
 use crate::storage;
@@ -29,8 +29,8 @@ pub struct GenesisConfig {
 }
 
 impl BuildStorage for GenesisConfig {
-	fn build_storage(self) -> Result<(StorageMap, ChildrenStorageMap), String> {
-		let mut storage = StorageMap::default();
+	fn build_storage(self) -> Result<(StorageOverlay, ChildrenStorageOverlay), String> {
+		let mut storage = StorageOverlay::default();
 
 		storage.insert(well_known_keys::CODE.to_vec(), self.code.clone());
 
