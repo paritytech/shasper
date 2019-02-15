@@ -42,7 +42,7 @@ use client::block_builder::api::BlockBuilder as BlockBuilderApi;
 use runtime::UncheckedExtrinsic;
 use runtime::utils::epoch_to_slot;
 use runtime_primitives::{generic::BlockId, Justification, RuntimeString};
-use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi, NumberFor};
+use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
 use primitives::{ValidatorId, H256, Slot, Epoch, BlockNumber, UnsignedAttestation};
 use aura_slots::{SlotCompatible, CheckedHeader, SlotWorker, SlotInfo};
 use inherents::InherentDataProviders;
@@ -180,7 +180,7 @@ pub fn start_shasper<B, C, E, I, SO, P, Error, OnExit>(
 	inherent_data_providers: InherentDataProviders,
 ) -> Result<impl Future<Item=(), Error=()>, consensus_common::Error> where
 	B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>,
-	NumberFor<B>: From<BlockNumber>,
+	B::Header: Header<Number=BlockNumber>,
 	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi,
 	C::Api: ShasperApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
@@ -228,7 +228,7 @@ struct ShasperWorker<C, E, I, P: PoolChainApi> {
 impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotWorker<B> for ShasperWorker<C, E, I, P> where
 	C: Authorities<B> + ChainHead<B> + HeaderBackend<B> + ProvideRuntimeApi,
 	C::Api: ShasperApi<B>,
-	NumberFor<B>: From<BlockNumber>,
+	B::Header: Header<Number=BlockNumber>,
 	E: Environment<B, Error=Error>,
 	E::Proposer: Proposer<B, Error=Error>,
 	<<E::Proposer as Proposer<B>>::Create as IntoFuture>::Future: Send + 'static,
@@ -261,7 +261,7 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 		slot_info: SlotInfo,
 	) -> Self::OnSlot {
 		let public_key = self.local_key.public.clone();
-		let (timestamp, slot_num, slot_duration) =
+		let (timestamp, _, slot_duration) =
 			(slot_info.timestamp, slot_info.number, slot_info.duration);
 
 		let authorities = match self.client.authorities(&BlockId::Hash(chain_head.hash())) {
@@ -287,7 +287,10 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 				return Box::new(future::ok(()));
 			},
 		};
+		let slot_num = current_slot;
 		let current_epoch = runtime::utils::slot_to_epoch(current_slot);
+
+		debug!(target: "shasper", "Current slot is {}", current_slot);
 
 		if *self.last_proposed_epoch.lock() < current_epoch {
 			debug!(target: "shasper", "Last proposed epoch {} is less than current epoch {}, submitting a new attestation", *self.last_proposed_epoch.lock(), current_epoch);
