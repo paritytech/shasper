@@ -33,6 +33,8 @@ pub enum Alternative {
 	Development,
 	/// Whatever the current runtime is, with simple Alice/Bob auths.
 	LocalTestnet,
+	/// Weekly short-lived public testnet.
+	PublicShortLived
 }
 
 impl Alternative {
@@ -85,6 +87,28 @@ impl Alternative {
 				None,
 				None
 			),
+			Alternative::PublicShortLived => ChainSpec::from_genesis(
+				"Public Short-lived Testnet",
+				"short-lived",
+				|| {
+					use std::str::FromStr;
+
+					let alice_id = ValidatorId::from_str("8e9bed908372adcb328d242bc0f03fa527a232d2c7e81daa8b350a7593cf5c89a62795909ef18ed09cf8e24123076ce9").expect("Preloaded key is valid; qed");
+					let bob_id = ValidatorId::from_str("a5908e909329db6e5ba9083aae10b6b1dd9341ed6f70f3395a59b944b059737cbce745664fb31f087c6d5f74756619a3").expect("Preloaded key is valid; qed");
+
+					testnet_genesis(
+						vec![
+							alice_id,
+							bob_id,
+						]
+					)
+				},
+				vec![],
+				None,
+				None,
+				None,
+				None
+			),
 		})
 	}
 
@@ -92,6 +116,7 @@ impl Alternative {
 		match s {
 			"dev" => Some(Alternative::Development),
 			"local" => Some(Alternative::LocalTestnet),
+			"short-lived" => Some(Alternative::PublicShortLived),
 			_ => None,
 		}
 	}
