@@ -111,7 +111,6 @@ construct_service_factory! {
 			{ |config, executor| <LightComponents<Factory>>::new(config, executor) },
 		FullImportQueue = ShasperImportQueue<
 			Self::Block,
-			FullClient<Self>,
 		>
 			{ |config: &mut FactoryFullConfiguration<Self>, client: Arc<FullClient<Self>>| {
 				Ok(import_queue(
@@ -123,7 +122,6 @@ construct_service_factory! {
 			}},
 		LightImportQueue = ShasperImportQueue<
 			Self::Block,
-			LightClient<Self>,
 		>
 			{ |config: &mut FactoryFullConfiguration<Self>, client: Arc<LightClient<Self>>|
 				Ok(import_queue(
