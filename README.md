@@ -19,9 +19,9 @@ rustup target add wasm32-unknown-unknown --toolchain nightly
 cargo +nightly install --git https://github.com/alexcrichton/wasm-gc
 ```
 
-Additionally, install `clang` and `llvm`, e.g. via the package manager for your distribution. 
+Additionally, install `clang` and `llvm`, e.g. via the package manager for your distribution.
 
-After that, clone the repo and compile the WebAssembly runtime:
+Clone the repo and optionally compile the WebAssembly runtime. Note that if you want to connect to a testnet, please skip compiling WebAssembly runtime step.
 
 ```bash
 git clone https://github.com/paritytech/shasper.git
