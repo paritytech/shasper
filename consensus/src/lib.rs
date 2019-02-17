@@ -562,7 +562,7 @@ impl<B: Block<Hash=H256>, C> Verifier<B> for ShasperVerifier<C> where
 }
 
 /// The Aura import queue type.
-pub type ShasperImportQueue<B, C> = BasicQueue<B, ShasperVerifier<C>>;
+pub type ShasperImportQueue<B> = BasicQueue<B>;
 
 /// Start an import queue for the Aura consensus algorithm.
 pub fn import_queue<B, C, I>(
@@ -570,9 +570,9 @@ pub fn import_queue<B, C, I>(
 	client: Arc<C>,
 	block_import: Arc<I>,
 	inherent_data_providers: InherentDataProviders,
-) -> Result<ShasperImportQueue<B, C>, consensus_common::Error> where
+) -> Result<ShasperImportQueue<B>, consensus_common::Error> where
 	B: Block<Hash=H256>,
-	C: Authorities<B> + BlockImport<B, Error=::consensus_common::Error> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
+	C: 'static + Authorities<B> + BlockImport<B, Error=::consensus_common::Error> + ChainHead<B> + HeaderBackend<B> + AuxStore + ProvideRuntimeApi + Send + Sync,
 	C::Api: BlockBuilderApi<B> + ShasperApi<B>,
 	B::Extrinsic: CompatibleExtrinsic,
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
