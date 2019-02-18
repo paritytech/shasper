@@ -24,6 +24,8 @@ use service::{ServiceFactory, Roles as ServiceRoles};
 use std::ops::Deref;
 use cli::NoCustom;
 use log::info;
+use client::ExecutionStrategies;
+use state_machine::ExecutionStrategy;
 use crate::chain_spec;
 
 /// Parse command line arguments into service configuration.
@@ -34,13 +36,22 @@ pub fn run<I, T, E>(args: I, exit: E, version: VersionInfo) -> error::Result<()>
 {
 	cli::parse_and_execute::<crate::service::Factory, NoCustom, NoCustom, _, _, _, _, _>(
 		load_spec, &version, "shasper-node", args, exit,
-		|exit, _custom_args, config| {
+		|exit, _custom_args, mut config| {
 			info!("{}", version.name);
 			info!("  version {}", config.full_version());
 			info!("  by Parity Technologies, 2017-2019");
 			info!("Chain specification: {}", config.chain_spec.name());
 			info!("Node name: {}", config.name);
 			info!("Roles: {:?}", config.roles);
+
+			// Make this a native-only runtime.
+			config.execution_strategies = ExecutionStrategies {
+				syncing: ExecutionStrategy::NativeWhenPossible,
+				importing: ExecutionStrategy::NativeWhenPossible,
+				block_construction: ExecutionStrategy::NativeWhenPossible,
+				other: ExecutionStrategy::NativeWhenPossible,
+			};
+
 			let runtime = Runtime::new().map_err(|e| format!("{:?}", e))?;
 			let executor = runtime.executor();
 			match config.roles {
