@@ -30,6 +30,7 @@ service = { package = "substrate-service", git = "https://github.com/paritytech/
 transaction-pool = { package = "substrate-transaction-pool", git = "https://github.com/paritytech/substrate" }
 network = { package = "substrate-network", git = "https://github.com/paritytech/substrate" }
 client = { package = "substrate-client", git = "https://github.com/paritytech/substrate", default-features = false }
+state-machine = { package = "substrate-state-machine", git = "https://github.com/paritytech/substrate" }
 consensus = { package = "shasper-consensus", path = "consensus" }
 primitives = { package = "shasper-primitives", path = "primitives" }
 runtime = { package = "shasper-runtime", path = "runtime" }
