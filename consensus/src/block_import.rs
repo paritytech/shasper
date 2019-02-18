@@ -21,6 +21,7 @@ use codec::Encode;
 use consensus_common::{ForkChoiceStrategy, ImportBlock, BlockImport, ImportResult, Error as ConsensusError, ErrorKind as ConsensusErrorKind};
 use primitives::{H256, Blake2Hasher};
 use client::{Client, CallExecutor, ChainHead};
+use client::blockchain::{Backend as BlockchainBackend};
 use client::backend::{Backend, AuxStore};
 use runtime_primitives::generic::BlockId;
 use runtime_primitives::traits::{self, Header as HeaderT, Block as BlockT, DigestItemFor, ProvideRuntimeApi, One};
@@ -208,7 +209,9 @@ impl<B, E, Block: BlockT<Hash=H256>, RA, PRA> LatestAttestations<B, E, Block, RA
 			header.hash()
 		};
 
-		self.client.finalize_block(BlockId::Hash(last_finalized_hash), None, true)?;
+		if self.client.backend().blockchain().last_finalized()? != last_finalized_hash {
+			self.client.finalize_block(BlockId::Hash(last_finalized_hash), None, true)?;
+		}
 
 		debug!(target: "shasper", "Last finalized slot: {}, hash: {:?}", last_finalized_slot, last_finalized_hash);
 
