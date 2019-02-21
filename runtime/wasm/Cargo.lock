@@ -94,7 +94,7 @@ dependencies = [
 [[package]]
 name = "bls"
 version = "0.0.1"
-source = "git+https://github.com/sorpaas/bls#94181aad111e2aadadd73879a422cae5d439b783"
+source = "git+https://github.com/sorpaas/bls#d4c8d67ed1a1bb2e8e5e6c56372ed4aad8e3cfda"
 dependencies = [
  "pairing 0.14.0 (git+https://github.com/sorpaas/pairing)",
  "rand 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
