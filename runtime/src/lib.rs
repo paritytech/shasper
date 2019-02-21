@@ -261,10 +261,15 @@ impl_runtime_apis! {
 				},
 			};
 
+			let target_epoch = checked.data.target_epoch;
 			TransactionValidity::Valid {
 				priority: 0,
 				requires: Vec::new(),
-				provides: vec![(checked.validator_id, checked.data.target_epoch).encode()],
+				provides: checked.validator_ids.into_iter()
+					.map(|validator_id| {
+						(validator_id, target_epoch).encode()
+					})
+					.collect(),
 				longevity: TransactionLongevity::max_value(),
 			}
 		}

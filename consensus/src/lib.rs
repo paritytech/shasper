@@ -333,9 +333,9 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 					source_epoch_block_hash: justified_header.hash(),
 					target_epoch: current_epoch,
 					target_epoch_block_hash: target_header.hash(),
-					validator_index,
+					validator_indexes: vec![validator_index],
 				};
-				let signed = unsigned.sign_with(&self.local_key.secret);
+				let signed = unsigned.sign_with(&[&self.local_key.secret]);
 
 				debug!(target: "shasper", "Signed attestation: {:?}", signed);
 				if self.pool.submit_one(&BlockId::Hash(chain_head.hash()), UncheckedExtrinsic::Attestation(signed)).is_err() {

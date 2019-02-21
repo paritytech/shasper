@@ -1,5 +1,6 @@
 use rstd::prelude::*;
 use primitives::{Epoch, Balance, ValidatorId, UncheckedAttestation, CheckedAttestation};
+use crypto::bls;
 use runtime_support::storage::StorageValue;
 use runtime_support::storage::unhashed::StorageVec;
 use codec::Encode;
@@ -85,11 +86,30 @@ impl PendingAttestationsStore for Store {
 
 pub fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation> {
 	let signature = unchecked.signature.into_signature()?;
-	let validator_id = storage::Validators::item(unchecked.data.validator_index)?.validator_id;
-	let public = validator_id.into_public()?;
+	let validator_ids = {
+		let mut ret = Vec::new();
+		for validator_index in &unchecked.data.validator_indexes {
+			ret.push(storage::Validators::item(*validator_index)?.validator_id);
+		}
+		ret
+	};
+	let publics = {
+		let mut ret = Vec::new();
+		for validator_id in &validator_ids {
+			ret.push(validator_id.into_public()?);
+		}
+		ret
+	};
 	let current_slot = storage::Number::get();
+	let aggregated_public = {
+		let mut ret = bls::Public::new();
+		for public in publics {
+			ret.add_assign(&public);
+		}
+		ret
+	};
 
-	if !public.verify(&unchecked.data.encode()[..], &signature) {
+	if !aggregated_public.verify(&unchecked.data.encode()[..], &signature) {
 		return None;
 	}
 
@@ -107,7 +127,7 @@ pub fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttes
 		is_slot_canon,
 		is_source_canon,
 		is_target_canon,
-		validator_id,
+		validator_ids,
 		inclusion_distance,
 	})
 }

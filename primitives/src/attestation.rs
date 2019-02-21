@@ -16,13 +16,18 @@ pub struct UnsignedAttestation {
 	pub source_epoch_block_hash: Hash,
 	pub target_epoch: Epoch,
 	pub target_epoch_block_hash: Hash,
-	pub validator_index: u32,
+	pub validator_indexes: Vec<u32>,
 }
 
 impl UnsignedAttestation {
-	pub fn sign_with(self, secret: &bls::Secret) -> UncheckedAttestation {
+	pub fn sign_with(self, secrets: &[&bls::Secret]) -> UncheckedAttestation {
+		assert!(secrets.len() == self.validator_indexes.len());
+
 		let to_sign = self.encode();
-		let signature = secret.sign(&to_sign[..]);
+		let mut signature = bls::Signature::new();
+		for secret in secrets {
+			signature.add_assign(&secret.sign(&to_sign[..]));
+		}
 
 		UncheckedAttestation {
 			signature: signature.into(),
@@ -38,6 +43,25 @@ pub struct UncheckedAttestation {
 	pub signature: Signature,
 }
 
+impl UncheckedAttestation {
+	pub fn aggregate(&mut self, validator_index: u32, secret: &bls::Secret) -> bool {
+		if self.data.validator_indexes.contains(&validator_index) {
+			return false;
+		}
+
+		let mut signature = match self.signature.into_signature() {
+			Some(signature) => signature,
+			None => return false,
+		};
+		let to_sign = self.data.encode();
+		signature.add_assign(&secret.sign(&to_sign[..]));
+
+		self.signature = signature.into();
+
+		true
+	}
+}
+
 #[derive(Eq, PartialEq, Clone, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct CheckedAttestation {
@@ -45,7 +69,7 @@ pub struct CheckedAttestation {
 	pub is_slot_canon: bool,
 	pub is_source_canon: bool,
 	pub is_target_canon: bool,
-	pub validator_id: ValidatorId,
+	pub validator_ids: Vec<ValidatorId>,
 	pub inclusion_distance: Slot,
 }
 
@@ -55,7 +79,7 @@ impl Attestation for CheckedAttestation {
 	type Epoch = Epoch;
 
 	fn validator_ids(&self) -> Vec<ValidatorId> {
-		vec![self.validator_id]
+		self.validator_ids.clone()
 	}
 
 	fn is_source_canon(&self) -> bool {
