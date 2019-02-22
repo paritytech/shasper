@@ -31,7 +31,7 @@ cd shasper && ./build.sh
 You can then execute the client:
 
 ```bash
-cargo run -- --dev
+cargo run -- --dev -k Alice
 ```
 
 The client will run and then start proposing and importing blocks.
