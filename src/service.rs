@@ -58,7 +58,7 @@ pub struct NodeConfig {
 impl Default for NodeConfig {
 	fn default() -> Self {
 		Self {
-			validator_key: Some(bls::Secret::from_bytes(b"Alice").unwrap()),
+			validator_key: None,
 			inherent_data_providers: InherentDataProviders::new(),
 		}
 	}
