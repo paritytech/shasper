@@ -338,7 +338,7 @@ impl_runtime_apis! {
 		fn finalized_epoch() -> u64 {
 			let casper = storage::CasperContext::get();
 			if casper.finalized_epoch == 0 {
-				storage::GenesisSlot::get()
+				utils::slot_to_epoch(storage::GenesisSlot::get())
 			} else {
 				casper.finalized_epoch
 			}
@@ -347,7 +347,7 @@ impl_runtime_apis! {
 		fn justified_epoch() -> u64 {
 			let casper = storage::CasperContext::get();
 			if casper.justified_epoch == 0 {
-				storage::GenesisSlot::get()
+				utils::slot_to_epoch(storage::GenesisSlot::get())
 			} else {
 				casper.justified_epoch
 			}
@@ -355,22 +355,20 @@ impl_runtime_apis! {
 
 		fn finalized_slot() -> u64 {
 			let casper = storage::CasperContext::get();
-			let epoch = if casper.finalized_epoch == 0 {
+			if casper.finalized_epoch == 0 {
 				storage::GenesisSlot::get()
 			} else {
-				casper.finalized_epoch
-			};
-			utils::epoch_to_slot(epoch)
+				utils::epoch_to_slot(casper.finalized_epoch)
+			}
 		}
 
 		fn justified_slot() -> u64 {
 			let casper = storage::CasperContext::get();
-			let epoch = if casper.justified_epoch == 0 {
+			if casper.justified_epoch == 0 {
 				storage::GenesisSlot::get()
 			} else {
-				casper.justified_epoch
-			};
-			utils::epoch_to_slot(epoch)
+				utils::epoch_to_slot(casper.justified_epoch)
+			}
 		}
 
 		fn slot() -> Slot {

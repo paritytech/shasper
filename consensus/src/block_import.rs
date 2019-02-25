@@ -29,7 +29,7 @@ use primitives::{Slot, ValidatorId};
 use consensus_primitives::api::ShasperApi;
 use parking_lot::Mutex;
 
-use super::{CompatibleExtrinsic, CompatibleDigestItem};
+use super::{find_slot_header, CompatibleExtrinsic, CompatibleDigestItem};
 
 pub struct ShasperBlockImport<B, E, Block: BlockT<Hash=H256>, RA, PRA> {
 	client: Arc<Client<B, E, Block, RA>>,
@@ -177,15 +177,11 @@ impl<B, E, Block: BlockT<Hash=H256>, RA, PRA> LatestAttestations<B, E, Block, RA
 		let highest_justified_leaf_and_slot = leaves_with_justified_slots.iter().max_by_key(|(_, slot)| slot).cloned();
 		let highest_justified_hash = highest_justified_leaf_and_slot
 			.map(|(hleaf, hslot)| {
-				let mut header = self.client.header(&BlockId::Hash(hleaf))?
-					.expect("Leaf header must exist; qed");
-				let mut slot = self.api.runtime_api().slot(&BlockId::Hash(hleaf))?;
-
-				while slot > hslot {
-					header = self.client.header(&BlockId::Hash(*header.parent_hash()))?
-						.expect("Leaf's parent must exist; qed");
-					slot = self.api.runtime_api().slot(&BlockId::Hash(header.hash()))?;
-				}
+				let header = find_slot_header(
+					self.client.as_ref(), self.api.as_ref(),
+					hslot,
+					&BlockId::Hash(hleaf)
+				)?.expect("Highest justified header must exist; qed");
 
 				Ok(header.hash())
 			})
@@ -195,19 +191,11 @@ impl<B, E, Block: BlockT<Hash=H256>, RA, PRA> LatestAttestations<B, E, Block, RA
 
 		let chain_head_hash = self.client.best_block_header()?.hash();
 		let last_finalized_slot = self.api.runtime_api().finalized_slot(&BlockId::Hash(chain_head_hash))?;
-		let last_finalized_hash = {
-			let mut header = self.client.header(current)?
-				.expect("Chain head header must exist; qed");
-			let mut slot = self.api.runtime_api().slot(&BlockId::Hash(header.hash()))?;
-
-			while slot > last_finalized_slot {
-				header = self.client.header(&BlockId::Hash(*header.parent_hash()))?
-					.expect("Chain head's parent must exist; qed");
-				slot = self.api.runtime_api().slot(&BlockId::Hash(header.hash()))?;
-			}
-
-			header.hash()
-		};
+		let last_finalized_hash = find_slot_header(
+			self.client.as_ref(), self.api.as_ref(),
+			last_finalized_slot,
+			current
+		)?.expect("Last justified header must exist; qed").hash();
 
 		if self.client.backend().blockchain().last_finalized()? != last_finalized_hash {
 			self.client.finalize_block(BlockId::Hash(last_finalized_hash), None, true)?;
