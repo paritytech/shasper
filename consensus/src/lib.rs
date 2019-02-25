@@ -109,6 +109,7 @@ impl CompatibleExtrinsic for runtime::UncheckedExtrinsic {
 					 .map(|v| (v, (epoch_to_slot(attestation.data.target_epoch), attestation.data.target_epoch_block_hash)))
 					 .collect())
 			},
+			_ => None,
 		}
 	}
 }
@@ -248,7 +249,7 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 
 		let chain_head_hash = self.client.best_block_header().map_err(client_to_common_error)?.hash();
 		let current_epoch = runtime::utils::slot_to_epoch(
-			self.client.runtime_api().slot(&BlockId::Hash(chain_head_hash)).map_err(client_to_common_error)? - 1
+			self.client.runtime_api().slot(&BlockId::Hash(chain_head_hash)).map_err(client_to_common_error)?
 		);
 		*self.last_proposed_epoch.lock() = current_epoch;
 
@@ -261,7 +262,7 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 		slot_info: SlotInfo,
 	) -> Self::OnSlot {
 		let public_key = self.local_key.public.clone();
-		let (timestamp, _, slot_duration) =
+		let (timestamp, slot_num, slot_duration) =
 			(slot_info.timestamp, slot_info.number, slot_info.duration);
 
 		let authorities = match self.client.authorities(&BlockId::Hash(chain_head.hash())) {
@@ -281,13 +282,12 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 			}
 		};
 		let current_slot = match self.client.runtime_api().slot(&BlockId::Hash(chain_head.hash())) {
-			Ok(slot) => slot - 1,
+			Ok(slot) => slot,
 			Err(_) => {
 				warn!("Unable to get current slot");
 				return Box::new(future::ok(()));
 			},
 		};
-		let slot_num = current_slot;
 		let current_epoch = runtime::utils::slot_to_epoch(current_slot);
 
 		debug!(target: "shasper", "Current slot is {}", current_slot);

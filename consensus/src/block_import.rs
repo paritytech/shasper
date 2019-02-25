@@ -179,12 +179,12 @@ impl<B, E, Block: BlockT<Hash=H256>, RA, PRA> LatestAttestations<B, E, Block, RA
 			.map(|(hleaf, hslot)| {
 				let mut header = self.client.header(&BlockId::Hash(hleaf))?
 					.expect("Leaf header must exist; qed");
-				let mut slot = self.api.runtime_api().slot(&BlockId::Hash(hleaf))? - 1;
+				let mut slot = self.api.runtime_api().slot(&BlockId::Hash(hleaf))?;
 
 				while slot > hslot {
 					header = self.client.header(&BlockId::Hash(*header.parent_hash()))?
 						.expect("Leaf's parent must exist; qed");
-					slot = self.api.runtime_api().slot(&BlockId::Hash(header.hash()))? - 1;
+					slot = self.api.runtime_api().slot(&BlockId::Hash(header.hash()))?;
 				}
 
 				Ok(header.hash())
@@ -198,12 +198,12 @@ impl<B, E, Block: BlockT<Hash=H256>, RA, PRA> LatestAttestations<B, E, Block, RA
 		let last_finalized_hash = {
 			let mut header = self.client.header(current)?
 				.expect("Chain head header must exist; qed");
-			let mut slot = self.api.runtime_api().slot(&BlockId::Hash(header.hash()))? - 1;
+			let mut slot = self.api.runtime_api().slot(&BlockId::Hash(header.hash()))?;
 
 			while slot > last_finalized_slot {
 				header = self.client.header(&BlockId::Hash(*header.parent_hash()))?
 					.expect("Chain head's parent must exist; qed");
-				slot = self.api.runtime_api().slot(&BlockId::Hash(header.hash()))? - 1;
+				slot = self.api.runtime_api().slot(&BlockId::Hash(header.hash()))?;
 			}
 
 			header.hash()

@@ -35,18 +35,18 @@ mod state;
 pub mod utils;
 
 use rstd::prelude::*;
-use primitives::{BlockNumber, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
+use primitives::{BlockNumber, Slot, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
 use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 use runtime_primitives::{
 	ApplyResult, transaction_validity::{TransactionValidity, TransactionLongevity}, generic,
 	traits::{Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
-	ApplyOutcome,
+	ApplyOutcome, RuntimeString,
 };
 use client::{
 	block_builder::api as block_builder_api,
 	runtime_api as client_api
 };
-use inherents::{CheckInherentsResult, InherentData};
+use inherents::{CheckInherentsResult, InherentData, MakeFatalError};
 use runtime_support::storage::StorageValue;
 use runtime_support::storage::unhashed::StorageVec;
 use consensus_primitives::api as consensus_api;
@@ -147,16 +147,24 @@ impl_runtime_apis! {
 
 	impl block_builder_api::BlockBuilder<Block> for Runtime {
 		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
-			let _extrinsic_index = <storage::UncheckedExtrinsics>::count();
+			let extrinsic_index = <storage::UncheckedExtrinsics>::count();
 
 			let mut extrinsics = <storage::UncheckedExtrinsics>::items();
 			extrinsics.push(Some(extrinsic.clone()));
 
 			<storage::UncheckedExtrinsics>::set_items(extrinsics);
 
-			match extrinsic {
-				UncheckedExtrinsic::Attestation(attestation) => {
-					let checked = state::check_attestation(attestation).expect("Extrinsic is invalid.");
+			match &extrinsic {
+				UncheckedExtrinsic::Slot(slot)
+					if extrinsic_index == consts::SLOT_INHERENT_EXTRINSIC_INDEX =>
+				{
+					storage::Slot::put(slot);
+				},
+				UncheckedExtrinsic::Attestation(ref attestation)
+					if extrinsic_index >= consts::ATTESTATION_EXTRINSIC_START_INDEX =>
+				{
+					let checked = state::check_attestation(attestation.clone())
+						.expect("Extrinsic is invalid.");
 					let casper = storage::CasperContext::get();
 					if !casper.validate_attestation(&checked) {
 						panic!("Extrinsic does not pass casper check.");
@@ -166,6 +174,7 @@ impl_runtime_apis! {
 					pending_attestations.push(Some(checked));
 					storage::PendingAttestations::set_items(pending_attestations);
 				},
+				_ => panic!("Extrinsic order is incorrect"),
 			}
 
 			Ok(ApplyOutcome::Success)
@@ -221,7 +230,7 @@ impl_runtime_apis! {
 			storage::Number::take();
 			let parent_hash = storage::ParentHash::take();
 			let extrinsics_root = BlakeTwo256::enumerated_trie_root(&extrinsic_data.iter().map(Vec::as_slice).collect::<Vec<_>>());
-			let digest = <storage::Digest>::take();
+			let digest = storage::Digest::take();
 			let state_root = BlakeTwo256::storage_root();
 
 			Header {
@@ -229,12 +238,55 @@ impl_runtime_apis! {
 			}
 		}
 
-		fn inherent_extrinsics(_data: InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
-			Default::default()
+		fn inherent_extrinsics(data: InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
+			let slot = match data.get_data::<consensus_primitives::InherentData>(
+				&consensus_primitives::INHERENT_IDENTIFIER
+			) {
+				Ok(Some(data)) => data.slot,
+				_ => panic!("Decode inherent failed"),
+			};
+
+			let mut ret = Vec::new();
+			ret.push(UncheckedExtrinsic::Slot(slot));
+			ret
 		}
 
-		fn check_inherents(_block: Block, _data: InherentData) -> CheckInherentsResult {
-			CheckInherentsResult::new()
+		fn check_inherents(block: Block, data: InherentData) -> CheckInherentsResult {
+			let mut result = CheckInherentsResult::default();
+
+			let slot = match data.get_data::<consensus_primitives::InherentData>(
+				&consensus_primitives::INHERENT_IDENTIFIER
+			) {
+				Ok(Some(data)) => data.slot,
+				_ => {
+					result.put_error(
+						consensus_primitives::INHERENT_IDENTIFIER,
+						&MakeFatalError::from(RuntimeString::from("Slot decode failed"))
+					).expect("Putting error failed");
+					return result;
+				},
+			};
+
+			if block.extrinsics.len() == 0 {
+				result.put_error(
+					consensus_primitives::INHERENT_IDENTIFIER,
+					&MakeFatalError::from(RuntimeString::from("Slot extrinsic missing"))
+				).expect("Putting error failed");
+				return result;
+			}
+
+			match block.extrinsics[0] {
+				UncheckedExtrinsic::Slot(block_slot) if block_slot == slot => (),
+				_ => {
+					result.put_error(
+						consensus_primitives::INHERENT_IDENTIFIER,
+						&MakeFatalError::from(RuntimeString::from("Incorrect block slot"))
+					).expect("Putting error failed");
+					return result;
+				},
+			}
+
+			result
 		}
 
 		fn random_seed() -> <Block as BlockT>::Hash {
@@ -259,6 +311,7 @@ impl_runtime_apis! {
 					}
 					checked
 				},
+				_ => return TransactionValidity::Invalid(0),
 			};
 
 			let target_epoch = checked.data.target_epoch;
@@ -277,33 +330,55 @@ impl_runtime_apis! {
 
 	impl aura_primitives::AuraApi<Block> for Runtime {
 		fn slot_duration() -> u64 {
-			6
+			consts::SLOT_DURATION
 		}
 	}
 
 	impl consensus_api::ShasperApi<Block> for Runtime {
 		fn finalized_epoch() -> u64 {
 			let casper = storage::CasperContext::get();
-			casper.finalized_epoch
+			if casper.finalized_epoch == 0 {
+				storage::GenesisSlot::get()
+			} else {
+				casper.finalized_epoch
+			}
 		}
 
 		fn justified_epoch() -> u64 {
 			let casper = storage::CasperContext::get();
-			casper.justified_epoch
-		}
-
-		fn slot() -> u64 {
-			storage::Number::get()
+			if casper.justified_epoch == 0 {
+				storage::GenesisSlot::get()
+			} else {
+				casper.justified_epoch
+			}
 		}
 
 		fn finalized_slot() -> u64 {
 			let casper = storage::CasperContext::get();
-			utils::epoch_to_slot(casper.finalized_epoch)
+			let epoch = if casper.finalized_epoch == 0 {
+				storage::GenesisSlot::get()
+			} else {
+				casper.finalized_epoch
+			};
+			utils::epoch_to_slot(epoch)
 		}
 
 		fn justified_slot() -> u64 {
 			let casper = storage::CasperContext::get();
-			utils::epoch_to_slot(casper.justified_epoch)
+			let epoch = if casper.justified_epoch == 0 {
+				storage::GenesisSlot::get()
+			} else {
+				casper.justified_epoch
+			};
+			utils::epoch_to_slot(epoch)
+		}
+
+		fn slot() -> Slot {
+			if storage::Slot::get() == 0 {
+				storage::GenesisSlot::get()
+			} else {
+				storage::Slot::get()
+			}
 		}
 
 		fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation> {

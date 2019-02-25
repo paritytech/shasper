@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{BlockNumber, Hash, Epoch, Balance, Slot, ValidatorId, CheckedAttestation};
+use primitives::{BlockNumber, Hash, Epoch, Balance, ValidatorId, CheckedAttestation};
 use runtime_support::storage_items;
 use runtime_support::storage::StorageValue;
 use runtime_support::storage::unhashed::{self, StorageVec};
@@ -23,10 +23,11 @@ use crate::{UncheckedExtrinsic, Digest as DigestT, utils};
 
 storage_items! {
 	pub Number: b"sys:num" => default BlockNumber;
+	pub Slot: b"sys:slot" => default primitives::Slot;
 	pub ParentHash: b"sys:parenthash" => default Hash;
 	pub Digest: b"sys:digest" => default DigestT;
 	pub CasperContext: b"sys:caspercontext" => default casper::CasperContext<Epoch>;
-	pub GenesisSlot: b"sys:genesisslot" => default Slot;
+	pub GenesisSlot: b"sys:genesisslot" => default primitives::Slot;
 }
 
 pub struct UncheckedExtrinsics;
