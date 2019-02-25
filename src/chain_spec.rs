@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::ValidatorId;
+use primitives::{Timestamp, ValidatorId};
 use runtime::GenesisConfig;
 use crypto::bls;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // Note this is the URL for the telemetry server
 //const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -52,7 +53,9 @@ impl Alternative {
 					testnet_genesis(
 						vec![
 							alice_id
-						]
+						],
+						SystemTime::now().duration_since(UNIX_EPOCH)
+							.expect("Time cannot go backward; qed").as_secs(),
 					)
 				},
 				vec![],
@@ -78,7 +81,9 @@ impl Alternative {
 						vec![
 							alice_id,
 							bob_id,
-						]
+						],
+						SystemTime::now().duration_since(UNIX_EPOCH)
+							.expect("Time cannot go backward; qed").as_secs(),
 					)
 				},
 				vec![],
@@ -100,7 +105,8 @@ impl Alternative {
 						vec![
 							alice_id,
 							bob_id,
-						]
+						],
+						1551106067,
 					)
 				},
 				vec![],
@@ -122,9 +128,10 @@ impl Alternative {
 	}
 }
 
-fn testnet_genesis(initial_authorities: Vec<ValidatorId>) -> GenesisConfig {
+fn testnet_genesis(initial_authorities: Vec<ValidatorId>, timestamp: Timestamp) -> GenesisConfig {
 	GenesisConfig {
 		code: include_bytes!("../runtime/wasm/target/wasm32-unknown-unknown/release/shasper_runtime.compact.wasm").to_vec(),
 		authorities: initial_authorities.into_iter().map(|v| (v, 1000000)).collect(),
+		timestamp,
 	}
 }

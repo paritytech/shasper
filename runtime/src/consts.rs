@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{Slot, Balance};
+use primitives::{Slot, Balance, Timestamp};
 
 pub const CYCLE_LENGTH: Slot = 4;
 pub const BASE_REWARD_QUOTIENT: Balance = 32;
@@ -22,3 +22,6 @@ pub const INACTIVITY_PENALTY_QUOTIENT: Balance = 16777216;
 pub const INCLUDER_REWARD_QUOTIENT: Balance = 8;
 pub const MIN_ATTESTATION_INCLUSION_DELAY: Slot = 0;
 pub const WHISTLEBLOWER_REWARD_QUOTIENT: Balance = 512;
+pub const SLOT_DURATION: Timestamp = 6;
+pub const SLOT_INHERENT_EXTRINSIC_INDEX: u32 = 0;
+pub const ATTESTATION_EXTRINSIC_START_INDEX: u32 = 1;

@@ -59,3 +59,6 @@ pub type Balance = u128;
 
 /// Validator index in Shasper.
 pub type ValidatorIndex = u32;
+
+/// Timestamp value in Shasper.
+pub type Timestamp = u64;

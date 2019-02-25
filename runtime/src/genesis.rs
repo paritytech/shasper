@@ -15,9 +15,10 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use runtime_primitives::{BuildStorage, StorageOverlay, ChildrenStorageOverlay};
-use primitives::{ValidatorId, Epoch, Balance, storage::well_known_keys};
+use runtime_io::twox_128;
+use primitives::{ValidatorId, Epoch, Slot, Timestamp, Balance, storage::well_known_keys};
 use codec::{Encode, KeyedVec};
-use crate::storage;
+use crate::{storage, consts};
 use crate::state::ValidatorRecord;
 
 use serde_derive::{Serialize, Deserialize};
@@ -26,6 +27,7 @@ use serde_derive::{Serialize, Deserialize};
 pub struct GenesisConfig {
 	pub authorities: Vec<(ValidatorId, Balance)>,
 	pub code: Vec<u8>,
+	pub timestamp: Timestamp,
 }
 
 impl BuildStorage for GenesisConfig {
@@ -46,6 +48,10 @@ impl BuildStorage for GenesisConfig {
 			storage.insert((i as u32).to_keyed_vec(storage::VALIDATORS_PREFIX), Some(record).encode());
 		});
 		storage.insert(b"len".to_keyed_vec(storage::VALIDATORS_PREFIX), auth_count.encode());
+		storage.insert(
+			twox_128(b"sys:genesisslot").to_vec(),
+			((self.timestamp / consts::SLOT_DURATION) as Slot).encode()
+		);
 
 		Ok((storage, Default::default()))
 	}
