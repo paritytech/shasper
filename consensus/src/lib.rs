@@ -36,13 +36,13 @@ use std::collections::hash_map::{HashMap};
 use codec::Encode;
 use consensus_common::{Authorities, BlockImport, Environment, Proposer, ImportBlock, BlockOrigin, ForkChoiceStrategy, Error as ConsensusError};
 use consensus_common::import_queue::{Verifier, BasicQueue};
-use client::{blockchain::HeaderBackend, ChainHead};
+use client::{blockchain::HeaderBackend, ChainHead, error::Error as ClientError};
 use client::backend::AuxStore;
 use client::block_builder::api::BlockBuilder as BlockBuilderApi;
 use runtime::UncheckedExtrinsic;
 use runtime::utils::epoch_to_slot;
 use runtime_primitives::{generic::BlockId, Justification, RuntimeString};
-use runtime_primitives::traits::{Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi};
+use runtime_primitives::traits::{self, Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi, Zero};
 use primitives::{ValidatorId, H256, Slot, Epoch, BlockNumber, UnsignedAttestation};
 use aura_slots::{SlotCompatible, CheckedHeader, SlotWorker, SlotInfo};
 use inherents::InherentDataProviders;
@@ -133,6 +133,46 @@ pub fn register_shasper_inherent_data_provider(
 			.map_err(inherent_to_common_error)
 	} else {
 		Ok(())
+	}
+}
+
+/// Find slot header.
+pub fn find_slot_header<Block: traits::Block<Hash=H256>, C, PRA>(
+	client: &C,
+	api: &PRA,
+	target_slot: Slot,
+	leaf: &BlockId<Block>,
+) -> Result<Option<Block::Header>, ClientError> where
+	C: HeaderBackend<Block>,
+	PRA: ProvideRuntimeApi,
+	PRA::Api: ShasperApi<Block>,
+{
+	let mut header = match client.header(leaf.clone())? {
+		Some(header) => header,
+		None => return Ok(None),
+	};
+
+	let slot = api.runtime_api().slot(leaf)?;
+	if slot < target_slot {
+		return Ok(None)
+	}
+
+	loop {
+		if *header.number() == Zero::zero() {
+			return Ok(Some(header))
+		}
+
+		let parent_header = match client.header(BlockId::Hash(*header.parent_hash()))? {
+			Some(header) => header,
+			None => return Ok(None),
+		};
+
+		let parent_slot = api.runtime_api().slot(&BlockId::Hash(*header.parent_hash()))?;
+		if parent_slot < target_slot {
+			return Ok(Some(header))
+		}
+
+		header = parent_header;
 	}
 }
 
@@ -311,14 +351,22 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 						return Box::new(future::ok(()));
 					},
 				};
-				let justified_header = match self.client.header(BlockId::Number(runtime::utils::epoch_to_slot(justified_epoch).into())) {
+				let justified_header = match find_slot_header(
+					self.client.as_ref(), self.client.as_ref(),
+					runtime::utils::epoch_to_slot(justified_epoch),
+					&BlockId::Hash(chain_head.hash())
+				) {
 					Ok(Some(v)) => v,
 					Err(_) | Ok(None) => {
 						warn!("Fetching justified header failed");
 						return Box::new(future::ok(()));
 					},
 				};
-				let target_header = match self.client.header(BlockId::Number(runtime::utils::epoch_to_slot(current_epoch).into())) {
+				let target_header = match find_slot_header(
+					self.client.as_ref(), self.client.as_ref(),
+					runtime::utils::epoch_to_slot(current_epoch),
+					&BlockId::Hash(chain_head.hash())
+				) {
 					Ok(Some(v)) => v,
 					Err(_) | Ok(None) => {
 						warn!("Fetching current header failed");
