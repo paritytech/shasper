@@ -330,7 +330,7 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 		};
 		let current_epoch = runtime::utils::slot_to_epoch(current_slot);
 
-		debug!(target: "shasper", "Current slot is {}", current_slot);
+		debug!(target: "shasper", "Current slot is {}, new slot is {}", current_slot, slot_num);
 
 		if *self.last_proposed_epoch.lock() < current_epoch {
 			debug!(target: "shasper", "Last proposed epoch {} is less than current epoch {}, submitting a new attestation", *self.last_proposed_epoch.lock(), current_epoch);

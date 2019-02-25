@@ -146,6 +146,8 @@ impl<Epoch> CasperContext<Epoch> where
 			Epoch=PendingAttestationsStoreEpoch<S>
 		>,
 	{
+		assert!(self.epoch() == store.epoch(), "Store block epoch must equal to casper context.");
+
 		debug_assert!({
 			store.attestations().into_iter().all(|attestation| {
 				self.validate_attestation(&attestation)
@@ -183,8 +185,6 @@ impl<Epoch> CasperContext<Epoch> where
 		self.previous_justified_epoch = self.justified_epoch;
 		self.justified_epoch = new_justified_epoch;
 		self.epoch += One::one();
-
-		assert!(self.epoch() == store.epoch(), "Store block epoch must equal to casper context.");
 	}
 }
 

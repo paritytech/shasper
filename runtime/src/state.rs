@@ -1,7 +1,7 @@
 use rstd::prelude::*;
 use primitives::{Epoch, Balance, ValidatorId, UncheckedAttestation, CheckedAttestation};
 use crypto::bls;
-use runtime_support::storage::StorageValue;
+use runtime_support::storage::{StorageValue, StorageMap};
 use runtime_support::storage::unhashed::StorageVec;
 use codec::Encode;
 use codec_derive::{Encode, Decode};
@@ -55,7 +55,7 @@ impl BlockStore for Store {
 	type Epoch = Epoch;
 
 	fn epoch(&self) -> Epoch {
-		let current_slot = storage::Number::get();
+		let current_slot = storage::LastSlot::get();
 		utils::slot_to_epoch(current_slot)
 	}
 }
@@ -84,7 +84,7 @@ impl PendingAttestationsStore for Store {
 	}
 }
 
-pub fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation> {
+pub fn check_attestation(unchecked: UncheckedAttestation, check_slot: bool) -> Option<CheckedAttestation> {
 	let signature = unchecked.signature.into_signature()?;
 	let validator_ids = {
 		let mut ret = Vec::new();
@@ -100,7 +100,7 @@ pub fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttes
 		}
 		ret
 	};
-	let current_slot = storage::Number::get();
+	let current_slot = storage::Slot::get();
 	let aggregated_public = {
 		let mut ret = bls::Public::new();
 		for public in publics {
@@ -113,13 +113,13 @@ pub fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttes
 		return None;
 	}
 
-	if unchecked.data.slot >= current_slot {
+	if check_slot && unchecked.data.slot >= current_slot {
 		return None;
 	}
 
-	let is_slot_canon = storage::LatestBlockHashes::item(unchecked.data.slot as u32) == Some(unchecked.data.slot_block_hash);
-	let is_source_canon = storage::LatestBlockHashes::item(utils::epoch_to_slot(unchecked.data.source_epoch) as u32) == Some(unchecked.data.source_epoch_block_hash);
-	let is_target_canon = storage::LatestBlockHashes::item(utils::epoch_to_slot(unchecked.data.target_epoch) as u32) == Some(unchecked.data.target_epoch_block_hash);
+	let is_slot_canon = storage::LatestBlockHashes::get(unchecked.data.slot) == Some(unchecked.data.slot_block_hash);
+	let is_source_canon = storage::LatestBlockHashes::get(utils::epoch_to_slot(unchecked.data.source_epoch)) == Some(unchecked.data.source_epoch_block_hash);
+	let is_target_canon = storage::LatestBlockHashes::get(utils::epoch_to_slot(unchecked.data.target_epoch)) == Some(unchecked.data.target_epoch_block_hash);
 	let inclusion_distance = current_slot - unchecked.data.slot;
 
 	Some(CheckedAttestation {

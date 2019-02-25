@@ -59,6 +59,10 @@ impl BuildStorage for GenesisConfig {
 			slot.encode()
 		);
 		storage.insert(
+			twox_128(b"sys:lastslot").to_vec(),
+			slot.encode()
+		);
+		storage.insert(
 			twox_128(b"sys:slot").to_vec(),
 			slot.encode()
 		);
