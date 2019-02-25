@@ -337,46 +337,26 @@ impl_runtime_apis! {
 	impl consensus_api::ShasperApi<Block> for Runtime {
 		fn finalized_epoch() -> u64 {
 			let casper = storage::CasperContext::get();
-			if casper.finalized_epoch == 0 {
-				utils::slot_to_epoch(storage::GenesisSlot::get())
-			} else {
-				casper.finalized_epoch
-			}
+			casper.finalized_epoch
 		}
 
 		fn justified_epoch() -> u64 {
 			let casper = storage::CasperContext::get();
-			if casper.justified_epoch == 0 {
-				utils::slot_to_epoch(storage::GenesisSlot::get())
-			} else {
-				casper.justified_epoch
-			}
+			casper.justified_epoch
 		}
 
 		fn finalized_slot() -> u64 {
 			let casper = storage::CasperContext::get();
-			if casper.finalized_epoch == 0 {
-				storage::GenesisSlot::get()
-			} else {
-				utils::epoch_to_slot(casper.finalized_epoch)
-			}
+			utils::epoch_to_slot(casper.finalized_epoch)
 		}
 
 		fn justified_slot() -> u64 {
 			let casper = storage::CasperContext::get();
-			if casper.justified_epoch == 0 {
-				storage::GenesisSlot::get()
-			} else {
-				utils::epoch_to_slot(casper.justified_epoch)
-			}
+			utils::epoch_to_slot(casper.justified_epoch)
 		}
 
 		fn slot() -> Slot {
-			if storage::Slot::get() == 0 {
-				storage::GenesisSlot::get()
-			} else {
-				storage::Slot::get()
-			}
+			storage::Slot::get()
 		}
 
 		fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation> {

@@ -346,8 +346,8 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 			if let Some(validator_index) = validator_index {
 				let justified_epoch = match self.client.runtime_api().justified_epoch(&BlockId::Hash(chain_head.hash())) {
 					Ok(v) => v,
-					Err(_) => {
-						warn!("Fetching justified epoch failed");
+					Err(e) => {
+						warn!("Fetching justified epoch failed: {:?}", e);
 						return Box::new(future::ok(()));
 					},
 				};
@@ -357,8 +357,12 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 					&BlockId::Hash(chain_head.hash())
 				) {
 					Ok(Some(v)) => v,
-					Err(_) | Ok(None) => {
-						warn!("Fetching justified header failed");
+					Ok(None) => {
+						warn!("Fetching justified header failed: header does not exist");
+						return Box::new(future::ok(()));
+					},
+					Err(e) => {
+						warn!("Fetching justified header failed: {:?}", e);
 						return Box::new(future::ok(()));
 					},
 				};
@@ -368,8 +372,12 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 					&BlockId::Hash(chain_head.hash())
 				) {
 					Ok(Some(v)) => v,
-					Err(_) | Ok(None) => {
-						warn!("Fetching current header failed");
+					Ok(None) => {
+						warn!("Fetching current header failed: header does not exist");
+						return Box::new(future::ok(()));
+					},
+					Err(e) => {
+						warn!("Fetching current header failed: {:?}", e);
 						return Box::new(future::ok(()));
 					},
 				};
@@ -386,8 +394,8 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 				let signed = unsigned.sign_with(&[&self.local_key.secret]);
 
 				debug!(target: "shasper", "Signed attestation: {:?}", signed);
-				if self.pool.submit_one(&BlockId::Hash(chain_head.hash()), UncheckedExtrinsic::Attestation(signed)).is_err() {
-					warn!("Submitting attestation failed");
+				if let Err(e) = self.pool.submit_one(&BlockId::Hash(chain_head.hash()), UncheckedExtrinsic::Attestation(signed)) {
+					warn!("Submitting attestation failed: {:?}", e);
 					return Box::new(future::ok(()));
 				}
 				debug!(target: "shasper", "Submitted the attestation to transaction pool");

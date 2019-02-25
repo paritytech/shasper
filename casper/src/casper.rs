@@ -83,6 +83,17 @@ pub struct CasperContext<Epoch> {
 impl<Epoch> CasperContext<Epoch> where
 	Epoch: Ord + Copy + Clone + Zero + One + Add<Output=Epoch> + AddAssign + Sub<Output=Epoch> + SubAssign
 {
+	/// Create a new Casper context.
+	pub fn new(genesis_epoch: Epoch) -> Self {
+		Self {
+			justification_bitfield: 0,
+			epoch: genesis_epoch,
+			justified_epoch: genesis_epoch,
+			finalized_epoch: genesis_epoch,
+			previous_justified_epoch: genesis_epoch,
+		}
+	}
+
 	/// Get the current epoch.
 	pub fn epoch(&self) -> Epoch {
 		self.epoch

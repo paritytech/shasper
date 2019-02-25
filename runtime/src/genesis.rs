@@ -18,7 +18,8 @@ use runtime_primitives::{BuildStorage, StorageOverlay, ChildrenStorageOverlay};
 use runtime_io::twox_128;
 use primitives::{ValidatorId, Epoch, Slot, Timestamp, Balance, storage::well_known_keys};
 use codec::{Encode, KeyedVec};
-use crate::{storage, consts};
+use casper::CasperContext;
+use crate::{storage, consts, utils};
 use crate::state::ValidatorRecord;
 
 use serde_derive::{Serialize, Deserialize};
@@ -48,10 +49,24 @@ impl BuildStorage for GenesisConfig {
 			storage.insert((i as u32).to_keyed_vec(storage::VALIDATORS_PREFIX), Some(record).encode());
 		});
 		storage.insert(b"len".to_keyed_vec(storage::VALIDATORS_PREFIX), auth_count.encode());
+
+		let slot = {
+			let ret = self.timestamp / consts::SLOT_DURATION as Slot;
+			(ret / consts::CYCLE_LENGTH) * consts::CYCLE_LENGTH
+		};
 		storage.insert(
 			twox_128(b"sys:genesisslot").to_vec(),
-			((self.timestamp / consts::SLOT_DURATION) as Slot).encode()
+			slot.encode()
 		);
+		storage.insert(
+			twox_128(b"sys:slot").to_vec(),
+			slot.encode()
+		);
+		storage.insert(
+			twox_128(b"sys:caspercontext").to_vec(),
+			CasperContext::new(utils::slot_to_epoch(slot)).encode()
+		);
+
 
 		Ok((storage, Default::default()))
 	}
