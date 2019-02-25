@@ -296,8 +296,8 @@ mod tests {
 		let mut casper = CasperContext::<usize>::default();
 
 		// Attesting on the zero round doesn't do anything, because it's already justified and finalized.
-		store.epoch += 1;
 		casper.advance_epoch(&mut store);
+		store.epoch += 1;
 
 		// First round, four validators attest.
 		store.pending_attestations.append(&mut vec![
@@ -322,8 +322,8 @@ mod tests {
 				target_epoch: 1,
 			},
 		]);
-		store.epoch += 1;
 		casper.advance_epoch(&mut store);
+		store.epoch += 1;
 		assert_eq!(casper.epoch, 2);
 		assert_eq!(casper.justified_epoch, 1);
 		assert_eq!(casper.finalized_epoch, 0);
@@ -346,8 +346,8 @@ mod tests {
 				target_epoch: 2,
 			},
 		]);
-		store.epoch += 1;
 		casper.advance_epoch(&mut store);
+		store.epoch += 1;
 		assert_eq!(casper.epoch, 3);
 		assert_eq!(casper.justified_epoch, 2);
 		assert_eq!(casper.finalized_epoch, 1);
@@ -370,8 +370,8 @@ mod tests {
 				target_epoch: 3,
 			},
 		]);
-		store.epoch += 1;
 		casper.advance_epoch(&mut store);
+		store.epoch += 1;
 		assert_eq!(casper.epoch, 4);
 		assert_eq!(casper.justified_epoch, 3);
 		assert_eq!(casper.finalized_epoch, 2);
@@ -389,8 +389,8 @@ mod tests {
 				target_epoch: 4,
 			},
 		]);
-		store.epoch += 1;
 		casper.advance_epoch(&mut store);
+		store.epoch += 1;
 		assert_eq!(casper.epoch, 5);
 		assert_eq!(casper.justified_epoch, 3);
 		assert_eq!(casper.finalized_epoch, 2);
