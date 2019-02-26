@@ -16,7 +16,7 @@
 
 use primitives::{BlockNumber, Hash, Epoch, Balance, ValidatorId, CheckedAttestation};
 use runtime_support::storage_items;
-use runtime_support::storage::StorageValue;
+use runtime_support::storage::{StorageValue, StorageMap};
 use runtime_support::storage::unhashed::{self, StorageVec};
 use crate::state::ValidatorRecord;
 use crate::{UncheckedExtrinsic, Digest as DigestT, utils};
@@ -24,22 +24,18 @@ use crate::{UncheckedExtrinsic, Digest as DigestT, utils};
 storage_items! {
 	pub Number: b"sys:num" => default BlockNumber;
 	pub Slot: b"sys:slot" => default primitives::Slot;
+	pub LastSlot: b"sys:lastslot" => default primitives::Slot;
 	pub ParentHash: b"sys:parenthash" => default Hash;
 	pub Digest: b"sys:digest" => default DigestT;
 	pub CasperContext: b"sys:caspercontext" => default casper::CasperContext<Epoch>;
 	pub GenesisSlot: b"sys:genesisslot" => default primitives::Slot;
+	pub LatestBlockHashes: b"sys:latestblockhashes" => map [primitives::Slot => Hash];
 }
 
 pub struct UncheckedExtrinsics;
 impl unhashed::StorageVec for UncheckedExtrinsics {
 	type Item = Option<UncheckedExtrinsic>;
 	const PREFIX: &'static [u8] = b"sys:extrinsics";
-}
-
-pub struct LatestBlockHashes;
-impl unhashed::StorageVec for LatestBlockHashes {
-	type Item = Option<Hash>;
-	const PREFIX: &'static [u8] = b"sys:latestblockhashes";
 }
 
 pub struct PendingAttestations;
@@ -49,15 +45,13 @@ impl unhashed::StorageVec for PendingAttestations {
 }
 
 pub fn note_parent_hash() {
-	let slot = Number::get() - 1;
+	let slot = Slot::get();
+	let last_slot = LastSlot::get();
+
 	let hash = ParentHash::get();
-	let current_count = LatestBlockHashes::count();
-	assert!(current_count <= slot as u32 + 1);
-	LatestBlockHashes::set_count(slot as u32 + 1);
-	for i in current_count..(slot as u32) {
-		LatestBlockHashes::set_item(i, &None);
+	for s in last_slot..slot {
+		LatestBlockHashes::insert(s, hash);
 	}
-	LatestBlockHashes::set_item(slot as u32, &Some(hash));
 }
 
 pub const VALIDATORS_PREFIX: &[u8] = b"sys:validators";
