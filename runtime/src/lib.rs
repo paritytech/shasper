@@ -107,6 +107,7 @@ mod apis {
 		Header,
 	};
 
+	#[cfg(feature = "std")]
 	pub use self::api::dispatch;
 
 	/// This runtime version.
