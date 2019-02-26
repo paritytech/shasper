@@ -46,7 +46,9 @@ pub use runtime_primitives::BuildStorage;
 pub use genesis::GenesisConfig;
 pub use extrinsic::UncheckedExtrinsic;
 pub use digest::DigestItem;
-pub use apis::{VERSION, RuntimeApi, dispatch};
+pub use apis::{VERSION, RuntimeApi};
+#[cfg(feature = "std")]
+pub use apis::dispatch;
 
 /// The version infromation used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
