@@ -23,8 +23,13 @@ use serde_derive::{Serialize, Deserialize};
 
 #[derive(Decode, Encode, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+/// Shasper extrinsic.
 pub enum UncheckedExtrinsic {
+	/// Slot inherent extrinsic, whose extrinsic index must be
+	/// `consts::SLOT_INHERENT_EXTRINSIC_INDEX`.
 	Slot(Slot),
+	/// Attestation extrinsic, whose extrinsic index must be after
+	/// `consts::ATTESTATION_EXTRINSIC_START_INDEX`.
 	Attestation(UncheckedAttestation)
 }
 

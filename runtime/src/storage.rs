@@ -19,14 +19,14 @@ use runtime_support::storage_items;
 use runtime_support::storage::{StorageValue, StorageMap};
 use runtime_support::storage::unhashed::{self, StorageVec};
 use crate::state::ValidatorRecord;
-use crate::{UncheckedExtrinsic, Digest as DigestT, utils};
+use crate::{UncheckedExtrinsic, utils};
 
 storage_items! {
 	pub Number: b"sys:num" => default BlockNumber;
 	pub Slot: b"sys:slot" => default primitives::Slot;
 	pub LastSlot: b"sys:lastslot" => default primitives::Slot;
 	pub ParentHash: b"sys:parenthash" => default Hash;
-	pub Digest: b"sys:digest" => default DigestT;
+	pub Digest: b"sys:digest" => default super::Digest;
 	pub CasperContext: b"sys:caspercontext" => default casper::CasperContext<Epoch>;
 	pub GenesisSlot: b"sys:genesisslot" => default primitives::Slot;
 	pub LatestBlockHashes: b"sys:latestblockhashes" => map [primitives::Slot => Hash];

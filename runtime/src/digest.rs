@@ -24,6 +24,7 @@ use serde_derive::Serialize;
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize))]
+/// Shasper digest items.
 pub enum DigestItem {
 	/// System digest item announcing that authorities set has been changed
 	/// in the block. Contains the new set of authorities.
