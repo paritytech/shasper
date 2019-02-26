@@ -39,7 +39,7 @@ pub use executor::NativeExecutor;
 // Our native executor instance.
 native_executor_instance!(
 	pub Executor,
-	runtime::api::dispatch,
+	runtime::dispatch,
 	runtime::native_version,
 	include_bytes!("../runtime/wasm/target/wasm32-unknown-unknown/release/shasper_runtime.compact.wasm")
 );

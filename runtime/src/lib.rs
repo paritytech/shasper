@@ -46,7 +46,7 @@ pub use runtime_primitives::BuildStorage;
 pub use genesis::GenesisConfig;
 pub use extrinsic::UncheckedExtrinsic;
 pub use digest::DigestItem;
-pub use apis::VERSION;
+pub use apis::{VERSION, RuntimeApi, dispatch};
 
 /// The version infromation used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -79,6 +79,7 @@ impl GetRuntimeBlockType for Runtime {
 	type RuntimeBlock = Block;
 }
 
+#[allow(missing_docs)]
 mod apis {
 	use rstd::prelude::*;
 	use primitives::{Slot, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
@@ -105,6 +106,8 @@ mod apis {
 		state::{self, Store}, storage, utils, consts, extrinsic::UncheckedExtrinsic,
 		Header,
 	};
+
+	pub use self::api::dispatch;
 
 	/// This runtime version.
 	pub const VERSION: RuntimeVersion = RuntimeVersion {
