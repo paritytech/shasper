@@ -25,9 +25,13 @@ use crate::state::ValidatorRecord;
 use serde_derive::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
+/// Shasper genesis config.
 pub struct GenesisConfig {
+	/// Initial validator set.
 	pub authorities: Vec<(ValidatorId, Balance)>,
+	/// Code being set as `:code`.
 	pub code: Vec<u8>,
+	/// Genesis timestamp.
 	pub timestamp: Timestamp,
 }
 

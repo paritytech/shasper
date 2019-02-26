@@ -18,8 +18,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(not(feature = "std"), feature(alloc))]
-// `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
-#![recursion_limit="256"]
+
+#![warn(missing_docs)]
 
 extern crate parity_codec as codec;
 extern crate parity_codec_derive as codec_derive;
@@ -34,29 +34,10 @@ mod digest;
 mod state;
 pub mod utils;
 
-use rstd::prelude::*;
-use primitives::{BlockNumber, Slot, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
-use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
-use runtime_primitives::{
-	ApplyResult, transaction_validity::{TransactionValidity, TransactionLongevity}, generic,
-	traits::{Block as BlockT, GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256, Hash as HashT},
-	ApplyOutcome, RuntimeString,
-};
-use client::{
-	block_builder::api as block_builder_api,
-	runtime_api as client_api
-};
-use inherents::{CheckInherentsResult, InherentData, MakeFatalError};
-use runtime_support::storage::StorageValue;
-use runtime_support::storage::unhashed::StorageVec;
-use consensus_primitives::api as consensus_api;
-use runtime_version::RuntimeVersion;
+use primitives::BlockNumber;
+use runtime_primitives::{generic, traits::{GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256}};
 #[cfg(feature = "std")]
 use runtime_version::NativeVersion;
-use codec::Encode;
-use client::impl_runtime_apis;
-use casper::store::ValidatorStore;
-use state::Store;
 
 // A few exports that help ease life for downstream crates.
 #[cfg(any(feature = "std", test))]
@@ -65,16 +46,7 @@ pub use runtime_primitives::BuildStorage;
 pub use genesis::GenesisConfig;
 pub use extrinsic::UncheckedExtrinsic;
 pub use digest::DigestItem;
-
-/// This runtime version.
-pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: runtime_primitives::create_runtime_str!("shasper"),
-	impl_name: runtime_primitives::create_runtime_str!("shasper"),
-	authoring_version: 1,
-	spec_version: 1,
-	impl_version: 0,
-	apis: RUNTIME_API_VERSIONS,
-};
+pub use apis::VERSION;
 
 /// The version infromation used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -85,15 +57,18 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
+/// Block digest item.
 pub type Log = DigestItem;
+/// Block digest collection.
+pub type Digest = generic::Digest<Log>;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256, Log>;
 /// Block type as expected by this runtime.
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 /// BlockId type as expected by this runtime.
 pub type BlockId = generic::BlockId<Block>;
-pub type Digest = generic::Digest<DigestItem>;
 
+/// Shasper runtime.
 pub struct Runtime;
 
 impl GetNodeBlockType for Runtime {
@@ -104,279 +79,316 @@ impl GetRuntimeBlockType for Runtime {
 	type RuntimeBlock = Block;
 }
 
-// Implement our runtime API endpoints. This is just a bunch of proxying.
-impl_runtime_apis! {
-	impl client_api::Core<Block> for Runtime {
-		fn version() -> RuntimeVersion {
-			VERSION
-		}
+mod apis {
+	use rstd::prelude::*;
+	use primitives::{Slot, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
+	use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
+	use runtime_primitives::{
+		ApplyResult, transaction_validity::{TransactionValidity, TransactionLongevity},
+		traits::{Block as BlockT, BlakeTwo256, Hash as HashT},
+		ApplyOutcome, RuntimeString,
+	};
+	use client::{
+		block_builder::api as block_builder_api,
+		runtime_api as client_api
+	};
+	use inherents::{CheckInherentsResult, InherentData, MakeFatalError};
+	use runtime_support::storage::StorageValue;
+	use runtime_support::storage::unhashed::StorageVec;
+	use consensus_primitives::api as consensus_api;
+	use runtime_version::RuntimeVersion;
+	use codec::Encode;
+	use client::impl_runtime_apis;
+	use casper::store::ValidatorStore;
+	use super::{Block, Runtime};
+	use crate::{
+		state::{self, Store}, storage, utils, consts, extrinsic::UncheckedExtrinsic,
+		Header,
+	};
 
-		fn authorities() -> Vec<ValidatorId> {
-			let store = Store;
+	/// This runtime version.
+	pub const VERSION: RuntimeVersion = RuntimeVersion {
+		spec_name: runtime_primitives::create_runtime_str!("shasper"),
+		impl_name: runtime_primitives::create_runtime_str!("shasper"),
+		authoring_version: 1,
+		spec_version: 1,
+		impl_version: 0,
+		apis: RUNTIME_API_VERSIONS,
+	};
 
-			let current_slot = storage::Number::get();
-			store.active_validators(current_slot)
-		}
-
-		fn execute_block(block: Block) {
-			let (header, extrinsics) = block.deconstruct();
-			Runtime::initialise_block(&header);
-			extrinsics.into_iter().for_each(|e| {
-				Runtime::apply_extrinsic(e).ok().expect("Extrinsic in block execution must be valid");
-			});
-
-			Runtime::finalise_block();
-		}
-
-		fn initialise_block(header: &<Block as BlockT>::Header) {
-			use runtime_primitives::traits::Header;
-
-			storage::Number::put(header.number());
-			storage::ParentHash::put(header.parent_hash());
-			storage::Digest::put(header.digest.clone());
-		}
-	}
-
-	impl client_api::Metadata<Block> for Runtime {
-		fn metadata() -> OpaqueMetadata {
-			OpaqueMetadata::new(Default::default())
-		}
-	}
-
-	impl block_builder_api::BlockBuilder<Block> for Runtime {
-		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
-			let extrinsic_index = <storage::UncheckedExtrinsics>::count();
-
-			let mut extrinsics = <storage::UncheckedExtrinsics>::items();
-			extrinsics.push(Some(extrinsic.clone()));
-
-			<storage::UncheckedExtrinsics>::set_items(extrinsics);
-
-			match &extrinsic {
-				UncheckedExtrinsic::Slot(slot)
-					if extrinsic_index == consts::SLOT_INHERENT_EXTRINSIC_INDEX =>
-				{
-					storage::Slot::put(slot);
-					storage::note_parent_hash();
-				},
-				UncheckedExtrinsic::Attestation(ref attestation)
-					if extrinsic_index >= consts::ATTESTATION_EXTRINSIC_START_INDEX =>
-				{
-					let checked = state::check_attestation(attestation.clone(), true)
-						.expect("Extrinsic is invalid.");
-					let casper = storage::CasperContext::get();
-					if !casper.validate_attestation(&checked) {
-						panic!("Extrinsic does not pass casper check.");
-					}
-
-					let mut pending_attestations = storage::PendingAttestations::items();
-					pending_attestations.push(Some(checked));
-					storage::PendingAttestations::set_items(pending_attestations);
-				},
-				_ => panic!("Extrinsic order is incorrect"),
+	impl_runtime_apis! {
+		impl client_api::Core<Block> for Runtime {
+			fn version() -> RuntimeVersion {
+				VERSION
 			}
 
-			Ok(ApplyOutcome::Success)
+			fn authorities() -> Vec<ValidatorId> {
+				let store = Store;
+
+				let current_slot = storage::Number::get();
+				store.active_validators(current_slot)
+			}
+
+			fn execute_block(block: Block) {
+				let (header, extrinsics) = block.deconstruct();
+				Runtime::initialise_block(&header);
+				extrinsics.into_iter().for_each(|e| {
+					Runtime::apply_extrinsic(e).ok().expect("Extrinsic in block execution must be valid");
+				});
+
+				Runtime::finalise_block();
+			}
+
+			fn initialise_block(header: &<Block as BlockT>::Header) {
+				use runtime_primitives::traits::Header;
+
+				storage::Number::put(header.number());
+				storage::ParentHash::put(header.parent_hash());
+				storage::Digest::put(header.digest.clone());
+			}
 		}
 
-		fn finalise_block() -> <Block as BlockT>::Header {
-			let mut store = Store;
-			let mut last_slot = storage::LastSlot::get();
-			let slot = storage::Slot::get();
+		impl client_api::Metadata<Block> for Runtime {
+			fn metadata() -> OpaqueMetadata {
+				OpaqueMetadata::new(Default::default())
+			}
+		}
 
-			while last_slot < slot {
-				if last_slot % consts::CYCLE_LENGTH == 0 {
-					let mut casper = storage::CasperContext::get();
-					let beacon_rewards = casper::reward::beacon_rewards(&store);
-					let casper_rewards = casper::reward::casper_rewards(&casper, &store);
-					let actions = casper::reward::default_scheme_rewards(
-						&store,
-						&beacon_rewards,
-						&casper_rewards,
-						casper.epoch - casper.finalized_epoch,
-						&casper::reward::DefaultSchemeConfig {
-							base_reward_quotient: consts::BASE_REWARD_QUOTIENT,
-							inactivity_penalty_quotient: consts::INACTIVITY_PENALTY_QUOTIENT,
-							includer_reward_quotient: consts::INCLUDER_REWARD_QUOTIENT,
-							min_attestation_inclusion_delay: consts::MIN_ATTESTATION_INCLUSION_DELAY,
-							whistleblower_reward_quotient: consts::WHISTLEBLOWER_REWARD_QUOTIENT,
-						},
-					);
+		impl block_builder_api::BlockBuilder<Block> for Runtime {
+			fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
+				let extrinsic_index = <storage::UncheckedExtrinsics>::count();
 
-					for action in actions {
-						use casper::reward::RewardAction;
+				let mut extrinsics = <storage::UncheckedExtrinsics>::items();
+				extrinsics.push(Some(extrinsic.clone()));
 
-						match action {
-							(validator_id, RewardAction::Add(balance)) =>
-								storage::add_balance(&validator_id, balance),
-							(validator_id, RewardAction::Sub(balance)) =>
-								storage::sub_balance(&validator_id, balance),
-							(validator_id, RewardAction::Penalize(balance)) =>
-								storage::penalize_validator(&validator_id, balance)
+				<storage::UncheckedExtrinsics>::set_items(extrinsics);
+
+				match &extrinsic {
+					UncheckedExtrinsic::Slot(slot)
+						if extrinsic_index == consts::SLOT_INHERENT_EXTRINSIC_INDEX =>
+					{
+						storage::Slot::put(slot);
+						storage::note_parent_hash();
+					},
+					UncheckedExtrinsic::Attestation(ref attestation)
+						if extrinsic_index >= consts::ATTESTATION_EXTRINSIC_START_INDEX =>
+					{
+						let checked = state::check_attestation(attestation.clone(), true)
+							.expect("Extrinsic is invalid.");
+						let casper = storage::CasperContext::get();
+						if !casper.validate_attestation(&checked) {
+							panic!("Extrinsic does not pass casper check.");
+						}
+
+						let mut pending_attestations = storage::PendingAttestations::items();
+						pending_attestations.push(Some(checked));
+						storage::PendingAttestations::set_items(pending_attestations);
+					},
+					_ => panic!("Extrinsic order is incorrect"),
+				}
+
+				Ok(ApplyOutcome::Success)
+			}
+
+			fn finalise_block() -> <Block as BlockT>::Header {
+				let mut store = Store;
+				let mut last_slot = storage::LastSlot::get();
+				let slot = storage::Slot::get();
+
+				while last_slot < slot {
+					if last_slot % consts::CYCLE_LENGTH == 0 {
+						let mut casper = storage::CasperContext::get();
+						let beacon_rewards = casper::reward::beacon_rewards(&store);
+						let casper_rewards = casper::reward::casper_rewards(&casper, &store);
+						let actions = casper::reward::default_scheme_rewards(
+							&store,
+							&beacon_rewards,
+							&casper_rewards,
+							casper.epoch - casper.finalized_epoch,
+							&casper::reward::DefaultSchemeConfig {
+								base_reward_quotient: consts::BASE_REWARD_QUOTIENT,
+								inactivity_penalty_quotient: consts::INACTIVITY_PENALTY_QUOTIENT,
+								includer_reward_quotient: consts::INCLUDER_REWARD_QUOTIENT,
+								min_attestation_inclusion_delay: consts::MIN_ATTESTATION_INCLUSION_DELAY,
+								whistleblower_reward_quotient: consts::WHISTLEBLOWER_REWARD_QUOTIENT,
+							},
+						);
+
+						for action in actions {
+							use casper::reward::RewardAction;
+
+							match action {
+								(validator_id, RewardAction::Add(balance)) =>
+									storage::add_balance(&validator_id, balance),
+								(validator_id, RewardAction::Sub(balance)) =>
+									storage::sub_balance(&validator_id, balance),
+								(validator_id, RewardAction::Penalize(balance)) =>
+									storage::penalize_validator(&validator_id, balance)
+							}
+						}
+
+						casper.advance_epoch(&mut store);
+						storage::CasperContext::put(casper);
+					}
+					last_slot += 1;
+					storage::LastSlot::put(last_slot);
+				}
+
+				let extrinsics = storage::UncheckedExtrinsics::items()
+					.into_iter()
+					.filter(|e| e.is_some())
+					.map(|e| e.expect("Checked is_some in filter; qed"))
+					.collect::<Vec<_>>();
+				assert!(extrinsics.len() >= consts::ATTESTATION_EXTRINSIC_START_INDEX as usize);
+				let extrinsic_data = extrinsics.iter().map(Encode::encode).collect::<Vec<_>>();
+				storage::UncheckedExtrinsics::set_count(0);
+
+				let number = storage::Number::take();
+				let parent_hash = storage::ParentHash::take();
+				let extrinsics_root = BlakeTwo256::enumerated_trie_root(&extrinsic_data.iter().map(Vec::as_slice).collect::<Vec<_>>());
+				let digest = storage::Digest::take();
+				let state_root = BlakeTwo256::storage_root();
+
+				Header {
+					number, extrinsics_root, state_root, parent_hash, digest
+				}
+			}
+
+			fn inherent_extrinsics(data: InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
+				let slot = match data.get_data::<consensus_primitives::InherentData>(
+					&consensus_primitives::INHERENT_IDENTIFIER
+				) {
+					Ok(Some(data)) => data.slot,
+					_ => panic!("Decode inherent failed"),
+				};
+
+				let mut ret = Vec::new();
+				ret.push(UncheckedExtrinsic::Slot(slot));
+				ret
+			}
+
+			fn check_inherents(block: Block, data: InherentData) -> CheckInherentsResult {
+				let mut result = CheckInherentsResult::default();
+
+				let slot = match data.get_data::<consensus_primitives::InherentData>(
+					&consensus_primitives::INHERENT_IDENTIFIER
+				) {
+					Ok(Some(data)) => data.slot,
+					_ => {
+						result.put_error(
+							consensus_primitives::INHERENT_IDENTIFIER,
+							&MakeFatalError::from(RuntimeString::from("Slot decode failed"))
+						).expect("Putting error failed");
+						return result;
+					},
+				};
+
+				if block.extrinsics.len() == 0 {
+					result.put_error(
+						consensus_primitives::INHERENT_IDENTIFIER,
+						&MakeFatalError::from(RuntimeString::from("Slot extrinsic missing"))
+					).expect("Putting error failed");
+					return result;
+				}
+
+				match block.extrinsics[0] {
+					UncheckedExtrinsic::Slot(block_slot) if block_slot == slot => (),
+					_ => {
+						result.put_error(
+							consensus_primitives::INHERENT_IDENTIFIER,
+							&MakeFatalError::from(RuntimeString::from("Incorrect block slot"))
+						).expect("Putting error failed");
+						return result;
+					},
+				}
+
+				result
+			}
+
+			fn random_seed() -> <Block as BlockT>::Hash {
+				Default::default()
+			}
+		}
+
+		impl client_api::TaggedTransactionQueue<Block> for Runtime {
+			fn validate_transaction(tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
+				let checked = match tx {
+					UncheckedExtrinsic::Attestation(attestation) => {
+						let checked = match state::check_attestation(attestation, false) {
+							Some(checked) => checked,
+							None => return TransactionValidity::Invalid(0),
+						};
+						let casper = storage::CasperContext::get();
+						if !casper.validate_attestation(&checked) {
+							return TransactionValidity::Invalid(1)
+						}
+						if storage::PendingAttestations::items().contains(&Some(checked.clone())) {
+							return TransactionValidity::Invalid(2)
+						}
+						checked
+					},
+					_ => return TransactionValidity::Invalid(3),
+				};
+
+				let target_epoch = checked.data.target_epoch;
+				TransactionValidity::Valid {
+					priority: 0,
+					requires: Vec::new(),
+					provides: checked.validator_ids.into_iter()
+						.map(|validator_id| {
+							(validator_id, target_epoch).encode()
+						})
+						.collect(),
+					longevity: TransactionLongevity::max_value(),
+				}
+			}
+		}
+
+		impl aura_primitives::AuraApi<Block> for Runtime {
+			fn slot_duration() -> u64 {
+				consts::SLOT_DURATION
+			}
+		}
+
+		impl consensus_api::ShasperApi<Block> for Runtime {
+			fn finalized_epoch() -> u64 {
+				let casper = storage::CasperContext::get();
+				casper.finalized_epoch
+			}
+
+			fn justified_epoch() -> u64 {
+				let casper = storage::CasperContext::get();
+				casper.justified_epoch
+			}
+
+			fn finalized_slot() -> u64 {
+				let casper = storage::CasperContext::get();
+				utils::epoch_to_slot(casper.finalized_epoch)
+			}
+
+			fn justified_slot() -> u64 {
+				let casper = storage::CasperContext::get();
+				utils::epoch_to_slot(casper.justified_epoch)
+			}
+
+			fn slot() -> Slot {
+				storage::Slot::get()
+			}
+
+			fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation> {
+				state::check_attestation(unchecked, false)
+			}
+
+			fn validator_index(validator_id: ValidatorId) -> Option<u32> {
+				for (i, record) in storage::Validators::items().into_iter().enumerate() {
+					if let Some(record) = record {
+						if record.validator_id == validator_id {
+							return Some(i as u32);
 						}
 					}
-
-					casper.advance_epoch(&mut store);
-					storage::CasperContext::put(casper);
 				}
-				last_slot += 1;
-				storage::LastSlot::put(last_slot);
+				None
 			}
-
-			let extrinsics = storage::UncheckedExtrinsics::items()
-				.into_iter()
-				.filter(|e| e.is_some())
-				.map(|e| e.expect("Checked is_some in filter; qed"))
-				.collect::<Vec<_>>();
-			assert!(extrinsics.len() >= consts::ATTESTATION_EXTRINSIC_START_INDEX as usize);
-			let extrinsic_data = extrinsics.iter().map(Encode::encode).collect::<Vec<_>>();
-			storage::UncheckedExtrinsics::set_count(0);
-
-			let number = storage::Number::take();
-			let parent_hash = storage::ParentHash::take();
-			let extrinsics_root = BlakeTwo256::enumerated_trie_root(&extrinsic_data.iter().map(Vec::as_slice).collect::<Vec<_>>());
-			let digest = storage::Digest::take();
-			let state_root = BlakeTwo256::storage_root();
-
-			Header {
-				number, extrinsics_root, state_root, parent_hash, digest
-			}
-		}
-
-		fn inherent_extrinsics(data: InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
-			let slot = match data.get_data::<consensus_primitives::InherentData>(
-				&consensus_primitives::INHERENT_IDENTIFIER
-			) {
-				Ok(Some(data)) => data.slot,
-				_ => panic!("Decode inherent failed"),
-			};
-
-			let mut ret = Vec::new();
-			ret.push(UncheckedExtrinsic::Slot(slot));
-			ret
-		}
-
-		fn check_inherents(block: Block, data: InherentData) -> CheckInherentsResult {
-			let mut result = CheckInherentsResult::default();
-
-			let slot = match data.get_data::<consensus_primitives::InherentData>(
-				&consensus_primitives::INHERENT_IDENTIFIER
-			) {
-				Ok(Some(data)) => data.slot,
-				_ => {
-					result.put_error(
-						consensus_primitives::INHERENT_IDENTIFIER,
-						&MakeFatalError::from(RuntimeString::from("Slot decode failed"))
-					).expect("Putting error failed");
-					return result;
-				},
-			};
-
-			if block.extrinsics.len() == 0 {
-				result.put_error(
-					consensus_primitives::INHERENT_IDENTIFIER,
-					&MakeFatalError::from(RuntimeString::from("Slot extrinsic missing"))
-				).expect("Putting error failed");
-				return result;
-			}
-
-			match block.extrinsics[0] {
-				UncheckedExtrinsic::Slot(block_slot) if block_slot == slot => (),
-				_ => {
-					result.put_error(
-						consensus_primitives::INHERENT_IDENTIFIER,
-						&MakeFatalError::from(RuntimeString::from("Incorrect block slot"))
-					).expect("Putting error failed");
-					return result;
-				},
-			}
-
-			result
-		}
-
-		fn random_seed() -> <Block as BlockT>::Hash {
-			Default::default()
-		}
-	}
-
-	impl client_api::TaggedTransactionQueue<Block> for Runtime {
-		fn validate_transaction(tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
-			let checked = match tx {
-				UncheckedExtrinsic::Attestation(attestation) => {
-					let checked = match state::check_attestation(attestation, false) {
-						Some(checked) => checked,
-						None => return TransactionValidity::Invalid(0),
-					};
-					let casper = storage::CasperContext::get();
-					if !casper.validate_attestation(&checked) {
-						return TransactionValidity::Invalid(1)
-					}
-					if storage::PendingAttestations::items().contains(&Some(checked.clone())) {
-						return TransactionValidity::Invalid(2)
-					}
-					checked
-				},
-				_ => return TransactionValidity::Invalid(3),
-			};
-
-			let target_epoch = checked.data.target_epoch;
-			TransactionValidity::Valid {
-				priority: 0,
-				requires: Vec::new(),
-				provides: checked.validator_ids.into_iter()
-					.map(|validator_id| {
-						(validator_id, target_epoch).encode()
-					})
-					.collect(),
-				longevity: TransactionLongevity::max_value(),
-			}
-		}
-	}
-
-	impl aura_primitives::AuraApi<Block> for Runtime {
-		fn slot_duration() -> u64 {
-			consts::SLOT_DURATION
-		}
-	}
-
-	impl consensus_api::ShasperApi<Block> for Runtime {
-		fn finalized_epoch() -> u64 {
-			let casper = storage::CasperContext::get();
-			casper.finalized_epoch
-		}
-
-		fn justified_epoch() -> u64 {
-			let casper = storage::CasperContext::get();
-			casper.justified_epoch
-		}
-
-		fn finalized_slot() -> u64 {
-			let casper = storage::CasperContext::get();
-			utils::epoch_to_slot(casper.finalized_epoch)
-		}
-
-		fn justified_slot() -> u64 {
-			let casper = storage::CasperContext::get();
-			utils::epoch_to_slot(casper.justified_epoch)
-		}
-
-		fn slot() -> Slot {
-			storage::Slot::get()
-		}
-
-		fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation> {
-			state::check_attestation(unchecked, false)
-		}
-
-		fn validator_index(validator_id: ValidatorId) -> Option<u32> {
-			for (i, record) in storage::Validators::items().into_iter().enumerate() {
-				if let Some(record) = record {
-					if record.validator_id == validator_id {
-						return Some(i as u32);
-					}
-				}
-			}
-			None
 		}
 	}
 }
