@@ -46,7 +46,7 @@ use runtime_primitives::traits::{self, Block, Header, Digest, DigestItemFor, Dig
 use primitives::{ValidatorId, H256, Slot, Epoch, BlockNumber, UnsignedAttestation};
 use aura_slots::{SlotCompatible, CheckedHeader, SlotWorker, SlotInfo};
 use inherents::InherentDataProviders;
-use casper::Attestation;
+use casper::context::Attestation;
 use transaction_pool::txpool::{ChainApi as PoolChainApi, Pool};
 
 use futures::{Future, IntoFuture, future};

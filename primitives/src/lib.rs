@@ -29,7 +29,7 @@ pub use crypto;
 pub use signature::{H768, Signature};
 pub use authority_id::{H384, AuthorityId};
 pub use bitfield::BitField;
-pub use attestation::{UnsignedAttestation, UncheckedAttestation, CheckedAttestation};
+pub use attestation::{UnsignedAttestation, UncheckedAttestation, CheckedAttestation, AttestationContext};
 
 pub use substrate_primitives::{storage, H256, OpaqueMetadata, Blake2Hasher};
 

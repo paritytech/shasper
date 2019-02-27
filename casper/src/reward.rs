@@ -18,12 +18,12 @@
 
 use num_traits::{One, Zero};
 use rstd::prelude::*;
-use rstd::ops::{Add, AddAssign, Sub, SubAssign, Div};
-use crate::casper::CasperContext;
-use crate::store::{
-	Attestation, ValidatorStore, PendingAttestationsStore, BlockStore,
-	PendingAttestationsStoreValidatorId, PendingAttestationsStoreEpoch,
-	ValidatorStoreBalance, ValidatorStoreValidatorId, ValidatorStoreEpoch,
+use rstd::ops::{Add, Div};
+use crate::casper::CasperProcess;
+use crate::store::{ValidatorStore, PendingAttestationsStore, BlockStore};
+use crate::context::{
+	Attestation, ValidatorIdOf, EpochOf, BalanceContext, BalanceOf,
+	SlotOf, SlotContext, AttestationOf, SlotAttestation,
 };
 
 /// Rewards for Casper.
@@ -41,26 +41,15 @@ pub enum CasperRewardType {
 
 /// Rewards for beacon chain.
 #[derive(Eq, PartialEq, Clone)]
-pub enum BeaconRewardType<Slot> {
+pub enum BeaconRewardType<C: SlotContext> where
+	AttestationOf<C>: SlotAttestation,
+{
 	/// The validator attested on the expected head.
 	ExpectedHead,
 	/// The validator is active, but does not attest on the epxected head.
 	NoExpectedHead,
 	/// Inclusion distance for attestations.
-	InclusionDistance(Slot),
-}
-
-/// Beacon chain attestation.
-pub trait BeaconAttestation: Attestation {
-	/// Attestation slot.
-	type Slot: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Slot> + AddAssign + Sub<Output=Self::Slot> + SubAssign + One + Zero;
-
-	/// Get slot of this attestation.
-	fn slot(&self) -> Self::Slot;
-	/// Whether this attestation's slot is on canon chain.
-	fn is_slot_canon(&self) -> bool;
-	/// This attestation's inclusion distance.
-	fn inclusion_distance(&self) -> Self::Slot;
+	InclusionDistance(SlotOf<C>),
 }
 
 fn push_rewards<A, T>(rewards: &mut Vec<(A::ValidatorId, T)>, attestation: &A, reward: T) where
@@ -73,14 +62,11 @@ fn push_rewards<A, T>(rewards: &mut Vec<(A::ValidatorId, T)>, attestation: &A, r
 }
 
 /// Get rewards for beacon chain.
-pub fn beacon_rewards<A, S>(store: &S) -> Vec<(A::ValidatorId, BeaconRewardType<A::Slot>)> where
-	A: BeaconAttestation,
-	S: PendingAttestationsStore<Attestation=A>,
-	S: BlockStore<Epoch=PendingAttestationsStoreEpoch<S>>,
-	S: ValidatorStore<
-		ValidatorId=PendingAttestationsStoreValidatorId<S>,
-		Epoch=PendingAttestationsStoreEpoch<S>
-	>,
+pub fn beacon_rewards<C: SlotContext, S>(
+	store: &S
+) -> Vec<(ValidatorIdOf<C>, BeaconRewardType<C>)> where
+	AttestationOf<C>: SlotAttestation,
+	S: PendingAttestationsStore<C> + BlockStore<C> + ValidatorStore<C>,
 {
 	let mut no_expected_head_validators = store.active_validators(store.previous_epoch()).into_iter().collect::<Vec<_>>();
 
@@ -107,14 +93,11 @@ pub fn beacon_rewards<A, S>(store: &S) -> Vec<(A::ValidatorId, BeaconRewardType<
 
 /// Get rewards for casper. Note that this usually needs to be called before `advance_epoch`, but after all pending
 /// attestations have been pushed.
-pub fn casper_rewards<A, S>(context: &CasperContext<A::Epoch>, store: &S) -> Vec<(A::ValidatorId, CasperRewardType)> where
-	A: Attestation,
-	S: PendingAttestationsStore<Attestation=A>,
-	S: BlockStore<Epoch=PendingAttestationsStoreEpoch<S>>,
-	S: ValidatorStore<
-		ValidatorId=PendingAttestationsStoreValidatorId<S>,
-		Epoch=PendingAttestationsStoreEpoch<S>
-	>,
+pub fn casper_rewards<C: BalanceContext, S>(
+	context: &CasperProcess<C>,
+	store: &S
+) -> Vec<(ValidatorIdOf<C>, CasperRewardType)> where
+	S: PendingAttestationsStore<C> + BlockStore<C> + ValidatorStore<C>,
 {
 	let mut no_expected_source_validators = store.active_validators(context.previous_epoch()).into_iter().collect::<Vec<_>>();
 	let mut no_expected_target_validators = no_expected_source_validators.clone();
@@ -148,27 +131,29 @@ pub fn casper_rewards<A, S>(context: &CasperContext<A::Epoch>, store: &S) -> Vec
 }
 
 /// Config for default reward scheme.
-pub struct DefaultSchemeConfig<Balance, Slot> {
+pub struct DefaultSchemeConfig<C: BalanceContext + SlotContext> where
+	AttestationOf<C>: SlotAttestation,
+{
 	/// Base reward quotient.
-	pub base_reward_quotient: Balance,
+	pub base_reward_quotient: BalanceOf<C>,
 	/// Inactivity penalty quotient.
-	pub inactivity_penalty_quotient: Balance,
+	pub inactivity_penalty_quotient: BalanceOf<C>,
 	/// Includer reward quotient.
-	pub includer_reward_quotient: Balance,
+	pub includer_reward_quotient: BalanceOf<C>,
 	/// Min attestation inclusion delay.
-	pub min_attestation_inclusion_delay: Slot,
+	pub min_attestation_inclusion_delay: SlotOf<C>,
 	/// Whistleblower reward quotient.
-	pub whistleblower_reward_quotient: Balance,
+	pub whistleblower_reward_quotient: BalanceOf<C>,
 }
 
 /// Reward action.
-pub enum RewardAction<Balance> {
+pub enum RewardAction<C: BalanceContext> {
 	/// Add balance to reward.
-	Add(Balance),
+	Add(BalanceOf<C>),
 	/// Sub balance to reward. Should wrap at zero.
-	Sub(Balance),
+	Sub(BalanceOf<C>),
 	/// Sub balance and exit the validator.
-	Penalize(Balance),
+	Penalize(BalanceOf<C>),
 }
 
 fn integer_sqrt<Balance>(n: Balance) -> Balance where
@@ -201,24 +186,23 @@ fn combined_validators<ValidatorId, T>(
 }
 
 /// Use default scheme for reward calculation. This only contains justification and finalization rewards.
-pub fn default_scheme_rewards<S, Slot>(
+pub fn default_scheme_rewards<C: BalanceContext + SlotContext, S>(
 	store: &S,
-	beacon_rewards: &[(ValidatorStoreValidatorId<S>, BeaconRewardType<Slot>)],
-	casper_rewards: &[(ValidatorStoreValidatorId<S>, CasperRewardType)],
-	epochs_since_finality: ValidatorStoreEpoch<S>,
-	config: &DefaultSchemeConfig<ValidatorStoreBalance<S>, Slot>,
-) -> Vec<(ValidatorStoreValidatorId<S>, RewardAction<ValidatorStoreBalance<S>>)> where
-	S: ValidatorStore,
-	S: BlockStore<Epoch=ValidatorStoreEpoch<S>>,
-	Slot: Eq + PartialEq + Clone + Copy + Zero + One,
-	ValidatorStoreBalance<S>: From<ValidatorStoreEpoch<S>> + From<Slot>,
-	ValidatorStoreEpoch<S>: From<u8>,
+	beacon_rewards: &[(ValidatorIdOf<C>, BeaconRewardType<C>)],
+	casper_rewards: &[(ValidatorIdOf<C>, CasperRewardType)],
+	epochs_since_finality: EpochOf<C>,
+	config: &DefaultSchemeConfig<C>,
+) -> Vec<(ValidatorIdOf<C>, RewardAction<C>)> where
+	AttestationOf<C>: SlotAttestation,
+	EpochOf<C>: From<u8>,
+	BalanceOf<C>: From<EpochOf<C>> + From<SlotOf<C>>,
+	S: ValidatorStore<C> + BlockStore<C>,
 {
 	let previous_epoch = store.previous_epoch();
 	let previous_active_validators = store.active_validators(previous_epoch).into_iter().collect::<Vec<_>>();
 	let previous_total_balance = store.total_balance(&previous_active_validators);
 
-	let base_reward = |validator_id: ValidatorStoreValidatorId<S>| {
+	let base_reward = |validator_id: ValidatorIdOf<C>| {
 		store.total_balance(&[validator_id]) / (integer_sqrt(previous_total_balance) / config.base_reward_quotient) / From::from(5u8)
 	};
 
@@ -281,7 +265,7 @@ pub fn default_scheme_rewards<S, Slot>(
 			}
 		}
 	} else {
-		let inactivity_penalty = |validator_id: ValidatorStoreValidatorId<S>| {
+		let inactivity_penalty = |validator_id: ValidatorIdOf<C>| {
 			base_reward(validator_id.clone()) + store.total_balance(&[validator_id]) * From::from(epochs_since_finality) / config.inactivity_penalty_quotient / From::from(2u8)
 		};
 
@@ -313,17 +297,17 @@ pub fn default_scheme_rewards<S, Slot>(
 }
 
 /// Use default scheme for penalization.
-pub fn default_scheme_penalties<S, Slot>(
+pub fn default_scheme_penalties<C: BalanceContext + SlotContext, S>(
 	store: &S,
-	whistleblower: &ValidatorStoreValidatorId<S>,
-	slashings: &[ValidatorStoreValidatorId<S>],
-	epochs_since_finality: ValidatorStoreEpoch<S>,
-	config: &DefaultSchemeConfig<ValidatorStoreBalance<S>, Slot>,
-) -> Vec<(ValidatorStoreValidatorId<S>, RewardAction<ValidatorStoreBalance<S>>)> where
-	S: ValidatorStore,
-	S: BlockStore<Epoch=ValidatorStoreEpoch<S>>,
-	ValidatorStoreBalance<S>: From<ValidatorStoreEpoch<S>>,
-	ValidatorStoreEpoch<S>: From<u8>,
+	whistleblower: &ValidatorIdOf<C>,
+	slashings: &[ValidatorIdOf<C>],
+	epochs_since_finality: EpochOf<C>,
+	config: &DefaultSchemeConfig<C>,
+) -> Vec<(ValidatorIdOf<C>, RewardAction<C>)> where
+	AttestationOf<C>: SlotAttestation,
+	EpochOf<C>: From<u8>,
+	BalanceOf<C>: From<EpochOf<C>> + From<SlotOf<C>>,
+	S: ValidatorStore<C> + BlockStore<C>,
 {
 	let mut rewards = Vec::new();
 
@@ -339,11 +323,11 @@ pub fn default_scheme_penalties<S, Slot>(
 		let previous_active_validators = store.active_validators(previous_epoch).into_iter().collect::<Vec<_>>();
 		let previous_total_balance = store.total_balance(&previous_active_validators);
 
-		let base_reward = |validator_id: ValidatorStoreValidatorId<S>| {
+		let base_reward = |validator_id: ValidatorIdOf<C>| {
 			store.total_balance(&[validator_id]) / (integer_sqrt(previous_total_balance) / config.base_reward_quotient) / From::from(5u8)
 		};
 
-		let inactivity_penalty = |validator_id: ValidatorStoreValidatorId<S>| {
+		let inactivity_penalty = |validator_id: ValidatorIdOf<C>| {
 			base_reward(validator_id.clone()) + store.total_balance(&[validator_id]) * From::from(epochs_since_finality) / config.inactivity_penalty_quotient / From::from(2u8)
 		};
 

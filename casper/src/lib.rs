@@ -28,7 +28,6 @@ pub mod randao;
 pub mod casper;
 pub mod reward;
 pub mod store;
+pub mod context;
 
-pub use crate::casper::CasperContext;
-pub use crate::store::Attestation;
-pub use crate::reward::BeaconAttestation;
+pub use crate::casper::CasperProcess;
