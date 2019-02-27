@@ -79,6 +79,12 @@ pub struct CasperProcess<C: BalanceContext> {
 	pub previous_justified_epoch: EpochOf<C>,
 }
 
+impl<C: BalanceContext> Default for CasperProcess<C> {
+	fn default() -> Self {
+		Self::new(Zero::zero())
+	}
+}
+
 impl<C: BalanceContext> CasperProcess<C> {
 	/// Create a new Casper context.
 	pub fn new(genesis_epoch: EpochOf<C>) -> Self {

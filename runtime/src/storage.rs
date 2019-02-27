@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{BlockNumber, Hash, Epoch, Balance, ValidatorId, CheckedAttestation};
+use primitives::{BlockNumber, Hash, Balance, ValidatorId, CheckedAttestation, AttestationContext};
 use runtime_support::storage_items;
 use runtime_support::storage::{StorageValue, StorageMap};
 use runtime_support::storage::unhashed::{self, StorageVec};
@@ -27,7 +27,7 @@ storage_items! {
 	pub LastSlot: b"sys:lastslot" => default primitives::Slot;
 	pub ParentHash: b"sys:parenthash" => default Hash;
 	pub Digest: b"sys:digest" => default super::Digest;
-	pub CasperContext: b"sys:caspercontext" => default casper::CasperContext<Epoch>;
+	pub CasperContext: b"sys:caspercontext" => default casper::CasperProcess<AttestationContext>;
 	pub GenesisSlot: b"sys:genesisslot" => default primitives::Slot;
 	pub LatestBlockHashes: b"sys:latestblockhashes" => map [primitives::Slot => Hash];
 }

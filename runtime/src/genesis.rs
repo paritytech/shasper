@@ -16,9 +16,9 @@
 
 use runtime_primitives::{BuildStorage, StorageOverlay, ChildrenStorageOverlay};
 use runtime_io::twox_128;
-use primitives::{ValidatorId, Epoch, Slot, Timestamp, Balance, storage::well_known_keys};
+use primitives::{ValidatorId, Epoch, Slot, Timestamp, Balance, AttestationContext, storage::well_known_keys};
 use codec::{Encode, KeyedVec};
-use casper::CasperContext;
+use casper::CasperProcess;
 use crate::{storage, consts, utils};
 use crate::state::ValidatorRecord;
 
@@ -72,7 +72,7 @@ impl BuildStorage for GenesisConfig {
 		);
 		storage.insert(
 			twox_128(b"sys:caspercontext").to_vec(),
-			CasperContext::new(utils::slot_to_epoch(slot)).encode()
+			CasperProcess::<AttestationContext>::new(utils::slot_to_epoch(slot)).encode()
 		);
 
 

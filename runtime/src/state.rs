@@ -1,5 +1,5 @@
 use rstd::prelude::*;
-use primitives::{Epoch, Balance, ValidatorId, UncheckedAttestation, CheckedAttestation};
+use primitives::{Epoch, Balance, ValidatorId, UncheckedAttestation, CheckedAttestation, AttestationContext};
 use crypto::bls;
 use runtime_support::storage::{StorageValue, StorageMap};
 use runtime_support::storage::unhashed::StorageVec;
@@ -18,12 +18,7 @@ pub struct ValidatorRecord {
 
 pub struct Store;
 
-impl ValidatorStore for Store {
-	type ValidatorId = ValidatorId;
-	type ValidatorIdIterator = Vec<ValidatorId>;
-	type Balance = Balance;
-	type Epoch = Epoch;
-
+impl ValidatorStore<AttestationContext> for Store {
 	fn total_balance(&self, validators: &[ValidatorId]) -> Balance {
 		let mut total_balance = 0;
 
@@ -51,19 +46,14 @@ impl ValidatorStore for Store {
 	}
 }
 
-impl BlockStore for Store {
-	type Epoch = Epoch;
-
+impl BlockStore<AttestationContext> for Store {
 	fn epoch(&self) -> Epoch {
 		let current_slot = storage::LastSlot::get();
 		utils::slot_to_epoch(current_slot)
 	}
 }
 
-impl PendingAttestationsStore for Store {
-	type Attestation = CheckedAttestation;
-	type AttestationIterator = Vec<CheckedAttestation>;
-
+impl PendingAttestationsStore<AttestationContext> for Store {
 	fn attestations(&self) -> Vec<CheckedAttestation> {
 		let mut attestations = Vec::new();
 

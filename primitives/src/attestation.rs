@@ -4,8 +4,8 @@ use codec::Encode;
 use codec_derive::{Encode, Decode};
 #[cfg(feature = "std")]
 use serde_derive::{Serialize, Deserialize};
-use casper::{Attestation, BeaconAttestation};
-use crate::{Slot, Hash, Epoch, ValidatorId, Signature};
+use casper::context::{Attestation, SlotAttestation, BalanceContext, SlotContext};
+use crate::{Slot, Hash, Epoch, ValidatorId, Signature, Balance};
 
 #[derive(Eq, PartialEq, Clone, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -75,7 +75,6 @@ pub struct CheckedAttestation {
 
 impl Attestation for CheckedAttestation {
 	type ValidatorId = ValidatorId;
-	type ValidatorIdIterator = Vec<ValidatorId>;
 	type Epoch = Epoch;
 
 	fn validator_ids(&self) -> Vec<ValidatorId> {
@@ -99,7 +98,7 @@ impl Attestation for CheckedAttestation {
 	}
 }
 
-impl BeaconAttestation for CheckedAttestation {
+impl SlotAttestation for CheckedAttestation {
 	type Slot = Slot;
 
 	fn slot(&self) -> Slot {
@@ -114,3 +113,13 @@ impl BeaconAttestation for CheckedAttestation {
 		self.inclusion_distance
 	}
 }
+
+#[derive(Eq, PartialEq, Clone, Encode, Decode)]
+pub struct AttestationContext;
+
+impl BalanceContext for AttestationContext {
+	type Attestation = CheckedAttestation;
+	type Balance = Balance;
+}
+
+impl SlotContext for AttestationContext { }
