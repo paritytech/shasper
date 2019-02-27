@@ -28,6 +28,6 @@ pub mod randao;
 pub mod casper;
 pub mod reward;
 pub mod store;
-pub mod traits;
+pub mod context;
 
 pub use crate::casper::CasperProcess;

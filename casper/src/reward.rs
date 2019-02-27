@@ -21,7 +21,7 @@ use rstd::prelude::*;
 use rstd::ops::{Add, Div};
 use crate::casper::CasperProcess;
 use crate::store::{ValidatorStore, PendingAttestationsStore, BlockStore};
-use crate::traits::{
+use crate::context::{
 	Attestation, ValidatorIdOf, EpochOf, BalanceContext, BalanceOf,
 	SlotOf, SlotContext, AttestationOf, SlotAttestation,
 };

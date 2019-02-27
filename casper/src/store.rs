@@ -18,7 +18,7 @@
 
 use num_traits::{One, Zero};
 use rstd::prelude::*;
-use crate::traits::{
+use crate::context::{
 	BalanceContext, BalanceOf, EpochOf, AttestationOf, Attestation,
 	ValidatorIdOf,
 };

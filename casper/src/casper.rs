@@ -21,7 +21,7 @@ use codec_derive::{Encode, Decode};
 use rstd::prelude::*;
 
 use crate::store::{self, ValidatorStore, PendingAttestationsStore, BlockStore};
-use crate::traits::{
+use crate::context::{
 	Attestation, AttestationOf, EpochOf, BalanceContext, BalanceOf,
 };
 
