@@ -28,6 +28,7 @@ pub mod randao;
 pub mod casper;
 pub mod reward;
 pub mod store;
+pub mod traits;
 
 pub use crate::casper::CasperContext;
 pub use crate::store::Attestation;
