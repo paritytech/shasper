@@ -30,6 +30,4 @@ pub mod reward;
 pub mod store;
 pub mod traits;
 
-pub use crate::casper::CasperContext;
-pub use crate::store::Attestation;
-pub use crate::reward::BeaconAttestation;
+pub use crate::casper::CasperProcess;

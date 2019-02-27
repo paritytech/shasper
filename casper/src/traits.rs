@@ -18,18 +18,17 @@
 
 use num_traits::{One, Zero};
 use rstd::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div};
+use codec::{Encode, Decode};
 
 /// Casper attestation. The source should always be canon.
 pub trait Attestation: PartialEq + Eq {
 	/// Type of validator Id.
 	type ValidatorId: PartialEq + Eq + Clone + Copy;
-	/// Type of validator Id collection.
-	type ValidatorIdIterator: IntoIterator<Item=Self::ValidatorId>;
 	/// Type of epoch.
-	type Epoch: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Epoch> + AddAssign + Sub<Output=Self::Epoch> + SubAssign + One + Zero;
+	type Epoch: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Epoch> + AddAssign + Sub<Output=Self::Epoch> + SubAssign + One + Zero + Encode + Decode;
 
 	/// Get validator Ids of this attestation.
-	fn validator_ids(&self) -> Self::ValidatorIdIterator;
+	fn validator_ids(&self) -> Vec<Self::ValidatorId>;
 	/// Whether this attestation's source is on canon chain.
 	fn is_source_canon(&self) -> bool;
 	/// Whether this attestation's target is on canon chain.
@@ -48,7 +47,7 @@ pub trait Attestation: PartialEq + Eq {
 /// Casper attestation with specific slot.
 pub trait SlotAttestation: Attestation {
 	/// Attestation slot.
-	type Slot: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Slot> + AddAssign + Sub<Output=Self::Slot> + SubAssign + One + Zero;
+	type Slot: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Slot> + AddAssign + Sub<Output=Self::Slot> + SubAssign + One + Zero + Encode + Decode;
 
 	/// Get slot of this attestation.
 	fn slot(&self) -> Self::Slot;
@@ -59,24 +58,24 @@ pub trait SlotAttestation: Attestation {
 }
 
 /// Basic epoch context for Casper.
-pub trait BaseContext {
+pub trait BalanceContext: Eq + PartialEq + Clone {
 	/// Attestation of this context.
 	type Attestation: Attestation;
-}
-
-/// Context with balance, suitable for reward calculation.
-pub trait BalanceContext: BaseContext {
 	/// Balance of this context.
 	type Balance: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Balance> + AddAssign + Sub<Output=Self::Balance> + SubAssign + Mul<Output=Self::Balance> + Div<Output=Self::Balance> + From<u8>;
 }
 
 /// Context with slot, suitable for collecting attestations across multiple blocks.
-pub trait SlotContext: BaseContext where
+pub trait SlotContext: BalanceContext where
 	AttestationOf<Self>: SlotAttestation { }
 
 /// Epoch of a context.
 pub type EpochOf<C> = <AttestationOf<C> as Attestation>::Epoch;
 /// Attestation of a context.
-pub type AttestationOf<C> = <C as BaseContext>::Attestation;
+pub type AttestationOf<C> = <C as BalanceContext>::Attestation;
 /// Slot of a context.
 pub type SlotOf<C> = <AttestationOf<C> as SlotAttestation>::Slot;
+/// Validator id of a context.
+pub type ValidatorIdOf<C> = <AttestationOf<C> as Attestation>::ValidatorId;
+/// Balance of a context.
+pub type BalanceOf<C> = <C as BalanceContext>::Balance;

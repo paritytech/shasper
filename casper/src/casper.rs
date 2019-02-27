@@ -19,11 +19,10 @@
 use num_traits::{One, Zero};
 use codec_derive::{Encode, Decode};
 use rstd::prelude::*;
-use rstd::ops::{Add, AddAssign, Sub, SubAssign};
 
-use crate::store::{
-	self, Attestation, ValidatorStore, PendingAttestationsStore, BlockStore,
-	PendingAttestationsStoreEpoch, PendingAttestationsStoreValidatorId,
+use crate::store::{self, ValidatorStore, PendingAttestationsStore, BlockStore};
+use crate::traits::{
+	Attestation, AttestationOf, EpochOf, BalanceContext, BalanceOf,
 };
 
 /// Return whether given two attestations satisfy Casper slashing conditions.
@@ -66,25 +65,23 @@ pub fn slashable<C: Attestation>(a: &C, b: &C) -> Vec<C::ValidatorId> {
 }
 
 /// Data needed for casper consensus.
-#[derive(Default, Clone, Eq, PartialEq, Encode, Decode)]
-pub struct CasperContext<Epoch> {
+#[derive(Clone, Eq, PartialEq, Encode, Decode)]
+pub struct CasperProcess<C: BalanceContext> {
 	/// Bitfield holding justification information.
 	pub justification_bitfield: u64,
 	/// Current epoch.
-	pub epoch: Epoch,
+	pub epoch: EpochOf<C>,
 	/// Current justified epoch.
-	pub justified_epoch: Epoch,
+	pub justified_epoch: EpochOf<C>,
 	/// Current finalized epoch.
-	pub finalized_epoch: Epoch,
+	pub finalized_epoch: EpochOf<C>,
 	/// Previous justified epoch.
-	pub previous_justified_epoch: Epoch,
+	pub previous_justified_epoch: EpochOf<C>,
 }
 
-impl<Epoch> CasperContext<Epoch> where
-	Epoch: Ord + Copy + Clone + Zero + One + Add<Output=Epoch> + AddAssign + Sub<Output=Epoch> + SubAssign
-{
+impl<C: BalanceContext> CasperProcess<C> {
 	/// Create a new Casper context.
-	pub fn new(genesis_epoch: Epoch) -> Self {
+	pub fn new(genesis_epoch: EpochOf<C>) -> Self {
 		Self {
 			justification_bitfield: 0,
 			epoch: genesis_epoch,
@@ -95,17 +92,17 @@ impl<Epoch> CasperContext<Epoch> where
 	}
 
 	/// Get the current epoch.
-	pub fn epoch(&self) -> Epoch {
+	pub fn epoch(&self) -> EpochOf<C> {
 		self.epoch
 	}
 
 	/// Get the next epoch.
-	pub fn next_epoch(&self) -> Epoch {
+	pub fn next_epoch(&self) -> EpochOf<C> {
 		self.epoch() + One::one()
 	}
 
 	/// Get the previous epoch.
-	pub fn previous_epoch(&self) -> Epoch {
+	pub fn previous_epoch(&self) -> EpochOf<C> {
 		if self.epoch() == Zero::zero() {
 			Zero::zero()
 		} else {
@@ -114,9 +111,7 @@ impl<Epoch> CasperContext<Epoch> where
 	}
 
 	/// Validate an attestation to be included in pending attestations.
-	pub fn validate_attestation<A>(&self, attestation: &A) -> bool where
-		A: Attestation<Epoch=Epoch>
-	{
+	pub fn validate_attestation(&self, attestation: &AttestationOf<C>) -> bool {
 		attestation.is_source_canon() &&
 			if attestation.target_epoch() == self.epoch {
 				attestation.source_epoch() == self.justified_epoch
@@ -126,9 +121,8 @@ impl<Epoch> CasperContext<Epoch> where
 	}
 
 	/// Prune pending attestation list.
-	fn prune_pending_attestations<A, S>(&self, store: &mut S) where
-		A: Attestation<Epoch=Epoch>,
-		S: PendingAttestationsStore<Attestation=A>,
+	fn prune_pending_attestations<S>(&self, store: &mut S) where
+		S: PendingAttestationsStore<C>,
 	{
 		let current_epoch = self.epoch();
 		PendingAttestationsStore::retain(store, |attestation| {
@@ -137,14 +131,8 @@ impl<Epoch> CasperContext<Epoch> where
 	}
 
 	/// Advance the current epoch and start a new epoch.
-	pub fn advance_epoch<A, S>(&mut self, store: &mut S) where
-		A: Attestation<Epoch=Epoch>,
-		S: PendingAttestationsStore<Attestation=A>,
-		S: BlockStore<Epoch=PendingAttestationsStoreEpoch<S>>,
-		S: ValidatorStore<
-			ValidatorId=PendingAttestationsStoreValidatorId<S>,
-			Epoch=PendingAttestationsStoreEpoch<S>
-		>,
+	pub fn advance_epoch<S>(&mut self, store: &mut S) where
+		S: PendingAttestationsStore<C> + BlockStore<C> + ValidatorStore<C>,
 	{
 		assert!(self.epoch() == store.epoch(), "Store block epoch must equal to casper context.");
 
@@ -157,11 +145,11 @@ impl<Epoch> CasperContext<Epoch> where
 		// Set justification status
 		let mut new_justified_epoch = self.justified_epoch;
 		self.justification_bitfield <<= 1;
-		if S::Balance::from(3u8) * store::canon_target_attesting_balance(store, self.previous_epoch()) >= S::Balance::from(2u8) * store::active_total_balance(store, self.previous_epoch()) {
+		if BalanceOf::<C>::from(3u8) * store::canon_target_attesting_balance(store, self.previous_epoch()) >= BalanceOf::<C>::from(2u8) * store::active_total_balance(store, self.previous_epoch()) {
 			self.justification_bitfield |= 2;
 			new_justified_epoch = self.previous_epoch();
 		}
-		if S::Balance::from(3u8) * store::canon_target_attesting_balance(store, self.epoch()) >= S::Balance::from(2u8) * store::active_total_balance(store, self.epoch()) {
+		if BalanceOf::<C>::from(3u8) * store::canon_target_attesting_balance(store, self.epoch()) >= BalanceOf::<C>::from(2u8) * store::active_total_balance(store, self.epoch()) {
 			self.justification_bitfield |= 1;
 			new_justified_epoch = self.epoch();
 		}
@@ -202,7 +190,6 @@ mod tests {
 
 	impl Attestation for DummyAttestation {
 		type ValidatorId = usize;
-		type ValidatorIdIterator = Vec<usize>;
 		type Epoch = usize;
 
 		fn validator_ids(&self) -> Vec<usize> {
@@ -226,6 +213,14 @@ mod tests {
 		}
 	}
 
+	#[derive(PartialEq, Eq, Default, Clone)]
+	pub struct Context;
+
+	impl BalanceContext for Context {
+		type Attestation = DummyAttestation;
+		type Balance = usize;
+	}
+
 	#[derive(Default)]
 	pub struct DummyStore {
 		pub epoch: usize,
@@ -233,12 +228,7 @@ mod tests {
 		pub validators: HashMap<usize, ((usize, usize), usize)>,
 	}
 
-	impl ValidatorStore for DummyStore {
-		type ValidatorId = usize;
-		type ValidatorIdIterator = Vec<usize>;
-		type Balance = usize;
-		type Epoch = usize;
-
+	impl ValidatorStore<Context> for DummyStore {
 		fn total_balance(&self, validators: &[usize]) -> usize {
 			let mut total = 0;
 			for validator_id in validators {
@@ -258,22 +248,17 @@ mod tests {
 		}
 	}
 
-	impl PendingAttestationsStore for DummyStore {
-		type Attestation = DummyAttestation;
-		type AttestationIterator = Vec<DummyAttestation>;
-
+	impl PendingAttestationsStore<Context> for DummyStore {
 		fn attestations(&self) -> Vec<DummyAttestation> {
 			self.pending_attestations.clone()
 		}
 
-		fn retain<F: FnMut(&Self::Attestation) -> bool>(&mut self, f: F) {
+		fn retain<F: FnMut(&AttestationOf<Context>) -> bool>(&mut self, f: F) {
 			self.pending_attestations.retain(f)
 		}
 	}
 
-	impl BlockStore for DummyStore {
-		type Epoch = usize;
-
+	impl BlockStore<Context> for DummyStore {
 		fn epoch(&self) -> usize {
 			self.epoch
 		}
@@ -293,7 +278,7 @@ mod tests {
 		store.push_validator(2, 0, usize::max_value(), 1);
 		store.push_validator(3, 0, usize::max_value(), 1);
 
-		let mut casper = CasperContext::<usize>::default();
+		let mut casper = CasperProcess::<Context>::new(0);
 
 		// Attesting on the zero round doesn't do anything, because it's already justified and finalized.
 		casper.advance_epoch(&mut store);

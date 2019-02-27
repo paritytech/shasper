@@ -18,77 +18,37 @@
 
 use num_traits::{One, Zero};
 use rstd::prelude::*;
-use rstd::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div};
-
-/// Casper attestation. The source should always be canon.
-pub trait Attestation: PartialEq + Eq {
-	/// Type of validator Id.
-	type ValidatorId: PartialEq + Eq + Clone + Copy;
-	/// Type of validator Id collection.
-	type ValidatorIdIterator: IntoIterator<Item=Self::ValidatorId>;
-	/// Type of epoch.
-	type Epoch: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Epoch> + AddAssign + Sub<Output=Self::Epoch> + SubAssign + One + Zero;
-
-	/// Get validator Ids of this attestation.
-	fn validator_ids(&self) -> Self::ValidatorIdIterator;
-	/// Whether this attestation's source is on canon chain.
-	fn is_source_canon(&self) -> bool;
-	/// Whether this attestation's target is on canon chain.
-	fn is_target_canon(&self) -> bool;
-	/// Get the source epoch of this attestation.
-	fn source_epoch(&self) -> Self::Epoch;
-	/// Get the target epoch of this attestation.
-	fn target_epoch(&self) -> Self::Epoch;
-
-	/// Whether this attestation's source and target is on canon chain.
-	fn is_casper_canon(&self) -> bool {
-		self.is_source_canon() && self.is_target_canon()
-	}
-}
+use crate::traits::{
+	BalanceContext, BalanceOf, EpochOf, AttestationOf, Attestation,
+	ValidatorIdOf,
+};
 
 /// Store that holds validator active and balance information.
-pub trait ValidatorStore {
-	/// Type of validator Id.
-	type ValidatorId: PartialEq + Eq + Clone + Copy;
-	/// Type of validator Id collection.
-	type ValidatorIdIterator: IntoIterator<Item=Self::ValidatorId>;
-	/// Type of balance.
-	type Balance: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Balance> + AddAssign + Sub<Output=Self::Balance> + SubAssign + Mul<Output=Self::Balance> + Div<Output=Self::Balance> + From<u8>;
-	/// Type of epoch.
-	type Epoch: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Epoch> + AddAssign + Sub<Output=Self::Epoch> + SubAssign + One + Zero;
-
+pub trait ValidatorStore<C: BalanceContext> {
 	/// Get total balance of given validator Ids.
-	fn total_balance(&self, validators: &[Self::ValidatorId]) -> Self::Balance;
+	fn total_balance(&self, validators: &[ValidatorIdOf<C>]) -> BalanceOf<C>;
 	/// Get all active validators at given epoch.
-	fn active_validators(&self, epoch: Self::Epoch) -> Self::ValidatorIdIterator;
+	fn active_validators(&self, epoch: EpochOf<C>) -> Vec<ValidatorIdOf<C>>;
 }
 
 /// Store that holds pending attestations.
-pub trait PendingAttestationsStore {
-	/// Type of attestation.
-	type Attestation: Attestation;
-	/// Type of attestation collection.
-	type AttestationIterator: IntoIterator<Item=Self::Attestation>;
-
+pub trait PendingAttestationsStore<C: BalanceContext> {
 	/// Get the current list of attestations.
-	fn attestations(&self) -> Self::AttestationIterator;
+	fn attestations(&self) -> Vec<AttestationOf<C>>;
 	/// Retain specific attestations and remove the rest.
-	fn retain<F: FnMut(&Self::Attestation) -> bool>(&mut self, f: F);
+	fn retain<F: FnMut(&AttestationOf<C>) -> bool>(&mut self, f: F);
 }
 
 /// Store that holds general block information.
-pub trait BlockStore {
-	/// Type of epoch.
-	type Epoch: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Epoch> + AddAssign + Sub<Output=Self::Epoch> + SubAssign + One + Zero;
-
+pub trait BlockStore<C: BalanceContext> {
 	/// Get the current epoch.
-	fn epoch(&self) -> Self::Epoch;
+	fn epoch(&self) -> EpochOf<C>;
 	/// Get the next epoch.
-	fn next_epoch(&self) -> Self::Epoch {
+	fn next_epoch(&self) -> EpochOf<C> {
 		self.epoch() + One::one()
 	}
 	/// Get the previous epoch.
-	fn previous_epoch(&self) -> Self::Epoch {
+	fn previous_epoch(&self) -> EpochOf<C> {
 		if self.epoch() == Zero::zero() {
 			Zero::zero()
 		} else {
@@ -97,24 +57,12 @@ pub trait BlockStore {
 	}
 }
 
-/// Epoch of a pending attestation store.
-pub type PendingAttestationsStoreEpoch<S> = <<S as PendingAttestationsStore>::Attestation as Attestation>::Epoch;
-/// Validator Id of a pending attestation store.
-pub type PendingAttestationsStoreValidatorId<S> = <<S as PendingAttestationsStore>::Attestation as Attestation>::ValidatorId;
-/// Balance of a validator store.
-pub type ValidatorStoreBalance<S> = <S as ValidatorStore>::Balance;
-/// Epoch of a validator store.
-pub type ValidatorStoreEpoch<S> = <S as ValidatorStore>::Epoch;
-/// Validator id of a validator store.
-pub type ValidatorStoreValidatorId<S> = <S as ValidatorStore>::ValidatorId;
-
 /// Attesting canon target balance at epoch.
-pub fn canon_target_attesting_balance<S>(store: &S, epoch: PendingAttestationsStoreEpoch<S>) -> ValidatorStoreBalance<S> where
-	S: PendingAttestationsStore,
-	S: ValidatorStore<
-		ValidatorId=PendingAttestationsStoreValidatorId<S>,
-		Epoch=PendingAttestationsStoreEpoch<S>
-	>,
+pub fn canon_target_attesting_balance<C: BalanceContext, S>(
+	store: &S,
+	epoch: EpochOf<C>
+) -> BalanceOf<C> where
+	S: PendingAttestationsStore<C> + ValidatorStore<C>,
 {
 	let mut validators = Vec::new();
 	for attestation in store.attestations() {
@@ -128,12 +76,11 @@ pub fn canon_target_attesting_balance<S>(store: &S, epoch: PendingAttestationsSt
 }
 
 /// Attesting canon source balance at epoch.
-pub fn canon_source_attesting_balance<S>(store: &S, epoch: PendingAttestationsStoreEpoch<S>) -> ValidatorStoreBalance<S> where
-	S: PendingAttestationsStore,
-	S: ValidatorStore<
-		ValidatorId=PendingAttestationsStoreValidatorId<S>,
-		Epoch=PendingAttestationsStoreEpoch<S>
-	>,
+pub fn canon_source_attesting_balance<C: BalanceContext, S>(
+	store: &S,
+	epoch: EpochOf<C>
+) -> BalanceOf<C> where
+	S: PendingAttestationsStore<C> + ValidatorStore<C>,
 {
 	let mut validators = Vec::new();
 	for attestation in store.attestations() {
@@ -147,8 +94,11 @@ pub fn canon_source_attesting_balance<S>(store: &S, epoch: PendingAttestationsSt
 }
 
 /// Total balance at epoch.
-pub fn active_total_balance<S>(store: &S, epoch: ValidatorStoreEpoch<S>) -> ValidatorStoreBalance<S> where
-	S: ValidatorStore
+pub fn active_total_balance<C: BalanceContext, S>(
+	store: &S,
+	epoch: EpochOf<C>
+) -> BalanceOf<C> where
+	S: ValidatorStore<C>
 {
 	let validators = store.active_validators(epoch).into_iter().collect::<Vec<_>>();
 	store.total_balance(&validators)
