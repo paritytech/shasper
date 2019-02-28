@@ -17,6 +17,7 @@
 //! Committee for Casper
 
 use hash_db::Hasher;
+use rstd::prelude::*;
 use rstd::cmp;
 use rstd::ops::BitXor;
 use crate::utils::{hash2, hash3, to_usize};

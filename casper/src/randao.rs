@@ -22,6 +22,7 @@
 //! reveals one layer of the onion.
 
 use hash_db::Hasher;
+use rstd::prelude::*;
 use rstd::ops::BitXor;
 use crate::utils::hash2;
 
