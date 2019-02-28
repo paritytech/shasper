@@ -21,48 +21,113 @@
 //! when the participant is required to add entropy into the system, it
 //! reveals one layer of the onion.
 
-use hash_db::{Hasher, DebugIfStd};
-use core::hash;
-use core::ops::BitXor;
+use hash_db::Hasher;
+use rstd::ops::BitXor;
+use crate::utils::hash2;
+
+/// RANDAO config.
+pub struct RandaoConfig {
+	/// Seed lookahead.
+	pub lookahead: usize,
+}
+
+/// RANDAO producer.
+pub struct RandaoProducer<H: Hasher> {
+	history: Vec<H::Out>,
+	offset: usize,
+	mix: RandaoMix<H>,
+	config: RandaoConfig,
+}
+
+impl<H: Hasher> RandaoProducer<H> {
+	/// Mix the current value with a new reveal.
+	pub fn mix(&mut self, reveal: &H::Out) where
+		H::Out: BitXor<Output=H::Out>
+	{
+		self.mix.mix(reveal)
+	}
+
+	/// Advance the epoch.
+	pub fn advance_epoch(&mut self, f: &H::Out, update: bool) where
+		H::Out: BitXor<Output=H::Out>
+	{
+		let mix = hash2::<H>(self.mix.get().as_ref(), f.as_ref());
+		self.history.insert(0, mix);
+
+		if update {
+			self.offset = 0;
+			self.history.truncate(self.config.lookahead + 1);
+		} else {
+			self.offset += 1;
+		}
+	}
+
+	/// Get the current seed.
+	pub fn current(&self) -> H::Out {
+		self.history[self.offset + self.config.lookahead]
+	}
+
+	/// Get the previous seed.
+	pub fn previous(&self) -> H::Out {
+		self.history[self.offset + self.config.lookahead + 1]
+	}
+
+	/// Create a new RANDAO producer.
+	pub fn new(val: H::Out, config: RandaoConfig) -> Self {
+		let mut history = Vec::new();
+		for _ in 0..(config.lookahead + 1) {
+			history.push(val);
+		}
+
+		Self {
+			history, config,
+			offset: 0,
+			mix: RandaoMix::new(val)
+		}
+	}
+}
 
 /// A RANDAO mix. Combine revealed values together.
-pub struct RandaoMix<T>(T);
+pub struct RandaoMix<H: Hasher>(H::Out);
 
-impl<T> RandaoMix<T> where
-	T: BitXor<Output=T> + AsRef<[u8]> + AsMut<[u8]> + Default + DebugIfStd + PartialEq + Eq + hash::Hash + Send + Sync + Clone + Copy
-{
+impl<H: Hasher> RandaoMix<H> {
 	/// Create a new mix.
-	pub fn new(val: T) -> Self {
+	pub fn new(val: H::Out) -> Self {
 		RandaoMix(val)
 	}
 
 	/// Mix the current value with a new reveal.
-	pub fn mix<H: Hasher<Out=T>>(&mut self, reveal: &T) {
+	pub fn mix(&mut self, reveal: &H::Out) where
+		H::Out: BitXor<Output=H::Out>,
+	{
 		let input = self.0 ^ *reveal;
 		self.0 = H::hash(input.as_ref());
 	}
+
+	/// Get the inner randao value.
+	pub fn get(&self) -> H::Out {
+		self.0
+	}
 }
 
-impl<T> AsRef<T> for RandaoMix<T> {
-	fn as_ref(&self) -> &T {
+impl<H: Hasher> AsRef<H::Out> for RandaoMix<H> {
+	fn as_ref(&self) -> &H::Out {
 		&self.0
 	}
 }
 
 /// A RANDAO commitment.
-pub struct RandaoCommitment<T>(T);
+pub struct RandaoCommitment<H: Hasher>(H::Out);
 
-impl<T> RandaoCommitment<T> where
-	T: AsRef<[u8]> + AsMut<[u8]> + Default + DebugIfStd + PartialEq + Eq + hash::Hash + Send + Sync + Clone + Copy
-{
+impl<H: Hasher> RandaoCommitment<H> {
 	/// Create a new commitment.
-	pub fn new(val: T) -> Self {
+	pub fn new(val: H::Out) -> Self {
 		RandaoCommitment(val)
 	}
 
 	/// Reveal the commitment, with the given revealed value, and how many
 	/// layers to be revealed. Returns whether the reveal is successful.
-	pub fn reveal<H: Hasher<Out=T>>(&mut self, reveal: &T, layers: usize) -> bool {
+	pub fn reveal(&mut self, reveal: &H::Out, layers: usize) -> bool {
 		let mut revealed = *reveal;
 		for _ in 0..layers {
 			revealed = H::hash(revealed.as_ref());
@@ -77,8 +142,8 @@ impl<T> RandaoCommitment<T> where
 	}
 }
 
-impl<T> AsRef<T> for RandaoCommitment<T> {
-	fn as_ref(&self) -> &T {
+impl<H: Hasher> AsRef<H::Out> for RandaoCommitment<H> {
+	fn as_ref(&self) -> &H::Out {
 		&self.0
 	}
 }
@@ -105,10 +170,10 @@ mod tests {
 
 	#[test]
 	fn reveal_commitment_255_layers() {
-		let mut commitment = RandaoCommitment::new([255]);
-		assert!(!commitment.reveal::<DummyHasher>(&[0], 254));
+		let mut commitment = RandaoCommitment::<DummyHasher>::new([255]);
+		assert!(!commitment.reveal(&[0], 254));
 		assert_eq!(commitment.as_ref(), &[255]);
-		assert!(commitment.reveal::<DummyHasher>(&[0], 255));
+		assert!(commitment.reveal(&[0], 255));
 		assert_eq!(commitment.as_ref(), &[0]);
 	}
 }
