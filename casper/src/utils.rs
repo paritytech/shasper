@@ -14,22 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Generic structs and traits for the Casper FFG.
+use hash_db::Hasher;
 
-#![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(not(feature = "std"), feature(alloc))]
+pub fn hash2<H: Hasher>(seed: &[u8], a: &[u8]) -> H::Out {
+	let mut v = seed.to_vec();
+	let mut a = a.to_vec();
+	v.append(&mut a);
+	H::hash(&v)
+}
 
-#![warn(missing_docs)]
+pub fn hash3<H: Hasher>(seed: &[u8], a: &[u8], b: &[u8]) -> H::Out {
+	let mut v = seed.to_vec();
+	let mut a = a.to_vec();
+	let mut b = b.to_vec();
+	v.append(&mut a);
+	v.append(&mut b);
+	H::hash(&v)
+}
 
-extern crate parity_codec as codec;
-extern crate parity_codec_derive as codec_derive;
-
-pub mod randao;
-pub mod casper;
-pub mod reward;
-pub mod store;
-pub mod context;
-pub mod committee;
-mod utils;
-
-pub use crate::casper::CasperProcess;
+pub fn to_usize(v: &[u8]) -> usize {
+	let mut ret = 0usize.to_le_bytes();
+	(&mut ret[..]).copy_from_slice(&v[..v.len()]);
+	usize::from_le_bytes(ret)
+}
