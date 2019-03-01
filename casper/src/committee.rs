@@ -23,7 +23,6 @@ use rstd::ops::BitXor;
 use codec::{Encode, Decode};
 use codec_derive::{Encode, Decode};
 use crate::utils::{hash2, hash3, to_usize};
-use crate::randao::RandaoProducer;
 
 /// Shuffle config.
 #[derive(Default, Encode, Decode, Clone)]
@@ -69,7 +68,6 @@ pub struct CommitteeProcess<H: Hasher> where
 	current_shard_offset: usize,
 	current_seed: H::Out,
 	previous_seed: H::Out,
-	randao: RandaoProducer<H>,
 	config: ShuffleConfig,
 }
 
@@ -112,9 +110,9 @@ impl<H: Hasher> CommitteeProcess<H> where
 					committee.push(permuted_index::<H>(
 						index,
 						if is_current {
-							self.randao.current()
+							self.current_seed
 						} else {
-							self.randao.previous()
+							self.previous_seed
 						}.as_ref(),
 						len,
 						self.config.round

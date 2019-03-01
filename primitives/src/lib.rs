@@ -26,6 +26,7 @@ mod signature;
 mod attestation;
 
 pub use crypto;
+pub use keccak_hasher::KeccakHasher;
 pub use signature::{H768, Signature};
 pub use authority_id::{H384, AuthorityId};
 pub use bitfield::BitField;

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{Slot, UncheckedAttestation};
+use primitives::{Slot, UncheckedAttestation, H256};
 use runtime_primitives::traits::{Extrinsic as ExtrinsicT};
 
 use codec_derive::{Encode, Decode};
@@ -28,6 +28,9 @@ pub enum UncheckedExtrinsic {
 	/// Slot inherent extrinsic, whose extrinsic index must be
 	/// `consts::SLOT_INHERENT_EXTRINSIC_INDEX`.
 	Slot(Slot),
+	/// RANDAO inherent extrinsic, whose extrinsic index must be
+	/// `consts::RANDAO_INHERENT_EXTRINSIC_INDEX`.
+	Randao(H256),
 	/// Attestation extrinsic, whose extrinsic index must be after
 	/// `consts::ATTESTATION_EXTRINSIC_START_INDEX`.
 	Attestation(UncheckedAttestation)
@@ -37,6 +40,7 @@ impl ExtrinsicT for UncheckedExtrinsic {
 	fn is_signed(&self) -> Option<bool> {
 		match self {
 			UncheckedExtrinsic::Slot(_) => Some(false),
+			UncheckedExtrinsic::Randao(_) => Some(false),
 			UncheckedExtrinsic::Attestation(_) => Some(true),
 		}
 	}
