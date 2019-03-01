@@ -26,6 +26,8 @@ use rstd::prelude::*;
 use rstd::ops::BitXor;
 use codec::{Encode, Decode};
 use codec_derive::{Encode, Decode};
+#[cfg(feature = "std")]
+use std::path::Path;
 use crate::utils::hash2;
 
 /// RANDAO config.
@@ -171,6 +173,59 @@ impl<H: Hasher> AsRef<H::Out> for RandaoCommitment<H> where
 {
 	fn as_ref(&self) -> &H::Out {
 		&self.data
+	}
+}
+
+/// An onion for RANDAO.
+pub struct RandaoOnion<H: Hasher> {
+	data: Vec<H::Out>,
+}
+
+impl<H: Hasher> RandaoOnion<H> {
+	/// Generate a new onion.
+	pub fn generate(seed: H::Out, n: usize) -> Self {
+		let mut data = Vec::new();
+		data.push(seed);
+
+		for _ in 0..n {
+			data.push(H::hash(data.last().expect("Seed is pushed; data at least has one item; qed").as_ref()));
+		}
+
+		Self { data }
+	}
+
+	/// Pop a value from the onion, skip given layers.
+	pub fn pop(&mut self, skip: usize) -> Option<H::Out> {
+		for _ in 0..skip {
+			self.data.pop();
+		}
+
+		self.data.pop()
+	}
+
+	/// Save the onion to a file.
+	#[cfg(feature = "std")]
+	pub fn save<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> where
+		H::Out: serde::Serialize
+	{
+		use std::fs::File;
+
+		let f = File::create(path)?;
+		serde_json::to_writer(&f, &self.data)?;
+		f.sync_all()
+	}
+
+	/// Load the onion from a file.
+	#[cfg(feature = "std")]
+	pub fn load<P: AsRef<Path>>(path: P) -> std::io::Result<Self> where
+		H::Out: serde::de::DeserializeOwned
+	{
+		use std::fs::File;
+
+		let f = File::open(path)?;
+		let data: Vec<H::Out> = serde_json::from_reader(&f)
+			.map_err(|_| std::io::Error::from(std::io::ErrorKind::Other))?;
+		Ok(Self { data })
 	}
 }
 

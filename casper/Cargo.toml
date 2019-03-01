@@ -10,6 +10,8 @@ parity-codec-derive = "3.0"
 hash-db = { version = "0.11", default-features = false }
 rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate", default-features = false }
 num-traits = { version = "0.2", default-features = false }
+serde = { version = "1.0", optional = true }
+serde_json = { version = "1.0", optional = true }
 
 [dev-dependencies]
 plain_hasher = "0.2"
@@ -20,4 +22,6 @@ std = [
 	"hash-db/std",
 	"rstd/std",
 	"parity-codec/std",
+	"serde",
+	"serde_json",
 ]
