@@ -2650,6 +2650,7 @@ dependencies = [
 name = "shasper"
 version = "0.9.0"
 dependencies = [
+ "casper 0.1.0",
  "ctrlc 3.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "exit-future 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2715,6 +2716,7 @@ dependencies = [
 name = "shasper-consensus-primitives"
 version = "0.1.0"
 dependencies = [
+ "casper 0.1.0",
  "parity-codec 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec-derive 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "shasper-primitives 0.1.0",

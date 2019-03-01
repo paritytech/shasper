@@ -17,6 +17,7 @@ runtime-io = { package = "sr-io", git = "https://github.com/paritytech/substrate
 rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate", default-features = false }
 primitives = { package = "shasper-primitives", path = "../../primitives", default-features = false }
 inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate", default-features = false }
+casper = { path = "../../casper", default-features = false }
 
 [features]
 default = ["std"]
@@ -31,4 +32,5 @@ std = [
 	"primitives/std",
 	"rstd/std",
 	"inherents/std",
+	"casper/std",
 ]

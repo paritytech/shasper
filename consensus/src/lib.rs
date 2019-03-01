@@ -43,10 +43,11 @@ use runtime::UncheckedExtrinsic;
 use runtime::utils::epoch_to_slot;
 use runtime_primitives::{generic::BlockId, Justification, RuntimeString};
 use runtime_primitives::traits::{self, Block, Header, Digest, DigestItemFor, DigestItem, ProvideRuntimeApi, Zero};
-use primitives::{ValidatorId, H256, Slot, Epoch, BlockNumber, UnsignedAttestation};
+use primitives::{ValidatorId, H256, Slot, Epoch, BlockNumber, UnsignedAttestation, KeccakHasher};
 use aura_slots::{SlotCompatible, CheckedHeader, SlotWorker, SlotInfo};
 use inherents::InherentDataProviders;
 use casper::context::Attestation;
+use casper::randao::RandaoOnion;
 use transaction_pool::txpool::{ChainApi as PoolChainApi, Pool};
 
 use futures::{Future, IntoFuture, future};
@@ -126,10 +127,32 @@ fn client_to_common_error(err: client::error::Error) -> consensus_common::Error 
 pub fn register_shasper_inherent_data_provider(
 	inherent_data_providers: &InherentDataProviders,
 	slot_duration: u64,
+	start_slot: u64,
+	randao_onion: Arc<RandaoOnion<KeccakHasher>>,
 ) -> Result<(), consensus_common::Error> {
-	if !inherent_data_providers.has_provider(&consensus_primitives::INHERENT_IDENTIFIER) {
+	register_shasper_importer_inherent_data_provider(inherent_data_providers, slot_duration)?;
+
+	if !inherent_data_providers.has_provider(&consensus_primitives::RANDAO_INHERENT_IDENTIFIER) {
 		inherent_data_providers
-			.register_provider(consensus_primitives::InherentDataProvider::new(slot_duration))
+			.register_provider(consensus_primitives::RandaoInherentDataProvider::new(
+				slot_duration, start_slot, randao_onion
+			))
+			.map_err(inherent_to_common_error)
+	} else {
+		Ok(())
+	}
+}
+
+/// Register the shasper importer inherent data provider.
+pub fn register_shasper_importer_inherent_data_provider(
+	inherent_data_providers: &InherentDataProviders,
+	slot_duration: u64,
+) -> Result<(), consensus_common::Error> {
+	if !inherent_data_providers.has_provider(&consensus_primitives::TIMESTAMP_INHERENT_IDENTIFIER) {
+		inherent_data_providers
+			.register_provider(consensus_primitives::TimestampInherentDataProvider::new(
+				slot_duration,
+			))
 			.map_err(inherent_to_common_error)
 	} else {
 		Ok(())
@@ -182,8 +205,8 @@ impl SlotCompatible for ShasperSlotCompatible {
 	fn extract_timestamp_and_slot(
 		data: &inherents::InherentData
 	) -> Result<(u64, u64), consensus_common::Error> {
-		match data.get_data::<consensus_primitives::InherentData>(
-			&consensus_primitives::INHERENT_IDENTIFIER
+		match data.get_data::<consensus_primitives::TimestampInherentData>(
+			&consensus_primitives::TIMESTAMP_INHERENT_IDENTIFIER
 		) {
 			Ok(Some(data)) => Ok((data.timestamp, data.slot)),
 			_ => Err(consensus_common::ErrorKind::InherentData("Decode inherent failed".into()).into()),
@@ -195,15 +218,15 @@ fn replace_inherent_data_slot(
 	data: &mut inherents::InherentData,
 	slot: Slot,
 ) -> Result<(), consensus_common::Error> {
-	let mut inherent_data = match data.get_data::<consensus_primitives::InherentData>(
-		&consensus_primitives::INHERENT_IDENTIFIER
+	let mut inherent_data = match data.get_data::<consensus_primitives::TimestampInherentData>(
+		&consensus_primitives::TIMESTAMP_INHERENT_IDENTIFIER
 	) {
 		Ok(Some(data)) => data,
 		_ => return Err(consensus_common::ErrorKind::InherentData("Decode inherent failed".into()).into()),
 	};
 
 	inherent_data.slot = slot;
-	data.replace_data(consensus_primitives::INHERENT_IDENTIFIER, &inherent_data);
+	data.replace_data(consensus_primitives::TIMESTAMP_INHERENT_IDENTIFIER, &inherent_data);
 
 	Ok(())
 }
@@ -218,6 +241,7 @@ pub fn start_shasper<B, C, E, I, SO, P, Error, OnExit>(
 	sync_oracle: SO,
 	pool: Arc<Pool<P>>,
 	on_exit: OnExit,
+	randao_onion: Arc<RandaoOnion<KeccakHasher>>,
 	inherent_data_providers: InherentDataProviders,
 ) -> Result<impl Future<Item=(), Error=()>, consensus_common::Error> where
 	B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>,
@@ -243,6 +267,7 @@ pub fn start_shasper<B, C, E, I, SO, P, Error, OnExit>(
 		local_key,
 		last_proposed_epoch: Default::default(),
 		pool,
+		randao_onion,
 		inherent_data_providers: inherent_data_providers.clone(),
 	};
 
@@ -264,6 +289,7 @@ struct ShasperWorker<C, E, I, P: PoolChainApi> {
 	last_proposed_epoch: Mutex<Epoch>,
 	inherent_data_providers: InherentDataProviders,
 	pool: Arc<Pool<P>>,
+	randao_onion: Arc<RandaoOnion<KeccakHasher>>,
 }
 
 impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotWorker<B> for ShasperWorker<C, E, I, P> where
@@ -285,12 +311,20 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 		&self,
 		slot_duration: u64
 	) -> Result<(), consensus_common::Error> {
-		register_shasper_inherent_data_provider(&self.inherent_data_providers, slot_duration)?;
-
 		let chain_head_hash = self.client.best_block_header().map_err(client_to_common_error)?.hash();
 		let current_epoch = runtime::utils::slot_to_epoch(
 			self.client.runtime_api().slot(&BlockId::Hash(chain_head_hash)).map_err(client_to_common_error)?
 		);
+		let start_slot = self.client.runtime_api().genesis_slot(&BlockId::Hash(chain_head_hash))
+			.map_err(client_to_common_error)?;
+
+		register_shasper_inherent_data_provider(
+			&self.inherent_data_providers,
+			slot_duration,
+			start_slot,
+			self.randao_onion.clone(),
+		)?;
+
 		*self.last_proposed_epoch.lock() = current_epoch;
 
 		Ok(())
@@ -634,7 +668,7 @@ pub fn import_queue<B, C, I>(
 	DigestItemFor<B>: CompatibleDigestItem + DigestItem<AuthorityId=ValidatorId>,
 	I: 'static + BlockImport<B, Error=ConsensusError> + Send + Sync,
 {
-	register_shasper_inherent_data_provider(&inherent_data_providers, slot_duration.get())?;
+	register_shasper_importer_inherent_data_provider(&inherent_data_providers, slot_duration.get())?;
 
 	let verifier = Arc::new(ShasperVerifier { client: client.clone(), inherent_data_providers });
 	Ok(BasicQueue::new(verifier, block_import, None))

@@ -194,13 +194,9 @@ impl<H: Hasher> RandaoOnion<H> {
 		Self { data }
 	}
 
-	/// Pop a value from the onion, skip given layers.
-	pub fn pop(&mut self, skip: usize) -> Option<H::Out> {
-		for _ in 0..skip {
-			self.data.pop();
-		}
-
-		self.data.pop()
+	/// Get a value from the union.
+	pub fn at(&self, slot: usize) -> H::Out {
+		self.data[self.data.len() - 1 - slot]
 	}
 
 	/// Save the onion to a file.

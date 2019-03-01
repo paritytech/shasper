@@ -20,7 +20,7 @@
 
 use std::sync::Arc;
 use transaction_pool::{self, txpool::{Pool as TransactionPool}};
-use primitives::ValidatorId;
+use primitives::{H256, ValidatorId};
 use substrate_primitives::ed25519;
 use runtime::{self, GenesisConfig, RuntimeApi, Block};
 use service::{
@@ -32,6 +32,7 @@ use consensus::{import_queue, start_shasper, ShasperImportQueue, SlotDuration, S
 use crypto::bls;
 use executor::native_executor_instance;
 use network::construct_simple_protocol;
+use casper::randao::RandaoOnion;
 use inherents::InherentDataProviders;
 use log::info;
 
@@ -100,6 +101,7 @@ construct_service_factory! {
 						service.network(),
 						service.transaction_pool(),
 						service.on_exit(),
+						Arc::new(RandaoOnion::generate(H256::default(), 1000)),
 						service.config.custom.inherent_data_providers.clone(),
 					)?);
 				}
