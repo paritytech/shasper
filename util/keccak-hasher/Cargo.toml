@@ -4,10 +4,13 @@ version = "0.1.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 description = "Keccak-256 implementation of the Hasher trait"
 license = "GPL-3.0"
+edition = "2018"
 
 [dependencies]
 substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
 tiny-keccak = "1.4.2"
+parity-codec = { version = "3.0", default-features = false }
+parity-codec-derive = "3.0"
 plain_hasher = { version = "0.2", default-features = false }
 
 [features]
@@ -15,4 +18,5 @@ default = ["std"]
 std = [
 	"substrate-primitives/std",
 	"plain_hasher/std",
+	"parity-codec/std",
 ]

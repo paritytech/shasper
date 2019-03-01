@@ -176,6 +176,13 @@ mod apis {
 						storage::Slot::put(slot);
 						storage::note_parent_hash();
 					},
+					UncheckedExtrinsic::Randao(reveal)
+						if extrinsic_index == consts::RANDAO_INHERENT_EXTRINSIC_INDEX =>
+					{
+						let mut randao = storage::Randao::get();
+						randao.mix(&reveal);
+						storage::Randao::put(randao);
+					},
 					UncheckedExtrinsic::Attestation(ref attestation)
 						if extrinsic_index >= consts::ATTESTATION_EXTRINSIC_START_INDEX =>
 					{
@@ -261,37 +268,44 @@ mod apis {
 			}
 
 			fn inherent_extrinsics(data: InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
-				let slot = match data.get_data::<consensus_primitives::InherentData>(
-					&consensus_primitives::INHERENT_IDENTIFIER
+				let timestamp = match data.get_data::<consensus_primitives::TimestampInherentData>(
+					&consensus_primitives::TIMESTAMP_INHERENT_IDENTIFIER
 				) {
-					Ok(Some(data)) => data.slot,
-					_ => panic!("Decode inherent failed"),
+					Ok(Some(data)) => data,
+					_ => panic!("Decode timestamp inherent failed"),
+				};
+				let randao = match data.get_data::<consensus_primitives::RandaoInherentData>(
+					&consensus_primitives::RANDAO_INHERENT_IDENTIFIER
+				) {
+					Ok(Some(data)) => data,
+					_ => panic!("Decode randao inherent failed"),
 				};
 
 				let mut ret = Vec::new();
-				ret.push(UncheckedExtrinsic::Slot(slot));
+				ret.push(UncheckedExtrinsic::Slot(timestamp.slot));
+				ret.push(UncheckedExtrinsic::Randao(randao.randao_reveal));
 				ret
 			}
 
 			fn check_inherents(block: Block, data: InherentData) -> CheckInherentsResult {
 				let mut result = CheckInherentsResult::default();
 
-				let slot = match data.get_data::<consensus_primitives::InherentData>(
-					&consensus_primitives::INHERENT_IDENTIFIER
+				let slot = match data.get_data::<consensus_primitives::TimestampInherentData>(
+					&consensus_primitives::TIMESTAMP_INHERENT_IDENTIFIER
 				) {
 					Ok(Some(data)) => data.slot,
 					_ => {
 						result.put_error(
-							consensus_primitives::INHERENT_IDENTIFIER,
+							consensus_primitives::TIMESTAMP_INHERENT_IDENTIFIER,
 							&MakeFatalError::from(RuntimeString::from("Slot decode failed"))
 						).expect("Putting error failed");
 						return result;
 					},
 				};
 
-				if block.extrinsics.len() == 0 {
+				if (block.extrinsics.len() as u32) < consts::ATTESTATION_EXTRINSIC_START_INDEX {
 					result.put_error(
-						consensus_primitives::INHERENT_IDENTIFIER,
+						consensus_primitives::TIMESTAMP_INHERENT_IDENTIFIER,
 						&MakeFatalError::from(RuntimeString::from("Slot extrinsic missing"))
 					).expect("Putting error failed");
 					return result;
@@ -301,8 +315,19 @@ mod apis {
 					UncheckedExtrinsic::Slot(block_slot) if block_slot == slot => (),
 					_ => {
 						result.put_error(
-							consensus_primitives::INHERENT_IDENTIFIER,
+							consensus_primitives::TIMESTAMP_INHERENT_IDENTIFIER,
 							&MakeFatalError::from(RuntimeString::from("Incorrect block slot"))
+						).expect("Putting error failed");
+						return result;
+					},
+				}
+
+				match block.extrinsics[1] {
+					UncheckedExtrinsic::Randao(_) => (),
+					_ => {
+						result.put_error(
+							consensus_primitives::RANDAO_INHERENT_IDENTIFIER,
+							&MakeFatalError::from(RuntimeString::from("Incorrect randao extrinsic"))
 						).expect("Putting error failed");
 						return result;
 					},
@@ -379,6 +404,10 @@ mod apis {
 
 			fn slot() -> Slot {
 				storage::Slot::get()
+			}
+
+			fn genesis_slot() -> Slot {
+				storage::GenesisSlot::get()
 			}
 
 			fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation> {

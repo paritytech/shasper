@@ -14,10 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{BlockNumber, Hash, Balance, ValidatorId, CheckedAttestation, AttestationContext};
+use primitives::{
+	BlockNumber, Hash, Balance, ValidatorId, CheckedAttestation, AttestationContext,
+	KeccakHasher,
+};
 use runtime_support::storage_items;
 use runtime_support::storage::{StorageValue, StorageMap};
 use runtime_support::storage::unhashed::{self, StorageVec};
+use casper::randao;
 use crate::state::ValidatorRecord;
 use crate::{UncheckedExtrinsic, utils};
 
@@ -30,6 +34,7 @@ storage_items! {
 	pub CasperContext: b"sys:caspercontext" => default casper::CasperProcess<AttestationContext>;
 	pub GenesisSlot: b"sys:genesisslot" => default primitives::Slot;
 	pub LatestBlockHashes: b"sys:latestblockhashes" => map [primitives::Slot => Hash];
+	pub Randao: b"sys:randao" => default randao::RandaoProducer<KeccakHasher>;
 }
 
 pub struct UncheckedExtrinsics;

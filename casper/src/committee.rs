@@ -20,10 +20,12 @@ use hash_db::Hasher;
 use rstd::prelude::*;
 use rstd::cmp;
 use rstd::ops::BitXor;
+use codec::{Encode, Decode};
+use codec_derive::{Encode, Decode};
 use crate::utils::{hash2, hash3, to_usize};
-use crate::randao::RandaoProducer;
 
 /// Shuffle config.
+#[derive(Default, Encode, Decode, Clone)]
 pub struct ShuffleConfig {
 	/// Rounds for the shuffling algorithm.
 	pub round: usize,
@@ -36,51 +38,59 @@ pub struct ShuffleConfig {
 }
 
 /// Shuffle update.
-pub enum ShuffleUpdate {
-	/// Update nothing.
-	None,
+pub enum ShuffleUpdate<H: Hasher> {
 	/// Update seed only.
-	Seed,
+	Seed {
+		/// New current seed after shuffle update.
+		current_seed: H::Out,
+		/// New previous seed after shuffle update.
+		previous_seed: H::Out,
+	},
 	/// Update both seed and shard offset.
-	Len(usize),
+	SeedAndLen {
+		/// New current seed after shuffle update.
+		current_seed: H::Out,
+		/// New previous seed after shuffle update.
+		previous_seed: H::Out,
+		/// New len after shuffle update.
+		len: usize
+	},
 }
 
 /// Committee assigner.
-pub struct CommitteeProcess<H: Hasher> {
+#[derive(Default, Encode, Decode, Clone)]
+pub struct CommitteeProcess<H: Hasher> where
+	H::Out: Encode + Decode
+{
 	current_len: usize,
 	previous_len: usize,
 	previous_shard_offset: usize,
 	current_shard_offset: usize,
-	randao: RandaoProducer<H>,
+	current_seed: H::Out,
+	previous_seed: H::Out,
 	config: ShuffleConfig,
 }
 
-impl<H: Hasher> CommitteeProcess<H> {
-	/// Mix a reveal into the RANDAO.
-	pub fn mix(&mut self, reveal: &H::Out) where
-		H::Out: BitXor<Output=H::Out>
-	{
-		self.randao.mix(reveal);
-	}
-
+impl<H: Hasher> CommitteeProcess<H> where
+	H::Out: Encode + Decode
+{
 	/// Advance the epoch for the process.
-	pub fn advance_epoch(&mut self, f: &H::Out, update: ShuffleUpdate) where
+	pub fn advance_epoch(&mut self, update: ShuffleUpdate<H>) where
 		H::Out: BitXor<Output=H::Out>
 	{
 		self.previous_shard_offset = self.current_shard_offset;
 		self.previous_len = self.current_len;
 
 		match update {
-			ShuffleUpdate::None => {
-				self.randao.advance_epoch(f, false);
+			ShuffleUpdate::Seed { current_seed, previous_seed } => {
+				self.current_seed = current_seed;
+				self.previous_seed = previous_seed;
 			},
-			ShuffleUpdate::Seed => {
-				self.randao.advance_epoch(f, true);
-			},
-			ShuffleUpdate::Len(new_len) => {
-				self.randao.advance_epoch(f, true);
-				self.current_shard_offset = (self.current_shard_offset + committee_count(new_len, &self.config)) % self.config.shard_count;
-				self.current_len = new_len;
+			ShuffleUpdate::SeedAndLen { current_seed, previous_seed, len } => {
+				self.current_seed = current_seed;
+				self.previous_seed = previous_seed;
+				self.current_shard_offset = (self.current_shard_offset + committee_count(len, &self.config)) % self.config.shard_count;
+				self.current_len = len;
 			},
 		}
 	}
@@ -100,9 +110,9 @@ impl<H: Hasher> CommitteeProcess<H> {
 					committee.push(permuted_index::<H>(
 						index,
 						if is_current {
-							self.randao.current()
+							self.current_seed
 						} else {
-							self.randao.previous()
+							self.previous_seed
 						}.as_ref(),
 						len,
 						self.config.round
