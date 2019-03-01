@@ -20,10 +20,13 @@ use hash_db::Hasher;
 use rstd::prelude::*;
 use rstd::cmp;
 use rstd::ops::BitXor;
+use codec::{Encode, Decode};
+use codec_derive::{Encode, Decode};
 use crate::utils::{hash2, hash3, to_usize};
 use crate::randao::RandaoProducer;
 
 /// Shuffle config.
+#[derive(Default, Encode, Decode, Clone)]
 pub struct ShuffleConfig {
 	/// Rounds for the shuffling algorithm.
 	pub round: usize,
@@ -56,7 +59,10 @@ pub enum ShuffleUpdate<H: Hasher> {
 }
 
 /// Committee assigner.
-pub struct CommitteeProcess<H: Hasher> {
+#[derive(Default, Encode, Decode, Clone)]
+pub struct CommitteeProcess<H: Hasher> where
+	H::Out: Encode + Decode
+{
 	current_len: usize,
 	previous_len: usize,
 	previous_shard_offset: usize,
@@ -67,7 +73,9 @@ pub struct CommitteeProcess<H: Hasher> {
 	config: ShuffleConfig,
 }
 
-impl<H: Hasher> CommitteeProcess<H> {
+impl<H: Hasher> CommitteeProcess<H> where
+	H::Out: Encode + Decode
+{
 	/// Advance the epoch for the process.
 	pub fn advance_epoch(&mut self, update: ShuffleUpdate<H>) where
 		H::Out: BitXor<Output=H::Out>

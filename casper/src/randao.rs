@@ -24,23 +24,31 @@
 use hash_db::Hasher;
 use rstd::prelude::*;
 use rstd::ops::BitXor;
+use codec::{Encode, Decode};
+use codec_derive::{Encode, Decode};
 use crate::utils::hash2;
 
 /// RANDAO config.
+#[derive(Default, Encode, Decode, Clone)]
 pub struct RandaoConfig {
 	/// Seed lookahead.
 	pub lookahead: usize,
 }
 
 /// RANDAO producer.
-pub struct RandaoProducer<H: Hasher> {
+#[derive(Default, Encode, Decode, Clone)]
+pub struct RandaoProducer<H: Hasher> where
+	H::Out: Encode + Decode
+{
 	history: Vec<H::Out>,
 	offset: usize,
 	mix: RandaoMix<H>,
 	config: RandaoConfig,
 }
 
-impl<H: Hasher> RandaoProducer<H> {
+impl<H: Hasher> RandaoProducer<H> where
+	H::Out: Encode + Decode
+{
 	/// Mix the current value with a new reveal.
 	pub fn mix(&mut self, reveal: &H::Out) where
 		H::Out: BitXor<Output=H::Out>
@@ -89,41 +97,56 @@ impl<H: Hasher> RandaoProducer<H> {
 }
 
 /// A RANDAO mix. Combine revealed values together.
-pub struct RandaoMix<H: Hasher>(H::Out);
+#[derive(Default, Encode, Decode, Clone)]
+pub struct RandaoMix<H: Hasher> where
+	H::Out: Encode + Decode
+{
+	data: H::Out
+}
 
-impl<H: Hasher> RandaoMix<H> {
+impl<H: Hasher> RandaoMix<H> where
+	H::Out: Encode + Decode
+{
 	/// Create a new mix.
 	pub fn new(val: H::Out) -> Self {
-		RandaoMix(val)
+		RandaoMix { data: val }
 	}
 
 	/// Mix the current value with a new reveal.
 	pub fn mix(&mut self, reveal: &H::Out) where
 		H::Out: BitXor<Output=H::Out>,
 	{
-		let input = self.0 ^ *reveal;
-		self.0 = H::hash(input.as_ref());
+		let input = self.data ^ *reveal;
+		self.data = H::hash(input.as_ref());
 	}
 
 	/// Get the inner randao value.
 	pub fn get(&self) -> H::Out {
-		self.0
+		self.data
 	}
 }
 
-impl<H: Hasher> AsRef<H::Out> for RandaoMix<H> {
+impl<H: Hasher> AsRef<H::Out> for RandaoMix<H> where
+	H::Out: Encode + Decode
+{
 	fn as_ref(&self) -> &H::Out {
-		&self.0
+		&self.data
 	}
 }
 
 /// A RANDAO commitment.
-pub struct RandaoCommitment<H: Hasher>(H::Out);
+pub struct RandaoCommitment<H: Hasher> where
+	H::Out: Encode + Decode
+{
+	data: H::Out
+}
 
-impl<H: Hasher> RandaoCommitment<H> {
+impl<H: Hasher> RandaoCommitment<H> where
+	H::Out: Encode + Decode
+{
 	/// Create a new commitment.
 	pub fn new(val: H::Out) -> Self {
-		RandaoCommitment(val)
+		RandaoCommitment { data: val }
 	}
 
 	/// Reveal the commitment, with the given revealed value, and how many
@@ -134,18 +157,20 @@ impl<H: Hasher> RandaoCommitment<H> {
 			revealed = H::hash(revealed.as_ref());
 		}
 
-		if revealed != self.0 {
+		if revealed != self.data {
 			false
 		} else {
-			self.0 = *reveal;
+			self.data = *reveal;
 			true
 		}
 	}
 }
 
-impl<H: Hasher> AsRef<H::Out> for RandaoCommitment<H> {
+impl<H: Hasher> AsRef<H::Out> for RandaoCommitment<H> where
+	H::Out: Encode + Decode
+{
 	fn as_ref(&self) -> &H::Out {
-		&self.0
+		&self.data
 	}
 }
 
