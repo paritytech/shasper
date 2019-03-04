@@ -444,8 +444,12 @@ mod apis {
 				let store = Store;
 				let authorities = store.active_validators(slot);
 
-				let idx = slot % (authorities.len() as u64);
-				authorities[idx as usize]
+				let committee = storage::Committee::get();
+				let epoch_boundary = utils::epoch_to_slot(utils::slot_to_epoch(slot));
+				let current_committees = committee.current_committees_at((slot - epoch_boundary) as usize);
+				let idx = current_committees[0][0];
+
+				authorities[idx]
 			}
 
 			fn genesis_slot() -> Slot {

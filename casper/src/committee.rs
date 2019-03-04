@@ -112,25 +112,23 @@ impl<H: Hasher> CommitteeProcess<H> where
 		let len = if is_current { self.current_len } else { self.previous_len };
 		let committee_count = committee_count(len, &self.config);
 		let committee_per_slot_count = committee_count / self.config.split_count;
-		let committee_size = len / committee_count;
+		let committee_size = cmp::max(1, len / committee_count);
 
 		let mut committees = Vec::new();
 		for i in 0..committee_per_slot_count {
 			let mut committee = Vec::new();
 			for j in 0..committee_size {
 				let index = (committee_per_slot_count * offset + i) * committee_size + j;
-				if index < self.current_len {
-					committee.push(permuted_index::<H>(
-						index,
-						if is_current {
-							self.current_seed
-						} else {
-							self.previous_seed
-						}.as_ref(),
-						len,
-						self.config.round
-					));
-				}
+				committee.push(permuted_index::<H>(
+					index,
+					if is_current {
+						self.current_seed
+					} else {
+						self.previous_seed
+					}.as_ref(),
+					len,
+					self.config.round
+				));
 			}
 			committees.push(committee);
 		}
@@ -149,11 +147,15 @@ impl<H: Hasher> CommitteeProcess<H> where
 }
 
 fn permuted_index<H: Hasher>(mut index: usize, seed: &[u8], len: usize, round: usize) -> usize {
-	assert!(index < len);
+	if index >= len {
+		index = index % len;
+	}
+
+	let usize_len = 0usize.to_le_bytes().len();
 
 	for round in 0..round {
 		let pivot = to_usize(
-			hash2::<H>(seed, &round.to_le_bytes()[..1]).as_ref()
+			&hash2::<H>(seed, &round.to_le_bytes()[..1]).as_ref()[..usize_len]
 		) % len;
 		let flip = (pivot - index) % len;
 		let position = cmp::max(index, flip);
