@@ -16,10 +16,11 @@
 
 use runtime_primitives::{BuildStorage, StorageOverlay, ChildrenStorageOverlay};
 use runtime_io::twox_128;
-use primitives::{KeccakHasher, ValidatorId, Epoch, Slot, Timestamp, Balance, AttestationContext, storage::well_known_keys};
+use primitives::{H256, KeccakHasher, ValidatorId, Epoch, Slot, Timestamp, Balance, AttestationContext, storage::well_known_keys};
 use codec::{Encode, KeyedVec};
 use casper::CasperProcess;
-use casper::randao::RandaoCommitment;
+use casper::committee::{CommitteeProcess, ShuffleConfig};
+use casper::randao::{RandaoCommitment, RandaoProducer, RandaoConfig};
 use crate::{storage, consts, utils};
 use crate::state::ValidatorRecord;
 
@@ -75,6 +76,28 @@ impl BuildStorage for GenesisConfig {
 		storage.insert(
 			twox_128(b"sys:caspercontext").to_vec(),
 			CasperProcess::<AttestationContext>::new(utils::slot_to_epoch(slot)).encode()
+		);
+		storage.insert(
+			twox_128(b"sys:randao").to_vec(),
+			RandaoProducer::<KeccakHasher>::new(
+				H256::default(),
+				RandaoConfig {
+					lookahead: 1,
+				},
+			).encode()
+		);
+		storage.insert(
+			twox_128(b"sys:committee").to_vec(),
+			CommitteeProcess::<KeccakHasher>::new(
+				auth_count as usize,
+				H256::default(),
+				ShuffleConfig {
+					round: 9,
+					target_committee_len: 2,
+					shard_count: 4,
+					split_count: consts::CYCLE_LENGTH as usize,
+				},
+			).encode()
 		);
 
 

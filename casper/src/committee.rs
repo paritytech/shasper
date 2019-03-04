@@ -74,6 +74,19 @@ pub struct CommitteeProcess<H: Hasher> where
 impl<H: Hasher> CommitteeProcess<H> where
 	H::Out: Encode + Decode
 {
+	/// Create a new process.
+	pub fn new(len: usize, seed: H::Out, config: ShuffleConfig) -> Self {
+		Self {
+			current_len: len,
+			previous_len: len,
+			previous_shard_offset: 0,
+			current_shard_offset: 0,
+			current_seed: seed,
+			previous_seed: seed,
+			config,
+		}
+	}
+
 	/// Advance the epoch for the process.
 	pub fn advance_epoch(&mut self, update: ShuffleUpdate<H>) where
 		H::Out: BitXor<Output=H::Out>
