@@ -69,7 +69,7 @@ impl<H: Hasher> RandaoProducer<H> where
 
 		if update {
 			self.offset = 0;
-			self.history.truncate(self.config.lookahead + 1);
+			self.history.truncate(self.config.lookahead + 2);
 		} else {
 			self.offset += 1;
 		}
@@ -88,7 +88,7 @@ impl<H: Hasher> RandaoProducer<H> where
 	/// Create a new RANDAO producer.
 	pub fn new(val: H::Out, config: RandaoConfig) -> Self {
 		let mut history = Vec::new();
-		for _ in 0..(config.lookahead + 1) {
+		for _ in 0..(config.lookahead + 2) {
 			history.push(val);
 		}
 

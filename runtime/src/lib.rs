@@ -84,7 +84,7 @@ impl GetRuntimeBlockType for Runtime {
 #[allow(missing_docs)]
 mod apis {
 	use rstd::prelude::*;
-	use primitives::{Slot, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
+	use primitives::{H256, Slot, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
 	use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 	use runtime_primitives::{
 		ApplyResult, transaction_validity::{TransactionValidity, TransactionLongevity},
@@ -102,6 +102,7 @@ mod apis {
 	use runtime_version::RuntimeVersion;
 	use codec::Encode;
 	use client::impl_runtime_apis;
+	use casper::committee::ShuffleUpdate;
 	use casper::store::ValidatorStore;
 	use super::{Block, Runtime};
 	use crate::{
@@ -229,6 +230,18 @@ mod apis {
 
 				while last_slot < slot {
 					if last_slot % consts::CYCLE_LENGTH == 0 {
+						let mut randao = storage::Randao::get();
+						let mut committee = storage::Committee::get();
+
+						randao.advance_epoch(&H256::default(), true);
+
+						let current_seed = randao.current();
+						let previous_seed = randao.previous();
+						committee.advance_epoch(ShuffleUpdate::SeedAndLen {
+							current_seed, previous_seed,
+							len: storage::Validators::count() as usize,
+						});
+
 						let mut casper = storage::CasperContext::get();
 						let beacon_rewards = casper::reward::beacon_rewards(&store);
 						let casper_rewards = casper::reward::casper_rewards(&casper, &store);
@@ -258,9 +271,11 @@ mod apis {
 									storage::penalize_validator(&validator_id, balance)
 							}
 						}
-
 						casper.advance_epoch(&mut store);
+
 						storage::CasperContext::put(casper);
+						storage::Randao::put(randao);
+						storage::Committee::put(committee);
 					}
 					last_slot += 1;
 					storage::LastSlot::put(last_slot);
