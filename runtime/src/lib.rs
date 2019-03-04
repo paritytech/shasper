@@ -84,7 +84,7 @@ impl GetRuntimeBlockType for Runtime {
 #[allow(missing_docs)]
 mod apis {
 	use rstd::prelude::*;
-	use primitives::{Slot, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
+	use primitives::{H256, Slot, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
 	use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 	use runtime_primitives::{
 		ApplyResult, transaction_validity::{TransactionValidity, TransactionLongevity},
@@ -102,6 +102,7 @@ mod apis {
 	use runtime_version::RuntimeVersion;
 	use codec::Encode;
 	use client::impl_runtime_apis;
+	use casper::committee::ShuffleUpdate;
 	use casper::store::ValidatorStore;
 	use super::{Block, Runtime};
 	use crate::{
@@ -229,6 +230,18 @@ mod apis {
 
 				while last_slot < slot {
 					if last_slot % consts::CYCLE_LENGTH == 0 {
+						let mut randao = storage::Randao::get();
+						let mut committee = storage::Committee::get();
+
+						randao.advance_epoch(&H256::default(), true);
+
+						let current_seed = randao.current();
+						let previous_seed = randao.previous();
+						committee.advance_epoch(ShuffleUpdate::SeedAndLen {
+							current_seed, previous_seed,
+							len: storage::Validators::count() as usize,
+						});
+
 						let mut casper = storage::CasperContext::get();
 						let beacon_rewards = casper::reward::beacon_rewards(&store);
 						let casper_rewards = casper::reward::casper_rewards(&casper, &store);
@@ -258,9 +271,11 @@ mod apis {
 									storage::penalize_validator(&validator_id, balance)
 							}
 						}
-
 						casper.advance_epoch(&mut store);
+
 						storage::CasperContext::put(casper);
+						storage::Randao::put(randao);
+						storage::Committee::put(committee);
 					}
 					last_slot += 1;
 					storage::LastSlot::put(last_slot);
@@ -429,8 +444,12 @@ mod apis {
 				let store = Store;
 				let authorities = store.active_validators(slot);
 
-				let idx = slot % (authorities.len() as u64);
-				authorities[idx as usize]
+				let committee = storage::Committee::get();
+				let epoch_boundary = utils::epoch_to_slot(utils::slot_to_epoch(slot));
+				let current_committees = committee.current_committees_at((slot - epoch_boundary) as usize);
+				let idx = current_committees[0][0];
+
+				authorities[idx]
 			}
 
 			fn genesis_slot() -> Slot {
@@ -450,6 +469,35 @@ mod apis {
 					}
 				}
 				None
+			}
+
+			fn attesting_slot(validator_id: ValidatorId) -> Slot {
+				let mut validator_index = None;
+
+				for (i, record) in storage::Validators::items().into_iter().enumerate() {
+					if let Some(record) = record {
+						if record.validator_id == validator_id {
+							validator_index = Some(i);
+						}
+					}
+				}
+
+				let validator_index = validator_index.expect("Validator must exist");
+
+				let committee = storage::Committee::get();
+				let current_slot = storage::Slot::get();
+				let epoch_boundary = utils::epoch_to_slot(utils::slot_to_epoch(current_slot));
+
+				for slot in epoch_boundary..(epoch_boundary + consts::CYCLE_LENGTH) {
+					let current_committees = committee.current_committees_at((slot - epoch_boundary) as usize);
+					for committee in current_committees {
+						if committee.contains(&validator_index) {
+							return slot;
+						}
+					}
+				}
+
+				panic!("Validator exists, but was not found in any committee");
 			}
 		}
 	}

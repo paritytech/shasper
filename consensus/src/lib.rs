@@ -376,66 +376,77 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 					return Box::new(future::ok(()));
 				},
 			};
+			let attesting_slot = match self.client.runtime_api().attesting_slot(&BlockId::Hash(chain_head.hash()), validator_id) {
+				Ok(slot) => slot,
+				Err(_) => {
+					warn!("Unable to get current slot");
+					return Box::new(future::ok(()));
+				},
+			};
 
 			if let Some(validator_index) = validator_index {
-				let justified_epoch = match self.client.runtime_api().justified_epoch(&BlockId::Hash(chain_head.hash())) {
-					Ok(v) => v,
-					Err(e) => {
-						warn!("Fetching justified epoch failed: {:?}", e);
-						return Box::new(future::ok(()));
-					},
-				};
-				let justified_header = match find_slot_header(
-					self.client.as_ref(), self.client.as_ref(),
-					runtime::utils::epoch_to_slot(justified_epoch),
-					&BlockId::Hash(chain_head.hash())
-				) {
-					Ok(Some(v)) => v,
-					Ok(None) => {
-						warn!("Fetching justified header failed: header does not exist");
-						return Box::new(future::ok(()));
-					},
-					Err(e) => {
-						warn!("Fetching justified header failed: {:?}", e);
-						return Box::new(future::ok(()));
-					},
-				};
-				let target_header = match find_slot_header(
-					self.client.as_ref(), self.client.as_ref(),
-					runtime::utils::epoch_to_slot(current_epoch),
-					&BlockId::Hash(chain_head.hash())
-				) {
-					Ok(Some(v)) => v,
-					Ok(None) => {
-						warn!("Fetching current header failed: header does not exist");
-						return Box::new(future::ok(()));
-					},
-					Err(e) => {
-						warn!("Fetching current header failed: {:?}", e);
-						return Box::new(future::ok(()));
-					},
-				};
+				if attesting_slot == current_slot {
+					let justified_epoch = match self.client.runtime_api().justified_epoch(&BlockId::Hash(chain_head.hash())) {
+						Ok(v) => v,
+						Err(e) => {
+							warn!("Fetching justified epoch failed: {:?}", e);
+							return Box::new(future::ok(()));
+						},
+					};
+					let justified_header = match find_slot_header(
+						self.client.as_ref(), self.client.as_ref(),
+						runtime::utils::epoch_to_slot(justified_epoch),
+						&BlockId::Hash(chain_head.hash())
+					) {
+						Ok(Some(v)) => v,
+						Ok(None) => {
+							warn!("Fetching justified header failed: header does not exist");
+							return Box::new(future::ok(()));
+						},
+						Err(e) => {
+							warn!("Fetching justified header failed: {:?}", e);
+							return Box::new(future::ok(()));
+						},
+					};
+					let target_header = match find_slot_header(
+						self.client.as_ref(), self.client.as_ref(),
+						runtime::utils::epoch_to_slot(current_epoch),
+						&BlockId::Hash(chain_head.hash())
+					) {
+						Ok(Some(v)) => v,
+						Ok(None) => {
+							warn!("Fetching current header failed: header does not exist");
+							return Box::new(future::ok(()));
+						},
+						Err(e) => {
+							warn!("Fetching current header failed: {:?}", e);
+							return Box::new(future::ok(()));
+						},
+					};
 
-				let unsigned = UnsignedAttestation {
-					slot: current_slot,
-					slot_block_hash: chain_head.hash(),
-					source_epoch: justified_epoch,
-					source_epoch_block_hash: justified_header.hash(),
-					target_epoch: current_epoch,
-					target_epoch_block_hash: target_header.hash(),
-					validator_indexes: vec![validator_index],
-				};
-				let signed = unsigned.sign_with(&[&self.local_key.secret]);
+					let unsigned = UnsignedAttestation {
+						slot: current_slot,
+						slot_block_hash: chain_head.hash(),
+						source_epoch: justified_epoch,
+						source_epoch_block_hash: justified_header.hash(),
+						target_epoch: current_epoch,
+						target_epoch_block_hash: target_header.hash(),
+						validator_indexes: vec![validator_index],
+					};
+					let signed = unsigned.sign_with(&[&self.local_key.secret]);
 
-				debug!(target: "shasper", "Signed attestation: {:?}", signed);
-				if let Err(e) = self.pool.submit_one(&BlockId::Hash(chain_head.hash()), UncheckedExtrinsic::Attestation(signed)) {
-					warn!("Submitting attestation failed: {:?}", e);
-					return Box::new(future::ok(()));
+					debug!(target: "shasper", "Signed attestation: {:?}", signed);
+					if let Err(e) = self.pool.submit_one(&BlockId::Hash(chain_head.hash()), UncheckedExtrinsic::Attestation(signed)) {
+						warn!("Submitting attestation failed: {:?}", e);
+						return Box::new(future::ok(()));
+					}
+					debug!(target: "shasper", "Submitted the attestation to transaction pool");
+
+					*self.last_proposed_epoch.lock() = current_epoch;
+					debug!(target: "shasper", "Successfully submitted attestation for current epoch");
+				} else {
+					debug!(target: "shasper", "Attesting slot is not current slot");
 				}
-				debug!(target: "shasper", "Submitted the attestation to transaction pool");
-
-				*self.last_proposed_epoch.lock() = current_epoch;
-				debug!(target: "shasper", "Successfully submitted attestation for current epoch");
 			} else {
 				debug!(target: "shasper", "Given public key {} is not in the validator set", validator_id);
 			}

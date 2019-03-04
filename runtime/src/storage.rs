@@ -21,7 +21,7 @@ use primitives::{
 use runtime_support::storage_items;
 use runtime_support::storage::{StorageValue, StorageMap};
 use runtime_support::storage::unhashed::{self, StorageVec};
-use casper::randao;
+use casper::{randao, committee};
 use crate::state::ValidatorRecord;
 use crate::{UncheckedExtrinsic, utils};
 
@@ -35,6 +35,7 @@ storage_items! {
 	pub GenesisSlot: b"sys:genesisslot" => default primitives::Slot;
 	pub LatestBlockHashes: b"sys:latestblockhashes" => map [primitives::Slot => Hash];
 	pub Randao: b"sys:randao" => default randao::RandaoProducer<KeccakHasher>;
+	pub Committee: b"sys:committee" => default committee::CommitteeProcess<KeccakHasher>;
 }
 
 pub struct UncheckedExtrinsics;
