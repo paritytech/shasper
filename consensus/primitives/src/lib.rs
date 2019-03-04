@@ -134,7 +134,6 @@ impl ProvideInherentData for TimestampInherentDataProvider {
 #[cfg(feature = "std")]
 pub mod utils {
 	use std::time::Duration;
-	use primitives::ValidatorId;
 
 	pub fn timestamp_now() -> Option<Duration> {
 		use std::time::SystemTime;
@@ -158,21 +157,6 @@ pub mod utils {
 		let remaining_full_secs = slot_duration - (now.as_secs() % slot_duration) - 1;
 		let remaining_nanos = 1_000_000_000 - now.subsec_nanos();
 		Duration::new(remaining_full_secs, remaining_nanos)
-	}
-
-	/// Get slot author for given block along with authorities.
-	pub fn slot_author(slot_num: u64, authorities: &[ValidatorId]) -> Option<ValidatorId> {
-		if authorities.is_empty() { return None }
-
-		let idx = slot_num % (authorities.len() as u64);
-		assert!(idx <= usize::max_value() as u64,
-				"It is impossible to have a vector with length beyond the address space; qed");
-
-		let current_author = *authorities.get(idx as usize)
-			.expect("authorities not empty; index constrained to list length;\
-					 this is a valid index; qed");
-
-		Some(current_author)
 	}
 }
 
@@ -210,6 +194,9 @@ pub mod api {
 
 			/// Return the genesis slot.
 			fn genesis_slot() -> Slot;
+
+			/// Get the proposer id at slot.
+			fn proposer(slot: Slot) -> ValidatorId;
 
 			/// Check an attestation.
 			fn check_attestation(unchecked: UncheckedAttestation) -> Option<CheckedAttestation>;

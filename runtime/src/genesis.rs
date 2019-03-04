@@ -16,9 +16,10 @@
 
 use runtime_primitives::{BuildStorage, StorageOverlay, ChildrenStorageOverlay};
 use runtime_io::twox_128;
-use primitives::{ValidatorId, Epoch, Slot, Timestamp, Balance, AttestationContext, storage::well_known_keys};
+use primitives::{KeccakHasher, ValidatorId, Epoch, Slot, Timestamp, Balance, AttestationContext, storage::well_known_keys};
 use codec::{Encode, KeyedVec};
 use casper::CasperProcess;
+use casper::randao::RandaoCommitment;
 use crate::{storage, consts, utils};
 use crate::state::ValidatorRecord;
 
@@ -28,7 +29,7 @@ use serde_derive::{Serialize, Deserialize};
 /// Shasper genesis config.
 pub struct GenesisConfig {
 	/// Initial validator set.
-	pub authorities: Vec<(ValidatorId, Balance)>,
+	pub authorities: Vec<(ValidatorId, Balance, RandaoCommitment<KeccakHasher>)>,
 	/// Code being set as `:code`.
 	pub code: Vec<u8>,
 	/// Genesis timestamp.
@@ -42,12 +43,13 @@ impl BuildStorage for GenesisConfig {
 		storage.insert(well_known_keys::CODE.to_vec(), self.code.clone());
 
 		let auth_count = self.authorities.len() as u32;
-		self.authorities.iter().enumerate().for_each(|(i, (v, b))| {
+		self.authorities.iter().enumerate().for_each(|(i, (v, b, r))| {
 			let record = ValidatorRecord {
 				valid_from: 0,
 				valid_to: Epoch::max_value(),
 				balance: *b,
 				validator_id: *v,
+				randao_commitment: r.clone(),
 			};
 
 			storage.insert((i as u32).to_keyed_vec(storage::VALIDATORS_PREFIX), Some(record).encode());

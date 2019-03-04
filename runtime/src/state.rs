@@ -1,11 +1,12 @@
 use rstd::prelude::*;
-use primitives::{Epoch, Balance, ValidatorId, UncheckedAttestation, CheckedAttestation, AttestationContext};
+use primitives::{Epoch, Balance, ValidatorId, UncheckedAttestation, CheckedAttestation, AttestationContext, KeccakHasher};
 use crypto::bls;
 use runtime_support::storage::{StorageValue, StorageMap};
 use runtime_support::storage::unhashed::StorageVec;
 use codec::Encode;
 use codec_derive::{Encode, Decode};
 use casper::store::{ValidatorStore, PendingAttestationsStore, BlockStore};
+use casper::randao::RandaoCommitment;
 use crate::{storage, utils};
 
 #[derive(Encode, Decode, PartialEq, Eq, Clone)]
@@ -14,6 +15,7 @@ pub struct ValidatorRecord {
 	pub valid_to: Epoch,
 	pub balance: Balance,
 	pub validator_id: ValidatorId,
+	pub randao_commitment: RandaoCommitment<KeccakHasher>,
 }
 
 pub struct Store;

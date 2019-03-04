@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{Timestamp, ValidatorId};
+use primitives::{H256, Timestamp, ValidatorId, KeccakHasher};
+use casper::randao::{RandaoOnion, RandaoCommitment};
 use runtime::GenesisConfig;
 use crypto::bls;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -52,7 +53,7 @@ impl Alternative {
 
 					testnet_genesis(
 						vec![
-							alice_id
+							(alice_id, RandaoOnion::generate(H256::default(), 1000).commitment())
 						],
 						SystemTime::now().duration_since(UNIX_EPOCH)
 							.expect("Time cannot go backward; qed").as_secs(),
@@ -79,8 +80,8 @@ impl Alternative {
 
 					testnet_genesis(
 						vec![
-							alice_id,
-							bob_id,
+							(alice_id, RandaoOnion::generate(H256::default(), 1000).commitment()),
+							(bob_id, RandaoOnion::generate(H256::default(), 1000).commitment()),
 						],
 						SystemTime::now().duration_since(UNIX_EPOCH)
 							.expect("Time cannot go backward; qed").as_secs(),
@@ -103,8 +104,8 @@ impl Alternative {
 
 					testnet_genesis(
 						vec![
-							alice_id,
-							bob_id,
+							(alice_id, RandaoOnion::generate(H256::default(), 1000).commitment()),
+							(bob_id, RandaoOnion::generate(H256::default(), 1000).commitment()),
 						],
 						1551106067,
 					)
@@ -128,10 +129,10 @@ impl Alternative {
 	}
 }
 
-fn testnet_genesis(initial_authorities: Vec<ValidatorId>, timestamp: Timestamp) -> GenesisConfig {
+fn testnet_genesis(initial_authorities: Vec<(ValidatorId, RandaoCommitment<KeccakHasher>)>, timestamp: Timestamp) -> GenesisConfig {
 	GenesisConfig {
 		code: include_bytes!("../runtime/wasm/target/wasm32-unknown-unknown/release/shasper_runtime.compact.wasm").to_vec(),
-		authorities: initial_authorities.into_iter().map(|v| (v, 1000000)).collect(),
+		authorities: initial_authorities.into_iter().map(|(v, r)| (v, 1000000, r)).collect(),
 		timestamp,
 	}
 }

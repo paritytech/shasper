@@ -28,6 +28,8 @@ use codec::{Encode, Decode};
 use codec_derive::{Encode, Decode};
 #[cfg(feature = "std")]
 use std::path::Path;
+#[cfg(feature = "std")]
+use serde_derive::{Serialize, Deserialize};
 use crate::utils::hash2;
 
 /// RANDAO config.
@@ -137,6 +139,8 @@ impl<H: Hasher> AsRef<H::Out> for RandaoMix<H> where
 }
 
 /// A RANDAO commitment.
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct RandaoCommitment<H: Hasher> where
 	H::Out: Encode + Decode
 {
@@ -197,6 +201,13 @@ impl<H: Hasher> RandaoOnion<H> {
 	/// Get a value from the union.
 	pub fn at(&self, slot: usize) -> H::Out {
 		self.data[self.data.len() - 1 - slot]
+	}
+
+	/// Get the commitment of this onion.
+	pub fn commitment(&self) -> RandaoCommitment<H> where
+		H::Out: Encode + Decode
+	{
+		RandaoCommitment::new(self.data.last().expect("Seed is pushed; data at least has one item; qed").clone())
 	}
 
 	/// Save the onion to a file.

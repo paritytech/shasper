@@ -441,31 +441,36 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 			}
 		}
 
-		let proposal_work = match utils::slot_author(slot_num, &authorities) {
-			None => return Box::new(future::ok(())),
-			Some(author) => if author == ValidatorId::from_public(public_key.clone()) {
-				debug!(target: "aura", "Starting authorship at slot {}; timestamp = {}",
-					   slot_num, timestamp);
-
-				// we are the slot author. make a block and sign it.
-				let proposer = match self.env.init(&chain_head, &authorities) {
-					Ok(p) => p,
-					Err(e) => {
-						warn!("Unable to author block in slot {:?}: {:?}", slot_num, e);
-						return Box::new(future::ok(()))
-					}
-				};
-
-				let remaining_duration = slot_info.remaining_duration();
-				// deadline our production to approx. the end of the
-				// slot
-				Timeout::new(
-					proposer.propose(slot_info.inherent_data, remaining_duration).into_future(),
-					utils::time_until_next(Duration::from_secs(timestamp), slot_duration),
-				)
-			} else {
+		let proposer = match self.client.runtime_api().proposer(&BlockId::Hash(chain_head.hash()), slot_num) {
+			Ok(proposer) => proposer,
+			Err(_) => {
+				warn!("Unable to get proposer");
 				return Box::new(future::ok(()));
-			}
+			},
+		};
+
+		let proposal_work = if proposer == ValidatorId::from_public(public_key.clone()) {
+			debug!(target: "aura", "Starting authorship at slot {}; timestamp = {}",
+				   slot_num, timestamp);
+
+			// we are the slot author. make a block and sign it.
+			let proposer = match self.env.init(&chain_head, &authorities) {
+				Ok(p) => p,
+				Err(e) => {
+					warn!("Unable to author block in slot {:?}: {:?}", slot_num, e);
+					return Box::new(future::ok(()))
+				}
+			};
+
+			let remaining_duration = slot_info.remaining_duration();
+			// deadline our production to approx. the end of the
+			// slot
+			Timeout::new(
+				proposer.propose(slot_info.inherent_data, remaining_duration).into_future(),
+				utils::time_until_next(Duration::from_secs(timestamp), slot_duration),
+			)
+		} else {
+			return Box::new(future::ok(()));
 		};
 
 		let block_import = self.block_import.clone();
@@ -507,51 +512,6 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 	}
 }
 
-/// check a header has been signed by the right key. If the slot is too far in the future, an error will be returned.
-/// if it's successful, returns the pre-header, the slot number, and the signat.
-//
-// FIXME: needs misbehavior types - https://github.com/paritytech/substrate/issues/1018
-fn check_header<B: Block>(slot_now: u64, mut header: B::Header, hash: B::Hash, authorities: &[ValidatorId]) -> Result<CheckedHeader<B::Header, bls::Signature>, String>
-	where DigestItemFor<B>: CompatibleDigestItem
-{
-	let digest_item = match header.digest_mut().pop() {
-		Some(x) => x,
-		None => return Err(format!("Header {:?} is unsealed", hash)),
-	};
-	let (slot_num, sig) = match digest_item.as_shasper_seal() {
-		Some(x) => x,
-		None => return Err(format!("Header {:?} is unsealed", hash)),
-	};
-
-	if slot_num > slot_now {
-		header.digest_mut().push(digest_item);
-		Ok(CheckedHeader::Deferred(header, slot_num))
-	} else {
-		// check the signature is valid under the expected authority and
-		// chain state.
-
-		let expected_author = match utils::slot_author(slot_num, &authorities) {
-			None => return Err("Slot Author not found".to_string()),
-			Some(author) => author
-		};
-
-		let pre_hash = header.hash();
-		let to_sign = (slot_num, pre_hash).encode();
-		let public = if let Some(public) = expected_author.into_public() {
-			public
-		} else {
-			return Err("Bad public key for header author".to_string())
-		};
-
-
-		if public.verify(&to_sign[..], &sig) {
-			Ok(CheckedHeader::Checked(header, slot_num, sig))
-		} else {
-			Err(format!("Bad signature on {:?}", hash))
-		}
-	}
-}
-
 /// A verifier for Aura blocks.
 pub struct ShasperVerifier<C> {
 	client: Arc<C>,
@@ -588,23 +548,49 @@ impl<B: Block<Hash=H256>, C> Verifier<B> for ShasperVerifier<C> where
 	fn verify(
 		&self,
 		origin: BlockOrigin,
-		header: B::Header,
+		mut header: B::Header,
 		justification: Option<Justification>,
 		mut body: Option<Vec<B::Extrinsic>>,
 	) -> Result<(ImportBlock<B>, Option<Vec<ValidatorId>>), String> {
 		let mut inherent_data = self.inherent_data_providers.create_inherent_data().map_err(String::from)?;
 		let slot_now = ShasperSlotCompatible::extract_timestamp_and_slot(&inherent_data)
-			.map(|v| v.1)
+			.map(|v| v.1 + 1)
 			.map_err(|e| format!("Could not extract timestamp and slot: {:?}", e))?;
 		let hash = header.hash();
 		let parent_hash = *header.parent_hash();
-		let authorities = self.client.authorities(&BlockId::Hash(parent_hash))
-			.map_err(|e| format!("Could not fetch authorities at {:?}: {:?}", parent_hash, e))?;
+		let digest_item = match header.digest_mut().pop() {
+			Some(x) => x,
+			None => return Err(format!("Header {:?} is unsealed", hash)),
+		};
+		let (slot_num, sig) = match digest_item.as_shasper_seal() {
+			Some(x) => x,
+			None => return Err(format!("Header {:?} is unsealed", hash)),
+		};
+		let proposer = self.client.runtime_api().proposer(&BlockId::Hash(parent_hash), slot_num)
+			.map_err(|e| format!("Could not fetch proposer at {:?}: {:?}", parent_hash, e))?;
+
+		let checked_header = if slot_num > slot_now {
+			header.digest_mut().push(digest_item);
+			CheckedHeader::Deferred(header, slot_num)
+		} else {
+			let pre_hash = header.hash();
+			let to_sign = (slot_num, pre_hash).encode();
+			let public = if let Some(public) = proposer.into_public() {
+				public
+			} else {
+				return Err("Bad public key for header author".to_string())
+			};
+
+			if public.verify(&to_sign[..], &sig) {
+				CheckedHeader::Checked(header, slot_num, sig)
+			} else {
+				return Err(format!("Bad signature on {:?}", hash))
+			}
+		};
 
 		// we add one to allow for some small drift.
 		// FIXME: in the future, alter this queue to allow deferring of headers
 		// https://github.com/paritytech/substrate/issues/1019
-		let checked_header = check_header::<B>(slot_now + 1, header, hash, &authorities[..])?;
 		match checked_header {
 			CheckedHeader::Checked(pre_header, slot_num, sig) => {
 				let item = <DigestItemFor<B>>::shasper_seal(slot_num, sig);

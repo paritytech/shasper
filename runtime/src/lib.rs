@@ -179,8 +179,27 @@ mod apis {
 					UncheckedExtrinsic::Randao(reveal)
 						if extrinsic_index == consts::RANDAO_INHERENT_EXTRINSIC_INDEX =>
 					{
+						let store = Store;
+						let last_slot = storage::LastSlot::get();
+						let slot = storage::Slot::get();
+
+						let authorities = store.active_validators(slot);
+						let idx = slot % (authorities.len() as u64);
+						let proposer = authorities[idx as usize];
+
 						let mut randao = storage::Randao::get();
 						randao.mix(&reveal);
+
+						let mut validators = storage::Validators::items();
+						for record in &mut validators  {
+							if let Some(record) = record.as_mut() {
+								if record.validator_id == proposer {
+									assert!(record.randao_commitment.reveal(&reveal, (slot - last_slot) as usize));
+								}
+							}
+						}
+						storage::Validators::set_items(validators);
+
 						storage::Randao::put(randao);
 					},
 					UncheckedExtrinsic::Attestation(ref attestation)
@@ -404,6 +423,14 @@ mod apis {
 
 			fn slot() -> Slot {
 				storage::Slot::get()
+			}
+
+			fn proposer(slot: Slot) -> ValidatorId {
+				let store = Store;
+				let authorities = store.active_validators(slot);
+
+				let idx = slot % (authorities.len() as u64);
+				authorities[idx as usize]
 			}
 
 			fn genesis_slot() -> Slot {
