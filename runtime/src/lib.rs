@@ -470,6 +470,35 @@ mod apis {
 				}
 				None
 			}
+
+			fn attesting_slot(validator_id: ValidatorId) -> Slot {
+				let mut validator_index = None;
+
+				for (i, record) in storage::Validators::items().into_iter().enumerate() {
+					if let Some(record) = record {
+						if record.validator_id == validator_id {
+							validator_index = Some(i);
+						}
+					}
+				}
+
+				let validator_index = validator_index.expect("Validator must exist");
+
+				let committee = storage::Committee::get();
+				let current_slot = storage::Slot::get();
+				let epoch_boundary = utils::epoch_to_slot(utils::slot_to_epoch(current_slot));
+
+				for slot in epoch_boundary..(epoch_boundary + consts::CYCLE_LENGTH) {
+					let current_committees = committee.current_committees_at((slot - epoch_boundary) as usize);
+					for committee in current_committees {
+						if committee.contains(&validator_index) {
+							return slot;
+						}
+					}
+				}
+
+				panic!("Validator exists, but was not found in any committee");
+			}
 		}
 	}
 }
