@@ -137,6 +137,7 @@ impl<H: Hasher> AsRef<H::Out> for RandaoMix<H> where
 }
 
 /// A RANDAO commitment.
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 pub struct RandaoCommitment<H: Hasher> where
 	H::Out: Encode + Decode
 {

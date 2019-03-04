@@ -406,6 +406,14 @@ mod apis {
 				storage::Slot::get()
 			}
 
+			fn proposer(slot: Slot) -> ValidatorId {
+				let store = Store;
+				let authorities = store.active_validators(slot);
+
+				let idx = slot % (authorities.len() as u64);
+				authorities[idx as usize]
+			}
+
 			fn genesis_slot() -> Slot {
 				storage::GenesisSlot::get()
 			}

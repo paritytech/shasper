@@ -16,9 +16,10 @@
 
 use runtime_primitives::{BuildStorage, StorageOverlay, ChildrenStorageOverlay};
 use runtime_io::twox_128;
-use primitives::{ValidatorId, Epoch, Slot, Timestamp, Balance, AttestationContext, storage::well_known_keys};
+use primitives::{H256, ValidatorId, Epoch, Slot, Timestamp, Balance, AttestationContext, storage::well_known_keys};
 use codec::{Encode, KeyedVec};
 use casper::CasperProcess;
+use casper::randao::RandaoCommitment;
 use crate::{storage, consts, utils};
 use crate::state::ValidatorRecord;
 
@@ -48,6 +49,7 @@ impl BuildStorage for GenesisConfig {
 				valid_to: Epoch::max_value(),
 				balance: *b,
 				validator_id: *v,
+				randao_commitment: RandaoCommitment::new(H256::default()),
 			};
 
 			storage.insert((i as u32).to_keyed_vec(storage::VALIDATORS_PREFIX), Some(record).encode());
