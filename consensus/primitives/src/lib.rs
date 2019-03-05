@@ -127,6 +127,7 @@ impl ProvideInherentData for TimestampInherentDataProvider {
 	}
 }
 
+#[cfg(feature = "std")]
 pub fn extract_timestamp_and_slot(
 	data: &inherents::InherentData
 ) -> Result<(u64, u64), RuntimeString> {
