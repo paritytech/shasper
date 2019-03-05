@@ -157,7 +157,7 @@ fn permuted_index<H: Hasher>(mut index: usize, seed: &[u8], len: usize, round: u
 		let pivot = to_usize(
 			&hash2::<H>(seed, &round.to_le_bytes()[..1]).as_ref()[..usize_len]
 		) % len;
-		let flip = (pivot - index) % len;
+		let flip = if pivot > index { pivot - index } else { index - pivot } % len;
 		let position = cmp::max(index, flip);
 		let source = hash3::<H>(
 			seed,
