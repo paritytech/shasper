@@ -1,5 +1,5 @@
 use rstd::prelude::*;
-use primitives::{Epoch, Balance, ValidatorId, UncheckedAttestation, CheckedAttestation, AttestationContext, KeccakHasher};
+use primitives::{Slot, Epoch, Balance, ValidatorId, UncheckedAttestation, CheckedAttestation, AttestationContext, KeccakHasher};
 use crypto::bls;
 use runtime_support::storage::{StorageValue, StorageMap};
 use runtime_support::storage::unhashed::StorageVec;
@@ -16,6 +16,7 @@ pub struct ValidatorRecord {
 	pub balance: Balance,
 	pub validator_id: ValidatorId,
 	pub randao_commitment: RandaoCommitment<KeccakHasher>,
+	pub randao_last_reveal_slot: Slot,
 }
 
 pub struct Store;

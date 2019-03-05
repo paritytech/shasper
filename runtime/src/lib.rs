@@ -181,7 +181,6 @@ mod apis {
 						if extrinsic_index == consts::RANDAO_INHERENT_EXTRINSIC_INDEX =>
 					{
 						let store = Store;
-						let last_slot = storage::LastSlot::get();
 						let slot = storage::Slot::get();
 
 						let authorities = store.active_validators(slot);
@@ -198,7 +197,8 @@ mod apis {
 						for record in &mut validators  {
 							if let Some(record) = record.as_mut() {
 								if record.validator_id == proposer {
-									assert!(record.randao_commitment.reveal(&reveal, (slot - last_slot) as usize));
+									assert!(record.randao_commitment.reveal(&reveal, (slot - record.randao_last_reveal_slot) as usize));
+									record.randao_last_reveal_slot = slot;
 								}
 							}
 						}
