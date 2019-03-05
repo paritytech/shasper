@@ -101,7 +101,7 @@ construct_service_factory! {
 						service.network(),
 						service.transaction_pool(),
 						service.on_exit(),
-						Arc::new(RandaoOnion::generate(H256::default(), 1000)),
+						Arc::new(RandaoOnion::generate(H256::default(), 50000)),
 						service.config.custom.inherent_data_providers.clone(),
 					)?);
 				}

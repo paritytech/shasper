@@ -53,7 +53,7 @@ impl Alternative {
 
 					testnet_genesis(
 						vec![
-							(alice_id, RandaoOnion::generate(H256::default(), 1000).commitment())
+							(alice_id, RandaoOnion::generate(H256::default(), 50000).commitment())
 						],
 						SystemTime::now().duration_since(UNIX_EPOCH)
 							.expect("Time cannot go backward; qed").as_secs(),
@@ -80,11 +80,10 @@ impl Alternative {
 
 					testnet_genesis(
 						vec![
-							(alice_id, RandaoOnion::generate(H256::default(), 1000).commitment()),
-							(bob_id, RandaoOnion::generate(H256::default(), 1000).commitment()),
+							(alice_id, RandaoOnion::generate(H256::default(), 50000).commitment()),
+							(bob_id, RandaoOnion::generate(H256::default(), 50000).commitment()),
 						],
-						SystemTime::now().duration_since(UNIX_EPOCH)
-							.expect("Time cannot go backward; qed").as_secs(),
+						1551797311,
 					)
 				},
 				vec![],
@@ -104,10 +103,10 @@ impl Alternative {
 
 					testnet_genesis(
 						vec![
-							(alice_id, RandaoOnion::generate(H256::default(), 1000).commitment()),
-							(bob_id, RandaoOnion::generate(H256::default(), 1000).commitment()),
+							(alice_id, RandaoOnion::generate(H256::default(), 50000).commitment()),
+							(bob_id, RandaoOnion::generate(H256::default(), 50000).commitment()),
 						],
-						1551106067,
+						1551805601,
 					)
 				},
 				vec![],

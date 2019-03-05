@@ -41,6 +41,11 @@ impl BuildStorage for GenesisConfig {
 	fn build_storage(self) -> Result<(StorageOverlay, ChildrenStorageOverlay), String> {
 		let mut storage = StorageOverlay::default();
 
+		let slot = {
+			let ret = self.timestamp / consts::SLOT_DURATION as Slot;
+			(ret / consts::CYCLE_LENGTH) * consts::CYCLE_LENGTH
+		};
+
 		storage.insert(well_known_keys::CODE.to_vec(), self.code.clone());
 
 		let auth_count = self.authorities.len() as u32;
@@ -51,16 +56,13 @@ impl BuildStorage for GenesisConfig {
 				balance: *b,
 				validator_id: *v,
 				randao_commitment: r.clone(),
+				randao_last_reveal_slot: slot,
 			};
 
 			storage.insert((i as u32).to_keyed_vec(storage::VALIDATORS_PREFIX), Some(record).encode());
 		});
 		storage.insert(b"len".to_keyed_vec(storage::VALIDATORS_PREFIX), auth_count.encode());
 
-		let slot = {
-			let ret = self.timestamp / consts::SLOT_DURATION as Slot;
-			(ret / consts::CYCLE_LENGTH) * consts::CYCLE_LENGTH
-		};
 		storage.insert(
 			twox_128(b"sys:genesisslot").to_vec(),
 			slot.encode()

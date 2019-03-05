@@ -53,16 +53,15 @@ pub struct TimestampInherentData {
 /// Consensus inherent data provider.
 #[cfg(feature = "std")]
 pub struct RandaoInherentDataProvider {
-	slot_duration: u64,
 	start_slot: Slot,
 	randao_onion: Arc<RandaoOnion<KeccakHasher>>,
 }
 
 #[cfg(feature = "std")]
 impl RandaoInherentDataProvider {
-	pub fn new(slot_duration: u64, start_slot: Slot, randao_onion: Arc<RandaoOnion<KeccakHasher>>) -> Self {
+	pub fn new(start_slot: Slot, randao_onion: Arc<RandaoOnion<KeccakHasher>>) -> Self {
 		Self {
-			slot_duration, start_slot, randao_onion
+			start_slot, randao_onion
 		}
 	}
 }
@@ -77,10 +76,7 @@ impl ProvideInherentData for RandaoInherentDataProvider {
 		&self,
 		inherent_data: &mut inherents::InherentData,
 	) -> Result<(), RuntimeString> {
-		let (_, slot) = match utils::timestamp_and_slot_now(self.slot_duration) {
-			Some(data) => data,
-			None => return Err("Timestamp generation failed".into()),
-		};
+		let slot = extract_timestamp_and_slot(inherent_data)?.1;
 		let randao_reveal = self.randao_onion.at((slot - self.start_slot) as usize);
 		inherent_data.put_data(RANDAO_INHERENT_IDENTIFIER, &RandaoInherentData {
 			randao_reveal,
@@ -128,6 +124,18 @@ impl ProvideInherentData for TimestampInherentDataProvider {
 
 	fn error_to_string(&self, _error: &[u8]) -> Option<String> {
 		None
+	}
+}
+
+#[cfg(feature = "std")]
+pub fn extract_timestamp_and_slot(
+	data: &inherents::InherentData
+) -> Result<(u64, u64), RuntimeString> {
+	match data.get_data::<TimestampInherentData>(
+		&TIMESTAMP_INHERENT_IDENTIFIER
+	) {
+		Ok(Some(data)) => Ok((data.timestamp, data.slot)),
+		_ => Err("Decode inherent failed".into()),
 	}
 }
 

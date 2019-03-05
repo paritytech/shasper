@@ -63,7 +63,7 @@ pub trait BalanceContext: Eq + PartialEq + Clone {
 	/// Attestation of this context.
 	type Attestation: Attestation;
 	/// Balance of this context.
-	type Balance: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Balance> + AddAssign + Sub<Output=Self::Balance> + SubAssign + Mul<Output=Self::Balance> + Div<Output=Self::Balance> + From<u8>;
+	type Balance: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Balance> + AddAssign + Sub<Output=Self::Balance> + SubAssign + Mul<Output=Self::Balance> + Div<Output=Self::Balance> + From<u8> + One + Zero;
 }
 
 /// Context with slot, suitable for collecting attestations across multiple blocks.

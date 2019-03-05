@@ -135,7 +135,7 @@ pub fn register_shasper_inherent_data_provider(
 	if !inherent_data_providers.has_provider(&consensus_primitives::RANDAO_INHERENT_IDENTIFIER) {
 		inherent_data_providers
 			.register_provider(consensus_primitives::RandaoInherentDataProvider::new(
-				slot_duration, start_slot, randao_onion
+				start_slot, randao_onion
 			))
 			.map_err(inherent_to_common_error)
 	} else {
@@ -205,12 +205,8 @@ impl SlotCompatible for ShasperSlotCompatible {
 	fn extract_timestamp_and_slot(
 		data: &inherents::InherentData
 	) -> Result<(u64, u64), consensus_common::Error> {
-		match data.get_data::<consensus_primitives::TimestampInherentData>(
-			&consensus_primitives::TIMESTAMP_INHERENT_IDENTIFIER
-		) {
-			Ok(Some(data)) => Ok((data.timestamp, data.slot)),
-			_ => Err(consensus_common::ErrorKind::InherentData("Decode inherent failed".into()).into()),
-		}
+		consensus_primitives::extract_timestamp_and_slot(data)
+			.map_err(|e| consensus_common::ErrorKind::InherentData(e.into()).into())
 	}
 }
 

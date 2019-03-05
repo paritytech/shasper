@@ -18,6 +18,7 @@
 
 use num_traits::{One, Zero};
 use rstd::prelude::*;
+use rstd::cmp;
 use rstd::ops::{Add, Div};
 use crate::casper::CasperProcess;
 use crate::store::{ValidatorStore, PendingAttestationsStore, BlockStore};
@@ -203,7 +204,8 @@ pub fn default_scheme_rewards<C: BalanceContext + SlotContext, S>(
 	let previous_total_balance = store.total_balance(&previous_active_validators);
 
 	let base_reward = |validator_id: ValidatorIdOf<C>| {
-		store.total_balance(&[validator_id]) / (integer_sqrt(previous_total_balance) / config.base_reward_quotient) / From::from(5u8)
+		let quotient = cmp::max(One::one(), integer_sqrt(previous_total_balance) / config.base_reward_quotient);
+		store.total_balance(&[validator_id]) / quotient / From::from(5u8)
 	};
 
 	let mut rewards = Vec::new();
