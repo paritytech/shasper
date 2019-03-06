@@ -379,7 +379,6 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 					return Box::new(future::ok(()));
 				},
 			};
-			println!("is attesting slot: {:?}", is_attesting_slot);
 
 			if let Some(validator_index) = validator_index {
 				if is_attesting_slot {
