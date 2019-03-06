@@ -213,7 +213,7 @@ pub mod api {
 			fn validator_index(validator_id: ValidatorId) -> Option<ValidatorIndex>;
 
 			/// Get the current attesting slot for a validator.
-			fn attesting_slot(validator_id: ValidatorId) -> Slot;
+			fn is_attesting_slot(current_slot: Slot, validator_id: ValidatorId) -> bool;
 		}
 	}
 }

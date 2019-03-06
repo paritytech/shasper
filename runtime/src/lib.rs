@@ -232,7 +232,7 @@ mod apis {
 				let slot = storage::Slot::get();
 
 				while last_slot < slot {
-					if last_slot % consts::CYCLE_LENGTH == 0 {
+					if last_slot % consts::CYCLE_LENGTH == consts::CYCLE_LENGTH - 1 {
 						let mut randao = storage::Randao::get();
 						let mut committee = storage::Committee::get();
 
@@ -474,7 +474,7 @@ mod apis {
 				None
 			}
 
-			fn attesting_slot(validator_id: ValidatorId) -> Slot {
+			fn is_attesting_slot(current_slot: Slot, validator_id: ValidatorId) -> bool {
 				let mut validator_index = None;
 
 				for (i, record) in storage::Validators::items().into_iter().enumerate() {
@@ -488,19 +488,18 @@ mod apis {
 				let validator_index = validator_index.expect("Validator must exist");
 
 				let committee = storage::Committee::get();
-				let current_slot = storage::Slot::get();
 				let epoch_boundary = utils::epoch_to_slot(utils::slot_to_epoch(current_slot));
 
-				for slot in epoch_boundary..(epoch_boundary + consts::CYCLE_LENGTH) {
-					let current_committees = committee.current_committees_at((slot - epoch_boundary) as usize);
-					for committee in current_committees {
-						if committee.contains(&validator_index) {
-							return slot;
-						}
+				let offset = (current_slot - epoch_boundary) as usize;
+				let current_committees = committee.current_committees_at(offset);
+
+				for committee in current_committees {
+					if committee.contains(&validator_index) {
+						return true
 					}
 				}
 
-				panic!("Validator exists, but was not found in any committee");
+				false
 			}
 		}
 	}

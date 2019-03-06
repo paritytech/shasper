@@ -113,7 +113,7 @@ pub fn check_attestation(unchecked: UncheckedAttestation, check_slot: bool) -> O
 	let is_slot_canon = storage::LatestBlockHashes::get(unchecked.data.slot) == Some(unchecked.data.slot_block_hash);
 	let is_source_canon = storage::LatestBlockHashes::get(utils::epoch_to_slot(unchecked.data.source_epoch)) == Some(unchecked.data.source_epoch_block_hash);
 	let is_target_canon = storage::LatestBlockHashes::get(utils::epoch_to_slot(unchecked.data.target_epoch)) == Some(unchecked.data.target_epoch_block_hash);
-	let inclusion_distance = current_slot - unchecked.data.slot;
+	let inclusion_distance = if current_slot >= unchecked.data.slot { current_slot - unchecked.data.slot } else { 0 };
 
 	Some(CheckedAttestation {
 		data: unchecked.data,
