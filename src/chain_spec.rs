@@ -83,7 +83,7 @@ impl Alternative {
 							(alice_id, RandaoOnion::generate(H256::default(), 50000).commitment()),
 							(bob_id, RandaoOnion::generate(H256::default(), 50000).commitment()),
 						],
-						1551797311,
+						1551894866,
 					)
 				},
 				vec![],
@@ -106,7 +106,7 @@ impl Alternative {
 							(alice_id, RandaoOnion::generate(H256::default(), 50000).commitment()),
 							(bob_id, RandaoOnion::generate(H256::default(), 50000).commitment()),
 						],
-						1551805601,
+						1551914094,
 					)
 				},
 				vec![],

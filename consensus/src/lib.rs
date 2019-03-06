@@ -372,16 +372,17 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 					return Box::new(future::ok(()));
 				},
 			};
-			let attesting_slot = match self.client.runtime_api().attesting_slot(&BlockId::Hash(chain_head.hash()), validator_id) {
-				Ok(slot) => slot,
+			let is_attesting_slot = match self.client.runtime_api().is_attesting_slot(&BlockId::Hash(chain_head.hash()), current_slot, validator_id) {
+				Ok(v) => v,
 				Err(_) => {
-					warn!("Unable to get current slot");
+					warn!("Unable to know whether it is attesting slot");
 					return Box::new(future::ok(()));
 				},
 			};
+			println!("is attesting slot: {:?}", is_attesting_slot);
 
 			if let Some(validator_index) = validator_index {
-				if attesting_slot == current_slot {
+				if is_attesting_slot {
 					let justified_epoch = match self.client.runtime_api().justified_epoch(&BlockId::Hash(chain_head.hash())) {
 						Ok(v) => v,
 						Err(e) => {
