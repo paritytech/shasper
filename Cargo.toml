@@ -50,6 +50,7 @@ members = [
 	"consensus",
 	"crypto",
 	"casper",
+	"serenity",
 	"util/ssz",
 	"util/ssz-derive",
 	"util/ssz-hash",

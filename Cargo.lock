@@ -2608,6 +2608,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "serenity"
+version = "0.1.0"
+dependencies = [
+ "shasper-primitives 0.1.0",
+]
+
+[[package]]
 name = "sha1"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
