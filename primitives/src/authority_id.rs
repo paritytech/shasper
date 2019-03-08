@@ -16,12 +16,10 @@
 
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
-use substrate_primitives::H256;
 use crypto::bls;
 use fixed_hash::construct_fixed_hash;
-
 #[cfg(feature = "std")]
-use substrate_primitives::bytes;
+use impl_serde::serialize as bytes;
 
 const SIZE: usize = 48;
 
@@ -97,8 +95,8 @@ impl Into<AuthorityId> for bls::Public {
 	}
 }
 
-impl Into<H256> for H384 {
-	fn into(self) -> H256 {
-		H256::from_slice(&self[0..32])
+impl Into<primitive_types::H256> for H384 {
+	fn into(self) -> primitive_types::H256 {
+		primitive_types::H256::from_slice(&self[0..32])
 	}
 }

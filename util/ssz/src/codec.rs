@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use alloc::vec::Vec;
-use alloc::boxed::Box;
 use core::{mem, slice};
 use arrayvec::ArrayVec;
-use primitives::{H160, H256, U256};
+use primitive_types::{H160, H256, U256};
 
 /// Trait that allows reading of data into a slice.
 pub trait Input {
@@ -416,7 +414,7 @@ impl_hash!(H256, 32);
 
 macro_rules! impl_uint {
 	($name: ident, $len: expr) => {
-		impl ::codec::Encode for $name {
+		impl crate::codec::Encode for $name {
 			fn encode_to<W: Output>(&self, dest: &mut W) {
 				let mut bytes = [0u8; $len * 8];
 				self.to_big_endian(&mut bytes);
@@ -424,9 +422,9 @@ macro_rules! impl_uint {
 			}
 		}
 
-		impl ::codec::Decode for $name {
-			fn decode<I: ::codec::Input>(input: &mut I) -> Option<Self> {
-				<[u8; $len * 8] as ::codec::Decode>::decode(input)
+		impl crate::codec::Decode for $name {
+			fn decode<I: crate::codec::Input>(input: &mut I) -> Option<Self> {
+				<[u8; $len * 8] as crate::codec::Decode>::decode(input)
 					.map(|b| $name::from_big_endian(&b))
 			}
 		}
@@ -438,7 +436,7 @@ impl_uint!(U256, 4);
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use primitives::{H256, H160, U256};
+	use primitive_types::{H256, H160, U256};
 
 	#[test]
 	fn examples() {

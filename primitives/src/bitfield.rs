@@ -17,12 +17,10 @@
 use codec_derive::{Encode, Decode};
 use ssz_derive::{SszEncode, SszDecode};
 use ssz_hash_derive::SszHash;
-
+use core::cmp;
+use core::ops::BitOr;
 #[cfg(feature = "std")]
 use serde_derive::{Serialize, Deserialize};
-
-use rstd::prelude::*;
-use rstd::ops::BitOr;
 
 // TODO: Validate bitfield trailing bits in encoding/decoding.
 
@@ -69,8 +67,8 @@ impl BitOr for BitField {
 	type Output = Self;
 
 	fn bitor(self, rhs: Self) -> Self {
-		let mut new = BitField::new(::rstd::cmp::max(self.count(), rhs.count()));
-		for i in 0..::rstd::cmp::max(self.count(), rhs.count()) {
+		let mut new = BitField::new(cmp::max(self.count(), rhs.count()));
+		for i in 0..cmp::max(self.count(), rhs.count()) {
 			let mut voted = false;
 			if i < self.count() {
 				voted = voted || self.has_voted(i);

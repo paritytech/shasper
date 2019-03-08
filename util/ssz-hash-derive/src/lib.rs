@@ -14,15 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(not(feature = "std"), feature(alloc))]
-
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-
-#[cfg(feature = "std")]
-extern crate core;
-
 extern crate proc_macro;
 extern crate proc_macro2;
 
@@ -40,14 +31,6 @@ use syn::{
 	spanned::Spanned,
 	token::Comma,
 };
-
-#[cfg(feature = "std")]
-mod alloc {
-	pub use std::boxed;
-	pub use std::vec;
-}
-
-use alloc::vec::Vec;
 
 const HASH_ERR: &str = "derive(SszHash) failed";
 
@@ -68,7 +51,7 @@ pub fn hash_derive(input: TokenStream) -> TokenStream {
 	let expanded = quote! {
 		impl #impl_generics ::ssz_hash::SpecHash for #name #ty_generics #where_clause {
 			fn spec_hash<#hash_param_ : ::hash_db::Hasher>(&self) -> H::Out {
-				let mut #dest_ = ::ssz_hash::alloc::vec::Vec::new();
+				let mut #dest_ = ::ssz_hash::prelude::Vec::new();
 				#hashing
 				#hash_param_ :: hash(& #dest_ )
 			}

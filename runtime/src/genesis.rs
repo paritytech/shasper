@@ -16,7 +16,8 @@
 
 use runtime_primitives::{BuildStorage, StorageOverlay, ChildrenStorageOverlay};
 use runtime_io::twox_128;
-use primitives::{H256, KeccakHasher, ValidatorId, Epoch, Slot, Timestamp, Balance, AttestationContext, storage::well_known_keys};
+use primitives::{H256, KeccakHasher, ValidatorId, Epoch, Slot, Timestamp, Balance, AttestationContext};
+use substrate_primitives::storage::well_known_keys;
 use codec::{Encode, KeyedVec};
 use casper::CasperProcess;
 use casper::committee::{CommitteeProcess, ShuffleConfig};

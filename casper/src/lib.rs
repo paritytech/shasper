@@ -16,10 +16,23 @@
 
 //! Generic structs and traits for the Casper FFG.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(not(feature = "std"), feature(alloc))]
+#![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(prelude_import))]
 
 #![warn(missing_docs)]
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+pub(crate) mod prelude {
+	pub use core::prelude::v1::*;
+	pub use alloc::prelude::*;
+}
+
+#[cfg(not(feature = "std"))]
+#[allow(unused)]
+#[prelude_import]
+use crate::prelude::*;
 
 extern crate parity_codec as codec;
 extern crate parity_codec_derive as codec_derive;

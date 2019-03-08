@@ -18,7 +18,6 @@
 
 use num_traits::{One, Zero};
 use codec_derive::{Encode, Decode};
-use rstd::prelude::*;
 
 use crate::store::{self, ValidatorStore, PendingAttestationsStore, BlockStore};
 use crate::context::{

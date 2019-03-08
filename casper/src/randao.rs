@@ -22,8 +22,7 @@
 //! reveals one layer of the onion.
 
 use hash_db::Hasher;
-use rstd::prelude::*;
-use rstd::ops::BitXor;
+use core::ops::BitXor;
 use codec::{Encode, Decode};
 use codec_derive::{Encode, Decode};
 #[cfg(feature = "std")]

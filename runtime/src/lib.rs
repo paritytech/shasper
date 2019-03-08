@@ -84,7 +84,8 @@ impl GetRuntimeBlockType for Runtime {
 #[allow(missing_docs)]
 mod apis {
 	use rstd::prelude::*;
-	use primitives::{H256, Slot, ValidatorId, OpaqueMetadata, UncheckedAttestation, CheckedAttestation};
+	use primitives::{H256, Slot, ValidatorId, UncheckedAttestation, CheckedAttestation};
+	use substrate_primitives::OpaqueMetadata;
 	use client::block_builder::api::runtime_decl_for_BlockBuilder::BlockBuilder;
 	use runtime_primitives::{
 		ApplyResult, transaction_validity::{TransactionValidity, TransactionLongevity},

@@ -17,9 +17,8 @@
 //! Beacon reward constructs.
 
 use num_traits::{One, Zero};
-use rstd::prelude::*;
-use rstd::cmp;
-use rstd::ops::{Add, Div};
+use core::cmp;
+use core::ops::{Add, Div};
 use crate::casper::CasperProcess;
 use crate::store::{ValidatorStore, PendingAttestationsStore, BlockStore};
 use crate::context::{

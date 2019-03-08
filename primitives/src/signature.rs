@@ -18,9 +18,8 @@
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use crypto::bls;
 use fixed_hash::construct_fixed_hash;
-
 #[cfg(feature = "std")]
-use substrate_primitives::bytes;
+use impl_serde::serialize as bytes;
 
 const SIZE: usize = 96;
 

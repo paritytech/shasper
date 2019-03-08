@@ -14,24 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(not(feature = "std"), feature(alloc))]
+#![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(prelude_import))]
 
 #[cfg(not(feature = "std"))]
 #[macro_use]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-extern crate core;
-
-extern crate arrayvec;
-extern crate substrate_primitives as primitives;
-
-#[cfg(feature = "std")]
-pub mod alloc {
-	pub use std::boxed;
-	pub use std::vec;
+#[cfg(not(feature = "std"))]
+pub(crate) mod prelude {
+	pub use core::prelude::v1::*;
+	pub use alloc::prelude::*;
 }
+
+#[cfg(not(feature = "std"))]
+#[allow(unused)]
+#[prelude_import]
+use crate::prelude::*;
 
 mod codec;
 

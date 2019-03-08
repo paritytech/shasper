@@ -2,16 +2,17 @@
 name = "ssz-hash"
 version = "0.1.0"
 authors = ["Parity Team <admin@parity.io>"]
+edition = "2018"
 
 [dependencies]
 ssz = { path = "../ssz", default-features = false }
-substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
+primitive-types = { version = "0.2", default-features = false }
 hash-db = { version = "0.11", default-features = false }
 
 [features]
 default = ["std"]
 std = [
 	"ssz/std",
-	"substrate-primitives/std",
+	"primitive-types/std",
 	"hash-db/std",
 ]
