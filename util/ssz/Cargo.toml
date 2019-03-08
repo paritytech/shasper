@@ -3,14 +3,15 @@ name = "ssz"
 version = "0.1.0"
 authors = ["Paul Hauner <paul@paulhauner.com>", "Parity Team <admin@parity.io>"]
 license-file = "LICENSE"
+edition = "2018"
 
 [dependencies]
-substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
+primitive-types = { version = "0.2", default-features = false }
 arrayvec = { version = "0.4", default_features = false }
 
 [features]
 default = ["std"]
 std = [
-	"substrate-primitives/std",
+	"primitive-types/std",
 	"arrayvec/std",
 ]

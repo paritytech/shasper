@@ -2,6 +2,7 @@
 name = "ssz-hash-derive"
 version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2018"
 
 [lib]
 proc-macro = true
@@ -13,9 +14,5 @@ proc-macro2 = "0.4"
 
 [dev-dependencies]
 ssz-hash = { path = "../ssz-hash" }
-substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
-hash-db = { version = "0.11", default-features = false }
-
-[features]
-default = ["std"]
-std = []
+substrate-primitives = { git = "https://github.com/paritytech/substrate" }
+hash-db = { version = "0.11" }

@@ -17,9 +17,8 @@
 //! Casper related traits.
 
 use num_traits::{One, Zero};
-use rstd::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div};
+use core::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div};
 use codec::{Encode, Decode};
-use rstd::prelude::*;
 
 /// Casper attestation. The source should always be canon.
 pub trait Attestation: PartialEq + Eq {

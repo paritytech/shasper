@@ -3,6 +3,7 @@ name = "ssz-derive"
 version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 license = "Apache-2.0"
+edition = "2018"
 
 [lib]
 proc-macro = true
@@ -14,7 +15,3 @@ proc-macro2 = "0.4"
 
 [dev-dependencies]
 ssz = { path = "../ssz" }
-
-[features]
-default = ["std"]
-std = []

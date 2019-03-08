@@ -19,7 +19,8 @@ use std::collections::hash_map::{HashMap, Entry};
 
 use codec::Encode;
 use consensus_common::{ForkChoiceStrategy, ImportBlock, BlockImport, ImportResult, Error as ConsensusError, ErrorKind as ConsensusErrorKind};
-use primitives::{H256, Blake2Hasher};
+use primitives::H256;
+use substrate_primitives::Blake2Hasher;
 use client::{Client, CallExecutor, ChainHead};
 use client::blockchain::{Backend as BlockchainBackend};
 use client::backend::{Backend, AuxStore};

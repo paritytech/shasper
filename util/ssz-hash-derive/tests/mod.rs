@@ -16,12 +16,11 @@
 
 extern crate hash_db;
 extern crate ssz_hash;
-extern crate substrate_primitives as primitives;
 
 #[macro_use]
 extern crate ssz_hash_derive;
 
-use primitives::{H256, Blake2Hasher};
+use substrate_primitives::{H256, Blake2Hasher};
 use ssz_hash::SpecHash;
 use std::str::FromStr;
 

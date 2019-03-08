@@ -18,8 +18,6 @@ use syn::{
 	spanned::Spanned,
 };
 
-use alloc::vec::Vec;
-
 pub fn quote(data: &Data, type_name: &Ident, input: &TokenStream, sorted: bool) -> TokenStream {
 	let call_site = Span::call_site();
 	match *data {

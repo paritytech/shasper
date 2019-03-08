@@ -10,6 +10,7 @@ safe-mix = { version = "1.0", default-features = false }
 parity-codec = { version = "3.0", default-features = false }
 parity-codec-derive = "3.0"
 primitives = { package = "shasper-primitives", path = "../primitives", default-features = false }
+substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
 substrate-client = { git = "https://github.com/paritytech/substrate", default-features = false }
 inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate", default-features = false }
 rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate", default-features = false }
@@ -27,8 +28,8 @@ keyring = { package = "substrate-keyring", git = "https://github.com/paritytech/
 keccak-hasher = { path = "../util/keccak-hasher", default-features = false }
 ssz = { path = "../util/ssz", default-features = false }
 ssz-hash = { path = "../util/ssz-hash", default-features = false }
-ssz-derive = { path = "../util/ssz-derive", default-features = false }
-ssz-hash-derive = { path = "../util/ssz-hash-derive", default-features = false }
+ssz-derive = { path = "../util/ssz-derive" }
+ssz-hash-derive = { path = "../util/ssz-hash-derive" }
 byteorder = { version = "1.2", default-features = false }
 hash-db = { version = "0.11", default-features = false }
 crypto = { package = "shasper-crypto", path = "../crypto", default-features = false }
@@ -43,6 +44,7 @@ std = [
 	"parity-codec/std",
 	"primitives/std",
 	"substrate-client/std",
+	"substrate-primitives/std",
 	"rstd/std",
 	"runtime-io/std",
 	"runtime-support/std",
@@ -57,8 +59,6 @@ std = [
 	"keccak-hasher/std",
 	"ssz/std",
 	"ssz-hash/std",
-	"ssz-derive/std",
-	"ssz-hash-derive/std",
 	"byteorder/std",
 	"hash-db/std",
 	"crypto/std",
