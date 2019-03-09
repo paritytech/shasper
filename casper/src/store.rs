@@ -18,12 +18,12 @@
 
 use num_traits::{One, Zero};
 use crate::context::{
-	BalanceContext, BalanceOf, EpochOf, AttestationOf, Attestation,
+	ValidatorContext, BalanceOf, EpochOf, AttestationOf, Attestation,
 	ValidatorIdOf,
 };
 
 /// Store that holds validator active and balance information.
-pub trait ValidatorStore<C: BalanceContext> {
+pub trait ValidatorStore<C: ValidatorContext> {
 	/// Get total balance of given validator Ids.
 	fn total_balance(&self, validators: &[ValidatorIdOf<C>]) -> BalanceOf<C>;
 	/// Get all active validators at given epoch.
@@ -31,7 +31,7 @@ pub trait ValidatorStore<C: BalanceContext> {
 }
 
 /// Store that holds pending attestations.
-pub trait PendingAttestationsStore<C: BalanceContext> {
+pub trait PendingAttestationsStore<C: ValidatorContext> {
 	/// Get the current list of attestations.
 	fn attestations(&self) -> Vec<AttestationOf<C>>;
 	/// Retain specific attestations and remove the rest.
@@ -39,7 +39,7 @@ pub trait PendingAttestationsStore<C: BalanceContext> {
 }
 
 /// Store that holds general block information.
-pub trait BlockStore<C: BalanceContext> {
+pub trait BlockStore<C: ValidatorContext> {
 	/// Get the current epoch.
 	fn epoch(&self) -> EpochOf<C>;
 	/// Get the next epoch.
@@ -57,7 +57,7 @@ pub trait BlockStore<C: BalanceContext> {
 }
 
 /// Attesting canon target balance at epoch.
-pub fn canon_target_attesting_balance<C: BalanceContext, S>(
+pub fn canon_target_attesting_balance<C: ValidatorContext, S>(
 	store: &S,
 	epoch: EpochOf<C>
 ) -> BalanceOf<C> where
@@ -75,7 +75,7 @@ pub fn canon_target_attesting_balance<C: BalanceContext, S>(
 }
 
 /// Attesting canon source balance at epoch.
-pub fn canon_source_attesting_balance<C: BalanceContext, S>(
+pub fn canon_source_attesting_balance<C: ValidatorContext, S>(
 	store: &S,
 	epoch: EpochOf<C>
 ) -> BalanceOf<C> where
@@ -93,7 +93,7 @@ pub fn canon_source_attesting_balance<C: BalanceContext, S>(
 }
 
 /// Total balance at epoch.
-pub fn active_total_balance<C: BalanceContext, S>(
+pub fn active_total_balance<C: ValidatorContext, S>(
 	store: &S,
 	epoch: EpochOf<C>
 ) -> BalanceOf<C> where

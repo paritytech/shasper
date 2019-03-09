@@ -20,23 +20,45 @@ use num_traits::{One, Zero};
 use core::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div};
 use codec::{Encode, Decode};
 
-/// Casper attestation. The source should always be canon.
-pub trait Attestation: PartialEq + Eq {
-	/// Type of validator Id.
-	type ValidatorId: PartialEq + Eq + Clone + Copy;
+/// Block context.
+pub trait BlockContext: Eq + PartialEq + Clone {
 	/// Type of epoch.
 	type Epoch: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Epoch> + AddAssign + Sub<Output=Self::Epoch> + SubAssign + One + Zero + Encode + Decode;
+	/// Attestation slot.
+	type Slot: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Slot> + AddAssign + Sub<Output=Self::Slot> + SubAssign + One + Zero + Encode + Decode;
+}
 
+/// Validator context.
+pub trait ValidatorContext: BlockContext {
+	/// Attestation of this context.
+	type Attestation: Attestation<Context=Self>;
+	/// Balance of this context.
+	type Balance: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Balance> + AddAssign + Sub<Output=Self::Balance> + SubAssign + Mul<Output=Self::Balance> + Div<Output=Self::Balance> + From<u8> + One + Zero;
+	/// Type of validator Id.
+	type ValidatorId: PartialEq + Eq + Clone + Copy;
+}
+
+/// Casper attestation. The source should always be canon.
+pub trait Attestation: PartialEq + Eq {
+	/// Validator context of this attestation.
+	type Context: ValidatorContext;
+
+	/// Get slot of this attestation.
+	fn slot(&self) -> SlotOf<Self::Context>;
+	/// Whether this attestation's slot is on canon chain.
+	fn is_slot_canon(&self) -> bool;
+	/// This attestation's inclusion distance.
+	fn inclusion_distance(&self) -> SlotOf<Self::Context>;
 	/// Get validator Ids of this attestation.
-	fn validator_ids(&self) -> Vec<Self::ValidatorId>;
+	fn validator_ids(&self) -> Vec<ValidatorIdOf<Self::Context>>;
 	/// Whether this attestation's source is on canon chain.
 	fn is_source_canon(&self) -> bool;
 	/// Whether this attestation's target is on canon chain.
 	fn is_target_canon(&self) -> bool;
 	/// Get the source epoch of this attestation.
-	fn source_epoch(&self) -> Self::Epoch;
+	fn source_epoch(&self) -> EpochOf<Self::Context>;
 	/// Get the target epoch of this attestation.
-	fn target_epoch(&self) -> Self::Epoch;
+	fn target_epoch(&self) -> EpochOf<Self::Context>;
 
 	/// Whether this attestation's source and target is on canon chain.
 	fn is_casper_canon(&self) -> bool {
@@ -44,38 +66,13 @@ pub trait Attestation: PartialEq + Eq {
 	}
 }
 
-/// Casper attestation with specific slot.
-pub trait SlotAttestation: Attestation {
-	/// Attestation slot.
-	type Slot: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Slot> + AddAssign + Sub<Output=Self::Slot> + SubAssign + One + Zero + Encode + Decode;
-
-	/// Get slot of this attestation.
-	fn slot(&self) -> Self::Slot;
-	/// Whether this attestation's slot is on canon chain.
-	fn is_slot_canon(&self) -> bool;
-	/// This attestation's inclusion distance.
-	fn inclusion_distance(&self) -> Self::Slot;
-}
-
-/// Basic epoch context for Casper.
-pub trait BalanceContext: Eq + PartialEq + Clone {
-	/// Attestation of this context.
-	type Attestation: Attestation;
-	/// Balance of this context.
-	type Balance: PartialEq + Eq + PartialOrd + Ord + Clone + Copy + Add<Output=Self::Balance> + AddAssign + Sub<Output=Self::Balance> + SubAssign + Mul<Output=Self::Balance> + Div<Output=Self::Balance> + From<u8> + One + Zero;
-}
-
-/// Context with slot, suitable for collecting attestations across multiple blocks.
-pub trait SlotContext: BalanceContext where
-	AttestationOf<Self>: SlotAttestation { }
-
 /// Epoch of a context.
-pub type EpochOf<C> = <AttestationOf<C> as Attestation>::Epoch;
+pub type EpochOf<C> = <C as BlockContext>::Epoch;
 /// Attestation of a context.
-pub type AttestationOf<C> = <C as BalanceContext>::Attestation;
+pub type AttestationOf<C> = <C as ValidatorContext>::Attestation;
 /// Slot of a context.
-pub type SlotOf<C> = <AttestationOf<C> as SlotAttestation>::Slot;
+pub type SlotOf<C> = <C as BlockContext>::Slot;
 /// Validator id of a context.
-pub type ValidatorIdOf<C> = <AttestationOf<C> as Attestation>::ValidatorId;
+pub type ValidatorIdOf<C> = <C as ValidatorContext>::ValidatorId;
 /// Balance of a context.
-pub type BalanceOf<C> = <C as BalanceContext>::Balance;
+pub type BalanceOf<C> = <C as ValidatorContext>::Balance;

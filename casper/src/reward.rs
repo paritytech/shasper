@@ -22,8 +22,8 @@ use core::ops::{Add, Div};
 use crate::casper::CasperProcess;
 use crate::store::{ValidatorStore, PendingAttestationsStore, BlockStore};
 use crate::context::{
-	Attestation, ValidatorIdOf, EpochOf, BalanceContext, BalanceOf,
-	SlotOf, SlotContext, AttestationOf, SlotAttestation,
+	Attestation, ValidatorIdOf, EpochOf, ValidatorContext, BalanceOf,
+	SlotOf,
 };
 
 /// Rewards for Casper.
@@ -41,9 +41,7 @@ pub enum CasperRewardType {
 
 /// Rewards for beacon chain.
 #[derive(Eq, PartialEq, Clone)]
-pub enum BeaconRewardType<C: SlotContext> where
-	AttestationOf<C>: SlotAttestation,
-{
+pub enum BeaconRewardType<C: ValidatorContext> {
 	/// The validator attested on the expected head.
 	ExpectedHead,
 	/// The validator is active, but does not attest on the epxected head.
@@ -52,7 +50,11 @@ pub enum BeaconRewardType<C: SlotContext> where
 	InclusionDistance(SlotOf<C>),
 }
 
-fn push_rewards<A, T>(rewards: &mut Vec<(A::ValidatorId, T)>, attestation: &A, reward: T) where
+fn push_rewards<A, T>(
+	rewards: &mut Vec<(<A::Context as ValidatorContext>::ValidatorId, T)>,
+	attestation: &A,
+	reward: T
+) where
 	A: Attestation,
 	T: Clone,
 {
@@ -62,10 +64,9 @@ fn push_rewards<A, T>(rewards: &mut Vec<(A::ValidatorId, T)>, attestation: &A, r
 }
 
 /// Get rewards for beacon chain.
-pub fn beacon_rewards<C: SlotContext, S>(
+pub fn beacon_rewards<C: ValidatorContext, S>(
 	store: &S
 ) -> Vec<(ValidatorIdOf<C>, BeaconRewardType<C>)> where
-	AttestationOf<C>: SlotAttestation,
 	S: PendingAttestationsStore<C> + BlockStore<C> + ValidatorStore<C>,
 {
 	let mut no_expected_head_validators = store.active_validators(store.previous_epoch()).into_iter().collect::<Vec<_>>();
@@ -93,7 +94,7 @@ pub fn beacon_rewards<C: SlotContext, S>(
 
 /// Get rewards for casper. Note that this usually needs to be called before `advance_epoch`, but after all pending
 /// attestations have been pushed.
-pub fn casper_rewards<C: BalanceContext, S>(
+pub fn casper_rewards<C: ValidatorContext, S>(
 	context: &CasperProcess<C>,
 	store: &S
 ) -> Vec<(ValidatorIdOf<C>, CasperRewardType)> where
@@ -131,9 +132,7 @@ pub fn casper_rewards<C: BalanceContext, S>(
 }
 
 /// Config for default reward scheme.
-pub struct DefaultSchemeConfig<C: BalanceContext + SlotContext> where
-	AttestationOf<C>: SlotAttestation,
-{
+pub struct DefaultSchemeConfig<C: ValidatorContext> {
 	/// Base reward quotient.
 	pub base_reward_quotient: BalanceOf<C>,
 	/// Inactivity penalty quotient.
@@ -147,7 +146,7 @@ pub struct DefaultSchemeConfig<C: BalanceContext + SlotContext> where
 }
 
 /// Reward action.
-pub enum RewardAction<C: BalanceContext> {
+pub enum RewardAction<C: ValidatorContext> {
 	/// Add balance to reward.
 	Add(BalanceOf<C>),
 	/// Sub balance to reward. Should wrap at zero.
@@ -186,14 +185,13 @@ fn combined_validators<ValidatorId, T>(
 }
 
 /// Use default scheme for reward calculation. This only contains justification and finalization rewards.
-pub fn default_scheme_rewards<C: BalanceContext + SlotContext, S>(
+pub fn default_scheme_rewards<C: ValidatorContext, S>(
 	store: &S,
 	beacon_rewards: &[(ValidatorIdOf<C>, BeaconRewardType<C>)],
 	casper_rewards: &[(ValidatorIdOf<C>, CasperRewardType)],
 	epochs_since_finality: EpochOf<C>,
 	config: &DefaultSchemeConfig<C>,
 ) -> Vec<(ValidatorIdOf<C>, RewardAction<C>)> where
-	AttestationOf<C>: SlotAttestation,
 	EpochOf<C>: From<u8>,
 	BalanceOf<C>: From<EpochOf<C>> + From<SlotOf<C>>,
 	S: ValidatorStore<C> + BlockStore<C>,
@@ -298,14 +296,13 @@ pub fn default_scheme_rewards<C: BalanceContext + SlotContext, S>(
 }
 
 /// Use default scheme for penalization.
-pub fn default_scheme_penalties<C: BalanceContext + SlotContext, S>(
+pub fn default_scheme_penalties<C: ValidatorContext, S>(
 	store: &S,
 	whistleblower: &ValidatorIdOf<C>,
 	slashings: &[ValidatorIdOf<C>],
 	epochs_since_finality: EpochOf<C>,
 	config: &DefaultSchemeConfig<C>,
 ) -> Vec<(ValidatorIdOf<C>, RewardAction<C>)> where
-	AttestationOf<C>: SlotAttestation,
 	EpochOf<C>: From<u8>,
 	BalanceOf<C>: From<EpochOf<C>> + From<SlotOf<C>>,
 	S: ValidatorStore<C> + BlockStore<C>,
