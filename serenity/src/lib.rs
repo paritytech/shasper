@@ -19,7 +19,7 @@ use primitives::{H256, BitField, Signature, ValidatorId};
 pub const DEPOSIT_CONTRACT_TREE_DEPTH: usize = 32;
 pub const LATEST_RANDAO_MIXES_LENGTH: usize = 8192;
 pub const SHARD_COUNT: usize = 1024;
-pub const SLOTS_PER_HISTORICAL_ROOT: usize = 1024;
+pub const SLOTS_PER_HISTORICAL_ROOT: usize = 8192;
 pub const LATEST_ACTIVE_INDEX_ROOTS_LENGTH: usize = 8192;
 pub const LATEST_SLASHED_EXIT_LENGTH: usize = 8192;
 
