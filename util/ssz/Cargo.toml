@@ -8,10 +8,12 @@ edition = "2018"
 [dependencies]
 primitive-types = { version = "0.2", default-features = false }
 arrayvec = { version = "0.4", default_features = false }
+hash-db = { version = "0.11", default-features = false }
 
 [features]
 default = ["std"]
 std = [
 	"primitive-types/std",
 	"arrayvec/std",
+	"hash-db/std",
 ]

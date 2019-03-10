@@ -21,10 +21,20 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-pub(crate) mod prelude {
+#[doc(hidden)]
+pub mod prelude {
 	pub use core::prelude::v1::*;
 	pub use alloc::prelude::*;
 }
+
+#[cfg(feature = "std")]
+#[doc(hidden)]
+pub mod prelude {
+	pub use std::prelude::v1::*;
+}
+
+#[doc(hidden)]
+pub use hash_db;
 
 #[cfg(not(feature = "std"))]
 #[allow(unused)]
@@ -32,5 +42,12 @@ pub(crate) mod prelude {
 use crate::prelude::*;
 
 mod codec;
+mod hash;
 
-pub use self::codec::{Input, Output, Encode, Decode, Codec};
+pub use self::codec::{Input, Output, Encode, Decode};
+pub use self::hash::{Hashable, hash_object, HashItem};
+
+/// Trait that allows zero-copy read/write of value-references to/from slices in LE format.
+pub trait Ssz: Decode + Encode + Hashable {}
+
+impl<S: Encode + Decode + Hashable> Ssz for S {}
