@@ -14,18 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-mod attestation;
-mod block;
-mod consts;
-mod eth1;
-mod slashing;
-mod state;
-mod validator;
-mod util;
+use hash_db::Hasher;
 
-pub use attestation::*;
-pub use block::*;
-pub use eth1::*;
-pub use slashing::*;
-pub use state::*;
-pub use validator::*;
+/// Hash bytes with a hasher.
+pub fn hash<H: Hasher>(seed: &[u8]) -> H::Out {
+	H::hash(seed)
+}
+
+/// Hash two bytes with a hasher.
+pub fn hash2<H: Hasher>(seed: &[u8], a: &[u8]) -> H::Out {
+	let mut v = seed.to_vec();
+	let mut a = a.to_vec();
+	v.append(&mut a);
+	H::hash(&v)
+}
+
+/// Hash three bytes with a hasher.
+pub fn hash3<H: Hasher>(seed: &[u8], a: &[u8], b: &[u8]) -> H::Out {
+	let mut v = seed.to_vec();
+	let mut a = a.to_vec();
+	let mut b = b.to_vec();
+	v.append(&mut a);
+	v.append(&mut b);
+	H::hash(&v)
+}
+
+pub fn to_usize(v: &[u8]) -> usize {
+	let mut ret = 0usize.to_le_bytes();
+	(&mut ret[..]).copy_from_slice(&v[..v.len()]);
+	usize::from_le_bytes(ret)
+}

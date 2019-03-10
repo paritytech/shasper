@@ -14,26 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use hash_db::Hasher;
-
-pub fn hash2<H: Hasher>(seed: &[u8], a: &[u8]) -> H::Out {
-	let mut v = seed.to_vec();
-	let mut a = a.to_vec();
-	v.append(&mut a);
-	H::hash(&v)
-}
-
-pub fn hash3<H: Hasher>(seed: &[u8], a: &[u8], b: &[u8]) -> H::Out {
-	let mut v = seed.to_vec();
-	let mut a = a.to_vec();
-	let mut b = b.to_vec();
-	v.append(&mut a);
-	v.append(&mut b);
-	H::hash(&v)
-}
-
-pub fn to_usize(v: &[u8]) -> usize {
-	let mut ret = 0usize.to_le_bytes();
-	(&mut ret[..]).copy_from_slice(&v[..v.len()]);
-	usize::from_le_bytes(ret)
-}
+pub const DEPOSIT_CONTRACT_TREE_DEPTH: usize = 32;
+pub const LATEST_RANDAO_MIXES_LENGTH: usize = 8192;
+pub const SHARD_COUNT: usize = 1024;
+pub const SLOTS_PER_HISTORICAL_ROOT: usize = 8192;
+pub const LATEST_ACTIVE_INDEX_ROOTS_LENGTH: usize = 8192;
+pub const LATEST_SLASHED_EXIT_LENGTH: usize = 8192;

@@ -29,7 +29,7 @@ use codec_derive::{Encode, Decode};
 use std::path::Path;
 #[cfg(feature = "std")]
 use serde_derive::{Serialize, Deserialize};
-use crate::utils::hash2;
+use crate::util::hash2;
 
 /// RANDAO config.
 #[derive(Default, Encode, Decode, Clone)]

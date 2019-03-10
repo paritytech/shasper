@@ -6,9 +6,13 @@ edition = "2018"
 
 [dependencies]
 primitives = { package = "shasper-primitives", path = "../primitives", default-features = false }
+casper = { path = "../casper", default-features = false }
+keccak-hasher = { path = "../util/keccak-hasher", default-features = false }
 
 [features]
 default = ["std"]
 std = [
 	"primitives/std",
+	"casper/std",
+	"keccak-hasher/std",
 ]
