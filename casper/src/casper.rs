@@ -21,15 +21,11 @@ use codec_derive::{Encode, Decode};
 
 use crate::store::{self, ValidatorStore, PendingAttestationsStore, BlockStore};
 use crate::context::{
-	Attestation, AttestationOf, EpochOf, ValidatorContext, BalanceOf,
-	ValidatorIdOf,
+	Attestation, AttestationOf, EpochOf, BalanceContext, BalanceOf,
 };
 
 /// Return whether given two attestations satisfy Casper slashing conditions.
-pub fn slashable<C: ValidatorContext>(
-	a: &AttestationOf<C>,
-	b: &AttestationOf<C>
-) -> Vec<ValidatorIdOf<C>> {
+pub fn slashable<C: Attestation>(a: &C, b: &C) -> Vec<C::ValidatorId> {
 	let slashable = {
 		// Two attestations must be different.
 		if a == b {
@@ -69,7 +65,7 @@ pub fn slashable<C: ValidatorContext>(
 
 /// Data needed for casper consensus.
 #[derive(Clone, Eq, PartialEq, Encode, Decode)]
-pub struct CasperProcess<C: ValidatorContext> {
+pub struct CasperProcess<C: BalanceContext> {
 	/// Bitfield holding justification information.
 	pub justification_bitfield: u64,
 	/// Current epoch.
@@ -82,13 +78,13 @@ pub struct CasperProcess<C: ValidatorContext> {
 	pub previous_justified_epoch: EpochOf<C>,
 }
 
-impl<C: ValidatorContext> Default for CasperProcess<C> {
+impl<C: BalanceContext> Default for CasperProcess<C> {
 	fn default() -> Self {
 		Self::new(Zero::zero())
 	}
 }
 
-impl<C: ValidatorContext> CasperProcess<C> {
+impl<C: BalanceContext> CasperProcess<C> {
 	/// Create a new Casper context.
 	pub fn new(genesis_epoch: EpochOf<C>) -> Self {
 		Self {
