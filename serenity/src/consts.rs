@@ -14,30 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-extern crate hash_db;
-extern crate ssz_hash;
-
-#[macro_use]
-extern crate ssz_hash_derive;
-
-use substrate_primitives::{H256, Blake2Hasher};
-use ssz_hash::SpecHash;
-use std::str::FromStr;
-
-#[derive(SszHash)]
-struct Struct<A, B, C> {
-	pub a: A,
-	pub b: B,
-	pub c: C,
-}
-
-#[test]
-fn should_work_for_struct() {
-	let s = Struct {
-		a: 0u64,
-		b: 0u64,
-		c: 0u64,
-	};
-
-	assert_eq!(SpecHash::spec_hash::<Blake2Hasher>(&s), H256::from_str("d6bcc4731213bbe7640cd9a44610ad4ae2717e5f3551a4c96565579fe494a45a").unwrap());
-}
+pub const DEPOSIT_CONTRACT_TREE_DEPTH: usize = 32;
+pub const LATEST_RANDAO_MIXES_LENGTH: usize = 8192;
+pub const SHARD_COUNT: usize = 1024;
+pub const SLOTS_PER_HISTORICAL_ROOT: usize = 8192;
+pub const LATEST_ACTIVE_INDEX_ROOTS_LENGTH: usize = 8192;
+pub const LATEST_SLASHED_EXIT_LENGTH: usize = 8192;
+pub const SLOTS_PER_EPOCH: u64 = 64;
+pub const DOMAIN_DEPOSIT: u64 = 3;

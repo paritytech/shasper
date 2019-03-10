@@ -43,6 +43,7 @@ pub mod reward;
 pub mod store;
 pub mod context;
 pub mod committee;
-mod utils;
+mod util;
 
 pub use crate::casper::CasperProcess;
+pub use crate::util::{hash, hash2, hash3};

@@ -53,8 +53,6 @@ members = [
 	"serenity",
 	"util/ssz",
 	"util/ssz-derive",
-	"util/ssz-hash",
-	"util/ssz-hash-derive",
 	"util/keccak-hasher",
 ]
 exclude = [

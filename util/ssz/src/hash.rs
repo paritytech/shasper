@@ -1,54 +1,19 @@
-// Copyright 2018 Parity Technologies (UK) Ltd.
-// This file is part of Substrate Shasper.
-
-// Substrate is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Substrate is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
-
-#![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(prelude_import))]
-
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-
-#[cfg(not(feature = "std"))]
-#[doc(hidden)]
-pub mod prelude {
-	pub use core::prelude::v1::*;
-	pub use alloc::prelude::*;
-}
-
-#[cfg(feature = "std")]
-#[doc(hidden)]
-pub mod prelude {
-	pub use std::prelude::v1::*;
-}
-
-#[cfg(not(feature = "std"))]
-#[allow(unused)]
-#[prelude_import]
-use crate::prelude::*;
-
 use primitive_types::{U256, H256, H160};
 use hash_db::Hasher;
+use crate::Encode;
 
-pub trait SpecHash {
-	fn spec_hash<H: Hasher>(&self) -> H::Out;
+pub trait Hashable {
+	fn hash<H: Hasher>(&self) -> H::Out;
+	fn truncated_hash<H: Hasher>(&self) -> H::Out {
+		self.hash::<H>()
+	}
 }
 
 macro_rules! impl_encoded {
 	( $( $t:ty ),* ) => { $(
-		impl SpecHash for $t {
-			fn spec_hash<H: Hasher>(&self) -> H::Out {
-				let encoded = ssz::Encode::encode(self);
+		impl Hashable for $t {
+			fn hash<H: Hasher>(&self) -> H::Out {
+				let encoded = Encode::encode(self);
 				H::hash(&encoded)
 			}
 		}
@@ -57,10 +22,10 @@ macro_rules! impl_encoded {
 
 impl_encoded!(u16, u32, u64, u128, usize, i16, i32, i64, i128, isize, U256, H256, H160, Vec<u8>);
 
-impl<T: SpecHash> SpecHash for Vec<T> {
-	fn spec_hash<H: Hasher>(&self) -> H::Out {
+impl<T: Hashable> Hashable for Vec<T> {
+	fn hash<H: Hasher>(&self) -> H::Out {
 		let values: Vec<_> = self.iter()
-			.map(|item| SpecHash::spec_hash::<H>(item).as_ref().to_vec())
+			.map(|item| Hashable::hash::<H>(item).as_ref().to_vec())
 			.collect();
 
 		merkle_root::<H, _>(&values)

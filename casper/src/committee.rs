@@ -21,7 +21,7 @@ use core::cmp;
 use core::ops::BitXor;
 use codec::{Encode, Decode};
 use codec_derive::{Encode, Decode};
-use crate::utils::{hash2, hash3, to_usize};
+use crate::util::{hash2, hash3, to_usize};
 
 /// Shuffle config.
 #[derive(Default, Encode, Decode, Clone)]

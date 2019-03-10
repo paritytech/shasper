@@ -16,6 +16,12 @@
 
 use hash_db::Hasher;
 
+/// Hash bytes with a hasher.
+pub fn hash<H: Hasher>(seed: &[u8]) -> H::Out {
+	H::hash(seed)
+}
+
+/// Hash two bytes with a hasher.
 pub fn hash2<H: Hasher>(seed: &[u8], a: &[u8]) -> H::Out {
 	let mut v = seed.to_vec();
 	let mut a = a.to_vec();
@@ -23,6 +29,7 @@ pub fn hash2<H: Hasher>(seed: &[u8], a: &[u8]) -> H::Out {
 	H::hash(&v)
 }
 
+/// Hash three bytes with a hasher.
 pub fn hash3<H: Hasher>(seed: &[u8], a: &[u8], b: &[u8]) -> H::Out {
 	let mut v = seed.to_vec();
 	let mut a = a.to_vec();

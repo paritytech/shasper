@@ -15,8 +15,7 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use codec_derive::{Encode, Decode};
-use ssz_derive::{SszEncode, SszDecode};
-use ssz_hash_derive::SszHash;
+use ssz_derive::Ssz;
 use core::cmp;
 use core::ops::BitOr;
 #[cfg(feature = "std")]
@@ -24,7 +23,7 @@ use serde_derive::{Serialize, Deserialize};
 
 // TODO: Validate bitfield trailing bits in encoding/decoding.
 
-#[derive(Clone, PartialEq, Eq, Decode, Encode, SszEncode, SszDecode, SszHash)]
+#[derive(Clone, PartialEq, Eq, Decode, Encode, Ssz)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct BitField(Vec<u8>, usize);
 

@@ -21,7 +21,8 @@
 extern crate parity_codec as codec;
 extern crate parity_codec_derive as codec_derive;
 
-use substrate_primitives::{Hasher, H256};
+use hash_db::Hasher;
+use primitive_types::H256;
 use tiny_keccak::Keccak;
 use plain_hasher::PlainHasher;
 use codec_derive::{Encode, Decode};

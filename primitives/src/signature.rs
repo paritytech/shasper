@@ -72,8 +72,8 @@ impl ssz::Decode for H768 {
 	}
 }
 
-impl ssz_hash::SpecHash for H768 {
-	fn spec_hash<H: ::hash_db::Hasher>(&self) -> H::Out {
+impl ssz::Hashable for H768 {
+	fn hash<H: ::hash_db::Hasher>(&self) -> H::Out {
 		let encoded = ssz::Encode::encode(self);
 		H::hash(&encoded)
 	}

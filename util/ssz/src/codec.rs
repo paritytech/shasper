@@ -109,11 +109,6 @@ pub trait Decode: Sized {
 	fn decode<I: Input>(value: &mut I) -> Option<Self>;
 }
 
-/// Trait that allows zero-copy read/write of value-references to/from slices in LE format.
-pub trait Codec: Decode + Encode {}
-
-impl<S: Encode + Decode> Codec for S {}
-
 macro_rules! impl_array {
 	( $( $n:expr )* ) => { $(
 		impl<T: Encode> Encode for [T; $n] {
