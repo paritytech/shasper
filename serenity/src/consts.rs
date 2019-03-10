@@ -20,3 +20,5 @@ pub const SHARD_COUNT: usize = 1024;
 pub const SLOTS_PER_HISTORICAL_ROOT: usize = 8192;
 pub const LATEST_ACTIVE_INDEX_ROOTS_LENGTH: usize = 8192;
 pub const LATEST_SLASHED_EXIT_LENGTH: usize = 8192;
+pub const SLOTS_PER_EPOCH: u64 = 64;
+pub const DOMAIN_DEPOSIT: u64 = 3;

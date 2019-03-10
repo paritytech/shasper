@@ -14,9 +14,7 @@ primitive-types = { version = "0.2", default-features = false, features = ["code
 impl-serde = { version = "0.1", optional = true }
 crypto = { package = "shasper-crypto", path = "../crypto", default-features = false }
 ssz = { path = "../util/ssz", default-features = false }
-ssz-hash = { path = "../util/ssz-hash", default-features = false }
 ssz-derive = { path = "../util/ssz-derive", default-features = false }
-ssz-hash-derive = { path = "../util/ssz-hash-derive", default-features = false }
 hash-db = { version = "0.11", default-features = false }
 keccak-hasher = { path = "../util/keccak-hasher", default-features = false }
 byteorder = { version = "1.2", default-features = false }
@@ -32,7 +30,6 @@ std = [
 	"serde_derive",
 	"crypto/std",
 	"ssz/std",
-	"ssz-hash/std",
 	"hash-db/std",
 	"keccak-hasher/std",
 	"byteorder/std",

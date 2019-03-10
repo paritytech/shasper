@@ -15,7 +15,6 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use primitives::{Signature, ValidatorId, H256};
-use crate::consts::DEPOSIT_CONTRACT_TREE_DEPTH;
 
 pub struct Validator {
 	/// BLS public key
@@ -32,33 +31,6 @@ pub struct Validator {
 	pub initiated_exit: bool,
 	/// Was the validator slashed
 	pub slashed: bool,
-}
-
-pub struct Deposit {
-	/// Branch in the deposit tree
-	pub proof: [H256; DEPOSIT_CONTRACT_TREE_DEPTH],
-	/// Index in the deposit tree
-	pub index: u64,
-	/// Data
-	pub deposit_data: DepositData,
-}
-
-pub struct DepositData {
-	/// Amount in Gwei
-	pub amount: u64,
-	/// Timestamp from deposit contract
-	pub timestamp: u64,
-	/// Deposit input
-	pub deposit_input: DepositInput,
-}
-
-pub struct DepositInput {
-	/// BLS pubkey
-	pub pubkey: ValidatorId,
-	/// Withdrawal credentials
-	pub withdrawal_credentials: H256,
-	/// A BLS signature of this `DepositInput`
-	pub proof_of_possession: Signature,
 }
 
 pub struct VoluntaryExit {

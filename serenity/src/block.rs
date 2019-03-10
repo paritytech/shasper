@@ -15,10 +15,10 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use primitives::{H256, Signature};
-use crate::validator::{Deposit, VoluntaryExit, Transfer};
+use crate::validator::{VoluntaryExit, Transfer};
 use crate::attestation::Attestation;
 use crate::slashing::{AttesterSlashing, ProposerSlashing};
-use crate::eth1::Eth1Data;
+use crate::eth1::{Deposit, Eth1Data};
 
 pub struct BeaconBlock {
 	// Header

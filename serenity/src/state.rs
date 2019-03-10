@@ -14,16 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::H256;
-use crate::eth1::{Eth1Data, Eth1DataVote};
+use primitives::{H256, ValidatorId};
+use crate::eth1::{Eth1Data, Eth1DataVote, Deposit};
 use crate::attestation::{PendingAttestation, Crosslink};
 use crate::validator::Validator;
 use crate::block::BeaconBlockHeader;
 use crate::consts::{
 	SLOTS_PER_HISTORICAL_ROOT, LATEST_SLASHED_EXIT_LENGTH,
 	LATEST_ACTIVE_INDEX_ROOTS_LENGTH, SHARD_COUNT,
-	LATEST_RANDAO_MIXES_LENGTH,
+	LATEST_RANDAO_MIXES_LENGTH, DOMAIN_DEPOSIT,
 };
+use crate::error::Error;
+use crate::util::{bls_domain, slot_to_epoch};
 
 pub struct BeaconState {
 	// Misc
@@ -82,4 +84,55 @@ pub struct Fork {
 	pub current_version: u64,
 	/// Fork epoch number
 	pub epoch: u64,
+}
+
+impl BeaconState {
+	pub fn current_epoch(&self) -> u64 {
+		slot_to_epoch(self.slot)
+	}
+
+	pub fn previous_epoch(&self) -> u64 {
+		self.current_epoch().saturating_sub(1)
+	}
+
+	pub fn validator_by_id(&self, validator_id: &ValidatorId) -> Option<&Validator> {
+		for validator in &self.validator_registry {
+			if &validator.pubkey == validator_id {
+				return Some(validator)
+			}
+		}
+
+		None
+	}
+
+	pub fn push_deposit(&mut self, deposit: Deposit) -> Result<(), Error> {
+		if deposit.index != self.deposit_index {
+			return Err(Error::DepositIndexMismatch)
+		}
+
+		if !deposit.is_merkle_valid(&self.latest_eth1_data.deposit_root) {
+			return Err(Error::DepositMerkleInvalid)
+		}
+
+		self.deposit_index += 1;
+
+		if !deposit.is_proof_valid(
+			bls_domain(&self.fork, self.current_epoch(), DOMAIN_DEPOSIT)
+		) {
+			return Err(Error::DepositProofInvalid)
+		}
+
+		match self.validator_by_id(&deposit.deposit_data.deposit_input.pubkey) {
+			Some(validator) => {
+				if validator.withdrawal_credentials != deposit.deposit_data.deposit_input.withdrawal_credentials {
+					return Err(Error::DepositWithdrawalCredentialsMismatch)
+				}
+			},
+			None => {
+
+			},
+		}
+
+		Ok(())
+	}
 }

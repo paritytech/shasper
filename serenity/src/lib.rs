@@ -22,6 +22,7 @@ mod slashing;
 mod state;
 mod validator;
 mod util;
+mod error;
 
 pub use attestation::*;
 pub use block::*;
@@ -29,3 +30,4 @@ pub use eth1::*;
 pub use slashing::*;
 pub use state::*;
 pub use validator::*;
+pub use error::*;
