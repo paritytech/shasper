@@ -31,3 +31,10 @@ pub use slashing::*;
 pub use state::*;
 pub use validator::*;
 pub use error::*;
+
+type Gwei = u64;
+type Slot = u64;
+type Epoch = u64;
+type Shard = u64;
+type Timestamp = u64;
+type ValidatorIndex = u64;
