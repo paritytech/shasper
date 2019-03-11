@@ -4,8 +4,14 @@ use crate::state::Fork;
 use hash_db::Hasher as _;
 use primitives::{ValidatorId, H256, Signature};
 
-pub fn bls_verify(_pubkey: &ValidatorId, _message: &H256, _signature: &Signature, _domain: u64) -> bool {
-	true
+pub fn bls_verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, _domain: u64) -> bool {
+	pubkey.into_public()
+		.map(|public| {
+			signature.into_signature().map(|signature| {
+				public.verify(&message[..], &signature)
+			}).unwrap_or(false)
+		})
+		.unwrap_or(false)
 }
 
 pub fn bls_domain(_fork: &Fork, _epoch: u64, _typ: u64) -> u64 {
