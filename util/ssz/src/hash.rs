@@ -20,7 +20,24 @@ macro_rules! impl_encoded {
 	)* }
 }
 
-impl_encoded!(u16, u32, u64, u128, usize, i16, i32, i64, i128, isize, U256, H256, H160, Vec<u8>);
+impl_encoded!(u16, u32, u64, u128, usize, i16, i32, i64, i128, isize, bool, U256, H256, H160, Vec<u8>);
+
+macro_rules! impl_array {
+	( $( $n:expr )* ) => { $(
+		impl<T: Hashable> Hashable for [T; $n] {
+			fn hash<H: Hasher>(&self) -> H::Out {
+				let values: Vec<_> = self.iter()
+					.map(|item| Hashable::hash::<H>(item).as_ref().to_vec())
+					.collect();
+
+				merkle_root::<H, _>(&values)
+			}
+		}
+	)* }
+}
+
+impl_array!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
+			40 48 56 64 72 96 128 160 192 224 256 1024 8192);
 
 impl<T: Hashable> Hashable for Vec<T> {
 	fn hash<H: Hasher>(&self) -> H::Out {

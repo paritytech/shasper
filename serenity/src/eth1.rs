@@ -20,6 +20,7 @@ use ssz_derive::Ssz;
 use crate::consts::DEPOSIT_CONTRACT_TREE_DEPTH;
 use crate::util::{Hasher, hash, hash2, bls_verify};
 
+#[derive(Ssz)]
 pub struct Eth1Data {
 	/// Root of the deposit tree
 	pub deposit_root: H256,
@@ -27,6 +28,16 @@ pub struct Eth1Data {
 	pub block_hash: H256,
 }
 
+impl Eth1Data {
+	pub fn empty() -> Self {
+		Self {
+			deposit_root: H256::default(),
+			block_hash: H256::default(),
+		}
+	}
+}
+
+#[derive(Ssz)]
 pub struct Eth1DataVote {
 	/// Data being voted for
 	pub eth1_data: Eth1Data,
@@ -34,6 +45,7 @@ pub struct Eth1DataVote {
 	pub vote_count: u64,
 }
 
+#[derive(Ssz)]
 pub struct Deposit {
 	/// Branch in the deposit tree
 	pub proof: [H256; DEPOSIT_CONTRACT_TREE_DEPTH],
@@ -46,7 +58,7 @@ pub struct Deposit {
 impl Deposit {
 	pub fn is_merkle_valid(&self, deposit_root: &H256) -> bool {
 		let merkle = MerkleProof {
-			leaf: hash::<Hasher>(&self.deposit_data.encode()),
+			leaf: hash(&self.deposit_data.encode()),
 			proof: self.proof,
 			depth: DEPOSIT_CONTRACT_TREE_DEPTH,
 			index: self.index as usize,
@@ -99,9 +111,9 @@ impl MerkleProof {
 		let mut value = self.leaf;
 		for i in 0..self.depth {
 			if self.index / (2usize.pow(i as u32) % 2) == 0 {
-				value = hash2::<Hasher>(self.proof[i].as_ref(), value.as_ref());
+				value = hash2(self.proof[i].as_ref(), value.as_ref());
 			} else {
-				value = hash2::<Hasher>(value.as_ref(), self.proof[i].as_ref());
+				value = hash2(value.as_ref(), self.proof[i].as_ref());
 			}
 		}
 

@@ -2613,7 +2613,7 @@ dependencies = [
 name = "serenity"
 version = "0.1.0"
 dependencies = [
- "casper 0.1.0",
+ "hash-db 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "keccak-hasher 0.1.1",
  "shasper-primitives 0.1.0",
  "ssz 0.1.0",
