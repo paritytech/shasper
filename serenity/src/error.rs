@@ -3,4 +3,5 @@ pub enum Error {
 	DepositMerkleInvalid,
 	DepositProofInvalid,
 	DepositWithdrawalCredentialsMismatch,
+	EpochOutOfRange,
 }

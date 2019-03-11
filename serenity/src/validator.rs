@@ -15,7 +15,10 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use primitives::{Signature, ValidatorId, H256};
+use ssz_derive::Ssz;
+use crate::consts::GENESIS_EPOCH;
 
+#[derive(Ssz)]
 pub struct Validator {
 	/// BLS public key
 	pub pubkey: ValidatorId,
@@ -33,6 +36,33 @@ pub struct Validator {
 	pub slashed: bool,
 }
 
+impl Validator {
+	pub fn activate(&mut self, delayed_activation_exit_epoch: u64, is_genesis: bool) {
+		if is_genesis {
+			self.activation_epoch = GENESIS_EPOCH;
+		} else {
+			self.activation_epoch = delayed_activation_exit_epoch;
+		}
+	}
+
+	pub fn initiate_exit(&mut self) {
+		self.initiated_exit = true;
+	}
+
+	pub fn exit(&mut self, delayed_activation_exit_epoch: u64) {
+		if self.exit_epoch <= delayed_activation_exit_epoch {
+			return
+		} else {
+			self.exit_epoch = delayed_activation_exit_epoch;
+		}
+	}
+
+	pub fn is_active(&self, epoch: u64) -> bool {
+		self.activation_epoch <= epoch && epoch < self.exit_epoch
+	}
+}
+
+#[derive(Ssz)]
 pub struct VoluntaryExit {
 	/// Minimum epoch for processing exit
 	pub epoch: u64,
@@ -42,6 +72,7 @@ pub struct VoluntaryExit {
 	pub signature: Signature,
 }
 
+#[derive(Ssz)]
 pub struct Transfer {
 	/// Sender index
 	pub from: u64,

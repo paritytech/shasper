@@ -15,7 +15,10 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use primitives::{BitField, H256, Signature};
+use ssz_derive::Ssz;
+use crate::consts::GENESIS_EPOCH;
 
+#[derive(Ssz)]
 pub struct Crosslink {
 	/// Epoch number
 	pub epoch: u64,
@@ -23,6 +26,16 @@ pub struct Crosslink {
 	pub crosslink_data_root: H256,
 }
 
+impl Default for Crosslink {
+	fn default() -> Self {
+		Self {
+			epoch: GENESIS_EPOCH,
+			crosslink_data_root: H256::default(),
+		}
+	}
+}
+
+#[derive(Ssz)]
 pub struct Attestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -34,6 +47,7 @@ pub struct Attestation {
 	pub aggregate_signature: Signature,
 }
 
+#[derive(Ssz)]
 pub struct PendingAttestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -45,6 +59,7 @@ pub struct PendingAttestation {
 	pub inclusion_slot: u64,
 }
 
+#[derive(Ssz)]
 pub struct AttestationData {
 	/// Slot number
 	pub slot: u64,
