@@ -19,28 +19,19 @@ use ssz::Hashable;
 use ssz_derive::Ssz;
 use crate::{Gwei, Slot, Epoch, Timestamp, ValidatorIndex, Shard};
 use crate::eth1::{Eth1Data, Eth1DataVote, Deposit};
-use crate::slashing::SlashableAttestation;
+use crate::slashing::{SlashableAttestation, ProposerSlashing, AttesterSlashing};
 use crate::attestation::{
 	PendingAttestation, Crosslink, AttestationDataAndCustodyBit,
-	AttestationData,
+	AttestationData, Attestation,
 };
-use crate::validator::Validator;
+use crate::validator::{Validator, VoluntaryExit, Transfer};
 use crate::block::{BeaconBlock, BeaconBlockHeader};
-use crate::consts::{
-	SLOTS_PER_HISTORICAL_ROOT, LATEST_SLASHED_EXIT_LENGTH,
-	LATEST_ACTIVE_INDEX_ROOTS_LENGTH, SHARD_COUNT,
-	LATEST_RANDAO_MIXES_LENGTH, DOMAIN_DEPOSIT,
-	ACTIVATION_EXIT_DELAY, MIN_SEED_LOOKAHEAD,
-	GENESIS_EPOCH, GENESIS_START_SHARD, GENESIS_SLOT,
-	GENESIS_FORK_VERSION, MIN_DEPOSIT_AMOUNT,
-	MAX_DEPOSIT_AMOUNT, DOMAIN_ATTESTATION, MAX_INDICES_PER_SLASHABLE_VOTE,
-	SLOTS_PER_EPOCH, MIN_VALIDATOR_WITHDRAWABILITY_DELAY, WHISTLEBLOWER_REWARD_QUOTIENT,
-};
+use crate::consts::*;
 use crate::error::Error;
 use crate::util::{
 	Hasher, bls_domain, slot_to_epoch, hash3, to_bytes, bls_aggregate_pubkeys,
 	bls_verify_multiple, shuffling, is_power_of_two, epoch_committee_count,
-	epoch_start_slot,
+	epoch_start_slot, compare_hash, integer_squareroot, bls_verify, hash
 };
 
 #[derive(Ssz)]
@@ -87,6 +78,7 @@ pub struct BeaconState {
 	pub deposit_index: u64,
 }
 
+#[derive(Ssz)]
 pub struct HistoricalBatch {
 	/// Block roots
 	pub block_roots: [H256; SLOTS_PER_HISTORICAL_ROOT],
@@ -264,6 +256,242 @@ impl BeaconState {
 		Ok(())
 	}
 
+	pub fn push_proposer_slashing(&mut self, proposer_slashing: ProposerSlashing) -> Result<(), Error> {
+		if proposer_slashing.header_a.slot != proposer_slashing.header_b.slot {
+			return Err(Error::ProposerSlashingInvalidSlot)
+		}
+
+		if proposer_slashing.header_a == proposer_slashing.header_b {
+			return Err(Error::ProposerSlashingSameHeader)
+		}
+
+		{
+			let proposer = &self.validator_registry[proposer_slashing.proposer_index as usize];
+
+			if proposer.slashed {
+				return Err(Error::ProposerSlashingAlreadySlashed)
+			}
+
+			for header in [&proposer_slashing.header_a, &proposer_slashing.header_b].into_iter() {
+				if !bls_verify(&proposer.pubkey, &header.truncated_hash::<Hasher>(), &header.signature, bls_domain(&self.fork, slot_to_epoch(header.slot), DOMAIN_BEACON_BLOCK)) {
+					return Err(Error::ProposerSlashingInvalidSignature)
+				}
+			}
+		}
+
+		self.slash_validator(proposer_slashing.proposer_index)
+	}
+
+	pub fn push_attester_slashing(&mut self, attester_slashing: AttesterSlashing) -> Result<(), Error> {
+		let attestation1 = attester_slashing.slashable_attestation_a;
+		let attestation2 = attester_slashing.slashable_attestation_b;
+
+		if attestation1.data == attestation2.data {
+			return Err(Error::AttesterSlashingSameAttestation)
+		}
+
+		if !(attestation1.data.is_double_vote(&attestation2.data) || attestation1.data.is_surround_vote(&attestation2.data)) {
+			return Err(Error::AttesterSlashingNotSlashable)
+		}
+
+		if !self.verify_slashable_attestation(&attestation1) {
+			return Err(Error::AttesterSlashingInvalid)
+		}
+
+		if !self.verify_slashable_attestation(&attestation2) {
+			return Err(Error::AttesterSlashingInvalid)
+		}
+
+		let mut slashable_indices = Vec::new();
+		for index in &attestation1.validator_indices {
+			if attestation2.validator_indices.contains(index) && !self.validator_registry[*index as usize].slashed {
+				slashable_indices.push(*index);
+			}
+		}
+
+		if slashable_indices.len() == 0 {
+			return Err(Error::AttesterSlashingEmptyIndices)
+		}
+
+		for index in slashable_indices {
+			self.slash_validator(index)?;
+		}
+
+		Ok(())
+	}
+
+	pub fn push_attestation(&mut self, attestation: Attestation) -> Result<(), Error> {
+		if attestation.data.slot < GENESIS_SLOT {
+			return Err(Error::AttestationTooFarInHistory)
+		}
+
+		if self.slot > attestation.data.slot + SLOTS_PER_EPOCH {
+			return Err(Error::AttestationTooFarInHistory)
+		}
+
+		if attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY > self.slot {
+			return Err(Error::AttestationSubmittedTooQuickly)
+		}
+
+		if slot_to_epoch(attestation.data.slot) >= self.current_epoch() {
+			if attestation.data.justified_epoch != self.justified_epoch {
+				return Err(Error::AttestationIncorrectJustifiedEpoch)
+			}
+		} else {
+			if attestation.data.justified_epoch != self.previous_justified_epoch {
+				return Err(Error::AttestationIncorrectJustifiedEpoch)
+			}
+		}
+
+		if attestation.data.justified_block_root != self.block_root(epoch_start_slot(attestation.data.justified_epoch))? {
+			return Err(Error::AttestationIncorrectJustifiedBlockRoot)
+		}
+
+		if !(self.latest_crosslinks[attestation.data.shard as usize] == attestation.data.latest_crosslink || self.latest_crosslinks[attestation.data.shard as usize] == Crosslink { crosslink_data_root: attestation.data.crosslink_data_root, epoch: slot_to_epoch(attestation.data.slot) }) {
+			return Err(Error::AttestationIncorrectCrosslinkData)
+		}
+
+		if attestation.aggregation_bitfield.count() == 0 {
+			return Err(Error::AttestationEmptyAggregation)
+		}
+
+		if attestation.custody_bitfield.count() == 0 {
+			return Err(Error::AttestationEmptyCustody)
+		}
+
+		let crosslink_committee = self.crosslink_committees_at_slot(attestation.data.slot, false)?
+			.into_iter()
+			.filter(|(_, s)| s == &attestation.data.shard)
+			.map(|(c, _)| c)
+			.next()
+			.ok_or(Error::AttestationInvalidShard)?;
+
+		for i in 0..crosslink_committee.len() {
+			if !attestation.aggregation_bitfield.has_voted(i) {
+				if attestation.custody_bitfield.has_voted(i) {
+					return Err(Error::AttestationInvalidCustody)
+				}
+			}
+		}
+
+		let participants = self.attestation_participants(&attestation.data, &attestation.aggregation_bitfield)?;
+		let custody_bit_1_participants = self.attestation_participants(&attestation.data, &attestation.custody_bitfield)?;
+		let custody_bit_0_participants = participants.clone().into_iter().filter(|p| !custody_bit_1_participants.contains(p)).collect::<Vec<_>>();
+
+		if !bls_verify_multiple(
+			&[
+				bls_aggregate_pubkeys(&custody_bit_0_participants.iter().map(|i| self.validator_registry[*i as usize].pubkey).collect::<Vec<_>>()[..]),
+				bls_aggregate_pubkeys(&custody_bit_1_participants.iter().map(|i| self.validator_registry[*i as usize].pubkey).collect::<Vec<_>>()[..]),
+			],
+			&[
+				AttestationDataAndCustodyBit {
+					data: attestation.data.clone(),
+					custody_bit: false,
+				}.hash::<Hasher>(),
+				AttestationDataAndCustodyBit {
+					data: attestation.data.clone(),
+					custody_bit: true,
+				}.hash::<Hasher>(),
+			],
+			&attestation.aggregate_signature,
+			bls_domain(&self.fork, slot_to_epoch(attestation.data.slot), DOMAIN_ATTESTATION)
+		) {
+			return Err(Error::AttestationInvalidSignature)
+		}
+
+		if attestation.data.crosslink_data_root != H256::default() {
+			return Err(Error::AttestationInvalidCrosslink)
+		}
+
+		let attestation_data_slot = attestation.data.slot;
+		let pending_attestation = PendingAttestation {
+			data: attestation.data,
+			aggregation_bitfield: attestation.aggregation_bitfield,
+			custody_bitfield: attestation.custody_bitfield,
+			inclusion_slot: self.slot,
+		};
+
+		if slot_to_epoch(attestation_data_slot) == self.current_epoch() {
+			self.current_epoch_attestations.push(pending_attestation);
+		} else if slot_to_epoch(attestation_data_slot) == self.previous_epoch() {
+			self.previous_epoch_attestations.push(pending_attestation);
+		}
+
+		Ok(())
+	}
+
+	pub fn push_voluntary_exit(&mut self, exit: VoluntaryExit) -> Result<(), Error> {
+		{
+			let validator = &self.validator_registry[exit.validator_index as usize];
+
+			if validator.exit_epoch != FAR_FUTURE_EPOCH {
+				return Err(Error::VoluntaryExitAlreadyExited)
+			}
+
+			if validator.initiated_exit {
+				return Err(Error::VoluntaryExitAlreadyInitiated)
+			}
+
+			if self.current_epoch() < exit.epoch {
+				return Err(Error::VoluntaryExitNotYetValid)
+			}
+
+			if self.current_epoch() - validator.activation_epoch < PERSISTENT_COMMITTEE_PERIOD {
+				return Err(Error::VoluntaryExitNotLongEnough)
+			}
+
+			if !bls_verify(
+				&validator.pubkey,
+				&exit.truncated_hash::<Hasher>(),
+				&exit.signature,
+				bls_domain(&self.fork, exit.epoch, DOMAIN_VOLUNTARY_EXIT)
+			) {
+				return Err(Error::VoluntaryExitInvalidSignature)
+			}
+		}
+
+		self.initiate_validator_exit(exit.validator_index);
+		Ok(())
+	}
+
+	pub fn push_transfer(&mut self, transfer: Transfer) -> Result<(), Error> {
+		if self.validator_balances[transfer.sender as usize] < core::cmp::max(transfer.amount, transfer.fee) {
+			return Err(Error::TransferNoFund)
+		}
+
+		if !(self.validator_balances[transfer.sender as usize] == transfer.amount + transfer.fee || self.validator_balances[transfer.sender as usize] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT) {
+			return Err(Error::TransferNoFund)
+		}
+
+		if self.slot != transfer.slot {
+			return Err(Error::TransferNotValidSlot)
+		}
+
+		if !(self.current_epoch() >= self.validator_registry[transfer.sender as usize].withdrawable_epoch || self.validator_registry[transfer.sender as usize].activation_epoch == FAR_FUTURE_EPOCH) {
+			return Err(Error::TransferNotWithdrawable)
+		}
+
+		if !(self.validator_registry[transfer.sender as usize].withdrawal_credentials[0] == BLS_WITHDRAWAL_PREFIX_BYTE && &self.validator_registry[transfer.sender as usize].withdrawal_credentials[1..] == &hash(&transfer.pubkey[..])[1..]) {
+			return Err(Error::TransferInvalidPublicKey)
+		}
+
+		if !bls_verify(
+			&transfer.pubkey,
+			&transfer.truncated_hash::<Hasher>(),
+			&transfer.signature,
+			bls_domain(&self.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER)
+		) {
+			return Err(Error::TransferInvalidSignature)
+		}
+
+		self.validator_balances[transfer.sender as usize] -= transfer.amount + transfer.fee;
+		self.validator_balances[transfer.recipient as usize] += transfer.amount;
+		let proposer_index = self.beacon_proposer_index(self.slot, false)?;
+		self.validator_balances[proposer_index as usize] += transfer.fee;
+
+		Ok(())
+	}
+
 	pub fn active_validator_indices(&self, epoch: Epoch) -> Vec<ValidatorIndex> {
 		self.validator_registry.iter()
 			.enumerate()
@@ -345,6 +573,286 @@ impl BeaconState {
 		}
 
 		self.latest_block_roots[(self.slot % SLOTS_PER_HISTORICAL_ROOT as u64) as usize] = self.latest_block_header.hash::<Hasher>();
+	}
+
+	pub fn update_justification_and_finalization(&mut self) -> Result<(), Error> {
+		let mut new_justified_epoch = self.justified_epoch;
+		self.justification_bitfield <<= 1;
+
+		let previous_boundary_attesting_balance = self.attesting_balance(&self.previous_epoch_boundary_attestations()?)?;
+		if previous_boundary_attesting_balance * 3 >= self.previous_total_balance() * 2 {
+			new_justified_epoch = self.current_epoch() - 1;
+			self.justification_bitfield |= 2;
+		}
+
+		let current_boundary_attesting_balance = self.attesting_balance(&self.current_epoch_boundary_attestations()?)?;
+		if current_boundary_attesting_balance * 3 >= self.current_total_balance() * 2 {
+			new_justified_epoch = self.current_epoch();
+			self.justification_bitfield |= 1;
+		}
+
+		let bitfield = self.justification_bitfield;
+		let current_epoch = self.current_epoch();
+		if (bitfield >> 1) % 8 == 0b111 && self.previous_justified_epoch == current_epoch - 3 {
+			self.finalized_epoch = self.previous_justified_epoch;
+		}
+		if (bitfield >> 1) % 4 == 0b011 && self.previous_justified_epoch == current_epoch - 2 {
+			self.finalized_epoch = self.previous_justified_epoch;
+		}
+		if (bitfield >> 0) % 8 == 0b111 && self.justified_epoch == current_epoch - 2 {
+			self.finalized_epoch = self.justified_epoch;
+		}
+		if (bitfield >> 0) % 4 == 0b011 && self.justified_epoch == current_epoch - 1 {
+			self.finalized_epoch = self.justified_epoch;
+		}
+
+		self.previous_justified_epoch = self.justified_epoch;
+		self.justified_epoch = new_justified_epoch;
+
+		Ok(())
+	}
+
+	pub fn update_crosslinks(&mut self) -> Result<(), Error> {
+		let current_epoch = self.current_epoch();
+		let previous_epoch = current_epoch.saturating_sub(1);
+		let next_epoch = current_epoch + 1;
+
+		for slot in epoch_start_slot(previous_epoch)..epoch_start_slot(next_epoch) {
+			for (crosslink_committee, shard) in self.crosslink_committees_at_slot(slot, false)? {
+				let (winning_root, participants) = self.winning_root_and_participants(shard)?;
+				let participating_balance = self.total_balance(&participants);
+				let total_balance = self.total_balance(&crosslink_committee);
+				if 3 * participating_balance >= 2 * total_balance {
+					self.latest_crosslinks[shard as usize] = Crosslink {
+						epoch: slot_to_epoch(slot),
+						crosslink_data_root: winning_root,
+					};
+				}
+			}
+		}
+
+		Ok(())
+	}
+
+	pub fn update_eth1_period(&mut self) {
+		if (self.current_epoch() + 1) % EPOCHS_PER_ETH1_VOTING_PERIOD == 0 {
+			for eth1_data_vote in &self.eth1_data_votes {
+				if eth1_data_vote.vote_count * 2 > EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH {
+					self.latest_eth1_data = eth1_data_vote.eth1_data.clone();
+				}
+			}
+			self.eth1_data_votes = Vec::new();
+		}
+	}
+
+	pub fn update_rewards(&mut self) -> Result<(), Error> {
+		let delta1 = self.justification_and_finalization_deltas()?;
+		let delta2 = self.crosslink_deltas()?;
+		for i in 0..self.validator_registry.len() {
+			self.validator_balances[i] = (self.validator_balances[i] + delta1.0[i] + delta2.0[i]).saturating_sub(delta1.1[i] + delta2.1[i]);
+		}
+
+		Ok(())
+	}
+
+	pub fn update_ejections(&mut self) {
+		for index in self.active_validator_indices(self.current_epoch()) {
+			if self.validator_balances[index as usize] < EJECTION_BALANCE {
+				self.exit_validator(index);
+			}
+		}
+	}
+
+	pub fn should_update_validator_registry(&self) -> bool {
+		if self.finalized_epoch <= self.validator_registry_update_epoch {
+			return false
+		}
+
+		for i in 0..self.current_epoch_committee_count() {
+			let s = (self.current_shuffling_start_shard as usize + i) % SHARD_COUNT;
+			if self.latest_crosslinks[s].epoch <= self.validator_registry_update_epoch {
+				return false
+			}
+		}
+
+		true
+	}
+
+	pub fn update_validator_registry(&mut self) {
+		let current_epoch = self.current_epoch();
+		let active_validator_indices = self.active_validator_indices(current_epoch);
+		let total_balance = self.total_balance(&active_validator_indices);
+
+		let max_balance_churn = core::cmp::max(
+			MAX_DEPOSIT_AMOUNT,
+			total_balance / (2 * MAX_BALANCE_CHURN_QUOTIENT)
+		);
+
+		let mut balance_churn = 0;
+		for (i, validator) in self.validator_registry.clone().into_iter().enumerate() {
+			let index = i as u64;
+			if validator.activation_epoch == FAR_FUTURE_EPOCH && self.validator_balances[i] >= MAX_DEPOSIT_AMOUNT {
+				balance_churn += self.effective_balance(index);
+				if balance_churn > max_balance_churn {
+					break
+				}
+
+				self.activate_validator(index, false);
+			}
+		}
+
+		let mut balance_churn = 0;
+		for (i, validator) in self.validator_registry.clone().into_iter().enumerate() {
+			let index = i as u64;
+			if validator.exit_epoch == FAR_FUTURE_EPOCH && validator.initiated_exit {
+				balance_churn += self.effective_balance(index);
+				if balance_churn > max_balance_churn {
+					break
+				}
+
+				self.exit_validator(index);
+			}
+		}
+
+		self.validator_registry_update_epoch = current_epoch;
+	}
+
+	pub fn update_registry_and_shuffling_data(&mut self) -> Result<(), Error> {
+		self.previous_shuffling_epoch = self.current_shuffling_epoch;
+		self.previous_shuffling_start_shard = self.current_shuffling_start_shard;
+		self.previous_shuffling_seed = self.current_shuffling_seed;
+
+		let current_epoch = self.current_epoch();
+		let next_epoch = current_epoch + 1;
+
+		if self.should_update_validator_registry() {
+			self.update_validator_registry();
+
+			self.current_shuffling_epoch = next_epoch;
+			self.current_shuffling_start_shard = self.current_shuffling_start_shard + (self.current_epoch_committee_count() % SHARD_COUNT) as u64;
+			self.current_shuffling_seed = self.seed(self.current_shuffling_epoch)?;
+		} else {
+			let epochs_since_last_registry_update = current_epoch - self.validator_registry_update_epoch;
+			if epochs_since_last_registry_update > 1 && is_power_of_two(epochs_since_last_registry_update) {
+				self.current_shuffling_epoch = next_epoch;
+				self.current_shuffling_seed = self.seed(self.current_shuffling_epoch)?;
+			}
+		}
+
+		Ok(())
+	}
+
+	pub fn update_slashings(&mut self) {
+		let current_epoch = self.current_epoch();
+		let active_validator_indices = self.active_validator_indices(current_epoch);
+		let total_balance = self.total_balance(&active_validator_indices);
+
+		let total_at_start = self.latest_slashed_balances[((current_epoch + 1) % LATEST_SLASHED_EXIT_LENGTH as u64) as usize];
+		let total_at_end = self.latest_slashed_balances[(current_epoch % LATEST_SLASHED_EXIT_LENGTH as u64) as usize];
+		let total_penalties = total_at_end - total_at_start;
+
+		for (i, validator) in self.validator_registry.clone().into_iter().enumerate() {
+			let index = i as u64;
+			if validator.slashed && current_epoch == validator.withdrawable_epoch - LATEST_SLASHED_EXIT_LENGTH as u64 / 2 {
+				let penalty = core::cmp::max(
+					self.effective_balance(index) * core::cmp::min(total_penalties * 3, total_balance) / total_balance,
+					self.effective_balance(index) / MIN_PENALTY_QUOTIENT
+				);
+				self.validator_balances[i] -= penalty;
+			}
+		}
+	}
+
+
+	pub fn update_exit_queue(&mut self) {
+		let mut eligible_indices = (0..(self.validator_registry.len() as u64)).filter(|index| {
+			if self.validator_registry[*index as usize].withdrawable_epoch != FAR_FUTURE_EPOCH {
+				false
+			} else {
+				self.current_epoch() >= self.validator_registry[*index as usize].exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+			}
+		}).collect::<Vec<_>>();
+		eligible_indices.sort_by_key(|index| {
+			self.validator_registry[*index as usize].exit_epoch
+		});
+
+		for (dequeues, index) in eligible_indices.into_iter().enumerate() {
+			if dequeues >= MAX_EXIT_DEQUEUES_PER_EPOCH {
+				break
+			}
+			self.prepare_validator_for_withdrawal(index);
+		}
+	}
+
+	pub fn update_finalize(&mut self) -> Result<(), Error> {
+		let current_epoch = self.current_epoch();
+		let next_epoch = current_epoch + 1;
+
+		let index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH as u64;
+		self.latest_active_index_roots[index_root_position as usize] = self.active_validator_indices(next_epoch + ACTIVATION_EXIT_DELAY).hash::<Hasher>();
+		self.latest_slashed_balances[(next_epoch % LATEST_SLASHED_EXIT_LENGTH as u64) as usize] = self.latest_slashed_balances[(current_epoch % LATEST_SLASHED_EXIT_LENGTH as u64) as usize];
+		self.latest_randao_mixes[(next_epoch % LATEST_RANDAO_MIXES_LENGTH as u64) as usize] = self.randao_mix(current_epoch)?;
+
+		if next_epoch % (SLOTS_PER_HISTORICAL_ROOT as u64 / SLOTS_PER_EPOCH) == 0 {
+			self.historical_roots.push(HistoricalBatch {
+				block_roots: self.latest_block_roots.clone(),
+				state_roots: self.latest_state_roots.clone(),
+			}.hash::<Hasher>());
+		}
+		self.previous_epoch_attestations = self.current_epoch_attestations.clone();
+		self.current_epoch_attestations = Vec::new();
+
+		Ok(())
+	}
+
+	pub fn advance_slot(&mut self) {
+		self.slot += 1;
+	}
+
+	pub fn process_block_header(&mut self, block: &BeaconBlock) -> Result<(), Error> {
+		if block.slot != self.slot {
+			return Err(Error::BlockSlotInvalid)
+		}
+
+		if block.previous_block_root != self.latest_block_header.hash::<Hasher>() {
+			return Err(Error::BlockPreviousRootInvalid)
+		}
+
+		self.latest_block_header = BeaconBlockHeader::with_state_root(block, H256::default());
+
+		let proposer = &self.validator_registry[self.beacon_proposer_index(self.slot, false)? as usize];
+
+		if !bls_verify(&proposer.pubkey, &block.truncated_hash::<Hasher>(), &block.signature, bls_domain(&self.fork, self.current_epoch(), DOMAIN_BEACON_BLOCK)) {
+			return Err(Error::BlockSignatureInvalid)
+		}
+
+		Ok(())
+	}
+
+	pub fn process_randao(&mut self, block: &BeaconBlock) -> Result<(), Error> {
+		let proposer = &self.validator_registry[self.beacon_proposer_index(self.slot, false)? as usize];
+
+		if !bls_verify(&proposer.pubkey, &self.current_epoch().hash::<Hasher>(), &block.body.randao_reveal, bls_domain(&self.fork, self.current_epoch(), DOMAIN_RANDAO)) {
+			return Err(Error::RandaoSignatureInvalid)
+		}
+
+		self.latest_randao_mixes[(self.current_epoch() % LATEST_RANDAO_MIXES_LENGTH as u64) as usize] = self.randao_mix(self.current_epoch())? ^ hash(&block.body.randao_reveal[..]);
+
+		Ok(())
+	}
+
+	pub fn process_eth1_data(&mut self, block: &BeaconBlock) {
+		for eth1_data_vote in &mut self.eth1_data_votes {
+			if eth1_data_vote.eth1_data == block.body.eth1_data {
+				eth1_data_vote.vote_count += 1;
+				return
+			}
+		}
+
+		self.eth1_data_votes.push(Eth1DataVote {
+			eth1_data: block.body.eth1_data.clone(),
+			vote_count: 1
+		});
 	}
 
 	pub fn previous_epoch_committee_count(&self) -> usize {
@@ -462,6 +970,242 @@ impl BeaconState {
 			}
 		}
 		Ok(participants)
+	}
+
+	pub fn attesting_indices(&self, attestations: &[PendingAttestation]) -> Result<Vec<ValidatorIndex>, Error> {
+		let mut ret = Vec::new();
+		for attestation in attestations {
+			for index in self.attestation_participants(&attestation.data, &attestation.aggregation_bitfield)? {
+				if !ret.contains(&index) {
+					ret.push(index);
+				}
+			}
+		}
+		Ok(ret)
+	}
+
+	pub fn attesting_balance(&self, attestations: &[PendingAttestation]) -> Result<Gwei, Error> {
+		Ok(self.total_balance(&self.attesting_indices(attestations)?))
+	}
+
+	pub fn current_epoch_boundary_attestations(&self) -> Result<Vec<PendingAttestation>, Error> {
+		let block_root = self.block_root(epoch_start_slot(self.current_epoch()))?;
+		Ok(self.current_epoch_attestations.clone().into_iter()
+		   .filter(|a| a.data.epoch_boundary_root == block_root)
+		   .collect())
+	}
+
+	pub fn previous_epoch_boundary_attestations(&self) -> Result<Vec<PendingAttestation>, Error> {
+		let block_root = self.block_root(epoch_start_slot(self.previous_epoch()))?;
+		Ok(self.previous_epoch_attestations.clone().into_iter()
+		   .filter(|a| a.data.epoch_boundary_root == block_root)
+		   .collect())
+	}
+
+	pub fn previous_epoch_matching_head_attestations(&self) -> Result<Vec<PendingAttestation>, Error> {
+		let mut ret = Vec::new();
+		for attestation in self.previous_epoch_attestations.clone() {
+			if attestation.data.beacon_block_root == self.block_root(attestation.data.slot)? {
+				ret.push(attestation);
+			}
+		}
+		Ok(ret)
+	}
+
+	pub fn winning_root_and_participants(&self, shard: Shard) -> Result<(H256, Vec<ValidatorIndex>), Error> {
+		let all_attestations = self.current_epoch_attestations.clone().into_iter()
+			.chain(self.previous_epoch_attestations.clone().into_iter());
+		let valid_attestations = all_attestations.filter(|a| {
+			a.data.latest_crosslink == self.latest_crosslinks[shard as usize]
+		}).collect::<Vec<_>>();
+		let all_roots = valid_attestations.iter()
+			.map(|a| a.data.crosslink_data_root)
+			.collect::<Vec<_>>();
+
+		let attestations_for = |root| {
+			valid_attestations.clone().into_iter()
+				.filter(|a| a.data.crosslink_data_root == root)
+				.collect::<Vec<_>>()
+		};
+
+		let all_roots_with_balances = {
+			let mut ret = Vec::new();
+			for root in all_roots {
+				let balance = self.attesting_balance(&attestations_for(root))?;
+				ret.push((root, balance));
+			}
+			ret
+		};
+
+		let winning_root = match all_roots_with_balances.into_iter()
+			.max_by(|(a, a_balance), (b, b_balance)| {
+				if a_balance == b_balance {
+					compare_hash(a, b)
+				} else {
+					a_balance.cmp(b_balance)
+				}
+			})
+		{
+			Some(winning_root) => winning_root.0,
+			None => return Ok((H256::default(), Vec::new()))
+		};
+
+		Ok((winning_root, self.attesting_indices(&attestations_for(winning_root))?))
+	}
+
+	pub fn earliest_attestation(&self, index: ValidatorIndex) -> Result<PendingAttestation, Error> {
+		let attestations = {
+			let mut ret = Vec::new();
+			for attestation in self.previous_epoch_attestations.clone() {
+				if self.attestation_participants(&attestation.data, &attestation.aggregation_bitfield)?.contains(&index) {
+					ret.push(attestation);
+				}
+			}
+			ret
+		};
+
+		attestations.into_iter().min_by_key(|a| a.inclusion_slot).ok_or(Error::ValidatorAttestationNotFound)
+	}
+
+	pub fn inclusion_slot(&self, index: ValidatorIndex) -> Result<Slot, Error> {
+		Ok(self.earliest_attestation(index)?.inclusion_slot)
+	}
+
+	pub fn inclusion_distance(&self, index: ValidatorIndex) -> Result<Slot, Error> {
+		let attestation = self.earliest_attestation(index)?;
+		Ok(attestation.inclusion_slot - attestation.data.slot)
+	}
+
+	pub fn base_reward(&self, index: ValidatorIndex) -> Gwei {
+		if self.previous_total_balance() == 0 {
+			return 0
+		}
+
+		let adjusted_quotient = integer_squareroot(self.previous_total_balance()) / BASE_REWARD_QUOTIENT;
+		self.effective_balance(index) / adjusted_quotient / 5
+	}
+
+	pub fn inactivity_penalty(&self, index: ValidatorIndex, epochs_since_finality: Epoch) -> Gwei {
+		self.base_reward(index) + self.effective_balance(index) * epochs_since_finality / INACTIVITY_PENALTY_QUOTIENT / 2
+	}
+
+	pub fn justification_and_finalization_deltas(&self) -> Result<(Vec<Gwei>, Vec<Gwei>), Error> {
+		let epochs_since_finality = self.current_epoch() + 1 - self.finalized_epoch;
+		if epochs_since_finality <= 4 {
+			self.normal_justification_and_finalization_deltas()
+		} else {
+			self.inactivity_leak_deltas()
+		}
+	}
+
+	pub fn normal_justification_and_finalization_deltas(&self) -> Result<(Vec<Gwei>, Vec<Gwei>), Error> {
+		let mut rewards = Vec::new();
+		rewards.resize(self.validator_registry.len(), 0);
+		let mut penalties = Vec::new();
+		penalties.resize(self.validator_registry.len(), 0);
+
+		let boundary_attestations = self.previous_epoch_boundary_attestations()?;
+		let boundary_attesting_balance = self.attesting_balance(&boundary_attestations)?;
+		let total_balance = self.previous_total_balance();
+		let total_attesting_balance = self.attesting_balance(&self.previous_epoch_attestations)?;
+		let matching_head_attestations = self.previous_epoch_matching_head_attestations()?;
+		let matching_head_balance = self.attesting_balance(&matching_head_attestations)?;
+
+		for index in self.active_validator_indices(self.previous_epoch()) {
+			if self.attesting_indices(&self.previous_epoch_attestations)?.contains(&index) {
+				rewards[index as usize] += self.base_reward(index) * total_attesting_balance / total_balance;
+				rewards[index as usize] += self.base_reward(index) * MIN_ATTESTATION_INCLUSION_DELAY / self.inclusion_distance(index)?;
+			} else {
+				penalties[index as usize] += self.base_reward(index);
+			}
+
+			if self.attesting_indices(&boundary_attestations)?.contains(&index) {
+				rewards[index as usize] += self.base_reward(index) * boundary_attesting_balance / total_balance;
+			} else {
+				penalties[index as usize] += self.base_reward(index);
+			}
+
+			if self.attesting_indices(&matching_head_attestations)?.contains(&index) {
+				rewards[index as usize] += self.base_reward(index) * matching_head_balance / total_balance;
+			} else {
+				penalties[index as usize] += self.base_reward(index);
+			}
+
+			if self.attesting_indices(&self.previous_epoch_attestations)?.contains(&index) {
+				let proposer_index = self.beacon_proposer_index(self.inclusion_slot(index)?, false)?;
+				rewards[proposer_index as usize] += self.base_reward(index) / ATTESTATION_INCLUSION_REWARD_QUOTIENT;
+			}
+		}
+
+		Ok((rewards, penalties))
+	}
+
+	pub fn inactivity_leak_deltas(&self) -> Result<(Vec<Gwei>, Vec<Gwei>), Error> {
+		let mut rewards = Vec::new();
+		rewards.resize(self.validator_registry.len(), 0);
+		let mut penalties = Vec::new();
+		penalties.resize(self.validator_registry.len(), 0);
+
+		let boundary_attestations = self.previous_epoch_boundary_attestations()?;
+		let matching_head_attestations = self.previous_epoch_matching_head_attestations()?;
+		let active_validator_indices = self.active_validator_indices(self.previous_epoch());
+		let epochs_since_finality = self.current_epoch() + 1 - self.finalized_epoch;
+
+		for index in &active_validator_indices {
+			if !self.attesting_indices(&self.previous_epoch_attestations)?.contains(index) {
+				penalties[*index as usize] += self.inactivity_penalty(*index, epochs_since_finality);
+			} else {
+				rewards[*index as usize] += self.base_reward(*index) * MIN_ATTESTATION_INCLUSION_DELAY / self.inclusion_distance(*index)?;
+				penalties[*index as usize] += self.base_reward(*index);
+			}
+
+			if !self.attesting_indices(&boundary_attestations)?.contains(index) {
+				penalties[*index as usize] += self.inactivity_penalty(*index, epochs_since_finality);
+			}
+
+			if !self.attesting_indices(&matching_head_attestations)?.contains(index) {
+				penalties[*index as usize] += self.base_reward(*index);
+			}
+		}
+
+		for index in 0..(self.validator_registry.len() as u64) {
+			let eligible = !active_validator_indices.contains(&index) &&
+				self.validator_registry[index as usize].slashed &&
+				self.current_epoch() < self.validator_registry[index as usize].withdrawable_epoch;
+
+			if eligible {
+				penalties[index as usize] += 2 * self.inactivity_penalty(index, epochs_since_finality) + self.base_reward(index);
+			}
+		}
+
+		Ok((rewards, penalties))
+	}
+
+	pub fn crosslink_deltas(&self) -> Result<(Vec<Gwei>, Vec<Gwei>), Error> {
+		let mut rewards = Vec::new();
+		rewards.resize(self.validator_registry.len(), 0);
+		let mut penalties = Vec::new();
+		penalties.resize(self.validator_registry.len(), 0);
+
+		let previous_epoch_start_slot = epoch_start_slot(self.previous_epoch());
+		let current_epoch_start_slot = epoch_start_slot(self.current_epoch());
+
+		for slot in previous_epoch_start_slot..current_epoch_start_slot {
+			for (crosslink_committee, shard) in self.crosslink_committees_at_slot(slot, false)? {
+				let (_, participants) = self.winning_root_and_participants(shard)?;
+				let participating_balance = self.total_balance(&participants);
+				let total_balance = self.total_balance(&crosslink_committee);
+				for index in crosslink_committee {
+					if participants.contains(&index) {
+						rewards[index as usize] += self.base_reward(index) * participating_balance / total_balance;
+					} else {
+						penalties[index as usize] += self.base_reward(index);
+					}
+				}
+			}
+		}
+
+		Ok((rewards, penalties))
 	}
 
 	pub fn verify_slashable_attestation(&self, slashable: &SlashableAttestation) -> bool {

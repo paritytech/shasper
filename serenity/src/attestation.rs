@@ -19,7 +19,7 @@ use ssz_derive::Ssz;
 use crate::consts::GENESIS_EPOCH;
 use crate::util::slot_to_epoch;
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 pub struct Crosslink {
 	/// Epoch number
 	pub epoch: u64,
@@ -36,7 +36,7 @@ impl Default for Crosslink {
 	}
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct Attestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -48,7 +48,7 @@ pub struct Attestation {
 	pub aggregate_signature: Signature,
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct PendingAttestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -60,7 +60,7 @@ pub struct PendingAttestation {
 	pub inclusion_slot: u64,
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 pub struct AttestationData {
 	/// Slot number
 	pub slot: u64,

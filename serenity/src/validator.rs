@@ -18,7 +18,7 @@ use primitives::{Signature, ValidatorId, H256};
 use ssz_derive::Ssz;
 use crate::consts::GENESIS_EPOCH;
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct Validator {
 	/// BLS public key
 	pub pubkey: ValidatorId,
@@ -62,22 +62,23 @@ impl Validator {
 	}
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct VoluntaryExit {
 	/// Minimum epoch for processing exit
 	pub epoch: u64,
 	/// Index of the exiting validator
 	pub validator_index: u64,
 	/// Validator signature
+	#[ssz(truncate)]
 	pub signature: Signature,
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct Transfer {
 	/// Sender index
-	pub from: u64,
+	pub sender: u64,
 	/// Recipient index
-	pub to: u64,
+	pub recipient: u64,
 	/// Amount in Gwei
 	pub amount: u64,
 	/// Fee in Gwei for block proposer
@@ -87,5 +88,6 @@ pub struct Transfer {
 	/// Sender withdrawal pubkey
 	pub pubkey: ValidatorId,
 	/// Sender signature
+	#[ssz(truncate)]
 	pub signature: Signature,
 }

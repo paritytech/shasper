@@ -139,3 +139,24 @@ pub fn shuffling(seed: &H256, active_validators: Vec<ValidatorIndex>) -> Vec<Vec
 pub fn is_power_of_two(value: u64) -> bool {
 	return (value > 0) && (value & (value - 1) == 0)
 }
+
+pub fn compare_hash(a: &H256, b: &H256) -> core::cmp::Ordering {
+	for i in 0..32 {
+		if a[i] > b[i] {
+			return core::cmp::Ordering::Greater
+		} else if a[i] < b[i] {
+			return core::cmp::Ordering::Less
+		}
+	}
+	core::cmp::Ordering::Equal
+}
+
+pub fn integer_squareroot(n: u64) -> u64 {
+	let mut x = n;
+	let mut y = (x + 1) / 2;
+	while y < x {
+		x = y;
+		y = (x + n / x) / 2
+	}
+	x
+}

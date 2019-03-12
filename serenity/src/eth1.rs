@@ -20,7 +20,7 @@ use ssz_derive::Ssz;
 use crate::consts::DEPOSIT_CONTRACT_TREE_DEPTH;
 use crate::util::{Hasher, hash, hash2, bls_verify};
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 pub struct Eth1Data {
 	/// Root of the deposit tree
 	pub deposit_root: H256,
@@ -45,7 +45,7 @@ pub struct Eth1DataVote {
 	pub vote_count: u64,
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct Deposit {
 	/// Branch in the deposit tree
 	pub proof: [H256; DEPOSIT_CONTRACT_TREE_DEPTH],
@@ -78,7 +78,7 @@ impl Deposit {
 	}
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct DepositData {
 	/// Amount in Gwei
 	pub amount: u64,
@@ -88,7 +88,7 @@ pub struct DepositData {
 	pub deposit_input: DepositInput,
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct DepositInput {
 	/// BLS pubkey
 	pub pubkey: ValidatorId,

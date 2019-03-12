@@ -26,6 +26,7 @@ use crate::state::BeaconState;
 use crate::error::Error;
 use crate::util::Hasher;
 
+#[derive(Ssz)]
 pub struct BeaconBlock {
 	pub slot: u64,
 	pub previous_block_root: H256,
@@ -33,6 +34,7 @@ pub struct BeaconBlock {
 	/// Body
 	pub body: BeaconBlockBody,
 	/// Signature
+	#[ssz(truncate)]
 	pub signature: Signature,
 }
 
@@ -56,12 +58,13 @@ impl BeaconBlock {
 	}
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, PartialEq, Eq, Clone)]
 pub struct BeaconBlockHeader {
     pub slot: u64,
     pub previous_block_root: H256,
     pub state_root: H256,
     pub block_body_root: H256,
+	#[ssz(truncate)]
     pub signature: Signature,
 }
 
