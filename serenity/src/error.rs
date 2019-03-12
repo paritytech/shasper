@@ -4,4 +4,8 @@ pub enum Error {
 	DepositProofInvalid,
 	DepositWithdrawalCredentialsMismatch,
 	EpochOutOfRange,
+	SlotOutOfRange,
+	AttestationShardInvalid,
+	AttestationBitFieldInvalid,
+	ValidatorNotWithdrawable,
 }

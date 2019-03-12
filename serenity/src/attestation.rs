@@ -17,8 +17,9 @@
 use primitives::{BitField, H256, Signature};
 use ssz_derive::Ssz;
 use crate::consts::GENESIS_EPOCH;
+use crate::util::slot_to_epoch;
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct Crosslink {
 	/// Epoch number
 	pub epoch: u64,
@@ -59,7 +60,7 @@ pub struct PendingAttestation {
 	pub inclusion_slot: u64,
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct AttestationData {
 	/// Slot number
 	pub slot: u64,
@@ -79,6 +80,18 @@ pub struct AttestationData {
 	pub justified_block_root: H256,
 }
 
+impl AttestationData {
+	pub fn is_double_vote(&self, other: &AttestationData) -> bool {
+		slot_to_epoch(self.slot) == slot_to_epoch(other.slot)
+	}
+
+	pub fn is_surround_vote(&self, other: &AttestationData) -> bool {
+		self.justified_epoch < other.justified_epoch &&
+			slot_to_epoch(other.slot) < slot_to_epoch(self.slot)
+	}
+}
+
+#[derive(Ssz)]
 pub struct AttestationDataAndCustodyBit {
 	/// Attestation data
 	pub data: AttestationData,
