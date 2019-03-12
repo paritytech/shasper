@@ -69,15 +69,16 @@ pub struct VoluntaryExit {
 	/// Index of the exiting validator
 	pub validator_index: u64,
 	/// Validator signature
+	#[ssz(truncate)]
 	pub signature: Signature,
 }
 
 #[derive(Ssz)]
 pub struct Transfer {
 	/// Sender index
-	pub from: u64,
+	pub sender: u64,
 	/// Recipient index
-	pub to: u64,
+	pub recipient: u64,
 	/// Amount in Gwei
 	pub amount: u64,
 	/// Fee in Gwei for block proposer
@@ -87,5 +88,6 @@ pub struct Transfer {
 	/// Sender withdrawal pubkey
 	pub pubkey: ValidatorId,
 	/// Sender signature
+	#[ssz(truncate)]
 	pub signature: Signature,
 }

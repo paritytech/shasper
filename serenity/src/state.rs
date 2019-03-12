@@ -22,9 +22,9 @@ use crate::eth1::{Eth1Data, Eth1DataVote, Deposit};
 use crate::slashing::{SlashableAttestation, ProposerSlashing, AttesterSlashing};
 use crate::attestation::{
 	PendingAttestation, Crosslink, AttestationDataAndCustodyBit,
-	AttestationData,
+	AttestationData, Attestation,
 };
-use crate::validator::Validator;
+use crate::validator::{Validator, VoluntaryExit, Transfer};
 use crate::block::{BeaconBlock, BeaconBlockHeader};
 use crate::consts::*;
 use crate::error::Error;
@@ -316,6 +316,178 @@ impl BeaconState {
 		for index in slashable_indices {
 			self.slash_validator(index)?;
 		}
+
+		Ok(())
+	}
+
+	pub fn push_attestation(&mut self, attestation: Attestation) -> Result<(), Error> {
+		if attestation.data.slot < GENESIS_SLOT {
+			return Err(Error::AttestationTooFarInHistory)
+		}
+
+		if self.slot > attestation.data.slot + SLOTS_PER_EPOCH {
+			return Err(Error::AttestationTooFarInHistory)
+		}
+
+		if attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY > self.slot {
+			return Err(Error::AttestationSubmittedTooQuickly)
+		}
+
+		if slot_to_epoch(attestation.data.slot) >= self.current_epoch() {
+			if attestation.data.justified_epoch != self.justified_epoch {
+				return Err(Error::AttestationIncorrectJustifiedEpoch)
+			}
+		} else {
+			if attestation.data.justified_epoch != self.previous_justified_epoch {
+				return Err(Error::AttestationIncorrectJustifiedEpoch)
+			}
+		}
+
+		if attestation.data.justified_block_root != self.block_root(epoch_start_slot(attestation.data.justified_epoch))? {
+			return Err(Error::AttestationIncorrectJustifiedBlockRoot)
+		}
+
+		if !(self.latest_crosslinks[attestation.data.shard as usize] == attestation.data.latest_crosslink || self.latest_crosslinks[attestation.data.shard as usize] == Crosslink { crosslink_data_root: attestation.data.crosslink_data_root, epoch: slot_to_epoch(attestation.data.slot) }) {
+			return Err(Error::AttestationIncorrectCrosslinkData)
+		}
+
+		if attestation.aggregation_bitfield.count() == 0 {
+			return Err(Error::AttestationEmptyAggregation)
+		}
+
+		if attestation.custody_bitfield.count() == 0 {
+			return Err(Error::AttestationEmptyCustody)
+		}
+
+		let crosslink_committee = self.crosslink_committees_at_slot(attestation.data.slot, false)?
+			.into_iter()
+			.filter(|(_, s)| s == &attestation.data.shard)
+			.map(|(c, _)| c)
+			.next()
+			.ok_or(Error::AttestationInvalidShard)?;
+
+		for i in 0..crosslink_committee.len() {
+			if !attestation.aggregation_bitfield.has_voted(i) {
+				if attestation.custody_bitfield.has_voted(i) {
+					return Err(Error::AttestationInvalidCustody)
+				}
+			}
+		}
+
+		let participants = self.attestation_participants(&attestation.data, &attestation.aggregation_bitfield)?;
+		let custody_bit_1_participants = self.attestation_participants(&attestation.data, &attestation.custody_bitfield)?;
+		let custody_bit_0_participants = participants.clone().into_iter().filter(|p| !custody_bit_1_participants.contains(p)).collect::<Vec<_>>();
+
+		if !bls_verify_multiple(
+			&[
+				bls_aggregate_pubkeys(&custody_bit_0_participants.iter().map(|i| self.validator_registry[*i as usize].pubkey).collect::<Vec<_>>()[..]),
+				bls_aggregate_pubkeys(&custody_bit_1_participants.iter().map(|i| self.validator_registry[*i as usize].pubkey).collect::<Vec<_>>()[..]),
+			],
+			&[
+				AttestationDataAndCustodyBit {
+					data: attestation.data.clone(),
+					custody_bit: false,
+				}.hash::<Hasher>(),
+				AttestationDataAndCustodyBit {
+					data: attestation.data.clone(),
+					custody_bit: true,
+				}.hash::<Hasher>(),
+			],
+			&attestation.aggregate_signature,
+			bls_domain(&self.fork, slot_to_epoch(attestation.data.slot), DOMAIN_ATTESTATION)
+		) {
+			return Err(Error::AttestationInvalidSignature)
+		}
+
+		if attestation.data.crosslink_data_root != H256::default() {
+			return Err(Error::AttestationInvalidCrosslink)
+		}
+
+		let attestation_data_slot = attestation.data.slot;
+		let pending_attestation = PendingAttestation {
+			data: attestation.data,
+			aggregation_bitfield: attestation.aggregation_bitfield,
+			custody_bitfield: attestation.custody_bitfield,
+			inclusion_slot: self.slot,
+		};
+
+		if slot_to_epoch(attestation_data_slot) == self.current_epoch() {
+			self.current_epoch_attestations.push(pending_attestation);
+		} else if slot_to_epoch(attestation_data_slot) == self.previous_epoch() {
+			self.previous_epoch_attestations.push(pending_attestation);
+		}
+
+		Ok(())
+	}
+
+	pub fn push_voluntary_exits(&mut self, exit: VoluntaryExit) -> Result<(), Error> {
+		{
+			let validator = &self.validator_registry[exit.validator_index as usize];
+
+			if validator.exit_epoch != FAR_FUTURE_EPOCH {
+				return Err(Error::VoluntaryExitAlreadyExited)
+			}
+
+			if validator.initiated_exit {
+				return Err(Error::VoluntaryExitAlreadyInitiated)
+			}
+
+			if self.current_epoch() < exit.epoch {
+				return Err(Error::VoluntaryExitNotYetValid)
+			}
+
+			if self.current_epoch() - validator.activation_epoch < PERSISTENT_COMMITTEE_PERIOD {
+				return Err(Error::VoluntaryExitNotLongEnough)
+			}
+
+			if !bls_verify(
+				&validator.pubkey,
+				&exit.truncated_hash::<Hasher>(),
+				&exit.signature,
+				bls_domain(&self.fork, exit.epoch, DOMAIN_VOLUNTARY_EXIT)
+			) {
+				return Err(Error::VoluntaryExitInvalidSignature)
+			}
+		}
+
+		self.initiate_validator_exit(exit.validator_index);
+		Ok(())
+	}
+
+	pub fn push_transfer(&mut self, transfer: Transfer) -> Result<(), Error> {
+		if self.validator_balances[transfer.sender as usize] < core::cmp::max(transfer.amount, transfer.fee) {
+			return Err(Error::TransferNoFund)
+		}
+
+		if !(self.validator_balances[transfer.sender as usize] == transfer.amount + transfer.fee || self.validator_balances[transfer.sender as usize] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT) {
+			return Err(Error::TransferNoFund)
+		}
+
+		if self.slot != transfer.slot {
+			return Err(Error::TransferNotValidSlot)
+		}
+
+		if !(self.current_epoch() >= self.validator_registry[transfer.sender as usize].withdrawable_epoch || self.validator_registry[transfer.sender as usize].activation_epoch == FAR_FUTURE_EPOCH) {
+			return Err(Error::TransferNotWithdrawable)
+		}
+
+		if !(self.validator_registry[transfer.sender as usize].withdrawal_credentials[0] == BLS_WITHDRAWAL_PREFIX_BYTE && &self.validator_registry[transfer.sender as usize].withdrawal_credentials[1..] == &hash(&transfer.pubkey[..])[1..]) {
+			return Err(Error::TransferInvalidPublicKey)
+		}
+
+		if !bls_verify(
+			&transfer.pubkey,
+			&transfer.truncated_hash::<Hasher>(),
+			&transfer.signature,
+			bls_domain(&self.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER)
+		) {
+			return Err(Error::TransferInvalidSignature)
+		}
+
+		self.validator_balances[transfer.sender as usize] -= transfer.amount + transfer.fee;
+		self.validator_balances[transfer.recipient as usize] += transfer.amount;
+		let proposer_index = self.beacon_proposer_index(self.slot, false)?;
+		self.validator_balances[proposer_index as usize] += transfer.fee;
 
 		Ok(())
 	}

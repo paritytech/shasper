@@ -53,3 +53,5 @@ pub const EJECTION_BALANCE: Gwei = 16_000_000_000;
 pub const FAR_FUTURE_EPOCH: Epoch = u64::max_value();
 pub const MAX_BALANCE_CHURN_QUOTIENT: Gwei = 32;
 pub const MAX_EXIT_DEQUEUES_PER_EPOCH: usize = 4;
+pub const PERSISTENT_COMMITTEE_PERIOD: Epoch = 2048;
+pub const BLS_WITHDRAWAL_PREFIX_BYTE: u8 = 0;
