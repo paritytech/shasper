@@ -42,4 +42,10 @@ pub enum Error {
 	TransferNotWithdrawable,
 	TransferInvalidPublicKey,
 	TransferInvalidSignature,
+	TooManyProposerSlashings,
+	TooManyAttesterSlashings,
+	TooManyAttestations,
+	TooManyDeposits,
+	TooManyVoluntaryExits,
+	TooManyTransfers,
 }

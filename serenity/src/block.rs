@@ -58,7 +58,7 @@ impl BeaconBlock {
 	}
 }
 
-#[derive(Ssz, PartialEq, Eq)]
+#[derive(Ssz, PartialEq, Eq, Clone)]
 pub struct BeaconBlockHeader {
     pub slot: u64,
     pub previous_block_root: H256,

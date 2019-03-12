@@ -36,7 +36,7 @@ impl Default for Crosslink {
 	}
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct Attestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,

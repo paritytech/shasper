@@ -420,7 +420,7 @@ impl BeaconState {
 		Ok(())
 	}
 
-	pub fn push_voluntary_exits(&mut self, exit: VoluntaryExit) -> Result<(), Error> {
+	pub fn push_voluntary_exit(&mut self, exit: VoluntaryExit) -> Result<(), Error> {
 		{
 			let validator = &self.validator_registry[exit.validator_index as usize];
 

@@ -55,3 +55,10 @@ pub const MAX_BALANCE_CHURN_QUOTIENT: Gwei = 32;
 pub const MAX_EXIT_DEQUEUES_PER_EPOCH: usize = 4;
 pub const PERSISTENT_COMMITTEE_PERIOD: Epoch = 2048;
 pub const BLS_WITHDRAWAL_PREFIX_BYTE: u8 = 0;
+
+pub const MAX_PROPOSER_SLASHINGS: usize = 0;
+pub const MAX_ATTESTER_SLASHINGS: usize = 0;
+pub const MAX_ATTESTATIONS: usize = 0;
+pub const MAX_DEPOSITS: usize = 0;
+pub const MAX_VOLUNTARY_EXITS: usize = 0;
+pub const MAX_TRANSFERS: usize = 0;

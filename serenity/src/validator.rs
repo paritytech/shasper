@@ -62,7 +62,7 @@ impl Validator {
 	}
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct VoluntaryExit {
 	/// Minimum epoch for processing exit
 	pub epoch: u64,
@@ -73,7 +73,7 @@ pub struct VoluntaryExit {
 	pub signature: Signature,
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct Transfer {
 	/// Sender index
 	pub sender: u64,

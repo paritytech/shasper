@@ -45,7 +45,7 @@ pub struct Eth1DataVote {
 	pub vote_count: u64,
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct Deposit {
 	/// Branch in the deposit tree
 	pub proof: [H256; DEPOSIT_CONTRACT_TREE_DEPTH],
@@ -78,7 +78,7 @@ impl Deposit {
 	}
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct DepositData {
 	/// Amount in Gwei
 	pub amount: u64,
@@ -88,7 +88,7 @@ pub struct DepositData {
 	pub deposit_input: DepositInput,
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct DepositInput {
 	/// BLS pubkey
 	pub pubkey: ValidatorId,
