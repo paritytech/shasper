@@ -20,7 +20,7 @@ use ssz_derive::Ssz;
 use crate::consts::DEPOSIT_CONTRACT_TREE_DEPTH;
 use crate::util::{Hasher, hash, hash2, bls_verify};
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 pub struct Eth1Data {
 	/// Root of the deposit tree
 	pub deposit_root: H256,

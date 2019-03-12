@@ -18,7 +18,7 @@ use primitives::{Signature, ValidatorId, H256};
 use ssz_derive::Ssz;
 use crate::consts::GENESIS_EPOCH;
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 pub struct Validator {
 	/// BLS public key
 	pub pubkey: ValidatorId,
