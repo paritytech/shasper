@@ -9,44 +9,166 @@ pub trait Hashable {
 	}
 }
 
-macro_rules! impl_encoded {
+pub trait Composite: Hashable { }
+
+macro_rules! impl_basic_array {
+	( $t:ty, $( $n:expr )* ) => { $(
+		impl Hashable for [$t; $n] {
+			fn hash<H: Hasher>(&self) -> H::Out {
+				merkleize::<H>(pack(self.as_ref()))
+			}
+		}
+	)* }
+}
+
+macro_rules! impl_basic {
 	( $( $t:ty ),* ) => { $(
 		impl Hashable for $t {
 			fn hash<H: Hasher>(&self) -> H::Out {
-				let encoded = Encode::encode(self);
-				H::hash(&encoded)
+				merkleize::<H>(pack(&[*self]))
 			}
 		}
-	)* }
-}
 
-impl_encoded!(u16, u32, u64, u128, usize, i16, i32, i64, i128, isize, bool, U256, H256, H160, Vec<u8>);
+		impl_basic_array!($t, 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+						  17 18 19 20 21 22 23 24 25 26 27 28 29
+						  30 31 3240 48 56 64 72 96 128 160 192
+						  224 256 1024 8192);
 
-macro_rules! impl_array {
-	( $( $n:expr )* ) => { $(
-		impl<T: Hashable> Hashable for [T; $n] {
+		impl Hashable for Vec<$t> {
 			fn hash<H: Hasher>(&self) -> H::Out {
-				let values: Vec<_> = self.iter()
-					.map(|item| Hashable::hash::<H>(item).as_ref().to_vec())
-					.collect();
+				mix_in_length::<H>(merkleize::<H>(pack(self.as_ref())), self.len() as u32)
+			}
+		}
 
-				merkle_root::<H, _>(&values)
+		impl Hashable for [$t] {
+			fn hash<H: Hasher>(&self) -> H::Out {
+				mix_in_length::<H>(merkleize::<H>(pack(self.as_ref())), self.len() as u32)
 			}
 		}
 	)* }
 }
 
-impl_array!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
-			40 48 56 64 72 96 128 160 192 224 256 1024 8192);
+impl_basic!(u16, u32, u64, u128, usize, i16, i32, i64, i128, isize, bool, U256);
 
-impl<T: Hashable> Hashable for Vec<T> {
+macro_rules! impl_composite_array {
+	( $( $n:expr )* ) => { $(
+		impl<T: Composite> Composite for [T; $n] { }
+
+		impl<T: Composite> Hashable for [T; $n] {
+			fn hash<H: Hasher>(&self) -> H::Out {
+				let hashes = self.iter()
+					.map(|v| hash_to_array(v.hash::<H>()))
+					.collect::<Vec<_>>();
+				merkleize::<H>(hashes)
+			}
+		}
+	)* }
+}
+
+impl_composite_array!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+					  17 18 19 20 21 22 23 24 25 26 27 28 29
+					  30 31 3240 48 56 64 72 96 128 160 192
+					  224 256 1024 8192);
+
+macro_rules! impl_tuple {
+	($one:ident,) => {
+		impl<$one: Hashable> Hashable for ($one,) {
+			fn hash<H: Hasher>(&self) -> H::Out {
+				let hash = self.0.hash::<H>();
+				merkleize::<H>(&[hash])
+			}
+		}
+
+		impl<$one: Hashable> Composite for ($one,) { }
+	};
+	($first:ident, $($rest:ident,)+) => {
+		impl<$first: Hashable, $($rest: Hashable),+>
+			Composite for
+			($first, $($rest),+) { }
+
+		impl<$first: Hashable, $($rest: Hashable),+>
+			Hashable for
+			($first, $($rest),+)
+		{
+			fn hash<Ha: Hasher>(&self) -> Ha::Out {
+				let mut hashes = Vec::new();
+				let (
+					ref $first,
+					$(ref $rest),+
+				) = *self;
+				hashes.push(hash_to_array($first.hash::<Ha>()));
+				$(
+					hashes.push(hash_to_array($rest.hash::<Ha>()));
+				)+
+				merkleize::<Ha>(hashes)
+			}
+		}
+	};
+}
+
+#[allow(non_snake_case)]
+mod inner_tuple_impl {
+	use super::*;
+	impl_tuple!(A, B, C, D, E, F, G, H, I, J, K,);
+}
+
+impl<T: Composite> Composite for Vec<T> { }
+
+impl<T: Composite> Hashable for Vec<T> {
 	fn hash<H: Hasher>(&self) -> H::Out {
-		let values: Vec<_> = self.iter()
-			.map(|item| Hashable::hash::<H>(item).as_ref().to_vec())
-			.collect();
-
-		merkle_root::<H, _>(&values)
+		let hashes = self.iter()
+			.map(|v| hash_to_array(v.hash::<H>()))
+			.collect::<Vec<_>>();
+		mix_in_length::<H>(merkleize::<H>(hashes), self.len() as u32)
 	}
+}
+
+impl<T: Composite> Composite for [T] { }
+
+impl<T: Composite> Hashable for [T] {
+	fn hash<H: Hasher>(&self) -> H::Out {
+		let hashes = self.iter()
+			.map(|v| hash_to_array(v.hash::<H>()))
+			.collect::<Vec<_>>();
+		mix_in_length::<H>(merkleize::<H>(hashes), self.len() as u32)
+	}
+}
+
+impl Composite for Vec<u8> { }
+
+impl Hashable for Vec<u8> {
+	fn hash<H: Hasher>(&self) -> H::Out {
+		mix_in_length::<H>(merkleize::<H>(chunkify(self)), self.len() as u32)
+	}
+}
+
+impl Composite for [u8] { }
+
+impl Hashable for [u8] {
+	fn hash<H: Hasher>(&self) -> H::Out {
+		mix_in_length::<H>(merkleize::<H>(chunkify(self)), self.len() as u32)
+	}
+}
+
+macro_rules! impl_fixed_hash {
+	( $( $t:ty ),* ) => { $(
+		impl Composite for $t { }
+
+		impl Hashable for $t {
+			fn hash<H: Hasher>(&self) -> H::Out {
+				merkleize::<H>(chunkify(self.as_ref()))
+			}
+		}
+	)* }
+}
+
+impl_fixed_hash!(H256, H160);
+
+pub fn hash_to_array<T: AsRef<[u8]>>(value: T) -> [u8; 32] {
+	assert_eq!(value.as_ref().len(), 32);
+	let mut arr = [0u8; 32];
+	(&mut arr).copy_from_slice(value.as_ref());
+	arr
 }
 
 pub fn chunkify(bytes: &[u8]) -> Vec<[u8; 32]> {
@@ -77,7 +199,7 @@ pub fn is_power_of_two(value: usize) -> bool {
 	return (value > 0) && (value & (value - 1) == 0)
 }
 
-pub fn merkleize<H: Hasher>(mut packed: Vec<[u8; 32]>) -> [u8; 32] {
+pub fn merkleize<H: Hasher>(mut packed: Vec<[u8; 32]>) -> H::Out {
 	while !is_power_of_two(packed.len()) {
 		packed.push([0u8; 32]);
 	}
@@ -98,96 +220,16 @@ pub fn merkleize<H: Hasher>(mut packed: Vec<[u8; 32]>) -> [u8; 32] {
 		(&mut tree[i]).copy_from_slice(hashed.as_ref());
 	}
 
-	tree[1]
+	let mut out = H::Out::default();
+	out.as_mut().copy_from_slice(&tree[1]);
+	out
 }
 
-pub enum HashItem {
-	List(Vec<HashItem>),
-	Single(Vec<u8>),
-}
-
-pub fn hash_object<H: Hasher>(input: HashItem) -> H::Out {
-	match input {
-		HashItem::List(list) => {
-			let values: Vec<_> = list
-				.into_iter()
-				.map(|item| hash_object::<H>(item).as_ref().to_vec())
-				.collect();
-
-			merkle_root::<H, _>(&values)
-		},
-		HashItem::Single(obj) => {
-			H::hash(&obj)
-		},
-	}
-}
-
-pub fn merkle_root<H: Hasher, A>(input: &[A]) -> H::Out where
-	A: AsRef<[u8]>
-{
-	let min_pow_of_2 = {
-		let mut o = 1;
-		while o <= input.len() {
-			o *= 2;
-		}
-		o
-	};
-
-	let mut hashes: Vec<Vec<u8>> = Vec::new();
-
-	let mut len_bytes = Vec::new();
-	len_bytes.resize(32, 0);
-	U256::from(input.len()).to_big_endian(&mut len_bytes);
-	hashes.push(len_bytes);
-
-	for v in input {
-		hashes.push(v.as_ref().to_vec());
-	}
-
-	for _ in 0..(min_pow_of_2 - input.len()) {
-		let mut bytes = Vec::new();
-		bytes.resize(32, 0);
-		hashes.push(bytes);
-	}
-
-	let mut outs: Vec<Option<H::Out>> = Vec::new();
-	for _ in 0..min_pow_of_2 {
-		outs.push(None);
-	}
-
-	for i in (1..min_pow_of_2).rev() {
-		let x = i * 2;
-		let y = i * 2 + 1;
-
-		let mut bytes = if x >= min_pow_of_2 {
-			hashes[x - min_pow_of_2].clone()
-		} else {
-			outs[x].as_ref().expect("outs at x always exists because we iterate from higher to lower.").as_ref().to_vec()
-		};
-
-		bytes.append(&mut if y >= min_pow_of_2 {
-			hashes[y - min_pow_of_2].clone()
-		} else {
-			outs[y].as_ref().expect("outs at x always exists because we iterate from higher to lower.").as_ref().to_vec()
-		});
-
-		outs[i] = Some(H::hash(&bytes));
-	}
-
-	if outs.len() < 2 {
-		let target = &mut hashes[1 - outs.len()];
-
-		let mut out = H::Out::default();
-		for i in (0..out.as_ref().len()).rev() {
-			match target.pop() {
-				Some(v) => out.as_mut()[i] = v,
-				None => break,
-			}
-		}
-		out
-	} else {
-		outs[1].expect("outs at 1 always exists because we iterate to 1.")
-	}
+pub fn mix_in_length<H: Hasher>(root: H::Out, length: u32) -> H::Out {
+	let mut bytes = [0u8; 64];
+	(&mut bytes[0..32]).copy_from_slice(root.as_ref());
+	(&mut bytes[32..36]).copy_from_slice(&length.encode());
+	H::hash(&bytes)
 }
 
 #[cfg(test)]
@@ -237,13 +279,24 @@ mod tests {
 	fn test_merkleize() {
 		let packed = pack(&[true, false]);
 		let m = merkleize::<Sha256Hasher>(packed);
-		assert_eq!(&m, b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+		assert_eq!(m, H256::from_slice(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
 
 		let packed = pack(&[
 			b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf".to_vec(),
 			b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf".to_vec()
 		]);
 		let m = merkleize::<Sha256Hasher>(packed);
-		assert_eq!(&m, b"\x06\xec\x0c\xefK\x08l\x03\xe8\x07AnC\xe7O\xb6+\\\xfd\x88i\x7f\x19\x9d\xcb\x0e\xfdx}\x1c)'");
+		assert_eq!(m, H256::from_slice(b"\x06\xec\x0c\xefK\x08l\x03\xe8\x07AnC\xe7O\xb6+\\\xfd\x88i\x7f\x19\x9d\xcb\x0e\xfdx}\x1c)'"));
 	}
+
+	#[test]
+	fn test_basic() {
+		assert_eq!(true.hash::<Sha256Hasher>(), H256::from_slice(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
+		assert_eq!(U256::from(452384756).hash::<Sha256Hasher>(), H256::from_slice(b"\xf4\xd7\xf6\x1a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
+	}
+
+	// #[test]
+	// fn test_basic_fixed_array() {
+	// 	assert_eq!([true, false].hash::<Sha256Hasher>(), H256::from_slice(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
+	// }
 }
