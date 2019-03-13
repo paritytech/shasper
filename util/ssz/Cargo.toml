@@ -3,6 +3,7 @@ name = "ssz"
 version = "0.1.0"
 authors = ["Paul Hauner <paul@paulhauner.com>", "Parity Team <admin@parity.io>"]
 license-file = "LICENSE"
+description = "Simple serialization implementation"
 edition = "2018"
 
 [dependencies]
