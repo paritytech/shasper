@@ -31,42 +31,11 @@ pub fn quote(data: &Data, type_name: &Ident, input: &TokenStream, sorted: bool) 
 			),
 			Fields::Unit => {
 				quote_spanned! {call_site =>
-					drop(#input);
-					Some(#type_name)
+					#type_name
 				}
 			},
 		},
-		Data::Enum(ref data) => {
-			assert!(data.variants.len() < 256, "Currently only enums with at most 256 variants are encodable.");
-
-			let recurse = data.variants.iter().enumerate().map(|(i, v)| {
-				let name = &v.ident;
-				let index = super::index(v, i);
-
-				let create = create_instance(
-					call_site,
-					quote! { #type_name :: #name },
-					input,
-					&v.fields,
-					sorted,
-				);
-
-				quote_spanned! { v.span() =>
-					x if x == #index as u8 => {
-						#create
-					},
-				}
-			});
-
-			quote! {
-				match #input.read_byte()? {
-					#( #recurse )*
-					_ => None,
-				}
-
-			}
-
-		},
+		Data::Enum(_) => panic!("Enum types are not supported."),
 		Data::Union(_) => panic!("Union types are not supported."),
 	}
 }
@@ -87,32 +56,40 @@ fn create_instance(call_site: Span, name: TokenStream, input: &TokenStream, fiel
 				let field = quote_spanned!(call_site => #name);
 
 				quote_spanned! { f.span() =>
-					#field: ::ssz::Decode::decode(#input)?
+					#field: {
+						let (value, i) = ::ssz::Decode::decode_as(#input)?;
+						l += i;
+						value
+					}
 				}
 			});
 
 			quote_spanned! {call_site =>
-				Some(#name {
+				#name {
 					#( #recurse, )*
-				})
+				}
 			}
 		},
 		Fields::Unnamed(ref fields) => {
 			let recurse = fields.unnamed.iter().map(|f| {
 				quote_spanned! { f.span() =>
-					::ssz::Decode::decode(#input)?
+					{
+						let (value, i) = ::ssz::Decode::decode_as(#input)?;
+						l += i;
+						value
+					}
 				}
 			});
 
 			quote_spanned! {call_site =>
-				Some(#name (
+				#name (
 					#( #recurse, )*
-				))
+				)
 			}
 		},
 		Fields::Unit => {
 			quote_spanned! {call_site =>
-				Some(#name)
+				#name
 			}
 		},
 	}

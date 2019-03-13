@@ -46,10 +46,15 @@ mod hash;
 #[cfg(test)]
 mod tests;
 
-pub use self::codec::{Input, Output, Encode, Decode};
+pub use self::codec::{Input, Output, Encode, Decode, Prefixable};
 pub use self::hash::{Hashable, hash_object, HashItem};
 
 /// Trait that allows zero-copy read/write of value-references to/from slices in LE format.
 pub trait Ssz: Decode + Encode + Hashable {}
 
 impl<S: Encode + Decode + Hashable> Ssz for S {}
+
+/// Whether a given value is prefixed with length.
+pub fn prefixed<T: Prefixable>(value: &T) -> bool {
+	T::prefixed()
+}

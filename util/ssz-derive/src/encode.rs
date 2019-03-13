@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use core::str::from_utf8;
-
 use proc_macro2::{Span, TokenStream};
 use syn::{
 	Data, Field, Fields, Ident, Index,
@@ -44,7 +42,7 @@ fn encode_fields<F>(
 		let field = field_name(i, &f.ident);
 
 		quote_spanned! { f.span() =>
-			#dest.push(#field);
+			#field.encode_to(#dest);
 		}
 	});
 
@@ -53,7 +51,7 @@ fn encode_fields<F>(
 	}
 }
 
-pub fn quote(data: &Data, type_name: &Ident, self_: &TokenStream, dest: &TokenStream, sorted: bool) -> TokenStream {
+pub fn quote(data: &Data, self_: &TokenStream, dest: &TokenStream, sorted: bool) -> TokenStream {
 	let call_site = Span::call_site();
 	match *data {
 		Data::Struct(ref data) => match data.fields {
@@ -76,87 +74,7 @@ pub fn quote(data: &Data, type_name: &Ident, self_: &TokenStream, dest: &TokenSt
 				drop(#dest);
 			},
 		},
-		Data::Enum(ref data) => {
-			assert!(data.variants.len() < 256, "Currently only enums with at most 256 variants are encodable.");
-
-			let recurse = data.variants.iter().enumerate().map(|(i, f)| {
-				let name = &f.ident;
-				let index = super::index(f, i);
-
-				match f.fields {
-					Fields::Named(ref fields) => {
-						let field_name = |_, ident: &Option<Ident>| quote_spanned!(call_site => #ident);
-						let names = fields.named
-							.iter()
-							.enumerate()
-							.map(|(i, f)| field_name(i, &f.ident));
-
-						let encode_fields = encode_fields(
-							dest,
-							&fields.named,
-							|a, b| field_name(a, b),
-							sorted,
-						);
-
-						quote_spanned! { f.span() =>
-							#type_name :: #name { #( ref #names, )* } => {
-								#dest.push_byte(#index as u8);
-								#encode_fields
-							}
-						}
-					},
-					Fields::Unnamed(ref fields) => {
-						let field_name = |i, _: &Option<Ident>| {
-							let data = stringify(i as u8);
-							let ident = from_utf8(&data).expect("We never go beyond ASCII");
-							let ident = Ident::new(ident, call_site);
-							quote_spanned!(call_site => #ident)
-						};
-						let names = fields.unnamed
-							.iter()
-							.enumerate()
-							.map(|(i, f)| field_name(i, &f.ident));
-
-						let encode_fields = encode_fields(
-							dest,
-							&fields.unnamed,
-							|a, b| field_name(a, b),
-							sorted,
-						);
-
-						quote_spanned! { f.span() =>
-							#type_name :: #name ( #( ref #names, )* ) => {
-								#dest.push_byte(#index as u8);
-								#encode_fields
-							}
-						}
-					},
-					Fields::Unit => {
-						quote_spanned! { f.span() =>
-							#type_name :: #name => {
-								#dest.push_byte(#index as u8);
-							}
-						}
-					},
-				}
-			});
-
-			quote! {
-				match *#self_ {
-					#( #recurse )*,
-				}
-			}
-		},
+		Data::Enum(_) => panic!("Enum types are not supported."),
 		Data::Union(_) => panic!("Union types are not supported."),
 	}
-}
-
-pub fn stringify(id: u8) -> [u8; 2] {
-	const CHARS: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
-	let len = CHARS.len() as u8;
-	let symbol = |id: u8| CHARS[(id % len) as usize];
-	let a = symbol(id);
-	let b = symbol(id / len);
-
-	[a, b]
 }
