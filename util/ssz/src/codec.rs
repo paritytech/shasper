@@ -82,9 +82,15 @@ impl<W: ::std::io::Write> Output for W {
 	}
 }
 
+/// Note whether the item is prefixed.
+pub trait Prefixable {
+	/// Whether the item is prefixed.
+	fn prefixed() -> bool;
+}
+
 /// Trait that allows zero-copy write of value-references to slices in SSZ format.
 /// Implementations should override `using_encoded` for value types and `encode_to` for allocating types.
-pub trait Encode {
+pub trait Encode: Prefixable {
 	/// Convert self to a slice and append it to the destination.
 	fn encode_to<T: Output>(&self, dest: &mut T) {
 		self.using_encoded(|buf| dest.write(buf));
@@ -104,13 +110,24 @@ pub trait Encode {
 }
 
 /// Trait that allows zero-copy read of value-references from slices in LE format.
-pub trait Decode: Sized {
+pub trait Decode: Prefixable + Sized {
+	/// Attempt to deserialise the value from input. Return the number of bytes read as the second parameter.
+	fn decode_as<I: Input>(value: &mut I) -> Option<(Self, usize)>;
+
 	/// Attempt to deserialise the value from input.
-	fn decode<I: Input>(value: &mut I) -> Option<Self>;
+	fn decode<I: Input>(value: &mut I) -> Option<Self> {
+		Self::decode_as(value).map(|v| v.0)
+	}
 }
 
 macro_rules! impl_array {
 	( $( $n:expr )* ) => { $(
+		impl<T: Prefixable> Prefixable for [T; $n] {
+			fn prefixed() -> bool {
+				T::prefixed()
+			}
+		}
+
 		impl<T: Encode> Encode for [T; $n] {
 			fn encode_to<W: Output>(&self, dest: &mut W) {
 				for item in self.iter() {
@@ -120,12 +137,15 @@ macro_rules! impl_array {
 		}
 
 		impl<T: Decode> Decode for [T; $n] {
-			fn decode<I: Input>(input: &mut I) -> Option<Self> {
+			fn decode_as<I: Input>(input: &mut I) -> Option<(Self, usize)> {
 				let mut r = ArrayVec::new();
+				let mut len = 0;
 				for _ in 0..$n {
-					r.push(T::decode(input)?);
+					let (item, l) = T::decode_as(input)?;
+					r.push(item);
+					len += l;
 				}
-				r.into_inner().ok()
+				r.into_inner().ok().map(|v| (v, len))
 			}
 		}
 	)* }
@@ -134,6 +154,12 @@ macro_rules! impl_array {
 impl_array!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
 			40 48 56 64 72 96 128 160 192 224 256 1024 8192);
 
+impl<T: Prefixable> Prefixable for Box<T> {
+	fn prefixed() -> bool {
+		T::prefixed()
+	}
+}
+
 impl<T: Encode> Encode for Box<T> {
 	fn encode_to<W: Output>(&self, dest: &mut W) {
 		self.as_ref().encode_to(dest)
@@ -141,8 +167,15 @@ impl<T: Encode> Encode for Box<T> {
 }
 
 impl<T: Decode> Decode for Box<T> {
-	fn decode<I: Input>(input: &mut I) -> Option<Self> {
-		Some(Box::new(T::decode(input)?))
+	fn decode_as<I: Input>(input: &mut I) -> Option<(Self, usize)> {
+		let (item, l) = T::decode_as(input)?;
+		Some((Box::new(item), l))
+	}
+}
+
+impl Prefixable for [u8] {
+	fn prefixed() -> bool {
+		true
 	}
 }
 
@@ -155,6 +188,12 @@ impl Encode for [u8] {
 	}
 }
 
+impl Prefixable for Vec<u8> {
+	fn prefixed() -> bool {
+		true
+	}
+}
+
 impl Encode for Vec<u8> {
 	fn encode_to<W: Output>(&self, dest: &mut W) {
 		self.as_slice().encode_to(dest)
@@ -162,16 +201,23 @@ impl Encode for Vec<u8> {
 }
 
 impl Decode for Vec<u8> {
-	fn decode<I: Input>(input: &mut I) -> Option<Self> {
-		u32::decode(input).and_then(move |len| {
-			let len = len as usize;
-			let mut vec = vec![0; len];
-			if input.read(&mut vec[..len]) != len {
-				None
-			} else {
-				Some(vec)
-			}
-		})
+	fn decode_as<I: Input>(input: &mut I) -> Option<(Self, usize)> {
+		let (len, l) = u32::decode_as(input)?;
+		let len = len as usize;
+
+		let mut vec = vec![0; len];
+		if input.read(&mut vec[..len]) != len {
+			None
+		} else {
+			Some((vec, len + l))
+		}
+	}
+}
+
+#[cfg(feature = "std")]
+impl Prefixable for String {
+	fn prefixed() -> bool {
+		true
 	}
 }
 
@@ -184,19 +230,34 @@ impl Encode for String {
 
 #[cfg(feature = "std")]
 impl Decode for String {
-	fn decode<I: Input>(input: &mut I) -> Option<Self> {
-		Some(Self::from_utf8_lossy(&Vec::decode(input)?).into())
+	fn decode_as<I: Input>(input: &mut I) -> Option<(Self, usize)> {
+		let (item, l) = Vec::decode_as(input)?;
+		Some((Self::from_utf8_lossy(&item).into(), l))
+	}
+}
+
+impl<T: Prefixable> Prefixable for [T] {
+	fn prefixed() -> bool {
+		true
 	}
 }
 
 impl<T: Encode> Encode for [T] {
 	fn encode_to<W: Output>(&self, dest: &mut W) {
-		let len = self.len();
-		assert!(len <= u32::max_value() as usize, "Attempted to serialize a collection with too many elements.");
-		(len as u32).encode_to(dest);
+		let mut bytes = Vec::new();
 		for item in self {
-			item.encode_to(dest);
+			item.encode_to(&mut bytes);
 		}
+
+		let len = bytes.len();
+		(len as u32).encode_to(dest);
+		dest.write(&bytes);
+	}
+}
+
+impl<T: Prefixable> Prefixable for Vec<T> {
+	fn prefixed() -> bool {
+		true
 	}
 }
 
@@ -207,63 +268,160 @@ impl<T: Encode> Encode for Vec<T> {
 }
 
 impl<T: Decode> Decode for Vec<T> {
-	fn decode<I: Input>(input: &mut I) -> Option<Self> {
-		<u32>::decode(input).and_then(move |len| {
-			let mut r = Vec::with_capacity(len as usize);
-			for _ in 0..len {
-				r.push(T::decode(input)?);
-			}
-			Some(r)
-		})
+	fn decode_as<I: Input>(input: &mut I) -> Option<(Self, usize)> {
+		let (len, l) = u32::decode_as(input)?;
+		let len = len as usize;
+		println!("len: {:?}", len);
+
+		let mut r = Vec::new();
+		let mut i = 0;
+		while i < len {
+			println!("i: {:?}", i);
+			let (item, l) = T::decode_as(input)?;
+			r.push(item);
+			i += l;
+		}
+		eprintln!("i: {:?}", i);
+		if i != len {
+			None
+		} else {
+			Some((r, i + l))
+		}
 	}
 }
 
 macro_rules! tuple_impl {
 	($one:ident,) => {
+		impl<$one: Prefixable> Prefixable for ($one,) {
+			fn prefixed() -> bool {
+				$one::prefixed()
+			}
+		}
+
 		impl<$one: Encode> Encode for ($one,) {
 			fn encode_to<T: Output>(&self, dest: &mut T) {
-				self.0.encode_to(dest);
+				if Self::prefixed() {
+					let bytes = self.0.encode();
+					(bytes.len() as u32).encode_to(dest);
+					dest.write(&bytes);
+				} else {
+					self.0.encode_to(dest);
+				}
 			}
 		}
 
 		impl<$one: Decode> Decode for ($one,) {
-			fn decode<I: Input>(input: &mut I) -> Option<Self> {
-				match $one::decode(input) {
+			fn decode_as<I: Input>(input: &mut I) -> Option<(Self, usize)> {
+				let mut l = 0;
+				let len = if Self::prefixed() {
+					let (len, i) = u32::decode_as(input)?;
+					l += i;
+					Some(len as usize)
+				} else {
+					None
+				};
+
+				match $one::decode_as(input) {
 					None => None,
-					Some($one) => Some(($one,)),
+					Some(($one, i)) => {
+						if let Some(len) = len {
+							if i != len {
+								return None
+							}
+						}
+
+						l += i;
+						Some((($one,), l))
+					}
 				}
 			}
 		}
 	};
 	($first:ident, $($rest:ident,)+) => {
-		impl<$first: Encode, $($rest: Encode),+>
-		Encode for
-		($first, $($rest),+) {
-			fn encode_to<T: Output>(&self, dest: &mut T) {
-				let (
-					ref $first,
-					$(ref $rest),+
-				) = *self;
+		impl<$first: Prefixable, $($rest: Prefixable),+>
+			Prefixable for
+			($first, $($rest),+)
+		{
+			fn prefixed() -> bool {
+				let mut prefixed = $first::prefixed();
+				$(
+					prefixed = prefixed || $rest::prefixed();
+				)+
+				prefixed
+			}
+		}
 
-				$first.encode_to(dest);
-				$($rest.encode_to(dest);)+
+		impl<$first: Encode, $($rest: Encode),+>
+			Encode for
+			($first, $($rest),+)
+		{
+			fn encode_to<T: Output>(&self, dest: &mut T) {
+				if Self::prefixed() {
+					let mut bytes = Vec::new();
+
+					let (
+						ref $first,
+						$(ref $rest),+
+					) = *self;
+
+					$first.encode_to(&mut bytes);
+					$($rest.encode_to(&mut bytes);)+
+
+					(bytes.len() as u32).encode_to(dest);
+					dest.write(&bytes);
+				} else {
+					let (
+						ref $first,
+						$(ref $rest),+
+					) = *self;
+
+					$first.encode_to(dest);
+					$($rest.encode_to(dest);)+
+				}
 			}
 		}
 
 		impl<$first: Decode, $($rest: Decode),+>
-		Decode for
-		($first, $($rest),+) {
-			fn decode<INPUT: Input>(input: &mut INPUT) -> Option<Self> {
-				Some((
-					match $first::decode(input) {
-						Some(x) => x,
+			Decode for
+			($first, $($rest),+)
+		{
+			fn decode_as<INPUT: Input>(input: &mut INPUT) -> Option<(Self, usize)> {
+				let mut l = 0;
+				let len = if Self::prefixed() {
+					let (len, i) = u32::decode_as(input)?;
+					l += i;
+					Some(len as usize)
+				} else {
+					None
+				};
+				let mut il = 0;
+
+				let value = (
+					match $first::decode_as(input) {
+						Some((x, i)) => {
+							l += i;
+							il += i;
+							x
+						},
 						None => return None,
 					},
-					$(match $rest::decode(input) {
-						Some(x) => x,
+					$(match $rest::decode_as(input) {
+						Some((x, i)) => {
+							l += i;
+							il += i;
+							x
+						},
 						None => return None,
 					},)+
-				))
+				);
+
+				if let Some(len) = len {
+					if il != len {
+						return None
+					}
+				}
+
+				Some((value, l))
 			}
 		}
 
@@ -273,7 +431,7 @@ macro_rules! tuple_impl {
 
 #[allow(non_snake_case)]
 mod inner_tuple_impl {
-	use super::{Input, Output, Decode, Encode};
+	use super::{Input, Output, Decode, Encode, Prefixable};
 	tuple_impl!(A, B, C, D, E, F, G, H, I, J, K,);
 }
 
@@ -301,6 +459,12 @@ macro_rules! impl_endians {
 			fn as_le_then<T, F: FnOnce(&Self) -> T>(&self, f: F) -> T { let d = self.to_le(); f(&d) }
 		}
 
+		impl Prefixable for $t {
+			fn prefixed() -> bool {
+				false
+			}
+		}
+
 		impl Encode for $t {
 			fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
 				self.as_le_then(|le| {
@@ -320,7 +484,7 @@ macro_rules! impl_endians {
 		}
 
 		impl Decode for $t {
-			fn decode<I: Input>(input: &mut I) -> Option<Self> {
+			fn decode_as<I: Input>(input: &mut I) -> Option<(Self, usize)> {
 				let size = mem::size_of::<$t>();
 				assert!(size > 0, "EndianSensitive can never be implemented for a zero-sized type.");
 				let mut val: $t = unsafe { mem::zeroed() };
@@ -332,7 +496,7 @@ macro_rules! impl_endians {
 					);
 					if input.read(raw) != size { return None }
 				}
-				Some(val.from_le())
+				Some((val.from_le(), size))
 			}
 		}
 	)* }
@@ -341,6 +505,12 @@ macro_rules! impl_non_endians {
 	( $( $t:ty ),* ) => { $(
 		impl EndianSensitive for $t {}
 
+		impl Prefixable for $t {
+			fn prefixed() -> bool {
+				false
+			}
+		}
+
 		impl Encode for $t {
 			fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
 				self.as_le_then(|le| {
@@ -360,7 +530,7 @@ macro_rules! impl_non_endians {
 		}
 
 		impl Decode for $t {
-			fn decode<I: Input>(input: &mut I) -> Option<Self> {
+			fn decode_as<I: Input>(input: &mut I) -> Option<(Self, usize)> {
 				let size = mem::size_of::<$t>();
 				assert!(size > 0, "EndianSensitive can never be implemented for a zero-sized type.");
 				let mut val: $t = unsafe { mem::zeroed() };
@@ -372,7 +542,7 @@ macro_rules! impl_non_endians {
 					);
 					if input.read(raw) != size { return None }
 				}
-				Some(val.from_le())
+				Some((val.from_le(), size))
 			}
 		}
 	)* }
@@ -386,18 +556,25 @@ impl_non_endians!(
 
 macro_rules! impl_hash {
 	($name: ident, $len: expr) => {
+		impl Prefixable for $name {
+			fn prefixed() -> bool {
+				false
+			}
+		}
+
 		impl Encode for $name {
 			fn encode_to<W: Output>(&self, dest: &mut W) {
 				dest.write(self.as_ref())
 			}
 		}
+
 		impl Decode for $name {
-			fn decode<I: Input>(input: &mut I) -> Option<Self> {
+			fn decode_as<I: Input>(input: &mut I) -> Option<(Self, usize)> {
 				let mut vec = [0u8; $len];
 				if input.read(&mut vec[..$len]) != $len {
 					None
 				} else {
-					Some($name::from(&vec))
+					Some(($name::from(&vec), $len))
 				}
 			}
 		}
@@ -409,7 +586,13 @@ impl_hash!(H256, 32);
 
 macro_rules! impl_uint {
 	($name: ident, $len: expr) => {
-		impl crate::codec::Encode for $name {
+		impl Prefixable for $name {
+			fn prefixed() -> bool {
+				false
+			}
+		}
+
+		impl Encode for $name {
 			fn encode_to<W: Output>(&self, dest: &mut W) {
 				let mut bytes = [0u8; $len * 8];
 				self.to_little_endian(&mut bytes);
@@ -417,10 +600,10 @@ macro_rules! impl_uint {
 			}
 		}
 
-		impl crate::codec::Decode for $name {
-			fn decode<I: crate::codec::Input>(input: &mut I) -> Option<Self> {
+		impl Decode for $name {
+			fn decode_as<I: crate::codec::Input>(input: &mut I) -> Option<(Self, usize)> {
 				<[u8; $len * 8] as crate::codec::Decode>::decode(input)
-					.map(|b| $name::from_little_endian(&b))
+					.map(|b| ($name::from_little_endian(&b), $len * 8))
 			}
 		}
 	}
