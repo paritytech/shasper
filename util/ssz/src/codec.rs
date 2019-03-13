@@ -303,7 +303,7 @@ macro_rules! impl_endians {
 
 		impl Encode for $t {
 			fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
-				self.as_be_then(|le| {
+				self.as_le_then(|le| {
 					let size = mem::size_of::<$t>();
 					let value_slice = unsafe {
 						let ptr = le as *const _ as *const u8;
@@ -332,7 +332,7 @@ macro_rules! impl_endians {
 					);
 					if input.read(raw) != size { return None }
 				}
-				Some(val.from_be())
+				Some(val.from_le())
 			}
 		}
 	)* }
@@ -412,7 +412,7 @@ macro_rules! impl_uint {
 		impl crate::codec::Encode for $name {
 			fn encode_to<W: Output>(&self, dest: &mut W) {
 				let mut bytes = [0u8; $len * 8];
-				self.to_big_endian(&mut bytes);
+				self.to_little_endian(&mut bytes);
 				dest.write(&bytes)
 			}
 		}
@@ -420,58 +420,10 @@ macro_rules! impl_uint {
 		impl crate::codec::Decode for $name {
 			fn decode<I: crate::codec::Input>(input: &mut I) -> Option<Self> {
 				<[u8; $len * 8] as crate::codec::Decode>::decode(input)
-					.map(|b| $name::from_big_endian(&b))
+					.map(|b| $name::from_little_endian(&b))
 			}
 		}
 	}
 }
 
 impl_uint!(U256, 4);
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use primitive_types::{H256, H160, U256};
-
-	#[test]
-	fn examples() {
-		assert_eq!(5u32.encode(), vec![0, 0, 0, 5u8]);
-		assert_eq!(u32::decode(&mut [0, 0, 0, 5u8].as_ref()).unwrap(), 5u32);
-		assert_eq!(vec![99u8, 111u8, 119u8].encode(), vec![0u8, 0u8, 0u8, 3u8, 99u8, 111u8, 119u8]);
-		assert_eq!(Vec::<u8>::decode(&mut [0u8, 0u8, 0u8, 3u8, 99u8, 111u8, 119u8].as_ref()).unwrap(),
-				   vec![99u8, 111u8, 119u8]);
-		assert_eq!(H160::from_slice([5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-									 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-									 5u8, 5u8, 5u8, 5u8].as_ref()).encode(),
-				   vec![5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-						5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-						5u8, 5u8, 5u8, 5u8]);
-		assert_eq!(H160::decode(&mut [5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-									  5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-									  5u8, 5u8, 5u8, 5u8].as_ref()).unwrap(),
-				   H160::from_slice([5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-									 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-									 5u8, 5u8, 5u8, 5u8].as_ref()));
-		assert_eq!(H256::from_slice([5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-									 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-									 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-									 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8].as_ref()).encode(),
-				   vec![5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-						5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-						5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8,
-						5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8, 5u8]);
-	}
-
-	#[test]
-	fn test_u256() {
-		assert_eq!(U256::from(5).encode(), vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-												0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-												0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-												0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 5u8]);
-		assert_eq!(U256::decode(&mut [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-									  0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-									  0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-									  0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 5u8].as_ref()).unwrap(),
-				   U256::from(5));
-		}
-}

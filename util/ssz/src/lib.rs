@@ -43,6 +43,8 @@ use crate::prelude::*;
 
 mod codec;
 mod hash;
+#[cfg(test)]
+mod tests;
 
 pub use self::codec::{Input, Output, Encode, Decode};
 pub use self::hash::{Hashable, hash_object, HashItem};
