@@ -271,17 +271,14 @@ impl<T: Decode> Decode for Vec<T> {
 	fn decode_as<I: Input>(input: &mut I) -> Option<(Self, usize)> {
 		let (len, l) = u32::decode_as(input)?;
 		let len = len as usize;
-		println!("len: {:?}", len);
 
 		let mut r = Vec::new();
 		let mut i = 0;
 		while i < len {
-			println!("i: {:?}", i);
 			let (item, l) = T::decode_as(input)?;
 			r.push(item);
 			i += l;
 		}
-		eprintln!("i: {:?}", i);
 		if i != len {
 			None
 		} else {
