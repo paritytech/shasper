@@ -63,6 +63,44 @@ pub fn chunkify(bytes: &[u8]) -> Vec<[u8; 32]> {
 	ret
 }
 
+pub fn pack<T: Encode>(values: &[T]) -> Vec<[u8; 32]> {
+	let mut bytes = Vec::new();
+
+	for value in values {
+		bytes.append(&mut value.encode());
+	}
+
+	chunkify(&bytes)
+}
+
+pub fn is_power_of_two(value: usize) -> bool {
+	return (value > 0) && (value & (value - 1) == 0)
+}
+
+pub fn merkleize<H: Hasher>(mut packed: Vec<[u8; 32]>) -> [u8; 32] {
+	while !is_power_of_two(packed.len()) {
+		packed.push([0u8; 32]);
+	}
+
+	let len = packed.len();
+	let mut tree = Vec::new();
+	for _ in 0..len {
+		tree.push([0u8; 32]);
+	}
+	tree.append(&mut packed);
+
+	for i in (1..(tree.len() / 2)).rev() {
+		let mut hashing = [0u8; 64];
+		(&mut hashing[0..32]).copy_from_slice(&tree[i * 2]);
+		(&mut hashing[32..64]).copy_from_slice(&tree[i * 2 + 1]);
+		let hashed = H::hash(&hashing);
+		assert_eq!(hashed.as_ref().len(), 32);
+		(&mut tree[i]).copy_from_slice(hashed.as_ref());
+	}
+
+	tree[1]
+}
+
 pub enum HashItem {
 	List(Vec<HashItem>),
 	Single(Vec<u8>),
@@ -156,11 +194,56 @@ pub fn merkle_root<H: Hasher, A>(input: &[A]) -> H::Out where
 mod tests {
 	use crate::hash::*;
 
+	use hash_db::Hasher;
+	use primitive_types::H256;
+	use sha2::{Digest, Sha256};
+	use plain_hasher::PlainHasher;
+
+	pub struct Sha256Hasher;
+	impl Hasher for Sha256Hasher {
+		type Out = H256;
+		type StdHasher = PlainHasher;
+		const LENGTH: usize = 32;
+
+		fn hash(x: &[u8]) -> Self::Out {
+			let mut out = [0; 32];
+			(&mut out).copy_from_slice(Sha256::digest(x).as_slice());
+			out.into()
+		}
+	}
+
 	#[test]
 	fn test_chunkify() {
 		let chunkified = chunkify(b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf");
 		assert_eq!(chunkified.len(), 2);
 		assert_eq!(&chunkified[0][..], b"hello, worldasdfalsgfawieuyfawue");
 		assert_eq!(&chunkified[1][..], b"ygkdhbvldzadfasdf\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+	}
+
+	#[test]
+	fn test_pack() {
+		let packed = pack(&[
+			b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf".to_vec(),
+			b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf".to_vec()
+		]);
+		assert_eq!(packed.len(), 4);
+		assert_eq!(&packed[0][..], b"1\x00\x00\x00hello, worldasdfalsgfawieuyf");
+		assert_eq!(&packed[1][..], b"awueygkdhbvldzadfasdf1\x00\x00\x00hello, ");
+		assert_eq!(&packed[2][..], b"worldasdfalsgfawieuyfawueygkdhbv");
+		assert_eq!(&packed[3][..], b"ldzadfasdf\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+	}
+
+	#[test]
+	fn test_merkleize() {
+		let packed = pack(&[true, false]);
+		let m = merkleize::<Sha256Hasher>(packed);
+		assert_eq!(&m, b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+
+		let packed = pack(&[
+			b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf".to_vec(),
+			b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf".to_vec()
+		]);
+		let m = merkleize::<Sha256Hasher>(packed);
+		assert_eq!(&m, b"\x06\xec\x0c\xefK\x08l\x03\xe8\x07AnC\xe7O\xb6+\\\xfd\x88i\x7f\x19\x9d\xcb\x0e\xfdx}\x1c)'");
 	}
 }
