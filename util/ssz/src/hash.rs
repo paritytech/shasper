@@ -49,6 +49,20 @@ impl<T: Hashable> Hashable for Vec<T> {
 	}
 }
 
+pub fn chunkify(bytes: &[u8]) -> Vec<[u8; 32]> {
+	let mut ret = Vec::new();
+
+	for i in 0..bytes.len() {
+		if i % 32 == 0 {
+			ret.push([0u8; 32]);
+		}
+		ret.last_mut().expect("Value is pushed when i is 0; cannot be empty; qed")
+			[i % 32] = bytes[i];
+	}
+
+	ret
+}
+
 pub enum HashItem {
 	List(Vec<HashItem>),
 	Single(Vec<u8>),
