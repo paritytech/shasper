@@ -62,13 +62,19 @@ impl ssz::Encode for H384 {
 	}
 }
 impl ssz::Decode for H384 {
-	fn decode<I: ::ssz::Input>(input: &mut I) -> Option<Self> {
+	fn decode_as<I: ::ssz::Input>(input: &mut I) -> Option<(Self, usize)> {
 		let mut vec = [0u8; SIZE];
 		if input.read(&mut vec[..SIZE]) != SIZE {
 			None
 		} else {
-			Some(H384::from(&vec))
+			Some((H384::from(&vec), SIZE))
 		}
+	}
+}
+
+impl ssz::Prefixable for H384 {
+	fn prefixed() -> bool {
+		false
 	}
 }
 

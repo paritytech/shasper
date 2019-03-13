@@ -62,13 +62,19 @@ impl ssz::Encode for H768 {
 	}
 }
 impl ssz::Decode for H768 {
-	fn decode<I: ::ssz::Input>(input: &mut I) -> Option<Self> {
+	fn decode_as<I: ::ssz::Input>(input: &mut I) -> Option<(Self, usize)> {
 		let mut vec = [0u8; SIZE];
 		if input.read(&mut vec[..SIZE]) != SIZE {
 			None
 		} else {
-			Some(H768::from(&vec))
+			Some((H768::from(&vec), SIZE))
 		}
+	}
+}
+
+impl ssz::Prefixable for H768 {
+	fn prefixed() -> bool {
+		false
 	}
 }
 

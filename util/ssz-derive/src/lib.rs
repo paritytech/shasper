@@ -70,6 +70,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	let truncate_hashing = hash::quote(&input.data, &self_, &dest_, &hash_param_, true);
 
 	let expanded = quote! {
+		#[allow(unused_imports)]
 		impl #prefixable_impl_generics ::ssz::Prefixable for #name #prefixable_ty_generics #prefixable_where_clause {
 			fn prefixed() -> bool {
 				let mut #dest_ = false;
@@ -80,6 +81,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
 		impl #encode_impl_generics ::ssz::Encode for #name #encode_ty_generics #encode_where_clause {
 			fn encode_to<EncOut: ::ssz::Output>(&#self_, d: &mut EncOut) {
+				use ::ssz::Prefixable;
+
 				if Self::prefixed() {
 					let mut bytes = ::ssz::prelude::Vec::new();
 					{
@@ -97,6 +100,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
 		impl #decode_impl_generics ::ssz::Decode for #name #decode_ty_generics #decode_where_clause {
 			fn decode_as<DecIn: ::ssz::Input>(#input_: &mut DecIn) -> Option<(Self, usize)> {
+				use ::ssz::Prefixable;
+
 				let mut l = 0;
 				let len = if Self::prefixed() {
 					use ::ssz::Decode;
