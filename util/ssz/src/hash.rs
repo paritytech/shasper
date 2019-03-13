@@ -151,3 +151,16 @@ pub fn merkle_root<H: Hasher, A>(input: &[A]) -> H::Out where
 		outs[1].expect("outs at 1 always exists because we iterate to 1.")
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use crate::hash::*;
+
+	#[test]
+	fn test_chunkify() {
+		let chunkified = chunkify(b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf");
+		assert_eq!(chunkified.len(), 2);
+		assert_eq!(&chunkified[0][..], b"hello, worldasdfalsgfawieuyfawue");
+		assert_eq!(&chunkified[1][..], b"ygkdhbvldzadfasdf\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+	}
+}
