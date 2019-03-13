@@ -14,7 +14,7 @@
 
 //! Derives serialization and deserialization codec for complex structs for simple marshalling.
 
-#![recursion_limit="128"]
+#![recursion_limit="256"]
 
 extern crate proc_macro;
 extern crate proc_macro2;
@@ -118,17 +118,31 @@ pub fn derive(input: TokenStream) -> TokenStream {
 			}
 		}
 
+		impl #hash_impl_generics ::ssz::Composite for #name #hash_ty_generics #hash_where_clause { }
+
 		impl #hash_impl_generics ::ssz::Hashable for #name #hash_ty_generics #hash_where_clause {
 			fn hash<#hash_param_ : ::ssz::hash_db::Hasher>(&self) -> H::Out {
 				let mut #dest_ = ::ssz::prelude::Vec::new();
 				#hashing
-				#hash_param_ :: hash(& #dest_ )
+				let len = #dest_.len() as u32;
+				::ssz::hash::mix_in_length :: <#hash_param_> (
+					::ssz::hash::merkleize :: <#hash_param_> (
+						#dest_
+					),
+					len
+				)
 			}
 
 			fn truncated_hash<#hash_param_ : ::ssz::hash_db::Hasher>(&self) -> H::Out {
 				let mut #dest_ = ::ssz::prelude::Vec::new();
 				#truncate_hashing
-				#hash_param_ :: hash(& #dest_ )
+				let len = #dest_.len() as u32;
+				::ssz::hash::mix_in_length :: <#hash_param_> (
+					::ssz::hash::merkleize :: <#hash_param_> (
+						#dest_
+					),
+					len
+				)
 			}
 		}
 	};

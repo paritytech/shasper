@@ -48,7 +48,7 @@ pub mod hash;
 mod tests;
 
 pub use self::codec::{Input, Output, Encode, Decode, Prefixable};
-pub use self::hash::Hashable;
+pub use self::hash::{Hashable, Composite};
 
 /// Trait that allows zero-copy read/write of value-references to/from slices in LE format.
 pub trait Ssz: Decode + Encode + Hashable {}
