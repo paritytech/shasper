@@ -74,8 +74,9 @@ macro_rules! impl_tuple {
 	($one:ident,) => {
 		impl<$one: Hashable> Hashable for ($one,) {
 			fn hash<H: Hasher>(&self) -> H::Out {
-				let hash = self.0.hash::<H>();
-				merkleize::<H>(&[hash])
+				let mut hashes = Vec::new();
+				hashes.push(hash_to_array(self.0.hash::<H>()));
+				merkleize::<H>(hashes)
 			}
 		}
 
@@ -103,6 +104,8 @@ macro_rules! impl_tuple {
 				merkleize::<Ha>(hashes)
 			}
 		}
+
+		impl_tuple!($($rest,)+);
 	};
 }
 
@@ -295,8 +298,19 @@ mod tests {
 		assert_eq!(U256::from(452384756).hash::<Sha256Hasher>(), H256::from_slice(b"\xf4\xd7\xf6\x1a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
 	}
 
-	// #[test]
-	// fn test_basic_fixed_array() {
-	// 	assert_eq!([true, false].hash::<Sha256Hasher>(), H256::from_slice(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
-	// }
+	#[test]
+	fn test_basic_fixed_array() {
+		assert_eq!([true, false].hash::<Sha256Hasher>(), H256::from_slice(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
+	}
+
+	#[test]
+	fn test_bytes() {
+		assert_eq!(b"hello, world!".to_vec().hash::<Sha256Hasher>(), H256::from_slice(b"\xaf<\xe8\xbc\xd2\xf0f\xf0.\x07D\xdfI\x93\xef\x97\x9f\xe9.\x14y\x0f\xce\xf0x\xa6\xfa_\x00\x83\xa8\xcb"));
+		assert_eq!(H256::from_slice(b"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb").hash::<Sha256Hasher>(), H256::from_slice(b"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
+	}
+
+	#[test]
+	fn test_composite() {
+		assert_eq!(Hashable::hash::<Sha256Hasher>(&(b"hello".to_vec(), b"world".to_vec(), true)), H256::from_slice(b"x\xb19 \x9f\xb2\xec\x07\xff\x1e\x82\x0b\xa4\x83\xa3\x95\xc9%\x86\xd4\x8f\x85\xfao\xe2\xe8\x0eH!\xaa\xd7\t"));
+	}
 }
