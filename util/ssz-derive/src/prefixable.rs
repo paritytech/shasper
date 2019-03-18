@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::TokenStream;
 use syn::{
-	Data, Field, Fields, Ident, Index,
+	Data, Field, Fields,
 	punctuated::Punctuated,
 	spanned::Spanned,
 	token::Comma,
@@ -22,27 +22,20 @@ use syn::{
 
 type FieldsList = Punctuated<Field, Comma>;
 
-fn encode_fields<F>(
+fn encode_fields(
 	dest: &TokenStream,
 	fields: &FieldsList,
-	field_name: F,
-	sorted: bool,
-) -> TokenStream where
-	F: Fn(usize, &Option<Ident>) -> TokenStream,
-{
-	let mut fields: Vec<_> = fields.iter().collect();
+) -> TokenStream {
+	let fields: Vec<_> = fields.iter().collect();
 
-	if sorted {
-		fields.sort_by(|a, b| {
-			a.ident.cmp(&b.ident)
-		})
-	}
-
-	let recurse = fields.iter().enumerate().map(|(i, f)| {
-		let field = field_name(i, &f.ident);
+	let recurse = fields.iter().map(|f| {
+		let ty = &f.ty;
 
 		quote_spanned! { f.span() =>
-			#field.encode_to(#dest);
+			{
+				use ::ssz::Prefixable;
+				#dest = #dest || <#ty>::prefixed();
+			}
 		}
 	});
 
@@ -51,28 +44,18 @@ fn encode_fields<F>(
 	}
 }
 
-pub fn quote(data: &Data, self_: &TokenStream, dest: &TokenStream, sorted: bool) -> TokenStream {
-	let call_site = Span::call_site();
+pub fn quote(data: &Data, dest: &TokenStream) -> TokenStream {
 	match *data {
 		Data::Struct(ref data) => match data.fields {
 			Fields::Named(ref fields) => encode_fields(
 				dest,
 				&fields.named,
-				|_, name| quote_spanned!(call_site => &#self_.#name),
-				sorted,
 			),
 			Fields::Unnamed(ref fields) => encode_fields(
 				dest,
 				&fields.unnamed,
-				|i, _| {
-					let index = Index { index: i as u32, span: call_site };
-					quote_spanned!(call_site => &#self_.#index)
-				},
-				sorted,
 			),
-			Fields::Unit => quote_spanned! { call_site =>
-				drop(#dest);
-			},
+			Fields::Unit => quote! { (); },
 		},
 		Data::Enum(_) => panic!("Enum types are not supported."),
 		Data::Union(_) => panic!("Union types are not supported."),

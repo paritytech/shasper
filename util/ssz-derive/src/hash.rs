@@ -57,7 +57,7 @@ fn encode_fields<F>(
 			quote! { (); }
 		} else {
 			quote_spanned! { f.span() =>
-							 #dest.append(&mut ::ssz::Hashable::hash::< #generic_param >(#field).as_ref().to_vec());
+				#dest.push(::ssz::hash::hash_to_array(::ssz::Hashable::hash::< #generic_param >(#field)));
 			}
 		}
 	});

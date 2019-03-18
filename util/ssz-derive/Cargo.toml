@@ -3,6 +3,7 @@ name = "ssz-derive"
 version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 license = "Apache-2.0"
+description = "Derive function for simple serialization"
 edition = "2018"
 
 [lib]
@@ -14,4 +15,4 @@ quote = "0.6"
 proc-macro2 = "0.4"
 
 [dev-dependencies]
-ssz = { path = "../ssz" }
+ssz = { version = "0.1", path = "../ssz" }

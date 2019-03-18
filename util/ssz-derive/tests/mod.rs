@@ -12,95 +12,91 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(unused_imports)]
+
 extern crate ssz;
 
 #[macro_use]
 extern crate ssz_derive;
 
-use ssz::{Encode, Decode};
+use core::fmt::Debug;
+use ssz::{Encode, Decode, Prefixable};
+
+fn assert_ed<T: Encode + Decode + Debug + PartialEq>(t: T, mut a: &[u8]) {
+	assert_eq!(&t.encode()[..], a);
+	assert_eq!(T::decode(&mut a).unwrap(), t);
+}
 
 #[derive(Debug, PartialEq, Ssz)]
 struct Unit;
 
-#[derive(Debug, PartialEq, Ssz)]
-struct Indexed(u32, u64);
-
-#[derive(Debug, PartialEq, Ssz)]
-struct Struct<A, B, C> {
-	pub a: A,
-	pub b: B,
-	#[ssz(truncate)]
-	pub c: C,
+#[test]
+fn unit_ed() {
+	assert_eq!(Unit::prefixed(), false);
+	assert_ed(Unit, &[]);
 }
 
 #[derive(Debug, PartialEq, Ssz)]
-#[ssz(sorted)]
-struct SortedType {
-	pub b: u32,
-	pub c: u32,
-	pub a: u32,
+struct IndexedFixed(bool, bool);
+
+#[test]
+fn indexed_fixed_ed() {
+	assert_eq!(IndexedFixed::prefixed(), false);
+	assert_ed(IndexedFixed(true, false), b"\x01\x00");
 }
 
-type TestType = Struct<u32, u64, Vec<u8>>;
+#[derive(Debug, PartialEq, Ssz)]
+struct IndexedVar(Vec<u8>, bool);
 
-impl <A, B, C> Struct<A, B, C> {
-	fn new(a: A, b: B, c: C) -> Self {
-		Self { a, b, c }
-	}
+#[test]
+fn indexed_var_ed() {
+	assert_eq!(IndexedVar::prefixed(), true);
+	assert_ed(IndexedVar(b"hello".to_vec(), false), b"\n\x00\x00\x00\x05\x00\x00\x00hello\x00");
+}
+
+#[derive(Debug, PartialEq, Ssz)]
+struct NamedFixed {
+	b: bool,
+	a: bool,
 }
 
 #[test]
-fn should_work_for_sorted() {
-	let a = SortedType {
-		c: 3, b: 2, a: 1
-	};
+fn named_fixed_ed() {
+	assert_eq!(NamedFixed::prefixed(), false);
+	assert_ed(NamedFixed {
+		b: true,
+		a: false
+	}, b"\x01\x00");
+}
 
-	a.using_encoded(|ref slice| {
-		assert_eq!(slice, &b"\0\0\0\x01\0\0\0\x02\0\0\0\x03");
-	});
-
-	let mut da: &[u8] = b"\0\0\0\x01\0\0\0\x02\0\0\0\x03";
-	assert_eq!(SortedType::decode(&mut da), Some(a));
+#[derive(Debug, PartialEq, Ssz)]
+struct NamedVar {
+	b: Vec<u8>,
+	a: bool
 }
 
 #[test]
-fn should_derive_encode() {
-	let v = TestType::new(15, 9, b"Hello world".to_vec());
+fn named_var_ed() {
+	assert_eq!(NamedVar::prefixed(), true);
+	assert_ed(NamedVar {
+		b: b"hello".to_vec(),
+		a: false,
+	}, b"\n\x00\x00\x00\x05\x00\x00\x00hello\x00");
+}
 
-	v.using_encoded(|ref slice| {
-		assert_eq!(slice, &b"\0\0\0\x0f\0\0\0\0\0\0\0\x09\0\0\0\x0bHello world")
-	});
+#[derive(Debug, PartialEq, Ssz)]
+struct IndexedGeneric<A, B>(A, B);
+
+#[derive(Debug, PartialEq, Ssz)]
+struct NamedGeneric<A, B> {
+	a: A,
+	b: B,
 }
 
 #[test]
-fn should_derive_decode() {
-	let slice = b"\0\0\0\x0f\0\0\0\0\0\0\0\x09\0\0\0\x0bHello world".to_vec();
-
-	let v = TestType::decode(&mut &*slice);
-
-	assert_eq!(v, Some(TestType::new(15, 9, b"Hello world".to_vec())));
-}
-
-#[test]
-fn should_work_for_unit() {
-	let v = Unit;
-
-	v.using_encoded(|ref slice| {
-		assert_eq!(slice, &[]);
-	});
-
-	let mut a: &[u8] = &[];
-	assert_eq!(Unit::decode(&mut a), Some(Unit));
-}
-
-#[test]
-fn should_work_for_indexed() {
-	let v = Indexed(1, 2);
-
-	v.using_encoded(|ref slice| {
-		assert_eq!(slice, &b"\0\0\0\x01\0\0\0\0\0\0\0\x02")
-	});
-
-	let mut v: &[u8] = b"\0\0\0\x01\0\0\0\0\0\0\0\x02";
-	assert_eq!(Indexed::decode(&mut v), Some(Indexed(1, 2)));
+fn generic() {
+	assert_eq!(IndexedGeneric::<bool, bool>::prefixed(), false);
+	assert_eq!(IndexedGeneric::<Vec<u8>, bool>::prefixed(), true);
+	assert_eq!(NamedGeneric::<bool, bool>::prefixed(), false);
+	assert_eq!(NamedGeneric::<Vec<u8>, bool>::prefixed(), true);
 }
