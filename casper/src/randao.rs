@@ -24,7 +24,6 @@
 use hash_db::Hasher;
 use core::ops::BitXor;
 use codec::{Encode, Decode};
-use codec_derive::{Encode, Decode};
 #[cfg(feature = "std")]
 use std::path::Path;
 #[cfg(feature = "std")]

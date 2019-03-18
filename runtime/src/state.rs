@@ -3,8 +3,7 @@ use primitives::{Slot, Epoch, Balance, ValidatorId, UncheckedAttestation, Checke
 use crypto::bls;
 use runtime_support::storage::{StorageValue, StorageMap};
 use runtime_support::storage::unhashed::StorageVec;
-use codec::Encode;
-use codec_derive::{Encode, Decode};
+use codec::{Encode, Decode};
 use casper::store::{ValidatorStore, PendingAttestationsStore, BlockStore};
 use casper::randao::RandaoCommitment;
 use crate::{storage, utils};

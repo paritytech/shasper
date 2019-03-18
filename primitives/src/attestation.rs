@@ -1,6 +1,5 @@
 use crypto::bls;
-use codec::Encode;
-use codec_derive::{Encode, Decode};
+use codec::{Encode, Decode};
 #[cfg(feature = "std")]
 use serde_derive::{Serialize, Deserialize};
 use casper::context::{Attestation, SlotAttestation, BalanceContext, SlotContext};

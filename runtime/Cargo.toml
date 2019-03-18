@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 integer-sqrt = { git = "https://github.com/paritytech/integer-sqrt-rs.git" }
 safe-mix = { version = "1.0", default-features = false }
-parity-codec = { version = "3.0", default-features = false }
+parity-codec = { version = "3.2", default-features = false, features = ["derive"] }
 parity-codec-derive = "3.0"
 primitives = { package = "shasper-primitives", path = "../primitives", default-features = false }
 substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
