@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-#![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(prelude_import))]
+#![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(alloc_prelude), feature(prelude_import))]
 
 #[cfg(not(feature = "std"))]
 #[macro_use]
@@ -24,7 +24,7 @@ extern crate alloc;
 #[doc(hidden)]
 pub mod prelude {
 	pub use core::prelude::v1::*;
-	pub use alloc::prelude::*;
+	pub use alloc::prelude::v1::*;
 }
 
 #[cfg(feature = "std")]

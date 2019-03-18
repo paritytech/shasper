@@ -16,7 +16,7 @@
 
 //! Generic structs and traits for the Casper FFG.
 
-#![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(prelude_import))]
+#![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(alloc_prelude), feature(prelude_import))]
 
 #![warn(missing_docs)]
 
@@ -26,7 +26,7 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 pub(crate) mod prelude {
 	pub use core::prelude::v1::*;
-	pub use alloc::prelude::*;
+	pub use alloc::prelude::v1::*;
 }
 
 #[cfg(not(feature = "std"))]
