@@ -39,9 +39,7 @@ pub struct GenesisConfig {
 }
 
 impl BuildStorage for GenesisConfig {
-	fn build_storage(self) -> Result<(StorageOverlay, ChildrenStorageOverlay), String> {
-		let mut storage = StorageOverlay::default();
-
+	fn assimilate_storage(self, storage: &mut StorageOverlay, _children_storage: &mut ChildrenStorageOverlay) -> Result<(), String> {
 		let slot = {
 			let ret = self.timestamp / consts::SLOT_DURATION as Slot;
 			(ret / consts::CYCLE_LENGTH) * consts::CYCLE_LENGTH
@@ -103,7 +101,6 @@ impl BuildStorage for GenesisConfig {
 			).encode()
 		);
 
-
-		Ok((storage, Default::default()))
+		Ok(())
 	}
 }
