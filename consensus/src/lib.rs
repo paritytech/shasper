@@ -68,14 +68,14 @@ pub trait CompatibleDigestItem: Sized {
 
 impl CompatibleDigestItem for runtime::DigestItem {
 	fn shasper_seal(slot_number: u64, signature: bls::Signature) -> Self {
-		let signature_bytes: Vec<_> = signature.to_compressed_bytes().into_iter().cloned().collect();
+		let signature_bytes = signature.as_bytes();
 		runtime::DigestItem::Seal(slot_number, signature_bytes)
 	}
 
 	fn as_shasper_seal(&self) -> Option<(u64, bls::Signature)> {
 		match self {
 			runtime::DigestItem::Seal(slot_number, signature_bytes) => {
-				if let Some(signature) = bls::Signature::from_compressed_bytes(&signature_bytes) {
+				if let Ok(signature) = bls::Signature::from_bytes(&signature_bytes) {
 					Some((*slot_number, signature))
 				} else {
 					None
@@ -331,7 +331,7 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 		chain_head: B::Header,
 		slot_info: SlotInfo,
 	) -> Self::OnSlot {
-		let public_key = self.local_key.public.clone();
+		let public_key = self.local_key.pk.clone();
 		let (timestamp, slot_num, slot_duration) =
 			(slot_info.timestamp, slot_info.number, slot_info.duration);
 
@@ -429,7 +429,7 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 						target_epoch_block_hash: target_header.hash(),
 						validator_indexes: vec![validator_index],
 					};
-					let signed = unsigned.sign_with(&[&self.local_key.secret]);
+					let signed = unsigned.sign_with(&[&self.local_key.sk]);
 
 					debug!(target: "shasper", "Signed attestation: {:?}", signed);
 					if let Err(e) = self.pool.submit_one(&BlockId::Hash(chain_head.hash()), UncheckedExtrinsic::Attestation(signed)) {
@@ -492,7 +492,7 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 					// sign the pre-sealed hash of the block and then
 					// add it to a digest item.
 					let to_sign = (slot_num, pre_hash).encode();
-					let signature = pair.secret.sign(&to_sign[..]);
+					let signature = bls::Signature::new(&to_sign[..], 0, &pair.sk);
 					let item = <DigestItemFor<B> as CompatibleDigestItem>::shasper_seal(
 						slot_num,
 						signature,
@@ -588,7 +588,7 @@ impl<B: Block<Hash=H256>, C> Verifier<B> for ShasperVerifier<C> where
 				return Err("Bad public key for header author".to_string())
 			};
 
-			if public.verify(&to_sign[..], &sig) {
+			if sig.verify(&to_sign[..], 0, &public) {
 				CheckedHeader::Checked(header, slot_num, sig)
 			} else {
 				return Err(format!("Bad signature on {:?}", hash))

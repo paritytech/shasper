@@ -87,19 +87,19 @@ impl ssz::Hashable for H768 {
 
 impl H768 {
 	pub fn into_signature(&self) -> Option<bls::Signature> {
-		bls::Signature::from_compressed_bytes(self.as_ref())
+		bls::Signature::from_bytes(self.as_ref()).ok()
 	}
 
 	pub fn into_aggregate_signature(&self) -> Option<bls::AggregateSignature> {
-		bls::AggregateSignature::from_compressed_bytes(self.as_ref())
+		bls::AggregateSignature::from_bytes(self.as_ref()).ok()
 	}
 
 	pub fn from_signature(sig: bls::Signature) -> Self {
-		H768::from_slice(&sig.to_compressed_bytes())
+		H768::from_slice(&sig.as_bytes())
 	}
 
 	pub fn from_aggregate_signature(sig: bls::AggregateSignature) -> Self {
-		H768::from_slice(&sig.to_compressed_bytes())
+		H768::from_slice(&sig.as_bytes())
 	}
 }
 

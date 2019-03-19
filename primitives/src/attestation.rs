@@ -22,9 +22,9 @@ impl UnsignedAttestation {
 		assert!(secrets.len() == self.validator_indexes.len());
 
 		let to_sign = self.encode();
-		let mut signature = bls::Signature::new();
+		let mut signature = bls::AggregateSignature::new();
 		for secret in secrets {
-			signature.add_assign(&secret.sign(&to_sign[..]));
+			signature.add(&bls::Signature::new(&to_sign[..], 0, &secret));
 		}
 
 		UncheckedAttestation {
@@ -47,12 +47,13 @@ impl UncheckedAttestation {
 			return false;
 		}
 
-		let mut signature = match self.signature.into_signature() {
+		let mut signature = bls::AggregateSignature::new();
+		signature.add(&match self.signature.into_signature() {
 			Some(signature) => signature,
 			None => return false,
-		};
+		});
 		let to_sign = self.data.encode();
-		signature.add_assign(&secret.sign(&to_sign[..]));
+		signature.add(&bls::Signature::new(&to_sign[..], 0, &secret));
 
 		self.signature = signature.into();
 
