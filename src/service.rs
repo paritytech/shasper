@@ -83,7 +83,7 @@ construct_service_factory! {
 		AuthoritySetup = {
 			|service: Self::FullService, executor: TaskExecutor, _: Option<Arc<ed25519::Pair>>| {
 				if let Some(ref key) = service.config.custom.validator_key {
-					info!("Using authority key {}", ValidatorId::from_public(bls::Public::from_secret(key)));
+					info!("Using authority key {}", ValidatorId::from_public(bls::Public::from_secret_key(key)));
 					let proposer = Arc::new(basic_authorship::ProposerFactory {
 						client: service.client(),
 						transaction_pool: service.transaction_pool(),
@@ -92,9 +92,13 @@ construct_service_factory! {
 					let client = service.client();
 					executor.spawn(start_shasper(
 						SlotDuration::get_or_compute(&*client)?,
-						Arc::new(
-							bls::Pair::from_secret(key.clone())
-						),
+						Arc::new({
+							let pk = bls::Public::from_secret_key(&key);
+							bls::Pair {
+								pk,
+								sk: key.clone(),
+							}
+						}),
 						client.clone(),
 						Arc::new(ShasperBlockImport::new(client.clone(), client)?),
 						proposer,

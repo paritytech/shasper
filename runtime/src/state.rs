@@ -77,7 +77,8 @@ impl PendingAttestationsStore<AttestationContext> for Store {
 }
 
 pub fn check_attestation(unchecked: UncheckedAttestation, check_slot: bool) -> Option<CheckedAttestation> {
-	let signature = unchecked.signature.into_signature()?;
+	let mut signature = bls::AggregateSignature::new();
+	signature.add(&unchecked.signature.into_signature()?);
 	let validator_ids = {
 		let mut ret = Vec::new();
 		for validator_index in &unchecked.data.validator_indexes {
@@ -94,14 +95,14 @@ pub fn check_attestation(unchecked: UncheckedAttestation, check_slot: bool) -> O
 	};
 	let current_slot = storage::Slot::get();
 	let aggregated_public = {
-		let mut ret = bls::Public::new();
+		let mut ret = bls::AggregatePublic::new();
 		for public in publics {
-			ret.add_assign(&public);
+			ret.add(&public);
 		}
 		ret
 	};
 
-	if !aggregated_public.verify(&unchecked.data.encode()[..], &signature) {
+	if !signature.verify(&unchecked.data.encode()[..], 0, &aggregated_public) {
 		return None;
 	}
 

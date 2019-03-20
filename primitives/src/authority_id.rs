@@ -87,11 +87,11 @@ impl ssz::Hashable for H384 {
 
 impl H384 {
 	pub fn into_public(&self) -> Option<bls::Public> {
-		bls::Public::from_compressed_bytes(self.as_ref())
+		bls::Public::from_bytes(self.as_ref()).ok()
 	}
 
 	pub fn from_public(public: bls::Public) -> Self {
-		H384::from_slice(&public.to_compressed_bytes())
+		H384::from_slice(&public.as_bytes())
 	}
 }
 

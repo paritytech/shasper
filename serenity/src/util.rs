@@ -3,28 +3,73 @@ pub type Hasher = keccak_hasher::KeccakHasher;
 use crate::{Slot, ValidatorIndex, Epoch};
 use crate::state::Fork;
 use hash_db::Hasher as _;
-use primitives::{ValidatorId, H256, Signature};
+use primitives::{ValidatorId, H256, Signature, crypto::bls};
 
-pub fn bls_verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, _domain: u64) -> bool {
+pub fn bls_verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool {
 	pubkey.into_public()
 		.map(|public| {
 			signature.into_signature().map(|signature| {
-				public.verify(&message[..], &signature)
+				signature.verify(&message[..], domain, &public)
 			}).unwrap_or(false)
 		})
 		.unwrap_or(false)
 }
 
-pub fn bls_aggregate_pubkeys(_pubkeys: &[ValidatorId]) -> ValidatorId {
-	ValidatorId::default()
+pub fn bls_aggregate_pubkeys(pubkeys: &[ValidatorId]) -> Option<ValidatorId> {
+	let mut aggregated_pubkey = bls::AggregatePublic::new();
+	for pubkey in pubkeys {
+		let blskey = pubkey.into_public()?;
+		aggregated_pubkey.add(&blskey);
+	}
+	Some((bls::Public {
+		point: aggregated_pubkey.point
+	}).into())
 }
 
-pub fn bls_verify_multiple(_pubkey: &[ValidatorId], _message: &[H256], _signature: &Signature, _domain: u64) -> bool {
-	true
+pub fn bls_verify_multiple(pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool {
+	let mut aggregated_pubkeys = Vec::new();
+	for key in pubkeys {
+		let blskey = match key.into_public() {
+			Some(k) => k,
+			None => return false,
+		};
+		aggregated_pubkeys.push(bls::AggregatePublic {
+			point: blskey.point
+		});
+	}
+
+	let mut aggregated_message = Vec::new();
+	for message in messages {
+		aggregated_message.append(&mut (&message[..]).to_vec());
+	}
+
+	let blssig = match signature.into_signature() {
+		Some(s) => s,
+		None => return false,
+	};
+	let aggregated_signature = bls::AggregateSignature {
+		point: blssig.point,
+	};
+
+	aggregated_signature.verify_multiple(
+		&aggregated_message,
+		domain,
+		&aggregated_pubkeys[..].iter().collect::<Vec<_>>()
+	)
 }
 
-pub fn bls_domain(_fork: &Fork, _epoch: u64, _typ: u64) -> u64 {
-	0
+pub fn bls_domain(fork: &Fork, epoch: u64, typ: u64) -> u64 {
+	let version = if epoch < fork.epoch {
+		&fork.previous_version
+	} else {
+		&fork.current_version
+	};
+
+	let mut bytes = [0u8; 8];
+	(&mut bytes[0..4]).copy_from_slice(version);
+	(&mut bytes[4..8]).copy_from_slice(&typ.to_le_bytes()[0..4]);
+
+	u64::from_le_bytes(bytes)
 }
 
 /// Hash bytes with a hasher.

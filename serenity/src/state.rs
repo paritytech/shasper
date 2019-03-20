@@ -89,9 +89,9 @@ pub struct HistoricalBatch {
 #[derive(Ssz)]
 pub struct Fork {
 	/// Previous fork version
-	pub previous_version: u64,
+	pub previous_version: [u8; 4],
 	/// Current fork version
-	pub current_version: u64,
+	pub current_version: [u8; 4],
 	/// Fork epoch number
 	pub epoch: u64,
 }
@@ -380,8 +380,8 @@ impl BeaconState {
 
 		if !bls_verify_multiple(
 			&[
-				bls_aggregate_pubkeys(&custody_bit_0_participants.iter().map(|i| self.validator_registry[*i as usize].pubkey).collect::<Vec<_>>()[..]),
-				bls_aggregate_pubkeys(&custody_bit_1_participants.iter().map(|i| self.validator_registry[*i as usize].pubkey).collect::<Vec<_>>()[..]),
+				bls_aggregate_pubkeys(&custody_bit_0_participants.iter().map(|i| self.validator_registry[*i as usize].pubkey).collect::<Vec<_>>()[..]).ok_or(Error::AttestationInvalidSignature)?,
+				bls_aggregate_pubkeys(&custody_bit_1_participants.iter().map(|i| self.validator_registry[*i as usize].pubkey).collect::<Vec<_>>()[..]).ok_or(Error::AttestationInvalidSignature)?,
 			],
 			&[
 				AttestationDataAndCustodyBit {
@@ -1243,8 +1243,14 @@ impl BeaconState {
 
 		bls_verify_multiple(
 			&[
-				bls_aggregate_pubkeys(&custody_bit_0_indices.iter().map(|i| self.validator_registry[**i as usize].pubkey).collect::<Vec<_>>()[..]),
-				bls_aggregate_pubkeys(&custody_bit_1_indices.iter().map(|i| self.validator_registry[**i as usize].pubkey).collect::<Vec<_>>()[..]),
+				match bls_aggregate_pubkeys(&custody_bit_0_indices.iter().map(|i| self.validator_registry[**i as usize].pubkey).collect::<Vec<_>>()[..]) {
+					Some(k) => k,
+					None => return false,
+				},
+				match bls_aggregate_pubkeys(&custody_bit_1_indices.iter().map(|i| self.validator_registry[**i as usize].pubkey).collect::<Vec<_>>()[..]) {
+					Some(k) => k,
+					None => return false,
+				},
 			],
 			&[
 				AttestationDataAndCustodyBit {

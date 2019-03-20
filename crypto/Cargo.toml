@@ -5,7 +5,7 @@ authors = ["Wei Tang <hi@that.world>"]
 edition = "2018"
 
 [dependencies]
-bls-crate = { package = "bls", git = "https://github.com/sorpaas/bls", default-features = false }
+bls-crate = { package = "bls-aggregates", git = "https://github.com/sorpaas/signature-schemes", default-features = false }
 pairing = { git = "https://github.com/sorpaas/pairing", default-features = false }
 
 [features]

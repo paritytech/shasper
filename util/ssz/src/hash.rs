@@ -153,6 +153,21 @@ impl Hashable for [u8] {
 	}
 }
 
+macro_rules! impl_fixed_bytes {
+	( $( $n:expr )* ) => { $(
+		impl Hashable for [u8; $n] {
+			fn hash<H: Hasher>(&self) -> H::Out {
+				mix_in_length::<H>(merkleize::<H>(chunkify(self)), self.len() as u32)
+			}
+		}
+	)* }
+}
+
+impl_fixed_bytes!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+				  17 18 19 20 21 22 23 24 25 26 27 28 29
+				  30 31 32 40 48 56 64 72 96 128 160 192
+				  224 256 1024 8192);
+
 macro_rules! impl_fixed_hash {
 	( $( $t:ty ),* ) => { $(
 		impl Composite for $t { }
