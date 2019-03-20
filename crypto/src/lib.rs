@@ -18,7 +18,6 @@
 
 pub mod bls {
 	use bls_crate;
-	use pairing::bls12_381::Bls12;
 
 	pub type Public = bls_crate::PublicKey;
 	pub type Secret = bls_crate::SecretKey;

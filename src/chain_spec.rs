@@ -39,6 +39,14 @@ pub enum Alternative {
 	PublicShortLived
 }
 
+pub fn fill_bytes(bytes: &[u8]) -> [u8; 48] {
+	let mut ret = [0u8; 48];
+	let copy_len = core::cmp::min(bytes.len(), 48);
+	(&mut ret[0..copy_len]).copy_from_slice(&bytes[0..copy_len]);
+
+	ret
+}
+
 impl Alternative {
 	/// Get an actual chain config from one of the alternatives.
 	pub(crate) fn load(self) -> Result<ChainSpec, String> {
@@ -47,7 +55,7 @@ impl Alternative {
 				"Development",
 				"development",
 				|| {
-					let alice_sec = bls::Secret::from_bytes(b"Alice").unwrap();
+					let alice_sec = bls::Secret::from_bytes(&fill_bytes(b"Alice")).unwrap();
 					let alice_pub = bls::Public::from_secret_key(&alice_sec);
 					let alice = bls::Pair {
 						sk: alice_sec,
@@ -73,9 +81,9 @@ impl Alternative {
 				"Local Testnet",
 				"local_testnet",
 				|| {
-					let alice_sec = bls::Secret::from_bytes(b"Alice").unwrap();
+					let alice_sec = bls::Secret::from_bytes(&fill_bytes(b"Alice")).unwrap();
 					let alice_pub = bls::Public::from_secret_key(&alice_sec);
-					let bob_sec = bls::Secret::from_bytes(b"Bob").unwrap();
+					let bob_sec = bls::Secret::from_bytes(&fill_bytes(b"Bob")).unwrap();
 					let bob_pub = bls::Public::from_secret_key(&bob_sec);
 
 					let alice = bls::Pair {

@@ -28,7 +28,7 @@ use client::ExecutionStrategies;
 use state_machine::ExecutionStrategy;
 use structopt::StructOpt;
 use crypto::bls;
-use crate::chain_spec;
+use crate::chain_spec::{self, fill_bytes};
 
 /// Node specific parameters
 #[derive(Debug, Clone, StructOpt)]
@@ -57,7 +57,7 @@ pub fn run<I, T, E>(args: I, exit: E, version: VersionInfo) -> error::Result<()>
 			info!("Roles: {:?}", config.roles);
 
 			config.custom.validator_key = custom_args.validator_key.map(|k| {
-				bls::Secret::from_bytes(k.as_bytes()).expect("Validator key provided is invalid")
+				bls::Secret::from_bytes(&fill_bytes(k.as_bytes())).expect("Validator key provided is invalid")
 			});
 
 			// Make this a native-only runtime.
