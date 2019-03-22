@@ -27,7 +27,8 @@ pub struct Eth1Data {
 	/// Root of the deposit tree
 	pub deposit_root: H256,
 	/// Total number of deposits
-	pub deposit_count: u64,
+	// TODO: this field is not present in current test spec.
+	// pub deposit_count: u64,
 	/// Block hash
 	pub block_hash: H256,
 }
@@ -36,7 +37,8 @@ impl Eth1Data {
 	pub fn empty() -> Self {
 		Self {
 			deposit_root: H256::default(),
-			deposit_count: 0,
+			// TODO: this field is not present in current test spec.
+			// deposit_count: 0,
 			block_hash: H256::default(),
 		}
 	}

@@ -1,11 +1,15 @@
 pub type Hasher = keccak_hasher::KeccakHasher;
 
-use crate::{Slot, ValidatorIndex, Epoch};
+use crate::{consts, Slot, ValidatorIndex, Epoch};
 use crate::state::Fork;
 use hash_db::Hasher as _;
 use primitives::{ValidatorId, H256, Signature, crypto::bls};
 
 pub fn bls_verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool {
+	if !consts::VERIFY_SIGNATURE {
+		return true
+	}
+
 	pubkey.into_public()
 		.map(|public| {
 			signature.into_signature().map(|signature| {
@@ -27,6 +31,10 @@ pub fn bls_aggregate_pubkeys(pubkeys: &[ValidatorId]) -> Option<ValidatorId> {
 }
 
 pub fn bls_verify_multiple(pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool {
+	if !consts::VERIFY_SIGNATURE {
+		return true
+	}
+
 	let mut aggregated_pubkeys = Vec::new();
 	for key in pubkeys {
 		let blskey = match key.into_public() {
