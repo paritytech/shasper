@@ -1,6 +1,6 @@
 use primitive_types::{U256, H256, H160};
 use hash_db::Hasher;
-use crate::Encode;
+use crate::{Encode, FixedVec};
 
 pub trait Hashable {
 	fn hash<H: Hasher>(&self) -> H::Out;
@@ -33,6 +33,12 @@ macro_rules! impl_basic {
 						  17 18 19 20 21 22 23 24 25 26 27 28 29
 						  30 31 32 40 48 56 64 72 96 128 160 192
 						  224 256 1024 8192);
+
+		impl Hashable for FixedVec<$t> {
+			fn hash<H: Hasher>(&self) -> H::Out {
+				merkleize::<H>(pack(self.0.as_ref()))
+			}
+		}
 
 		impl Hashable for Vec<$t> {
 			fn hash<H: Hasher>(&self) -> H::Out {
@@ -69,6 +75,17 @@ impl_composite_array!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
 					  17 18 19 20 21 22 23 24 25 26 27 28 29
 					  30 31 32 40 48 56 64 72 96 128 160 192
 					  224 256 1024 8192);
+
+impl<T: Composite> Composite for FixedVec<T> { }
+
+impl<T: Composite> Hashable for FixedVec<T> {
+	fn hash<H: Hasher>(&self) -> H::Out {
+		let hashes = self.0.iter()
+			.map(|v| hash_to_array(v.hash::<H>()))
+			.collect::<Vec<_>>();
+		merkleize::<H>(hashes)
+	}
+}
 
 macro_rules! impl_tuple {
 	($one:ident,) => {

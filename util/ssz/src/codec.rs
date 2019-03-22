@@ -15,6 +15,8 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use core::{mem, slice};
+use core::ops::{Deref, DerefMut};
+use serde_derive::{Serialize, Deserialize};
 use arrayvec::ArrayVec;
 use primitive_types::{H160, H256, U256};
 
@@ -153,6 +155,38 @@ macro_rules! impl_array {
 
 impl_array!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
 			40 48 56 64 72 96 128 160 192 224 256 1024 8192);
+
+#[derive(Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct FixedVec<T>(pub Vec<T>);
+
+impl<T> Deref for FixedVec<T> {
+	type Target = Vec<T>;
+
+	fn deref(&self) -> &Vec<T> {
+		&self.0
+	}
+}
+
+impl<T> DerefMut for FixedVec<T> {
+	fn deref_mut(&mut self) -> &mut Vec<T> {
+		&mut self.0
+	}
+}
+
+impl<T: Prefixable> Prefixable for FixedVec<T> {
+	fn prefixed() -> bool {
+		T::prefixed()
+	}
+}
+
+impl<T: Encode> Encode for FixedVec<T> {
+	fn encode_to<W: Output>(&self, dest: &mut W) {
+		for item in self.0.iter() {
+			item.encode_to(dest);
+		}
+	}
+}
 
 impl<T: Prefixable> Prefixable for Box<T> {
 	fn prefixed() -> bool {

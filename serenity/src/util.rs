@@ -100,7 +100,10 @@ pub const fn slot_to_epoch(slot: Slot) -> Epoch {
 }
 
 pub fn to_bytes(v: u64) -> H256 {
-	H256::from_low_u64_le(v)
+	let bytes = v.to_le_bytes();
+	let mut ret = H256::default();
+	(&mut ret[0..bytes.len()]).copy_from_slice(&bytes);
+	ret
 }
 
 pub fn to_usize(v: &[u8]) -> usize {
