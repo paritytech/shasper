@@ -16,10 +16,12 @@
 
 use primitives::{BitField, H256, Signature};
 use ssz_derive::Ssz;
+use serde_derive::{Serialize, Deserialize};
 use crate::consts::GENESIS_EPOCH;
 use crate::util::slot_to_epoch;
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Crosslink {
 	/// Epoch number
 	pub epoch: u64,
@@ -37,6 +39,7 @@ impl Default for Crosslink {
 }
 
 #[derive(Ssz, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Attestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -49,6 +52,7 @@ pub struct Attestation {
 }
 
 #[derive(Ssz, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct PendingAttestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -61,23 +65,29 @@ pub struct PendingAttestation {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct AttestationData {
+	// LMD GHOST vote
 	/// Slot number
 	pub slot: u64,
-	/// Shard number
-	pub shard: u64,
 	/// Root of the signed beacon block
 	pub beacon_block_root: H256,
+
+	// FFG vote
+	/// Last justified epoch in the beacon state
+	pub source_epoch: u64,
+	/// Hash of the last justified beacon block
+	pub source_root: H256,
 	/// Root of the ancestor at the epoch boundary
-	pub epoch_boundary_root: H256,
+	pub target_root: H256,
+
+	// Crosslink vote
+	/// Shard number
+	pub shard: u64,
+	/// Last crosslink
+	pub previous_crosslink: Crosslink,
 	/// Data from the shard since the last attestation
 	pub crosslink_data_root: H256,
-	/// Last crosslink
-	pub latest_crosslink: Crosslink,
-	/// Last justified epoch in the beacon state
-	pub justified_epoch: u64,
-	/// Hash of the last justified beacon block
-	pub justified_block_root: H256,
 }
 
 impl AttestationData {
@@ -86,7 +96,7 @@ impl AttestationData {
 	}
 
 	pub fn is_surround_vote(&self, other: &AttestationData) -> bool {
-		self.justified_epoch < other.justified_epoch &&
+		self.source_epoch < other.source_epoch &&
 			slot_to_epoch(other.slot) < slot_to_epoch(self.slot)
 	}
 }

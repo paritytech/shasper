@@ -65,7 +65,8 @@ impl BeaconState {
 			return Err(Error::RandaoSignatureInvalid)
 		}
 
-		self.latest_randao_mixes[(self.current_epoch() % LATEST_RANDAO_MIXES_LENGTH as u64) as usize] = self.randao_mix(self.current_epoch())? ^ hash(&block.body.randao_reveal[..]);
+		let current_epoch = self.current_epoch();
+		self.latest_randao_mixes[(current_epoch % LATEST_RANDAO_MIXES_LENGTH as u64) as usize] = self.randao_mix(current_epoch)? ^ hash(&block.body.randao_reveal[..]);
 
 		Ok(())
 	}
@@ -162,20 +163,20 @@ impl BeaconState {
 		}
 
 		if slot_to_epoch(attestation.data.slot) >= self.current_epoch() {
-			if attestation.data.justified_epoch != self.justified_epoch {
+			if attestation.data.source_epoch != self.current_justified_epoch {
 				return Err(Error::AttestationIncorrectJustifiedEpoch)
 			}
 		} else {
-			if attestation.data.justified_epoch != self.previous_justified_epoch {
+			if attestation.data.source_epoch != self.previous_justified_epoch {
 				return Err(Error::AttestationIncorrectJustifiedEpoch)
 			}
 		}
 
-		if attestation.data.justified_block_root != self.block_root(epoch_start_slot(attestation.data.justified_epoch))? {
+		if attestation.data.source_root != self.block_root(epoch_start_slot(attestation.data.source_epoch))? {
 			return Err(Error::AttestationIncorrectJustifiedBlockRoot)
 		}
 
-		if !(self.latest_crosslinks[attestation.data.shard as usize] == attestation.data.latest_crosslink || self.latest_crosslinks[attestation.data.shard as usize] == Crosslink { crosslink_data_root: attestation.data.crosslink_data_root, epoch: slot_to_epoch(attestation.data.slot) }) {
+		if !(self.latest_crosslinks[attestation.data.shard as usize] == attestation.data.previous_crosslink || self.latest_crosslinks[attestation.data.shard as usize] == Crosslink { crosslink_data_root: attestation.data.crosslink_data_root, epoch: slot_to_epoch(attestation.data.slot) }) {
 			return Err(Error::AttestationIncorrectCrosslinkData)
 		}
 

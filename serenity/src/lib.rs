@@ -33,12 +33,12 @@ pub use state::*;
 pub use validator::*;
 pub use error::*;
 
-type Gwei = u64;
-type Slot = u64;
-type Epoch = u64;
-type Shard = u64;
-type Timestamp = u64;
-type ValidatorIndex = u64;
+pub type Gwei = u64;
+pub type Slot = u64;
+pub type Epoch = u64;
+pub type Shard = u64;
+pub type Timestamp = u64;
+pub type ValidatorIndex = u64;
 
 pub fn execute_block(block: &BeaconBlock, state: &mut BeaconState) -> Result<(), Error> {
 	state.update_cache();
