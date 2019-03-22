@@ -55,7 +55,7 @@ pub fn execute_block(block: &BeaconBlock, state: &mut BeaconState) -> Result<(),
 		state.update_finalize()?;
 	}
 
-	if state.slot != block.slot {
+	while state.slot < block.slot {
 		state.advance_slot();
 	}
 
