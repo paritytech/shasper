@@ -23,6 +23,7 @@ mod state;
 mod validator;
 mod util;
 mod error;
+mod processing;
 
 pub use attestation::*;
 pub use block::*;
