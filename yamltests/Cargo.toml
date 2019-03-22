@@ -8,4 +8,5 @@ edition = "2018"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8"
 clap = "2.32"
+primitives = { package = "shasper-primitives", path = "../primitives" }
 serenity = { path = "../serenity" }

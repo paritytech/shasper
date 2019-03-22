@@ -36,7 +36,7 @@ use crate::util::{
 };
 
 #[derive(Ssz)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct BeaconState {
 	// Misc
 	pub slot: Slot,
