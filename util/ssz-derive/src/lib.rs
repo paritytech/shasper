@@ -130,11 +130,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
 				let mut #dest_ = ::ssz::prelude::Vec::new();
 				#hashing
 				let len = #dest_.len() as u32;
-				::ssz::hash::mix_in_length :: <#hash_param_> (
-					::ssz::hash::merkleize :: <#hash_param_> (
-						#dest_
-					),
-					len
+				::ssz::hash::merkleize :: <#hash_param_> (
+					#dest_
 				)
 			}
 
@@ -142,11 +139,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
 				let mut #dest_ = ::ssz::prelude::Vec::new();
 				#truncate_hashing
 				let len = #dest_.len() as u32;
-				::ssz::hash::mix_in_length :: <#hash_param_> (
-					::ssz::hash::merkleize :: <#hash_param_> (
-						#dest_
-					),
-					len
+				::ssz::hash::merkleize :: <#hash_param_> (
+					#dest_
 				)
 			}
 		}

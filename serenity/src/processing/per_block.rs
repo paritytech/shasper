@@ -180,11 +180,11 @@ impl BeaconState {
 			return Err(Error::AttestationIncorrectCrosslinkData)
 		}
 
-		if attestation.aggregation_bitfield.count() == 0 {
+		if attestation.aggregation_bitfield.0.len() == 0 {
 			return Err(Error::AttestationEmptyAggregation)
 		}
 
-		if attestation.custody_bitfield.count() == 0 {
+		if attestation.custody_bitfield.0.len() == 0 {
 			return Err(Error::AttestationEmptyCustody)
 		}
 

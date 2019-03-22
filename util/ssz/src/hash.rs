@@ -157,7 +157,7 @@ macro_rules! impl_fixed_bytes {
 	( $( $n:expr )* ) => { $(
 		impl Hashable for [u8; $n] {
 			fn hash<H: Hasher>(&self) -> H::Out {
-				mix_in_length::<H>(merkleize::<H>(chunkify(self)), self.len() as u32)
+				merkleize::<H>(chunkify(self))
 			}
 		}
 	)* }

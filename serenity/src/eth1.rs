@@ -39,7 +39,7 @@ impl Eth1Data {
 	}
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct Eth1DataVote {
 	/// Data being voted for

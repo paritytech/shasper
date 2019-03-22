@@ -35,7 +35,7 @@ use crate::util::{
 	epoch_start_slot, compare_hash, integer_squareroot,
 };
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct BeaconState {
 	// Misc
@@ -83,7 +83,7 @@ pub struct BeaconState {
 	pub deposit_index: u64,
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct HistoricalBatch {
 	/// Block roots
@@ -92,7 +92,7 @@ pub struct HistoricalBatch {
 	pub state_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Fork {
 	/// Previous fork version
@@ -465,7 +465,7 @@ impl BeaconState {
 		}
 
 		let crosslink_committee = matched_committees[0];
-		if bitfield.count() != crosslink_committee.0.len() {
+		if !bitfield.verify(crosslink_committee.0.len()) {
 			return Err(Error::AttestationBitFieldInvalid);
 		}
 
@@ -715,8 +715,10 @@ impl BeaconState {
 	}
 
 	pub fn verify_slashable_attestation(&self, slashable: &SlashableAttestation) -> bool {
-		if slashable.custody_bitfield.count() != 0 {
-			return false;
+		for bit in &slashable.custody_bitfield.0 {
+			if *bit != 0 {
+				return false;
+			}
 		}
 
 		if slashable.validator_indices.len() == 0 {
@@ -729,7 +731,7 @@ impl BeaconState {
 			}
 		}
 
-		if slashable.custody_bitfield.count() != slashable.validator_indices.len() {
+		if !slashable.custody_bitfield.verify(slashable.validator_indices.len()) {
 			return false;
 		}
 

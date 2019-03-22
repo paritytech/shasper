@@ -78,10 +78,11 @@ impl ssz::Prefixable for H768 {
 	}
 }
 
+impl ssz::Composite for H768 { }
+
 impl ssz::Hashable for H768 {
 	fn hash<H: ::hash_db::Hasher>(&self) -> H::Out {
-		let encoded = ssz::Encode::encode(self);
-		H::hash(&encoded)
+		ssz::hash::merkleize::<H>(ssz::hash::chunkify(self.as_ref()))
 	}
 }
 

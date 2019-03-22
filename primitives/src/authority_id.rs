@@ -78,10 +78,11 @@ impl ssz::Prefixable for H384 {
 	}
 }
 
+impl ssz::Composite for H384 { }
+
 impl ssz::Hashable for H384 {
 	fn hash<H: ::hash_db::Hasher>(&self) -> H::Out {
-		let encoded = ssz::Encode::encode(self);
-		H::hash(&encoded)
+		ssz::hash::merkleize::<H>(ssz::hash::chunkify(self.as_ref()))
 	}
 }
 
