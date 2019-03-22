@@ -20,7 +20,7 @@ use serde::{Serialize, Deserialize};
 use crate::consts::GENESIS_EPOCH;
 
 #[derive(Ssz, Clone)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Validator {
 	/// BLS public key
 	pub pubkey: ValidatorId,
@@ -65,7 +65,7 @@ impl Validator {
 }
 
 #[derive(Ssz, Clone)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct VoluntaryExit {
 	/// Minimum epoch for processing exit
 	pub epoch: u64,
@@ -77,7 +77,7 @@ pub struct VoluntaryExit {
 }
 
 #[derive(Ssz, Clone)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Transfer {
 	/// Sender index
 	pub sender: u64,

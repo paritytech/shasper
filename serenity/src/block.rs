@@ -28,7 +28,7 @@ use crate::error::Error;
 use crate::util::Hasher;
 
 #[derive(Ssz)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct BeaconBlock {
 	pub slot: u64,
 	pub previous_block_root: H256,
@@ -61,7 +61,7 @@ impl BeaconBlock {
 }
 
 #[derive(Ssz, PartialEq, Eq, Clone)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct BeaconBlockHeader {
     pub slot: u64,
     pub previous_block_root: H256,
@@ -84,7 +84,7 @@ impl BeaconBlockHeader {
 }
 
 #[derive(Ssz)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct BeaconBlockBody {
 	pub randao_reveal: H768,
 	pub eth1_data: Eth1Data,

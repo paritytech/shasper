@@ -21,7 +21,7 @@ use crate::attestation::AttestationData;
 use crate::block::BeaconBlockHeader;
 
 #[derive(Ssz, Clone)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct ProposerSlashing {
 	/// Proposer index
 	pub proposer_index: u64,
@@ -34,7 +34,7 @@ pub struct ProposerSlashing {
 }
 
 #[derive(Ssz, Clone)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct AttesterSlashing {
 	/// First slashable attestation
 	pub slashable_attestation_a: SlashableAttestation,
@@ -43,7 +43,7 @@ pub struct AttesterSlashing {
 }
 
 #[derive(Ssz, Clone)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct SlashableAttestation {
 	/// Validator indices
 	pub validator_indices: Vec<u64>,

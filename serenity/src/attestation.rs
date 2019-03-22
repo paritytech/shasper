@@ -21,7 +21,7 @@ use crate::consts::GENESIS_EPOCH;
 use crate::util::slot_to_epoch;
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Crosslink {
 	/// Epoch number
 	pub epoch: u64,
@@ -39,7 +39,7 @@ impl Default for Crosslink {
 }
 
 #[derive(Ssz, Clone)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Attestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -52,7 +52,7 @@ pub struct Attestation {
 }
 
 #[derive(Ssz, Clone)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct PendingAttestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -65,7 +65,7 @@ pub struct PendingAttestation {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct AttestationData {
 	// LMD GHOST vote
 	/// Slot number

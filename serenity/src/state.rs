@@ -84,7 +84,7 @@ pub struct BeaconState {
 }
 
 #[derive(Ssz)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct HistoricalBatch {
 	/// Block roots
 	pub block_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
@@ -93,7 +93,7 @@ pub struct HistoricalBatch {
 }
 
 #[derive(Ssz)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Fork {
 	/// Previous fork version
 	pub previous_version: Version,
