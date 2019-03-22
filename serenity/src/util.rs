@@ -66,7 +66,7 @@ pub fn bls_domain(fork: &Fork, epoch: u64, typ: u64) -> u64 {
 	};
 
 	let mut bytes = [0u8; 8];
-	(&mut bytes[0..4]).copy_from_slice(version);
+	(&mut bytes[0..4]).copy_from_slice(version.as_ref());
 	(&mut bytes[4..8]).copy_from_slice(&typ.to_le_bytes()[0..4]);
 
 	u64::from_le_bytes(bytes)

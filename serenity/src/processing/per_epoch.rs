@@ -30,7 +30,8 @@ use crate::consts::{
 
 impl BeaconState {
 	pub fn update_justification_and_finalization(&mut self) -> Result<(), Error> {
-		let mut new_justified_epoch = self.justified_epoch;
+		let mut new_justified_epoch = self.current_justified_epoch;
+		let mut new_finalized_epoch = self.finalized_epoch;
 		self.justification_bitfield <<= 1;
 
 		let previous_boundary_attesting_balance = self.attesting_balance(&self.previous_epoch_boundary_attestations()?)?;
@@ -48,20 +49,28 @@ impl BeaconState {
 		let bitfield = self.justification_bitfield;
 		let current_epoch = self.current_epoch();
 		if (bitfield >> 1) % 8 == 0b111 && self.previous_justified_epoch == current_epoch - 3 {
-			self.finalized_epoch = self.previous_justified_epoch;
+			new_finalized_epoch = self.previous_justified_epoch;
 		}
 		if (bitfield >> 1) % 4 == 0b011 && self.previous_justified_epoch == current_epoch - 2 {
-			self.finalized_epoch = self.previous_justified_epoch;
+			new_finalized_epoch = self.previous_justified_epoch;
 		}
-		if (bitfield >> 0) % 8 == 0b111 && self.justified_epoch == current_epoch - 2 {
-			self.finalized_epoch = self.justified_epoch;
+		if (bitfield >> 0) % 8 == 0b111 && self.current_justified_epoch == current_epoch - 2 {
+			new_finalized_epoch = self.current_justified_epoch;
 		}
-		if (bitfield >> 0) % 4 == 0b011 && self.justified_epoch == current_epoch - 1 {
-			self.finalized_epoch = self.justified_epoch;
+		if (bitfield >> 0) % 4 == 0b011 && self.current_justified_epoch == current_epoch - 1 {
+			new_finalized_epoch = self.current_justified_epoch;
 		}
 
-		self.previous_justified_epoch = self.justified_epoch;
-		self.justified_epoch = new_justified_epoch;
+		self.previous_justified_epoch = self.current_justified_epoch;
+		self.previous_justified_root = self.current_justified_root;
+		if new_justified_epoch != self.current_justified_epoch {
+			self.current_justified_epoch = new_justified_epoch;
+			self.current_justified_root = self.block_root(epoch_start_slot(new_justified_epoch))?;
+		}
+		if new_finalized_epoch != self.finalized_epoch {
+			self.finalized_epoch = new_finalized_epoch;
+			self.finalized_root = self.block_root(epoch_start_slot(new_finalized_epoch))?;
+		}
 
 		Ok(())
 	}

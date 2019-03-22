@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{H256, ValidatorId, BitField};
+use primitives::{H256, ValidatorId, BitField, Version};
 use ssz::Hashable;
 use ssz_derive::Ssz;
+use serde::{Serialize, Deserialize};
 use crate::{Gwei, Slot, Epoch, Timestamp, ValidatorIndex, Shard};
 use crate::eth1::{Eth1Data, Eth1DataVote, Deposit};
 use crate::slashing::SlashableAttestation;
@@ -35,6 +36,7 @@ use crate::util::{
 };
 
 #[derive(Ssz)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct BeaconState {
 	// Misc
 	pub slot: Slot,
@@ -47,7 +49,7 @@ pub struct BeaconState {
 	pub validator_registry_update_epoch: Epoch,
 
 	// Randomness and committees
-	pub latest_randao_mixes: [H256; LATEST_RANDAO_MIXES_LENGTH],
+	pub latest_randao_mixes: Vec<H256>, //; LATEST_RANDAO_MIXES_LENGTH],
 	pub previous_shuffling_start_shard: Shard,
 	pub current_shuffling_start_shard: Shard,
 	pub previous_shuffling_epoch: Epoch,
@@ -59,16 +61,19 @@ pub struct BeaconState {
 	pub previous_epoch_attestations: Vec<PendingAttestation>,
 	pub current_epoch_attestations: Vec<PendingAttestation>,
 	pub previous_justified_epoch: Epoch,
-	pub justified_epoch: Epoch,
+	pub current_justified_epoch: Epoch,
+	pub previous_justified_root: H256,
+	pub current_justified_root: H256,
 	pub justification_bitfield: u64,
 	pub finalized_epoch: Epoch,
+	pub finalized_root: H256,
 
 	// Recent state
-	pub latest_crosslinks: [Crosslink; SHARD_COUNT],
-	pub latest_block_roots: [H256; SLOTS_PER_HISTORICAL_ROOT],
-	pub latest_state_roots: [H256; SLOTS_PER_HISTORICAL_ROOT],
-	pub latest_active_index_roots: [H256; LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
-	pub latest_slashed_balances: [u64; LATEST_SLASHED_EXIT_LENGTH], // Balances slashed at every withdrawal period
+	pub latest_crosslinks: Vec<Crosslink>, //; SHARD_COUNT],
+	pub latest_block_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	pub latest_state_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	pub latest_active_index_roots: Vec<H256>, //; LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
+	pub latest_slashed_balances: Vec<u64>, //; LATEST_SLASHED_EXIT_LENGTH], // Balances slashed at every withdrawal period
 	pub latest_block_header: BeaconBlockHeader,
 	pub historical_roots: Vec<H256>,
 
@@ -79,19 +84,21 @@ pub struct BeaconState {
 }
 
 #[derive(Ssz)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct HistoricalBatch {
 	/// Block roots
-	pub block_roots: [H256; SLOTS_PER_HISTORICAL_ROOT],
+	pub block_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
 	/// State roots
-	pub state_roots: [H256; SLOTS_PER_HISTORICAL_ROOT],
+	pub state_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
 }
 
 #[derive(Ssz)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct Fork {
 	/// Previous fork version
-	pub previous_version: [u8; 4],
+	pub previous_version: Version,
 	/// Current fork version
-	pub current_version: [u8; 4],
+	pub current_version: Version,
 	/// Fork epoch number
 	pub epoch: u64,
 }
@@ -99,8 +106,8 @@ pub struct Fork {
 impl Default for Fork {
 	fn default() -> Self {
 		Self {
-			previous_version: GENESIS_FORK_VERSION,
-			current_version: GENESIS_FORK_VERSION,
+			previous_version: Version::from(GENESIS_FORK_VERSION),
+			current_version: Version::from(GENESIS_FORK_VERSION),
 			epoch: GENESIS_EPOCH,
 		}
 	}
@@ -204,7 +211,8 @@ impl BeaconState {
 		}
 		self.exit_validator(index);
 
-		self.latest_slashed_balances[(self.current_epoch() % LATEST_SLASHED_EXIT_LENGTH as u64) as usize] += self.effective_balance(index);
+		let current_epoch = self.current_epoch();
+		self.latest_slashed_balances[(current_epoch % LATEST_SLASHED_EXIT_LENGTH as u64) as usize] += self.effective_balance(index);
 
 		let whistleblower_index = self.beacon_proposer_index(self.slot, false)?;
 		let whistleblower_reward = self.effective_balance(index) / WHISTLEBLOWER_REWARD_QUOTIENT;
@@ -243,7 +251,7 @@ impl BeaconState {
 			validator_balances: Vec::new(),
 			validator_registry_update_epoch: GENESIS_EPOCH,
 
-			latest_randao_mixes: [H256::default(); LATEST_RANDAO_MIXES_LENGTH],
+			latest_randao_mixes: (&[H256::default(); LATEST_RANDAO_MIXES_LENGTH]).to_vec(),
 			previous_shuffling_start_shard: GENESIS_START_SHARD,
 			current_shuffling_start_shard: GENESIS_START_SHARD,
 			previous_shuffling_epoch: GENESIS_EPOCH,
@@ -254,21 +262,24 @@ impl BeaconState {
 			previous_epoch_attestations: Vec::new(),
 			current_epoch_attestations: Vec::new(),
 			previous_justified_epoch: GENESIS_EPOCH,
-			justified_epoch: GENESIS_EPOCH,
+			current_justified_epoch: GENESIS_EPOCH,
+			previous_justified_root: H256::default(),
+			current_justified_root: H256::default(),
 			justification_bitfield: 0,
 			finalized_epoch: GENESIS_EPOCH,
+			finalized_root: H256::default(),
 
-			latest_crosslinks: unsafe {
-				let mut ret: [Crosslink; SHARD_COUNT] = core::mem::uninitialized();
-				for item in &mut ret[..] {
-					core::ptr::write(item, Crosslink::default());
+			latest_crosslinks: {
+				let mut ret = Vec::new();
+				for _ in 0..SHARD_COUNT {
+					ret.push(Crosslink::default());
 				}
 				ret
 			},
-			latest_block_roots: [H256::default(); SLOTS_PER_HISTORICAL_ROOT],
-			latest_state_roots: [H256::default(); SLOTS_PER_HISTORICAL_ROOT],
-			latest_active_index_roots: [H256::default(); LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
-			latest_slashed_balances: [0; LATEST_SLASHED_EXIT_LENGTH],
+			latest_block_roots: (&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec(),
+			latest_state_roots: (&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec(),
+			latest_active_index_roots: (&[H256::default(); LATEST_ACTIVE_INDEX_ROOTS_LENGTH]).to_vec(),
+			latest_slashed_balances: (&[0; LATEST_SLASHED_EXIT_LENGTH]).to_vec(),
 			latest_block_header: BeaconBlockHeader::with_state_root(&BeaconBlock::empty(), H256::default()),
 			historical_roots: Vec::new(),
 
@@ -486,14 +497,14 @@ impl BeaconState {
 	pub fn current_epoch_boundary_attestations(&self) -> Result<Vec<PendingAttestation>, Error> {
 		let block_root = self.block_root(epoch_start_slot(self.current_epoch()))?;
 		Ok(self.current_epoch_attestations.clone().into_iter()
-		   .filter(|a| a.data.epoch_boundary_root == block_root)
+		   .filter(|a| a.data.target_root == block_root)
 		   .collect())
 	}
 
 	pub fn previous_epoch_boundary_attestations(&self) -> Result<Vec<PendingAttestation>, Error> {
 		let block_root = self.block_root(epoch_start_slot(self.previous_epoch()))?;
 		Ok(self.previous_epoch_attestations.clone().into_iter()
-		   .filter(|a| a.data.epoch_boundary_root == block_root)
+		   .filter(|a| a.data.target_root == block_root)
 		   .collect())
 	}
 
@@ -511,7 +522,7 @@ impl BeaconState {
 		let all_attestations = self.current_epoch_attestations.clone().into_iter()
 			.chain(self.previous_epoch_attestations.clone().into_iter());
 		let valid_attestations = all_attestations.filter(|a| {
-			a.data.latest_crosslink == self.latest_crosslinks[shard as usize]
+			a.data.previous_crosslink == self.latest_crosslinks[shard as usize]
 		}).collect::<Vec<_>>();
 		let all_roots = valid_attestations.iter()
 			.map(|a| a.data.crosslink_data_root)

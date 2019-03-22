@@ -19,13 +19,33 @@ use ssz_derive::Ssz;
 use core::cmp;
 use core::ops::BitOr;
 #[cfg(feature = "std")]
-use serde_derive::{Serialize, Deserialize};
+use impl_serde::serialize as bytes;
+#[cfg(feature = "std")]
+use serde::{Serialize, Serializer, Deserialize, Deserializer};
 
 // TODO: Validate bitfield trailing bits in encoding/decoding.
 
 #[derive(Clone, PartialEq, Eq, Decode, Encode, Ssz)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct BitField(Vec<u8>, usize);
+
+#[cfg(feature = "std")]
+impl Serialize for BitField {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+		bytes::serialize(&self.0, serializer)
+	}
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for BitField {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+		bytes::deserialize_check_len(deserializer, bytes::ExpectedLen::Any)
+			.map(|x| {
+				let len = x.len();
+				BitField(x, len * 8)
+			})
+	}
+}
 
 impl BitField {
 	pub fn has_voted(&self, index: usize) -> bool {

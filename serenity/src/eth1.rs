@@ -17,10 +17,12 @@
 use primitives::{H256, ValidatorId, Signature};
 use ssz::{Hashable, Encode};
 use ssz_derive::Ssz;
+use serde::{Serialize, Deserialize};
 use crate::consts::DEPOSIT_CONTRACT_TREE_DEPTH;
 use crate::util::{Hasher, hash, hash2, bls_verify};
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct Eth1Data {
 	/// Root of the deposit tree
 	pub deposit_root: H256,
@@ -38,6 +40,7 @@ impl Eth1Data {
 }
 
 #[derive(Ssz)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct Eth1DataVote {
 	/// Data being voted for
 	pub eth1_data: Eth1Data,
@@ -46,6 +49,7 @@ pub struct Eth1DataVote {
 }
 
 #[derive(Ssz, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct Deposit {
 	/// Branch in the deposit tree
 	pub proof: [H256; DEPOSIT_CONTRACT_TREE_DEPTH],
@@ -79,6 +83,7 @@ impl Deposit {
 }
 
 #[derive(Ssz, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct DepositData {
 	/// Amount in Gwei
 	pub amount: u64,
@@ -89,6 +94,7 @@ pub struct DepositData {
 }
 
 #[derive(Ssz, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct DepositInput {
 	/// BLS pubkey
 	pub pubkey: ValidatorId,

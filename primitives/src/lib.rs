@@ -37,12 +37,14 @@ mod authority_id;
 mod bitfield;
 mod signature;
 mod attestation;
+mod version;
 
 pub use crypto;
 pub use keccak_hasher::KeccakHasher;
 pub use signature::{H768, Signature};
 pub use authority_id::{H384, AuthorityId};
 pub use bitfield::BitField;
+pub use version::{H32, Version};
 pub use attestation::{UnsignedAttestation, UncheckedAttestation, CheckedAttestation, AttestationContext};
 
 pub use primitive_types::H256;

@@ -16,20 +16,25 @@
 
 use primitives::{Signature, BitField};
 use ssz_derive::Ssz;
+use serde::{Serialize, Deserialize};
 use crate::attestation::AttestationData;
 use crate::block::BeaconBlockHeader;
 
 #[derive(Ssz, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct ProposerSlashing {
 	/// Proposer index
 	pub proposer_index: u64,
 	/// First proposal
+	#[serde(rename = "header_1")]
 	pub header_a: BeaconBlockHeader,
 	/// Second proposal
+	#[serde(rename = "header_2")]
 	pub header_b: BeaconBlockHeader,
 }
 
 #[derive(Ssz, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct AttesterSlashing {
 	/// First slashable attestation
 	pub slashable_attestation_a: SlashableAttestation,
@@ -38,6 +43,7 @@ pub struct AttesterSlashing {
 }
 
 #[derive(Ssz, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct SlashableAttestation {
 	/// Validator indices
 	pub validator_indices: Vec<u64>,

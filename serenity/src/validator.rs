@@ -16,9 +16,11 @@
 
 use primitives::{Signature, ValidatorId, H256};
 use ssz_derive::Ssz;
+use serde::{Serialize, Deserialize};
 use crate::consts::GENESIS_EPOCH;
 
 #[derive(Ssz, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct Validator {
 	/// BLS public key
 	pub pubkey: ValidatorId,
@@ -63,6 +65,7 @@ impl Validator {
 }
 
 #[derive(Ssz, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct VoluntaryExit {
 	/// Minimum epoch for processing exit
 	pub epoch: u64,
@@ -74,6 +77,7 @@ pub struct VoluntaryExit {
 }
 
 #[derive(Ssz, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct Transfer {
 	/// Sender index
 	pub sender: u64,
