@@ -17,7 +17,7 @@
 use primitives::{H256, ValidatorId, BitField, Version};
 use ssz::Hashable;
 use ssz_derive::Ssz;
-use serde::{Serialize, Deserialize};
+use serde_derive::{Serialize, Deserialize};
 use crate::{Gwei, Slot, Epoch, Timestamp, ValidatorIndex, Shard};
 use crate::eth1::{Eth1Data, Eth1DataVote, Deposit};
 use crate::slashing::SlashableAttestation;

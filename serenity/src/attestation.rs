@@ -16,7 +16,7 @@
 
 use primitives::{BitField, H256, Signature};
 use ssz_derive::Ssz;
-use serde::{Serialize, Deserialize};
+use serde_derive::{Serialize, Deserialize};
 use crate::consts::GENESIS_EPOCH;
 use crate::util::slot_to_epoch;
 

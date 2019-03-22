@@ -8,7 +8,8 @@ edition = "2018"
 primitives = { package = "shasper-primitives", path = "../primitives", default-features = false }
 hash-db = { version = "0.11", default-features = false }
 keccak-hasher = { path = "../util/keccak-hasher", default-features = false }
-serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde = { version = "1.0", default-features = false }
+serde_derive = "1.0"
 ssz = { path = "../util/ssz", default-features = false }
 ssz-derive = { path = "../util/ssz-derive" }
 

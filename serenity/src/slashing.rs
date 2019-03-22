@@ -16,7 +16,7 @@
 
 use primitives::{Signature, BitField};
 use ssz_derive::Ssz;
-use serde::{Serialize, Deserialize};
+use serde_derive::{Serialize, Deserialize};
 use crate::attestation::AttestationData;
 use crate::block::BeaconBlockHeader;
 

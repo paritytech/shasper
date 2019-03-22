@@ -16,7 +16,7 @@
 
 use primitives::{Signature, ValidatorId, H256};
 use ssz_derive::Ssz;
-use serde::{Serialize, Deserialize};
+use serde_derive::{Serialize, Deserialize};
 use crate::consts::GENESIS_EPOCH;
 
 #[derive(Ssz, Clone)]

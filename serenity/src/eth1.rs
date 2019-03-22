@@ -17,7 +17,7 @@
 use primitives::{H256, ValidatorId, Signature};
 use ssz::{Hashable, Encode};
 use ssz_derive::Ssz;
-use serde::{Serialize, Deserialize};
+use serde_derive::{Serialize, Deserialize};
 use crate::consts::DEPOSIT_CONTRACT_TREE_DEPTH;
 use crate::util::{Hasher, hash, hash2, bls_verify};
 

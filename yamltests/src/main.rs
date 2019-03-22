@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 use clap::{App, Arg};
-use serde::{Serialize, Deserialize};
+use serde_derive::{Serialize, Deserialize};
 use primitives::H256;
 use serenity::{BeaconState, BeaconBlock, Slot, Fork, Timestamp, Validator, Epoch, Shard, Eth1Data, Eth1DataVote, PendingAttestation, Crosslink, BeaconBlockHeader};
 

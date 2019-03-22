@@ -17,7 +17,7 @@
 use primitives::{H256, Signature, H768};
 use ssz::Hashable;
 use ssz_derive::Ssz;
-use serde::{Serialize, Deserialize};
+use serde_derive::{Serialize, Deserialize};
 use crate::validator::{VoluntaryExit, Transfer};
 use crate::attestation::Attestation;
 use crate::slashing::{AttesterSlashing, ProposerSlashing};
