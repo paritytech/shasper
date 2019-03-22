@@ -13,3 +13,11 @@
 
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
+
+use crate::state::BeaconState;
+
+impl BeaconState {
+	pub fn advance_slot(&mut self) {
+		self.slot += 1;
+	}
+}

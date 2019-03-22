@@ -617,10 +617,6 @@ impl BeaconState {
 		self.validator_registry_update_epoch = current_epoch;
 	}
 
-	pub fn advance_slot(&mut self) {
-		self.slot += 1;
-	}
-
 	pub fn process_block_header(&mut self, block: &BeaconBlock) -> Result<(), Error> {
 		if block.slot != self.slot {
 			return Err(Error::BlockSlotInvalid)
