@@ -783,6 +783,7 @@ mod tests {
 	use super::*;
 
 	#[test]
+	#[ignore]
 	fn test_empty_genesis_block() {
 		let state = BeaconState::genesis(Default::default(), 0, Eth1Data {
 			block_hash: Default::default(),
