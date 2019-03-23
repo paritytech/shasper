@@ -177,7 +177,7 @@ impl BeaconState {
 			if self.validator_registry[*index as usize].withdrawable_epoch != FAR_FUTURE_EPOCH {
 				false
 			} else {
-				self.current_epoch() >= self.validator_registry[*index as usize].exit_epoch.wrapping_add(MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+				self.current_epoch() >= self.validator_registry[*index as usize].exit_epoch.saturating_add(MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
 			}
 		}).collect::<Vec<_>>();
 		eligible_indices.sort_by_key(|index| {

@@ -121,7 +121,7 @@ pub fn to_usize(v: &[u8]) -> usize {
 }
 
 pub fn epoch_start_slot(epoch: Epoch) -> Slot {
-	epoch.wrapping_mul(crate::consts::SLOTS_PER_EPOCH)
+	epoch.saturating_mul(crate::consts::SLOTS_PER_EPOCH)
 }
 
 pub fn permuted_index(mut index: usize, seed: &H256, len: usize, round: usize) -> usize {
