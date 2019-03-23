@@ -86,7 +86,7 @@ impl BeaconState {
 	}
 
 	pub fn push_proposer_slashing(&mut self, proposer_slashing: ProposerSlashing) -> Result<(), Error> {
-		if proposer_slashing.header_a.slot != proposer_slashing.header_b.slot {
+		if slot_to_epoch(proposer_slashing.header_a.slot) != slot_to_epoch(proposer_slashing.header_b.slot) {
 			return Err(Error::ProposerSlashingInvalidSlot)
 		}
 

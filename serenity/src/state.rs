@@ -195,7 +195,7 @@ impl BeaconState {
 	}
 
 	pub fn effective_balance(&self, index: ValidatorIndex) -> Gwei {
-		core::cmp::min(self.validator_balances[index as usize], MIN_DEPOSIT_AMOUNT)
+		core::cmp::min(self.validator_balances[index as usize], MAX_DEPOSIT_AMOUNT)
 	}
 
 	fn activate_validator(&mut self, index: ValidatorIndex, is_genesis: bool) {
