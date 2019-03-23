@@ -25,7 +25,7 @@ use crate::attestation::{
 };
 use crate::slashing::{ProposerSlashing, AttesterSlashing};
 use crate::util::{
-	Hasher, bls_verify, bls_domain, hash, slot_to_epoch, epoch_start_slot,
+	Hasher, bls_verify, bls_domain, hash, slot_to_epoch,
 	bls_verify_multiple, bls_aggregate_pubkeys,
 };
 use crate::consts::{
@@ -158,22 +158,20 @@ impl BeaconState {
 			return Err(Error::AttestationTooFarInHistory)
 		}
 
-		if attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY > self.slot {
+		if attestation.data.slot > self.slot - MIN_ATTESTATION_INCLUSION_DELAY {
 			return Err(Error::AttestationSubmittedTooQuickly)
 		}
 
-		if slot_to_epoch(attestation.data.slot) >= self.current_epoch() {
-			if attestation.data.source_epoch != self.current_justified_epoch {
-				return Err(Error::AttestationIncorrectJustifiedEpoch)
-			}
-		} else {
-			if attestation.data.source_epoch != self.previous_justified_epoch {
-				return Err(Error::AttestationIncorrectJustifiedEpoch)
-			}
-		}
+		let target_epoch = slot_to_epoch(attestation.data.slot);
+		let is_target_current_epoch = target_epoch == self.current_epoch() &&
+			attestation.data.source_epoch == self.current_justified_epoch &&
+			attestation.data.source_root == self.current_justified_root;
+		let is_target_previous_epoch = target_epoch == self.previous_epoch() &&
+			attestation.data.source_epoch == self.previous_justified_epoch &&
+			attestation.data.source_root == self.previous_justified_root;
 
-		if attestation.data.source_root != self.block_root(epoch_start_slot(attestation.data.source_epoch))? {
-			return Err(Error::AttestationIncorrectJustifiedBlockRoot)
+		if !is_target_current_epoch && !is_target_previous_epoch {
+			return Err(Error::AttestationIncorrectJustifiedEpochOrBlockRoot)
 		}
 
 		if !(self.latest_crosslinks[attestation.data.shard as usize] == attestation.data.previous_crosslink || self.latest_crosslinks[attestation.data.shard as usize] == Crosslink { crosslink_data_root: attestation.data.crosslink_data_root, epoch: slot_to_epoch(attestation.data.slot) }) {
