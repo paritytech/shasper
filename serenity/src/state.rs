@@ -35,7 +35,7 @@ use crate::util::{
 	epoch_start_slot, compare_hash, integer_squareroot,
 };
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, Eq, PartialEq)]
 #[ssz(no_decode)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct BeaconState {
@@ -84,7 +84,7 @@ pub struct BeaconState {
 	pub deposit_index: u64,
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 #[ssz(no_decode)]
 pub struct HistoricalBatch {
@@ -94,7 +94,7 @@ pub struct HistoricalBatch {
 	pub state_roots: FixedVec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Fork {
 	/// Previous fork version

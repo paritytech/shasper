@@ -9,5 +9,6 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.8"
 clap = "2.32"
+ssz = { path = "../util/ssz" }
 primitives = { package = "shasper-primitives", path = "../primitives" }
 serenity = { path = "../serenity" }

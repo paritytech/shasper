@@ -4,6 +4,7 @@ use std::io::BufReader;
 
 use clap::{App, Arg};
 use serde_derive::{Serialize, Deserialize};
+use ssz::FixedVec;
 use primitives::H256;
 use serenity::{BeaconState, BeaconBlock, Slot, Fork, Timestamp, Validator, Epoch, Shard, Eth1Data, Eth1DataVote, PendingAttestation, Crosslink, BeaconBlockHeader};
 
@@ -21,7 +22,7 @@ pub struct ExpectedBeaconState {
 	pub validator_registry_update_epoch: Option<Epoch>,
 
 	// Randomness and committees
-	pub latest_randao_mixes: Option<Vec<H256>>,
+	pub latest_randao_mixes: Option<FixedVec<H256>>,
 	pub previous_shuffling_start_shard: Option<Shard>,
 	pub current_shuffling_start_shard: Option<Shard>,
 	pub previous_shuffling_epoch: Option<Epoch>,
@@ -41,11 +42,11 @@ pub struct ExpectedBeaconState {
 	pub finalized_root: Option<H256>,
 
 	// Recent state
-	pub latest_crosslinks: Option<Vec<Crosslink>>,
-	pub latest_block_roots: Option<Vec<H256>>,
-	pub latest_state_roots: Option<Vec<H256>>,
-	pub latest_active_index_roots: Option<Vec<H256>>,
-	pub latest_slashed_balances: Option<Vec<u64>>,
+	pub latest_crosslinks: Option<FixedVec<Crosslink>>,
+	pub latest_block_roots: Option<FixedVec<H256>>,
+	pub latest_state_roots: Option<FixedVec<H256>>,
+	pub latest_active_index_roots: Option<FixedVec<H256>>,
+	pub latest_slashed_balances: Option<FixedVec<u64>>,
 	pub latest_block_header: Option<BeaconBlockHeader>,
 	pub historical_roots: Option<Vec<H256>>,
 
@@ -95,13 +96,14 @@ fn main() {
 }
 
 fn run_test(test: Test) {
+	print!("Running test: {} ...", test.name);
 	let mut state = test.initial_state;
-	let initial_state = state.clone();
 
 	for block in test.blocks {
-		print!("Running test: {} ...", test.name);
 		match serenity::execute_block(&block, &mut state) {
-			Ok(()) => println!(" done"),
+			Ok(()) => {
+				println!(" done");
+			},
 			Err(err) => {
 				println!(" failed\n");
 				println!("Error: {:?}", err);
@@ -109,4 +111,46 @@ fn run_test(test: Test) {
 			}
 		}
 	}
+
+	check_expected(&state, test.expected_state);
+}
+
+fn check_expected(state: &BeaconState, expected: ExpectedBeaconState) {
+	macro_rules! check {
+		( $($field:tt,)+ ) => {
+			$(
+				if let Some($field) = expected.$field {
+					if $field != state.$field {
+						println!("\nExpected state check failed for {}", stringify!($field));
+						println!("Expected: {:?}", $field);
+						println!("Actual: {:?}", state.$field);
+						panic!();
+					}
+				}
+			)+
+		}
+	}
+
+	check!(
+		// Misc
+		slot, genesis_time, fork,
+		// Validator registry
+		validator_registry, validator_balances, validator_registry_update_epoch,
+		// Randomness and committees
+		latest_randao_mixes, previous_shuffling_start_shard,
+		current_shuffling_start_shard, previous_shuffling_epoch,
+		current_shuffling_epoch, previous_shuffling_seed,
+		current_shuffling_seed,
+		// Finality
+		previous_epoch_attestations, current_epoch_attestations,
+		previous_justified_epoch, current_justified_epoch,
+		previous_justified_root, current_justified_root,
+		justification_bitfield, finalized_epoch, finalized_root,
+		// Recent state
+		latest_crosslinks, latest_block_roots, latest_state_roots,
+		latest_active_index_roots, latest_slashed_balances,
+		latest_block_header, historical_roots,
+		// Ethereum 1.0 chain data
+		latest_eth1_data, eth1_data_votes, deposit_index,
+	);
 }

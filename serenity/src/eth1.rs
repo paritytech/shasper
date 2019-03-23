@@ -44,7 +44,7 @@ impl Eth1Data {
 	}
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct Eth1DataVote {
 	/// Data being voted for
@@ -53,7 +53,7 @@ pub struct Eth1DataVote {
 	pub vote_count: u64,
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Deposit {
 	/// Branch in the deposit tree
@@ -87,7 +87,7 @@ impl Deposit {
 	}
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct DepositData {
 	/// Amount in Gwei
@@ -98,7 +98,7 @@ pub struct DepositData {
 	pub deposit_input: DepositInput,
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct DepositInput {
 	/// BLS pubkey
