@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{self, BufReader, Write};
 
 use clap::{App, Arg};
 use serde_derive::{Serialize, Deserialize};
@@ -97,6 +97,7 @@ fn main() {
 
 fn run_test(test: Test) {
 	print!("Running test: {} ...", test.name);
+	io::stdout().flush().ok().expect("Could not flush stdout");
 	let mut state = test.initial_state;
 
 	for block in test.blocks {
