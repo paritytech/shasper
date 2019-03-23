@@ -19,7 +19,7 @@ use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
 use crate::consts::GENESIS_EPOCH;
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Validator {
 	/// BLS public key
@@ -64,7 +64,7 @@ impl Validator {
 	}
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct VoluntaryExit {
 	/// Minimum epoch for processing exit
@@ -76,7 +76,7 @@ pub struct VoluntaryExit {
 	pub signature: Signature,
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Transfer {
 	/// Sender index

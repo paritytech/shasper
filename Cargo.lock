@@ -4370,6 +4370,7 @@ dependencies = [
  "serde_yaml 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "serenity 0.1.0",
  "shasper-primitives 0.1.0",
+ "ssz 0.1.0",
 ]
 
 [[package]]

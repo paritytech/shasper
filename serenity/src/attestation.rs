@@ -38,7 +38,7 @@ impl Default for Crosslink {
 	}
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Attestation {
 	/// Attester aggregation bitfield
@@ -51,7 +51,7 @@ pub struct Attestation {
 	pub aggregate_signature: Signature,
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct PendingAttestation {
 	/// Attester aggregation bitfield
@@ -101,7 +101,7 @@ impl AttestationData {
 	}
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
 pub struct AttestationDataAndCustodyBit {
 	/// Attestation data
 	pub data: AttestationData,

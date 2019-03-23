@@ -31,11 +31,11 @@ use crate::consts::*;
 use crate::error::Error;
 use crate::util::{
 	Hasher, bls_domain, slot_to_epoch, hash3, to_bytes, bls_aggregate_pubkeys,
-	bls_verify_multiple, shuffling, is_power_of_two, epoch_committee_count,
+	bls_verify_multiple, compute_committee, is_power_of_two, epoch_committee_count,
 	epoch_start_slot, compare_hash, integer_squareroot,
 };
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, Eq, PartialEq)]
 #[ssz(no_decode)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct BeaconState {
@@ -84,7 +84,7 @@ pub struct BeaconState {
 	pub deposit_index: u64,
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 #[ssz(no_decode)]
 pub struct HistoricalBatch {
@@ -94,7 +94,7 @@ pub struct HistoricalBatch {
 	pub state_roots: FixedVec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
 }
 
-#[derive(Ssz, Clone)]
+#[derive(Ssz, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Fork {
 	/// Previous fork version
@@ -181,13 +181,13 @@ impl BeaconState {
 		}
 
 		let (first_committee, _) = self.crosslink_committees_at_slot(slot, registry_change)?[0].clone();
-		Ok(first_committee[(slot % first_committee.len() as u64) as usize])
+		Ok(first_committee[(epoch % first_committee.len() as u64) as usize])
 	}
 
-	pub fn validator_by_id(&self, validator_id: &ValidatorId) -> Option<&Validator> {
-		for validator in &self.validator_registry {
+	pub fn validator_index_by_id(&self, validator_id: &ValidatorId) -> Option<ValidatorIndex> {
+		for (i, validator) in self.validator_registry.iter().enumerate() {
 			if &validator.pubkey == validator_id {
-				return Some(validator)
+				return Some(i as u64)
 			}
 		}
 
@@ -195,7 +195,7 @@ impl BeaconState {
 	}
 
 	pub fn effective_balance(&self, index: ValidatorIndex) -> Gwei {
-		core::cmp::min(self.validator_balances[index as usize], MIN_DEPOSIT_AMOUNT)
+		core::cmp::min(self.validator_balances[index as usize], MAX_DEPOSIT_AMOUNT)
 	}
 
 	fn activate_validator(&mut self, index: ValidatorIndex, is_genesis: bool) {
@@ -431,15 +431,15 @@ impl BeaconState {
 		};
 
 		let active_validators = self.active_validator_indices(shuffling_epoch);
-		let shuffling = shuffling(&seed, active_validators);
-		let offset = slot % SLOTS_PER_EPOCH;
 		let committees_per_slot = committees_per_epoch as u64 / SLOTS_PER_EPOCH;
+		let offset = slot % SLOTS_PER_EPOCH;
 		let slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT as u64;
 
 		let mut ret = Vec::new();
 		for i in 0..committees_per_slot {
-			ret.push((shuffling[(committees_per_slot * offset + i as u64) as usize].clone(),
-					  (slot_start_shard + i as u64) % SHARD_COUNT as u64));
+			ret.push(
+				(compute_committee(&active_validators, &seed, (committees_per_slot * offset + i) as usize, committees_per_epoch), (slot_start_shard + i as u64) % SHARD_COUNT as u64)
+			);
 		}
 		Ok(ret)
 	}

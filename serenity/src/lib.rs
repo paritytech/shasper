@@ -41,68 +41,70 @@ pub type Timestamp = u64;
 pub type ValidatorIndex = u64;
 
 pub fn execute_block(block: &BeaconBlock, state: &mut BeaconState) -> Result<(), Error> {
-	state.update_cache();
-
-	if state.slot > consts::GENESIS_SLOT && (state.slot + 1) % consts::SLOTS_PER_EPOCH == 0 {
-		state.update_justification_and_finalization()?;
-		state.update_crosslinks()?;
-		state.update_eth1_period();
-		state.update_rewards()?;
-		state.update_ejections();
-		state.update_registry_and_shuffling_data()?;
-		state.update_slashings();
-		state.update_exit_queue();
-		state.update_finalize()?;
-	}
-
 	while state.slot < block.slot {
+		state.update_cache();
+
+		if (state.slot + 1) % consts::SLOTS_PER_EPOCH == 0 {
+			state.update_justification_and_finalization()?;
+			state.update_crosslinks()?;
+			state.update_eth1_period();
+			state.update_rewards()?;
+			state.update_ejections();
+			state.update_registry_and_shuffling_data()?;
+			state.update_slashings();
+			state.update_exit_queue();
+			state.update_finalize()?;
+		}
+
 		state.advance_slot();
-	}
 
-	state.process_block_header(block)?;
-	state.process_randao(block)?;
-	state.process_eth1_data(block);
+		if state.slot == block.slot {
+			state.process_block_header(block)?;
+			state.process_randao(block)?;
+			state.process_eth1_data(block);
 
-	if block.body.proposer_slashings.len() > consts::MAX_PROPOSER_SLASHINGS {
-		return Err(Error::TooManyProposerSlashings)
-	}
-	for slashing in &block.body.proposer_slashings {
-		state.push_proposer_slashing(slashing.clone())?;
-	}
+			if block.body.proposer_slashings.len() > consts::MAX_PROPOSER_SLASHINGS {
+				return Err(Error::TooManyProposerSlashings)
+			}
+			for slashing in &block.body.proposer_slashings {
+				state.push_proposer_slashing(slashing.clone())?;
+			}
 
-	if block.body.attester_slashings.len() > consts::MAX_ATTESTER_SLASHINGS {
-		return Err(Error::TooManyAttesterSlashings)
-	}
-	for slashing in &block.body.attester_slashings {
-		state.push_attester_slashing(slashing.clone())?;
-	}
+			if block.body.attester_slashings.len() > consts::MAX_ATTESTER_SLASHINGS {
+				return Err(Error::TooManyAttesterSlashings)
+			}
+			for slashing in &block.body.attester_slashings {
+				state.push_attester_slashing(slashing.clone())?;
+			}
 
-	if block.body.attestations.len() > consts::MAX_ATTESTATIONS {
-		return Err(Error::TooManyAttestations)
-	}
-	for attestation in &block.body.attestations {
-		state.push_attestation(attestation.clone())?;
-	}
+			if block.body.attestations.len() > consts::MAX_ATTESTATIONS {
+				return Err(Error::TooManyAttestations)
+			}
+			for attestation in &block.body.attestations {
+				state.push_attestation(attestation.clone())?;
+			}
 
-	if block.body.deposits.len() > consts::MAX_DEPOSITS {
-		return Err(Error::TooManyDeposits)
-	}
-	for deposit in &block.body.deposits {
-		state.push_deposit(deposit.clone())?;
-	}
+			if block.body.deposits.len() > consts::MAX_DEPOSITS {
+				return Err(Error::TooManyDeposits)
+			}
+			for deposit in &block.body.deposits {
+				state.push_deposit(deposit.clone())?;
+			}
 
-	if block.body.voluntary_exits.len() > consts::MAX_VOLUNTARY_EXITS {
-		return Err(Error::TooManyVoluntaryExits)
-	}
-	for voluntary_exit in &block.body.voluntary_exits {
-		state.push_voluntary_exit(voluntary_exit.clone())?;
-	}
+			if block.body.voluntary_exits.len() > consts::MAX_VOLUNTARY_EXITS {
+				return Err(Error::TooManyVoluntaryExits)
+			}
+			for voluntary_exit in &block.body.voluntary_exits {
+				state.push_voluntary_exit(voluntary_exit.clone())?;
+			}
 
-	if block.body.transfers.len() > consts::MAX_TRANSFERS {
-		return Err(Error::TooManyTransfers)
-	}
-	for transfer in &block.body.transfers {
-		state.push_transfer(transfer.clone())?;
+			if block.body.transfers.len() > consts::MAX_TRANSFERS {
+				return Err(Error::TooManyTransfers)
+			}
+			for transfer in &block.body.transfers {
+				state.push_transfer(transfer.clone())?;
+			}
+		}
 	}
 
 	Ok(())
