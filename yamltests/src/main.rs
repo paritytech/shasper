@@ -85,12 +85,22 @@ fn main() {
         .arg(Arg::with_name("FILE")
              .help("Target yaml file to import")
              .required(true))
+		.arg(Arg::with_name("only")
+			 .help("Only run the particular test")
+			 .long("only")
+			 .takes_value(true))
         .get_matches();
 
 	let file = File::open(matches.value_of("FILE").expect("FILE parameter not found")).expect("Open file failed");
+	let only = matches.value_of("only");
 	let coll = serde_yaml::from_reader::<_, Collection>(BufReader::new(file)).expect("Parse test cases failed");
 
 	for test in coll.test_cases {
+		if let Some(only) = only {
+			if test.name != only {
+				continue
+			}
+		}
 		run_test(test);
 	}
 }
