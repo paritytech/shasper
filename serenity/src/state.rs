@@ -786,7 +786,7 @@ mod tests {
 	fn test_empty_genesis_block() {
 		let state = BeaconState::genesis(Default::default(), 0, Eth1Data {
 			block_hash: Default::default(),
-			deposit_count: 0,
+			// deposit_count: 0,
 			deposit_root: Default::default(),
 		}).unwrap();
 		assert_eq!(state.current_shuffling_seed.as_ref(), &b">\r\xc3\xf3\x1a\xdd\xb2\x7fu)\xfa1,\\s'=\xf2\xe1\xddZ\xfcW2\xdf\xe1\x83W\x11\xfc[\x95"[..]);
