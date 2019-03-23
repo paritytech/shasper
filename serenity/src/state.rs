@@ -184,10 +184,10 @@ impl BeaconState {
 		Ok(first_committee[(epoch % first_committee.len() as u64) as usize])
 	}
 
-	pub fn validator_by_id(&self, validator_id: &ValidatorId) -> Option<&Validator> {
-		for validator in &self.validator_registry {
+	pub fn validator_index_by_id(&self, validator_id: &ValidatorId) -> Option<ValidatorIndex> {
+		for (i, validator) in self.validator_registry.iter().enumerate() {
 			if &validator.pubkey == validator_id {
-				return Some(validator)
+				return Some(i as u64)
 			}
 		}
 

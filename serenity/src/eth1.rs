@@ -121,7 +121,7 @@ impl MerkleProof {
 	pub fn is_valid(&self) -> bool {
 		let mut value = self.leaf;
 		for i in 0..self.depth {
-			if self.index / (2usize.pow(i as u32) % 2) == 0 {
+			if (self.index / 2usize.pow(i as u32)) % 2 != 0 {
 				value = hash2(self.proof[i].as_ref(), value.as_ref());
 			} else {
 				value = hash2(value.as_ref(), self.proof[i].as_ref());

@@ -23,6 +23,7 @@ use crate::validator::{VoluntaryExit, Transfer};
 use crate::attestation::{
 	Attestation, Crosslink, AttestationDataAndCustodyBit, PendingAttestation,
 };
+use crate::validator::Validator;
 use crate::slashing::{ProposerSlashing, AttesterSlashing};
 use crate::util::{
 	Hasher, bls_verify, bls_domain, hash, slot_to_epoch,
@@ -258,20 +259,29 @@ impl BeaconState {
 
 		self.deposit_index += 1;
 
-		if !deposit.is_proof_valid(
-			bls_domain(&self.fork, self.current_epoch(), DOMAIN_DEPOSIT)
-		) {
-			return Err(Error::DepositProofInvalid)
-		}
-
-		match self.validator_by_id(&deposit.deposit_data.deposit_input.pubkey) {
-			Some(validator) => {
-				if validator.withdrawal_credentials != deposit.deposit_data.deposit_input.withdrawal_credentials {
-					return Err(Error::DepositWithdrawalCredentialsMismatch)
-				}
+		match self.validator_index_by_id(&deposit.deposit_data.deposit_input.pubkey) {
+			Some(index) => {
+				self.validator_balances[index as usize] += deposit.deposit_data.amount;
 			},
 			None => {
+				if !deposit.is_proof_valid(
+					bls_domain(&self.fork, self.current_epoch(), DOMAIN_DEPOSIT)
+				) {
+					return Ok(())
+				}
 
+				let validator = Validator {
+					pubkey: deposit.deposit_data.deposit_input.pubkey,
+					withdrawal_credentials: deposit.deposit_data.deposit_input.withdrawal_credentials,
+					activation_epoch: FAR_FUTURE_EPOCH,
+					exit_epoch: FAR_FUTURE_EPOCH,
+					withdrawable_epoch: FAR_FUTURE_EPOCH,
+					initiated_exit: false,
+					slashed: false,
+				};
+
+				self.validator_registry.push(validator);
+				self.validator_balances.push(deposit.deposit_data.amount);
 			},
 		}
 
