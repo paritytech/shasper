@@ -150,21 +150,17 @@ pub fn permuted_index(mut index: usize, seed: &H256, len: usize, round: usize) -
 	index
 }
 
-pub fn split<T>(mut values: Vec<T>, split_count: usize) -> Vec<Vec<T>> {
-	let len = values.len();
-	values.reverse();
+pub fn split_offset(len: usize, chunks: usize, index: usize) -> usize {
+	(len * index) / chunks
+}
+
+pub fn compute_committee(validators: &[ValidatorIndex], seed: &H256, index: usize, total_committees: usize) -> Vec<ValidatorIndex> {
+	let start_offset = split_offset(validators.len(), total_committees, index);
+	let end_offset = split_offset(validators.len(), total_committees, index + 1);
 
 	let mut ret = Vec::new();
-	for i in 0..split_count {
-		let mut current = Vec::new();
-		let v = ((len * (i + 1)) / split_count) - ((len * i) / split_count);
-
-		for _ in 0..v {
-			if let Some(value) = values.pop() {
-				current.push(value);
-			}
-		}
-		ret.push(current);
+	for i in start_offset..end_offset {
+		ret.push(permuted_index(i, seed, validators.len(), consts::SHUFFLE_ROUND_COUNT) as ValidatorIndex);
 	}
 	ret
 }
@@ -179,17 +175,6 @@ pub fn epoch_committee_count(active_validator_count: usize) -> usize {
 			active_validator_count / SLOTS_PER_EPOCH as usize / TARGET_COMMITTEE_SIZE,
 		)
 	) * SLOTS_PER_EPOCH as usize
-}
-
-pub fn shuffling(seed: &H256, active_validators: Vec<ValidatorIndex>) -> Vec<Vec<ValidatorIndex>> {
-	let mut shuffled_indices = Vec::new();
-	let len = active_validators.len();
-
-	for i in 0..len {
-		shuffled_indices.push(active_validators[permuted_index(i, seed, len, crate::consts::SHUFFLE_ROUND_COUNT)]);
-	}
-
-	split(shuffled_indices, epoch_committee_count(len))
 }
 
 pub fn is_power_of_two(value: u64) -> bool {
