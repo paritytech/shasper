@@ -87,6 +87,26 @@ fn main() {
         .get_matches();
 
 	let file = File::open(matches.value_of("FILE").expect("FILE parameter not found")).expect("Open file failed");
-	let coll = serde_yaml::from_reader::<_, Collection>(BufReader::new(file));
-	println!("{:?}", coll);
+	let coll = serde_yaml::from_reader::<_, Collection>(BufReader::new(file)).expect("Parse test cases failed");
+
+	for test in coll.test_cases {
+		run_test(test);
+	}
+}
+
+fn run_test(test: Test) {
+	let mut state = test.initial_state;
+	let initial_state = state.clone();
+
+	for block in test.blocks {
+		print!("Running test: {} ...", test.name);
+		match serenity::execute_block(&block, &mut state) {
+			Ok(()) => println!(" done"),
+			Err(err) => {
+				println!(" failed\n");
+				println!("Error: {:?}", err);
+				panic!();
+			}
+		}
+	}
 }

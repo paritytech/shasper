@@ -77,9 +77,10 @@ impl ssz::Prefixable for H32 {
 	}
 }
 
+impl ssz::Composite for H32 { }
+
 impl ssz::Hashable for H32 {
 	fn hash<H: ::hash_db::Hasher>(&self) -> H::Out {
-		let encoded = ssz::Encode::encode(self);
-		H::hash(&encoded)
+		ssz::hash::merkleize::<H>(ssz::hash::chunkify(self.as_ref()))
 	}
 }

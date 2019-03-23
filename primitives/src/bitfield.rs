@@ -15,9 +15,6 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use codec_derive::{Encode, Decode};
-use ssz_derive::Ssz;
-use core::cmp;
-use core::ops::BitOr;
 #[cfg(feature = "std")]
 use impl_serde::serialize as bytes;
 #[cfg(feature = "std")]
@@ -25,9 +22,9 @@ use serde::{Serialize, Serializer, Deserialize, Deserializer};
 
 // TODO: Validate bitfield trailing bits in encoding/decoding.
 
-#[derive(Clone, PartialEq, Eq, Decode, Encode, Ssz)]
+#[derive(Clone, PartialEq, Eq, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct BitField(Vec<u8>, usize);
+pub struct BitField(pub Vec<u8>);
 
 #[cfg(feature = "std")]
 impl Serialize for BitField {
@@ -40,65 +37,53 @@ impl Serialize for BitField {
 impl<'de> Deserialize<'de> for BitField {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
 		bytes::deserialize_check_len(deserializer, bytes::ExpectedLen::Any)
-			.map(|x| {
-				let len = x.len();
-				BitField(x, len * 8)
-			})
+			.map(|x| BitField(x))
+	}
+}
+
+impl ssz::Prefixable for BitField {
+	fn prefixed() -> bool {
+		<Vec<u8>>::prefixed()
+	}
+}
+
+
+impl ssz::Encode for BitField {
+	fn encode_to<W: ssz::Output>(&self, dest: &mut W) {
+		self.0.encode_to(dest)
+	}
+}
+
+impl ssz::Decode for BitField {
+	fn decode_as<I: ssz::Input>(input: &mut I) -> Option<(Self, usize)> {
+		<Vec<u8>>::decode_as(input).map(|(s, u)| (BitField(s), u))
+	}
+}
+
+impl ssz::Composite for BitField { }
+
+impl ssz::Hashable for BitField {
+	fn hash<H: hash_db::Hasher>(&self) -> H::Out {
+		self.0.hash::<H>()
 	}
 }
 
 impl BitField {
 	pub fn has_voted(&self, index: usize) -> bool {
-		assert!(index < self.1);
-		self.0[index / 8] & (128 >> (index % 8)) == 1
+		(self.0[index / 8] >> (index % 8)) == 1
 	}
 
-	pub fn set_voted(&mut self, index: usize) {
-		assert!(index < self.1);
-		let byte_index = index / 8;
-		let bit_index = index % 8;
-		self.0[byte_index] = self.0[byte_index] | (128 >> bit_index);
-	}
+	pub fn verify(&self, size: usize) -> bool {
+		if self.0.len() != (size + 7) / 8 {
+			return false
+		}
 
-	pub fn new(count: usize) -> Self {
-		let byte_len = (count + 7) / 8;
-		let mut payload = Vec::with_capacity(byte_len);
-		payload.resize(byte_len, 0);
-		BitField(payload, count)
-	}
-
-	pub fn count(&self) -> usize {
-		self.1
-	}
-
-	pub fn vote_count(&self) -> usize {
-		let mut votes = 0;
-		for i in 0..self.1 {
+		for i in size..(self.0.len() * 8) {
 			if self.has_voted(i) {
-				votes += 1;
+				return false
 			}
 		}
-		votes
-	}
-}
 
-impl BitOr for BitField {
-	type Output = Self;
-
-	fn bitor(self, rhs: Self) -> Self {
-		let mut new = BitField::new(cmp::max(self.count(), rhs.count()));
-		for i in 0..cmp::max(self.count(), rhs.count()) {
-			let mut voted = false;
-			if i < self.count() {
-				voted = voted || self.has_voted(i);
-			}
-			if i < rhs.count() {
-				voted = voted || rhs.has_voted(i);
-			}
-			if voted {
-				new.set_voted(i);
-			}
-		}
-		new
+		true
 	}
 }

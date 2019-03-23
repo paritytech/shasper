@@ -15,7 +15,7 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use primitives::{H256, ValidatorId, BitField, Version};
-use ssz::Hashable;
+use ssz::{FixedVec, Hashable};
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
 use crate::{Gwei, Slot, Epoch, Timestamp, ValidatorIndex, Shard};
@@ -35,7 +35,8 @@ use crate::util::{
 	epoch_start_slot, compare_hash, integer_squareroot,
 };
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
+#[ssz(no_decode)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct BeaconState {
 	// Misc
@@ -49,7 +50,7 @@ pub struct BeaconState {
 	pub validator_registry_update_epoch: Epoch,
 
 	// Randomness and committees
-	pub latest_randao_mixes: Vec<H256>, //; LATEST_RANDAO_MIXES_LENGTH],
+	pub latest_randao_mixes: FixedVec<H256>, //; LATEST_RANDAO_MIXES_LENGTH],
 	pub previous_shuffling_start_shard: Shard,
 	pub current_shuffling_start_shard: Shard,
 	pub previous_shuffling_epoch: Epoch,
@@ -69,11 +70,11 @@ pub struct BeaconState {
 	pub finalized_root: H256,
 
 	// Recent state
-	pub latest_crosslinks: Vec<Crosslink>, //; SHARD_COUNT],
-	pub latest_block_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
-	pub latest_state_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
-	pub latest_active_index_roots: Vec<H256>, //; LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
-	pub latest_slashed_balances: Vec<u64>, //; LATEST_SLASHED_EXIT_LENGTH], // Balances slashed at every withdrawal period
+	pub latest_crosslinks: FixedVec<Crosslink>, //; SHARD_COUNT],
+	pub latest_block_roots: FixedVec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	pub latest_state_roots: FixedVec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	pub latest_active_index_roots: FixedVec<H256>, //; LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
+	pub latest_slashed_balances: FixedVec<u64>, //; LATEST_SLASHED_EXIT_LENGTH], // Balances slashed at every withdrawal period
 	pub latest_block_header: BeaconBlockHeader,
 	pub historical_roots: Vec<H256>,
 
@@ -83,16 +84,17 @@ pub struct BeaconState {
 	pub deposit_index: u64,
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[ssz(no_decode)]
 pub struct HistoricalBatch {
 	/// Block roots
-	pub block_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	pub block_roots: FixedVec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
 	/// State roots
-	pub state_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	pub state_roots: FixedVec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
 }
 
-#[derive(Ssz)]
+#[derive(Ssz, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct Fork {
 	/// Previous fork version
@@ -251,17 +253,17 @@ impl BeaconState {
 			validator_balances: Vec::new(),
 			validator_registry_update_epoch: GENESIS_EPOCH,
 
-			latest_randao_mixes: (&[H256::default(); LATEST_RANDAO_MIXES_LENGTH]).to_vec(),
+			latest_randao_mixes: FixedVec((&[H256::default(); LATEST_RANDAO_MIXES_LENGTH]).to_vec()),
 			previous_shuffling_start_shard: GENESIS_START_SHARD,
 			current_shuffling_start_shard: GENESIS_START_SHARD,
-			previous_shuffling_epoch: GENESIS_EPOCH,
+			previous_shuffling_epoch: GENESIS_EPOCH - 1,
 			current_shuffling_epoch: GENESIS_EPOCH,
 			previous_shuffling_seed: H256::default(),
 			current_shuffling_seed: H256::default(),
 
 			previous_epoch_attestations: Vec::new(),
 			current_epoch_attestations: Vec::new(),
-			previous_justified_epoch: GENESIS_EPOCH,
+			previous_justified_epoch: GENESIS_EPOCH - 1,
 			current_justified_epoch: GENESIS_EPOCH,
 			previous_justified_root: H256::default(),
 			current_justified_root: H256::default(),
@@ -274,12 +276,12 @@ impl BeaconState {
 				for _ in 0..SHARD_COUNT {
 					ret.push(Crosslink::default());
 				}
-				ret
+				FixedVec(ret)
 			},
-			latest_block_roots: (&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec(),
-			latest_state_roots: (&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec(),
-			latest_active_index_roots: (&[H256::default(); LATEST_ACTIVE_INDEX_ROOTS_LENGTH]).to_vec(),
-			latest_slashed_balances: (&[0; LATEST_SLASHED_EXIT_LENGTH]).to_vec(),
+			latest_block_roots: FixedVec((&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec()),
+			latest_state_roots: FixedVec((&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec()),
+			latest_active_index_roots: FixedVec((&[H256::default(); LATEST_ACTIVE_INDEX_ROOTS_LENGTH]).to_vec()),
+			latest_slashed_balances: FixedVec((&[0; LATEST_SLASHED_EXIT_LENGTH]).to_vec()),
 			latest_block_header: BeaconBlockHeader::with_state_root(&BeaconBlock::empty(), H256::default()),
 			historical_roots: Vec::new(),
 
@@ -465,7 +467,7 @@ impl BeaconState {
 		}
 
 		let crosslink_committee = matched_committees[0];
-		if bitfield.count() != crosslink_committee.0.len() {
+		if !bitfield.verify(crosslink_committee.0.len()) {
 			return Err(Error::AttestationBitFieldInvalid);
 		}
 
@@ -715,8 +717,10 @@ impl BeaconState {
 	}
 
 	pub fn verify_slashable_attestation(&self, slashable: &SlashableAttestation) -> bool {
-		if slashable.custody_bitfield.count() != 0 {
-			return false;
+		for bit in &slashable.custody_bitfield.0 {
+			if *bit != 0 {
+				return false;
+			}
 		}
 
 		if slashable.validator_indices.len() == 0 {
@@ -729,7 +733,7 @@ impl BeaconState {
 			}
 		}
 
-		if slashable.custody_bitfield.count() != slashable.validator_indices.len() {
+		if !slashable.custody_bitfield.verify(slashable.validator_indices.len()) {
 			return false;
 		}
 
@@ -771,5 +775,23 @@ impl BeaconState {
 			&slashable.aggregate_signature,
 			bls_domain(&self.fork, slot_to_epoch(slashable.data.slot), DOMAIN_ATTESTATION)
 		)
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	#[ignore]
+	fn test_empty_genesis_block() {
+		let state = BeaconState::genesis(Default::default(), 0, Eth1Data {
+			block_hash: Default::default(),
+			// deposit_count: 0,
+			deposit_root: Default::default(),
+		}).unwrap();
+		assert_eq!(state.current_shuffling_seed.as_ref(), &b">\r\xc3\xf3\x1a\xdd\xb2\x7fu)\xfa1,\\s'=\xf2\xe1\xddZ\xfcW2\xdf\xe1\x83W\x11\xfc[\x95"[..]);
+		assert_eq!(state.latest_block_header.block_body_root.as_ref(), &b"\xd8\xe5\xbaa\xfc\x87\xc2\x8c\xd7\xe6V\x8fl\xa1\xc0\xfd\x03\x18\xca\xd76V\xe6ti\x85I\xc4\x86L\xda#"[..]);
+		assert_eq!(state.hash::<Hasher>().as_ref(), &b"\xc8\xcc\x03\x8ah7\xb3l\xc6rD$\x8b\x91/\xf9\x03\xe1\xcb%\x1f)\x8fj.\xba\xc540\xdaq\x85"[..]);
 	}
 }

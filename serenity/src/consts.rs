@@ -65,3 +65,5 @@ pub const DOMAIN_DEPOSIT: u64 = 3;
 pub const DOMAIN_VOLUNTARY_EXIT: u64 = 4;
 pub const DOMAIN_TRANSFER: u64 = 5;
 pub const FAR_FUTURE_EPOCH: Epoch = u64::max_value();
+
+pub const VERIFY_SIGNATURE: bool = false;

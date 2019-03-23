@@ -1,3 +1,4 @@
+#[cfg_attr(feature = "std", derive(Debug))]
 pub enum Error {
 	DepositIndexMismatch,
 	DepositMerkleInvalid,

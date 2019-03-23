@@ -63,11 +63,43 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	let input_ = quote!(input);
 	let hash_param_ = quote!(H);
 	let sorted = sorted(&input.attrs);
+	let no_decode = no_decode(&input.attrs);
 	let prefixing = prefixable::quote(&input.data, &dest_);
 	let encoding = encode::quote(&input.data, &self_, &dest_, sorted);
 	let decoding = decode::quote(&input.data, name, &input_, sorted);
 	let hashing = hash::quote(&input.data, &self_, &dest_, &hash_param_, false);
 	let truncate_hashing = hash::quote(&input.data, &self_, &dest_, &hash_param_, true);
+
+	let decode = if no_decode {
+		quote! { }
+	} else {
+		quote! {
+			impl #decode_impl_generics ::ssz::Decode for #name #decode_ty_generics #decode_where_clause {
+				fn decode_as<DecIn: ::ssz::Input>(#input_: &mut DecIn) -> Option<(Self, usize)> {
+					use ::ssz::Prefixable;
+
+					let mut l = 0;
+					let len = if Self::prefixed() {
+						use ::ssz::Decode;
+
+						let (len, i) = <u32>::decode_as(#input_)?;
+						l += i;
+						Some(len as usize)
+					} else {
+						None
+					};
+					let ol = l;
+					let value = #decoding;
+					if let Some(len) = len {
+						if l - ol != len {
+							return None
+						}
+					}
+					Some((value, l))
+				}
+			}
+		}
+	};
 
 	let expanded = quote! {
 		#[allow(unused_imports)]
@@ -98,30 +130,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 			}
 		}
 
-		impl #decode_impl_generics ::ssz::Decode for #name #decode_ty_generics #decode_where_clause {
-			fn decode_as<DecIn: ::ssz::Input>(#input_: &mut DecIn) -> Option<(Self, usize)> {
-				use ::ssz::Prefixable;
-
-				let mut l = 0;
-				let len = if Self::prefixed() {
-					use ::ssz::Decode;
-
-					let (len, i) = <u32>::decode_as(#input_)?;
-					l += i;
-					Some(len as usize)
-				} else {
-					None
-				};
-				let ol = l;
-				let value = #decoding;
-				if let Some(len) = len {
-					if l - ol != len {
-						return None
-					}
-				}
-				Some((value, l))
-			}
-		}
+		#decode
 
 		impl #hash_impl_generics ::ssz::Composite for #name #hash_ty_generics #hash_where_clause { }
 
@@ -130,11 +139,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
 				let mut #dest_ = ::ssz::prelude::Vec::new();
 				#hashing
 				let len = #dest_.len() as u32;
-				::ssz::hash::mix_in_length :: <#hash_param_> (
-					::ssz::hash::merkleize :: <#hash_param_> (
-						#dest_
-					),
-					len
+				::ssz::hash::merkleize :: <#hash_param_> (
+					#dest_
 				)
 			}
 
@@ -142,11 +148,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
 				let mut #dest_ = ::ssz::prelude::Vec::new();
 				#truncate_hashing
 				let len = #dest_.len() as u32;
-				::ssz::hash::mix_in_length :: <#hash_param_> (
-					::ssz::hash::merkleize :: <#hash_param_> (
-						#dest_
-					),
-					len
+				::ssz::hash::merkleize :: <#hash_param_> (
+					#dest_
 				)
 			}
 		}
@@ -175,13 +178,45 @@ fn sorted(attrs: &[syn::Attribute]) -> bool {
 				let meta = attr.interpret_meta();
 				if let Some(syn::Meta::List(ref l)) = meta {
 					if let syn::NestedMeta::Meta(syn::Meta::Word(ref w)) = l.nested.last().unwrap().value() {
-						assert_eq!(w, &Ident::new("sorted", w.span()));
-						true
+						if w == &Ident::new("sorted", w.span()) {
+							true
+						} else {
+							false
+						}
 					} else {
-						panic!("Invalid syntax for `ssz` attribute: Expected sorted.");
+						panic!("Invalid syntax for `ssz` attribute.");
 					}
 				} else {
-					panic!("Invalid syntax for `ssz` attribute: Expected sorted.");
+					panic!("Invalid syntax for `ssz` attribute.");
+				}
+			} else {
+				false
+			}
+		}).unwrap_or(false)
+	})
+}
+
+fn no_decode(attrs: &[syn::Attribute]) -> bool {
+	attrs.iter().any(|attr| {
+		attr.path.segments.first().map(|pair| {
+			let seg = pair.value();
+
+			if seg.ident == Ident::new("ssz", seg.ident.span()) {
+				assert_eq!(attr.path.segments.len(), 1);
+
+				let meta = attr.interpret_meta();
+				if let Some(syn::Meta::List(ref l)) = meta {
+					if let syn::NestedMeta::Meta(syn::Meta::Word(ref w)) = l.nested.last().unwrap().value() {
+						if w == &Ident::new("no_decode", w.span()) {
+							true
+						} else {
+							false
+						}
+					} else {
+						panic!("Invalid syntax for `ssz` attribute.");
+					}
+				} else {
+					panic!("Invalid syntax for `ssz` attribute.");
 				}
 			} else {
 				false
