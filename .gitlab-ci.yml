@@ -8,6 +8,7 @@ variables:
   CI_SERVER_NAME:                  "GitLab CI"
   CARGO_HOME:                      "${CI_PROJECT_DIR}/.cargo"
   RUST_TOOLCHAIN:                  "stable"
+  GIT_SUBMODULE_STRATEGY:          "recursive"
 
 cache:
   key:                             "${CI_JOB_NAME}"
@@ -51,4 +52,3 @@ build-linux:
     - master
     - tags
     - web
-
