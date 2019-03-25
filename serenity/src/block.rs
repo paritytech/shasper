@@ -18,17 +18,16 @@ use primitives::{H256, Signature, H768};
 use ssz::Hashable;
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
+use hash_db::Hasher;
+
 use crate::validator::{VoluntaryExit, Transfer};
 use crate::attestation::Attestation;
 use crate::slashing::{AttesterSlashing, ProposerSlashing};
 use crate::eth1::{Deposit, Eth1Data};
-use crate::consts::GENESIS_SLOT;
-use crate::state::BeaconState;
-use crate::error::Error;
-use crate::util::Hasher;
 
 #[derive(Ssz)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[ssz(no_decode)]
 pub struct BeaconBlock {
 	pub slot: u64,
 	pub previous_block_root: H256,
@@ -38,26 +37,6 @@ pub struct BeaconBlock {
 	/// Signature
 	#[ssz(truncate)]
 	pub signature: Signature,
-}
-
-impl BeaconBlock {
-	pub fn empty() -> Self {
-		Self {
-			slot: GENESIS_SLOT,
-			previous_block_root: H256::default(),
-			state_root: H256::default(),
-			signature: Signature::default(),
-			body: BeaconBlockBody::empty(),
-		}
-	}
-
-	pub fn genesis(deposits: Vec<Deposit>, genesis_time: u64, latest_eth1_data: Eth1Data) -> Result<(Self, BeaconState), Error> {
-		let genesis_state = BeaconState::genesis(deposits, genesis_time, latest_eth1_data)?;
-		let mut block = Self::empty();
-		block.state_root = genesis_state.hash::<Hasher>();
-
-		Ok((block, genesis_state))
-	}
 }
 
 #[derive(Ssz, PartialEq, Eq, Clone)]
@@ -72,12 +51,12 @@ pub struct BeaconBlockHeader {
 }
 
 impl BeaconBlockHeader {
-	pub fn with_state_root(block: &BeaconBlock, state_root: H256) -> Self {
+	pub fn with_state_root<H: Hasher<Out=H256>>(block: &BeaconBlock, state_root: H256) -> Self {
 		Self {
 			slot: block.slot,
 			previous_block_root: block.previous_block_root,
 			state_root,
-			block_body_root: block.body.hash::<Hasher>(),
+			block_body_root: block.body.hash::<H>(),
 			signature: block.signature,
 		}
 	}
@@ -85,6 +64,7 @@ impl BeaconBlockHeader {
 
 #[derive(Ssz)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[ssz(no_decode)]
 pub struct BeaconBlockBody {
 	pub randao_reveal: H768,
 	pub eth1_data: Eth1Data,
@@ -114,6 +94,7 @@ impl BeaconBlockBody {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::{Config, NoVerificationConfig};
 	use std::str::FromStr;
 	use ssz::{Encode, Prefixable};
 
@@ -129,7 +110,7 @@ mod tests {
 
 		assert!(!BeaconBlockHeader::prefixed());
 		assert_eq!(header.encode(), &b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"[..]);
-		assert_eq!(header.hash::<Hasher>().as_ref(), &b"\xe0\x10\x03\xd7*\n\xe4y\xfe\xae'\x1e\x10\xa0\xb0\xb1\xc6#~\xe9h\xd3\xeeZ\x06\x99\xf1\xfb9\x98\xa63"[..]);
+		assert_eq!(header.hash::<<NoVerificationConfig as Config>::Hasher>().as_ref(), &b"\xe0\x10\x03\xd7*\n\xe4y\xfe\xae'\x1e\x10\xa0\xb0\xb1\xc6#~\xe9h\xd3\xeeZ\x06\x99\xf1\xfb9\x98\xa63"[..]);
 	}
 
 	#[test]
@@ -143,6 +124,6 @@ mod tests {
 		};
 
 		assert_eq!(header.encode(), &b"\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xbd\xac\x85\xb2q\xed\t\xd9\xa4z\x16\x13\x95\xcd\x15\xd8^\xca%\xd9\xe3\xdd\x9eE\x8c\x8c\xc0\x8c\x80\x18\x02s\x13\xf2\x00\x1f\xf0\xeeJR\x8b<C\xf6=p\xa9\x97\xae\xfc\xa9\x90\xed\x8e\xad\xa2\">\xe6\xec8\x07\xf7\xcc\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"[..]);
-		assert_eq!(header.hash::<Hasher>().as_ref(), &b"\xda<\x93\x8f\xbc\x97\xb9\xec\xe3\xa2:\"w\xeb\x86J\xd6\x17>!@N}(a\xb7\x91\x1e^\x8brR"[..]);
+		assert_eq!(header.hash::<<NoVerificationConfig as Config>::Hasher>().as_ref(), &b"\xda<\x93\x8f\xbc\x97\xb9\xec\xe3\xa2:\"w\xeb\x86J\xd6\x17>!@N}(a\xb7\x91\x1e^\x8brR"[..]);
 	}
 }
