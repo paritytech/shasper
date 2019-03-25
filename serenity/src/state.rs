@@ -19,14 +19,14 @@ use ssz::Hashable;
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
 use crate::{Gwei, Slot, Epoch, Timestamp, ValidatorIndex, Shard};
-use crate::eth1::{Eth1Data, Eth1DataVote, Deposit};
+use crate::eth1::{Eth1Data, Eth1DataVote};
 use crate::slashing::SlashableAttestation;
 use crate::attestation::{
 	PendingAttestation, Crosslink, AttestationDataAndCustodyBit,
 	AttestationData,
 };
 use crate::validator::Validator;
-use crate::block::{BeaconBlock, BeaconBlockHeader};
+use crate::block::BeaconBlockHeader;
 use crate::consts::*;
 use crate::error::Error;
 use crate::util::{
@@ -206,7 +206,7 @@ impl BeaconState {
 		core::cmp::min(self.validator_balances[index as usize], MAX_DEPOSIT_AMOUNT)
 	}
 
-	fn activate_validator(&mut self, index: ValidatorIndex, is_genesis: bool) {
+	pub fn activate_validator(&mut self, index: ValidatorIndex, is_genesis: bool) {
 		let delayed_activation_exit_epoch = self.delayed_activation_exit_epoch();
 		self.validator_registry[index as usize].activate(delayed_activation_exit_epoch, is_genesis);
 	}
@@ -249,72 +249,6 @@ impl BeaconState {
 			.filter(|(_, v)| v.is_active(epoch))
 			.map(|(i, _)| i as u64)
 			.collect::<Vec<_>>()
-	}
-
-	pub fn genesis(deposits: Vec<Deposit>, genesis_time: Timestamp, latest_eth1_data: Eth1Data) -> Result<Self, Error> {
-		let mut state = Self {
-			slot: GENESIS_SLOT,
-			genesis_time,
-			fork: Fork::default(),
-
-			validator_registry: Vec::new(),
-			validator_balances: Vec::new(),
-			validator_registry_update_epoch: GENESIS_EPOCH,
-
-			latest_randao_mixes: (&[H256::default(); LATEST_RANDAO_MIXES_LENGTH]).to_vec(),
-			previous_shuffling_start_shard: GENESIS_START_SHARD,
-			current_shuffling_start_shard: GENESIS_START_SHARD,
-			previous_shuffling_epoch: GENESIS_EPOCH - 1,
-			current_shuffling_epoch: GENESIS_EPOCH,
-			previous_shuffling_seed: H256::default(),
-			current_shuffling_seed: H256::default(),
-
-			previous_epoch_attestations: Vec::new(),
-			current_epoch_attestations: Vec::new(),
-			previous_justified_epoch: GENESIS_EPOCH - 1,
-			current_justified_epoch: GENESIS_EPOCH,
-			previous_justified_root: H256::default(),
-			current_justified_root: H256::default(),
-			justification_bitfield: 0,
-			finalized_epoch: GENESIS_EPOCH,
-			finalized_root: H256::default(),
-
-			latest_crosslinks: {
-				let mut ret = Vec::new();
-				for _ in 0..SHARD_COUNT {
-					ret.push(Crosslink::default());
-				}
-				ret
-			},
-			latest_block_roots: (&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec(),
-			latest_state_roots: (&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec(),
-			latest_active_index_roots: (&[H256::default(); LATEST_ACTIVE_INDEX_ROOTS_LENGTH]).to_vec(),
-			latest_slashed_balances: (&[0; LATEST_SLASHED_EXIT_LENGTH]).to_vec(),
-			latest_block_header: BeaconBlockHeader::with_state_root(&BeaconBlock::empty(), H256::default()),
-			historical_roots: Vec::new(),
-
-			latest_eth1_data,
-			eth1_data_votes: Vec::new(),
-			deposit_index: 0,
-		};
-
-		for deposit in deposits {
-			state.push_deposit(deposit)?;
-		}
-
-		for validator_index in 0..(state.validator_registry.len() as u64) {
-			if state.effective_balance(validator_index) >= MAX_DEPOSIT_AMOUNT {
-				state.activate_validator(validator_index, true);
-			}
-		}
-
-		let genesis_active_index_root = state.active_validator_indices(GENESIS_EPOCH).hash::<Hasher>();
-		for index in 0..LATEST_ACTIVE_INDEX_ROOTS_LENGTH {
-			state.latest_active_index_roots[index] = genesis_active_index_root;
-		}
-		state.current_shuffling_seed = state.seed(GENESIS_EPOCH)?;
-
-		Ok(state)
 	}
 
 	pub fn should_update_validator_registry(&self) -> bool {

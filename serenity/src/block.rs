@@ -23,8 +23,6 @@ use crate::attestation::Attestation;
 use crate::slashing::{AttesterSlashing, ProposerSlashing};
 use crate::eth1::{Deposit, Eth1Data};
 use crate::consts::GENESIS_SLOT;
-use crate::state::BeaconState;
-use crate::error::Error;
 use crate::util::Hasher;
 
 #[derive(Ssz)]
@@ -49,14 +47,6 @@ impl BeaconBlock {
 			signature: Signature::default(),
 			body: BeaconBlockBody::empty(),
 		}
-	}
-
-	pub fn genesis(deposits: Vec<Deposit>, genesis_time: u64, latest_eth1_data: Eth1Data) -> Result<(Self, BeaconState), Error> {
-		let genesis_state = BeaconState::genesis(deposits, genesis_time, latest_eth1_data)?;
-		let mut block = Self::empty();
-		block.state_root = genesis_state.hash::<Hasher>();
-
-		Ok((block, genesis_state))
 	}
 }
 

@@ -23,7 +23,6 @@ mod state;
 mod validator;
 mod util;
 mod error;
-mod processing;
 mod config;
 mod executive;
 
