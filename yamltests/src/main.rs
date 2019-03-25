@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 use clap::{App, Arg};
+use serenity::NoVerificationConfig;
 use yamltests::{Collection, run_collection};
 
 fn main() {
@@ -16,11 +17,20 @@ fn main() {
 			 .help("Only run the particular test")
 			 .long("only")
 			 .takes_value(true))
+		.arg(Arg::with_name("config")
+			 .help("Run tests with the given config")
+			 .long("config")
+			 .takes_value(true))
         .get_matches();
 
 	let file = File::open(matches.value_of("FILE").expect("FILE parameter not found")).expect("Open file failed");
 	let only = matches.value_of("only");
 	let coll = serde_yaml::from_reader::<_, Collection>(BufReader::new(file)).expect("Parse test cases failed");
+	let config = match matches.value_of("config") {
+		Some("small") | None => NoVerificationConfig::small(),
+		Some("full") => NoVerificationConfig::full(),
+		_ => panic!("Unknown config"),
+	};
 
-	run_collection(coll, only);
+	run_collection(coll, &config, only);
 }
