@@ -16,7 +16,6 @@
 
 mod attestation;
 mod block;
-mod consts;
 mod eth1;
 mod slashing;
 mod state;

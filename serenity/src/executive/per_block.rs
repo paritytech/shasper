@@ -5,10 +5,29 @@ use super::Executive;
 use crate::{
 	Config, Error, BeaconBlockHeader, Transfer, VoluntaryExit, Validator, Deposit, PendingAttestation,
 	AttestationDataAndCustodyBit, Crosslink, Attestation, AttesterSlashing, ProposerSlashing,
-	Eth1DataVote, BeaconBlock,
+	Eth1DataVote, BeaconBlock, SlashableAttestation, ValidatorIndex,
 };
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+	fn slash_validator(&mut self, index: ValidatorIndex) -> Result<(), Error> {
+		if self.state.slot >= self.config.epoch_start_slot(self.state.validator_registry[index as usize].withdrawable_epoch) {
+			return Err(Error::ValidatorNotWithdrawable);
+		}
+		self.exit_validator(index);
+
+		let current_epoch = self.current_epoch();
+		self.state.latest_slashed_balances[(current_epoch % self.config.latest_slashed_exit_length() as u64) as usize] += self.effective_balance(index);
+
+		let whistleblower_index = self.beacon_proposer_index(self.state.slot, false)?;
+		let whistleblower_reward = self.effective_balance(index) / self.config.whistleblower_reward_quotient();
+		self.state.validator_balances[whistleblower_index as usize] += whistleblower_reward;
+		self.state.validator_balances[index as usize] -= whistleblower_reward;
+		self.state.validator_registry[index as usize].slashed = true;
+		self.state.validator_registry[index as usize].withdrawable_epoch = self.current_epoch() + self.config.latest_slashed_exit_length() as u64;
+
+		Ok(())
+	}
+
 	pub fn process_block_header(&mut self, block: &BeaconBlock) -> Result<(), Error> {
 		if block.slot != self.state.slot {
 			return Err(Error::BlockSlotInvalid)
@@ -18,11 +37,11 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::BlockPreviousRootInvalid)
 		}
 
-		self.state.latest_block_header = BeaconBlockHeader::with_state_root(block, H256::default());
+		self.state.latest_block_header = BeaconBlockHeader::with_state_root::<C::Hasher>(block, H256::default());
 
-		let proposer = &self.state.validator_registry[self.state.beacon_proposer_index(self.state.slot, false)? as usize];
+		let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
 
-		if !self.config.bls_verify(&proposer.pubkey, &block.truncated_hash::<C::Hasher>(), &block.signature, self.config.domain_id(&self.state.fork, self.state.current_epoch(), self.config.domain_beacon_block())) {
+		if !self.config.bls_verify(&proposer.pubkey, &block.truncated_hash::<C::Hasher>(), &block.signature, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_beacon_block())) {
 			return Err(Error::BlockSignatureInvalid)
 		}
 
@@ -30,14 +49,14 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	}
 
 	pub fn process_randao(&mut self, block: &BeaconBlock) -> Result<(), Error> {
-		let proposer = &self.state.validator_registry[self.state.beacon_proposer_index(self.state.slot, false)? as usize];
+		let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
 
-		if !self.config.bls_verify(&proposer.pubkey, &self.state.current_epoch().hash::<C::Hasher>(), &block.body.randao_reveal, self.config.domain_id(&self.state.fork, self.state.current_epoch(), self.config.domain_randao())) {
+		if !self.config.bls_verify(&proposer.pubkey, &self.current_epoch().hash::<C::Hasher>(), &block.body.randao_reveal, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_randao())) {
 			return Err(Error::RandaoSignatureInvalid)
 		}
 
-		let current_epoch = self.state.current_epoch();
-		self.state.latest_randao_mixes[(current_epoch % self.config.latest_randao_mixes_length() as u64) as usize] = self.state.randao_mix(current_epoch)? ^ self.config.hash(&block.body.randao_reveal[..]);
+		let current_epoch = self.current_epoch();
+		self.state.latest_randao_mixes[(current_epoch % self.config.latest_randao_mixes_length() as u64) as usize] = self.randao_mix(current_epoch)? ^ self.config.hash(&block.body.randao_reveal[..]);
 
 		Ok(())
 	}
@@ -79,7 +98,68 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			}
 		}
 
-		self.state.slash_validator(proposer_slashing.proposer_index)
+		self.slash_validator(proposer_slashing.proposer_index)
+	}
+
+	fn verify_slashable_attestation(&self, slashable: &SlashableAttestation) -> bool {
+		for bit in &slashable.custody_bitfield.0 {
+			if *bit != 0 {
+				return false;
+			}
+		}
+
+		if slashable.validator_indices.len() == 0 {
+			return false;
+		}
+
+		for i in 0..(slashable.validator_indices.len() - 1) {
+			if slashable.validator_indices[i] > slashable.validator_indices[i + 1] {
+				return false;
+			}
+		}
+
+		if !slashable.custody_bitfield.verify(slashable.validator_indices.len()) {
+			return false;
+		}
+
+		if slashable.validator_indices.len() > self.config.max_indices_per_slashable_vote() {
+			return false;
+		}
+
+		let mut custody_bit_0_indices = Vec::new();
+		let mut custody_bit_1_indices = Vec::new();
+		for (i, validator_index) in slashable.validator_indices.iter().enumerate() {
+			if !slashable.custody_bitfield.has_voted(i) {
+				custody_bit_0_indices.push(validator_index);
+			} else {
+				custody_bit_1_indices.push(validator_index);
+			}
+		}
+
+		self.config.bls_verify_multiple(
+			&[
+				match self.config.bls_aggregate_pubkeys(&custody_bit_0_indices.iter().map(|i| self.state.validator_registry[**i as usize].pubkey).collect::<Vec<_>>()[..]) {
+					Some(k) => k,
+					None => return false,
+				},
+				match self.config.bls_aggregate_pubkeys(&custody_bit_1_indices.iter().map(|i| self.state.validator_registry[**i as usize].pubkey).collect::<Vec<_>>()[..]) {
+					Some(k) => k,
+					None => return false,
+				},
+			],
+			&[
+				AttestationDataAndCustodyBit {
+					data: slashable.data.clone(),
+					custody_bit: false,
+				}.hash::<C::Hasher>(),
+				AttestationDataAndCustodyBit {
+					data: slashable.data.clone(),
+					custody_bit: true,
+				}.hash::<C::Hasher>(),
+			],
+			&slashable.aggregate_signature,
+			self.config.domain_id(&self.state.fork, self.config.slot_to_epoch(slashable.data.slot), self.config.domain_attestation())
+		)
 	}
 
 	pub fn push_attester_slashing(&mut self, attester_slashing: AttesterSlashing) -> Result<(), Error> {
@@ -90,15 +170,15 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::AttesterSlashingSameAttestation)
 		}
 
-		if !(attestation1.data.is_double_vote(&attestation2.data) || attestation1.data.is_surround_vote(&attestation2.data)) {
+		if !(attestation1.data.is_double_vote(&attestation2.data, self.config) || attestation1.data.is_surround_vote(&attestation2.data, self.config)) {
 			return Err(Error::AttesterSlashingNotSlashable)
 		}
 
-		if !self.state.verify_slashable_attestation(&attestation1) {
+		if !self.verify_slashable_attestation(&attestation1) {
 			return Err(Error::AttesterSlashingInvalid)
 		}
 
-		if !self.state.verify_slashable_attestation(&attestation2) {
+		if !self.verify_slashable_attestation(&attestation2) {
 			return Err(Error::AttesterSlashingInvalid)
 		}
 
@@ -114,7 +194,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		for index in slashable_indices {
-			self.state.slash_validator(index)?;
+			self.slash_validator(index)?;
 		}
 
 		Ok(())
@@ -134,10 +214,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		let target_epoch = self.config.slot_to_epoch(attestation.data.slot);
-		let is_target_current_epoch = target_epoch == self.state.current_epoch() &&
+		let is_target_current_epoch = target_epoch == self.current_epoch() &&
 			attestation.data.source_epoch == self.state.current_justified_epoch &&
 			attestation.data.source_root == self.state.current_justified_root;
-		let is_target_previous_epoch = target_epoch == self.state.previous_epoch() &&
+		let is_target_previous_epoch = target_epoch == self.previous_epoch() &&
 			attestation.data.source_epoch == self.state.previous_justified_epoch &&
 			attestation.data.source_root == self.state.previous_justified_root;
 
@@ -157,7 +237,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::AttestationEmptyCustody)
 		}
 
-		let crosslink_committee = self.state.crosslink_committees_at_slot(attestation.data.slot, false)?
+		let crosslink_committee = self.crosslink_committees_at_slot(attestation.data.slot, false)?
 			.into_iter()
 			.filter(|(_, s)| s == &attestation.data.shard)
 			.map(|(c, _)| c)
@@ -172,8 +252,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			}
 		}
 
-		let participants = self.state.attestation_participants(&attestation.data, &attestation.aggregation_bitfield)?;
-		let custody_bit_1_participants = self.state.attestation_participants(&attestation.data, &attestation.custody_bitfield)?;
+		let participants = self.attestation_participants(&attestation.data, &attestation.aggregation_bitfield)?;
+		let custody_bit_1_participants = self.attestation_participants(&attestation.data, &attestation.custody_bitfield)?;
 		let custody_bit_0_participants = participants.clone().into_iter().filter(|p| !custody_bit_1_participants.contains(p)).collect::<Vec<_>>();
 
 		if !self.config.bls_verify_multiple(
@@ -209,9 +289,9 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			inclusion_slot: self.state.slot,
 		};
 
-		if self.config.slot_to_epoch(attestation_data_slot) == self.state.current_epoch() {
+		if self.config.slot_to_epoch(attestation_data_slot) == self.current_epoch() {
 			self.state.current_epoch_attestations.push(pending_attestation);
-		} else if self.config.slot_to_epoch(attestation_data_slot) == self.state.previous_epoch() {
+		} else if self.config.slot_to_epoch(attestation_data_slot) == self.previous_epoch() {
 			self.state.previous_epoch_attestations.push(pending_attestation);
 		}
 
@@ -223,7 +303,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::DepositIndexMismatch)
 		}
 
-		if !deposit.is_merkle_valid(&self.state.latest_eth1_data.deposit_root) {
+		if !deposit.is_merkle_valid(&self.state.latest_eth1_data.deposit_root, self.config) {
 			return Err(Error::DepositMerkleInvalid)
 		}
 
@@ -235,7 +315,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			},
 			None => {
 				if !deposit.is_proof_valid(
-					self.config.domain_id(&self.state.fork, self.state.current_epoch(), self.config.domain_deposit())
+					self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_deposit()),
+					self.config,
 				) {
 					return Ok(())
 				}
@@ -270,11 +351,11 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 				return Err(Error::VoluntaryExitAlreadyInitiated)
 			}
 
-			if self.state.current_epoch() < exit.epoch {
+			if self.current_epoch() < exit.epoch {
 				return Err(Error::VoluntaryExitNotYetValid)
 			}
 
-			if self.state.current_epoch() - validator.activation_epoch < self.config.persistent_committee_period() {
+			if self.current_epoch() - validator.activation_epoch < self.config.persistent_committee_period() {
 				return Err(Error::VoluntaryExitNotLongEnough)
 			}
 
@@ -288,7 +369,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			}
 		}
 
-		self.state.initiate_validator_exit(exit.validator_index);
+		self.initiate_validator_exit(exit.validator_index);
 		Ok(())
 	}
 
@@ -305,7 +386,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::TransferNotValidSlot)
 		}
 
-		if !(self.state.current_epoch() >= self.state.validator_registry[transfer.sender as usize].withdrawable_epoch || self.state.validator_registry[transfer.sender as usize].activation_epoch == self.config.far_future_epoch()) {
+		if !(self.current_epoch() >= self.state.validator_registry[transfer.sender as usize].withdrawable_epoch || self.state.validator_registry[transfer.sender as usize].activation_epoch == self.config.far_future_epoch()) {
 			return Err(Error::TransferNotWithdrawable)
 		}
 
@@ -324,7 +405,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		self.state.validator_balances[transfer.sender as usize] -= transfer.amount + transfer.fee;
 		self.state.validator_balances[transfer.recipient as usize] += transfer.amount;
-		let proposer_index = self.state.beacon_proposer_index(self.state.slot, false)?;
+		let proposer_index = self.beacon_proposer_index(self.state.slot, false)?;
 		self.state.validator_balances[proposer_index as usize] += transfer.fee;
 
 		Ok(())

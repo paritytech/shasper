@@ -17,8 +17,8 @@
 use primitives::{BitField, H256, Signature};
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
-use crate::consts::GENESIS_EPOCH;
-use crate::util::slot_to_epoch;
+
+use crate::Config;
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
@@ -27,15 +27,6 @@ pub struct Crosslink {
 	pub epoch: u64,
 	/// Shard data since the previous crosslink
 	pub crosslink_data_root: H256,
-}
-
-impl Default for Crosslink {
-	fn default() -> Self {
-		Self {
-			epoch: GENESIS_EPOCH,
-			crosslink_data_root: H256::default(),
-		}
-	}
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
@@ -91,13 +82,13 @@ pub struct AttestationData {
 }
 
 impl AttestationData {
-	pub fn is_double_vote(&self, other: &AttestationData) -> bool {
-		slot_to_epoch(self.slot) == slot_to_epoch(other.slot)
+	pub fn is_double_vote<C: Config>(&self, other: &AttestationData, config: &C) -> bool {
+		config.slot_to_epoch(self.slot) == config.slot_to_epoch(other.slot)
 	}
 
-	pub fn is_surround_vote(&self, other: &AttestationData) -> bool {
+	pub fn is_surround_vote<C: Config>(&self, other: &AttestationData, config: &C) -> bool {
 		self.source_epoch < other.source_epoch &&
-			slot_to_epoch(other.slot) < slot_to_epoch(self.slot)
+			config.slot_to_epoch(other.slot) < config.slot_to_epoch(self.slot)
 	}
 }
 

@@ -2,7 +2,7 @@ use hash_db::Hasher;
 
 use primitives::{Signature, H256, ValidatorId, Version};
 use crate::{Epoch, Slot, Gwei, Shard, Fork, ValidatorIndex};
-use crate::util::{split_offset, permuted_index};
+use crate::util::{split_offset, to_usize};
 
 pub trait Config {
 	type Hasher: Hasher<Out=H256>;
@@ -90,13 +90,39 @@ pub trait Config {
 		epoch.saturating_mul(self.slots_per_epoch())
 	}
 
+	fn permuted_index(&self, mut index: usize, seed: &H256, len: usize) -> usize {
+		if index >= len {
+			index = index % len;
+		}
+
+		let usize_len = 0usize.to_le_bytes().len();
+
+		for round in 0..self.shuffle_round_count() {
+			let pivot = to_usize(
+				&self.hash2(&seed[..], &round.to_le_bytes()[..1]).as_ref()[..usize_len]
+			) % len;
+			let flip = if pivot >= index { (pivot - index) % len } else { len - (index - pivot) % len };
+			let position = core::cmp::max(index, flip);
+			let source = self.hash3(
+				&seed[..],
+				&round.to_le_bytes()[..1],
+				&(position / 256).to_le_bytes()[..4]
+			);
+			let byte = source.as_ref()[(position % 256) / 8];
+			let bit = (byte >> (position % 8 )) % 2;
+			index = if bit == 1 { flip } else { index };
+		}
+
+		index
+	}
+
 	fn compute_committee(&self, validators: &[ValidatorIndex], seed: &H256, index: usize, total_committees: usize) -> Vec<ValidatorIndex> {
 		let start_offset = split_offset(validators.len(), total_committees, index);
 		let end_offset = split_offset(validators.len(), total_committees, index + 1);
 
 		let mut ret = Vec::new();
 		for i in start_offset..end_offset {
-			ret.push(permuted_index(i, seed, validators.len(), self.shuffle_round_count()) as ValidatorIndex);
+			ret.push(self.permuted_index(i, seed, validators.len()) as ValidatorIndex);
 		}
 		ret
 	}

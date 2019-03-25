@@ -17,7 +17,8 @@
 use primitives::{Signature, ValidatorId, H256};
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
-use crate::consts::GENESIS_EPOCH;
+
+use crate::Config;
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
@@ -39,9 +40,9 @@ pub struct Validator {
 }
 
 impl Validator {
-	pub fn activate(&mut self, delayed_activation_exit_epoch: u64, is_genesis: bool) {
+	pub fn activate<C: Config>(&mut self, delayed_activation_exit_epoch: u64, is_genesis: bool, config: &C) {
 		if is_genesis {
-			self.activation_epoch = GENESIS_EPOCH;
+			self.activation_epoch = config.genesis_epoch();
 		} else {
 			self.activation_epoch = delayed_activation_exit_epoch;
 		}

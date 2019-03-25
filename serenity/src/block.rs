@@ -18,15 +18,16 @@ use primitives::{H256, Signature, H768};
 use ssz::Hashable;
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
+use hash_db::Hasher;
+
 use crate::validator::{VoluntaryExit, Transfer};
 use crate::attestation::Attestation;
 use crate::slashing::{AttesterSlashing, ProposerSlashing};
 use crate::eth1::{Deposit, Eth1Data};
-use crate::consts::GENESIS_SLOT;
-use crate::util::Hasher;
 
 #[derive(Ssz)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[ssz(no_decode)]
 pub struct BeaconBlock {
 	pub slot: u64,
 	pub previous_block_root: H256,
@@ -36,18 +37,6 @@ pub struct BeaconBlock {
 	/// Signature
 	#[ssz(truncate)]
 	pub signature: Signature,
-}
-
-impl BeaconBlock {
-	pub fn empty() -> Self {
-		Self {
-			slot: GENESIS_SLOT,
-			previous_block_root: H256::default(),
-			state_root: H256::default(),
-			signature: Signature::default(),
-			body: BeaconBlockBody::empty(),
-		}
-	}
 }
 
 #[derive(Ssz, PartialEq, Eq, Clone)]
@@ -62,12 +51,12 @@ pub struct BeaconBlockHeader {
 }
 
 impl BeaconBlockHeader {
-	pub fn with_state_root(block: &BeaconBlock, state_root: H256) -> Self {
+	pub fn with_state_root<H: Hasher<Out=H256>>(block: &BeaconBlock, state_root: H256) -> Self {
 		Self {
 			slot: block.slot,
 			previous_block_root: block.previous_block_root,
 			state_root,
-			block_body_root: block.body.hash::<Hasher>(),
+			block_body_root: block.body.hash::<H>(),
 			signature: block.signature,
 		}
 	}
@@ -75,6 +64,7 @@ impl BeaconBlockHeader {
 
 #[derive(Ssz)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[ssz(no_decode)]
 pub struct BeaconBlockBody {
 	pub randao_reveal: H768,
 	pub eth1_data: Eth1Data,

@@ -18,8 +18,8 @@ use primitives::{H256, ValidatorId, Signature};
 use ssz::{Hashable, Encode};
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
-use crate::consts::DEPOSIT_CONTRACT_TREE_DEPTH;
-use crate::util::{Hasher, hash, hash2, bls_verify};
+
+use crate::Config;
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
@@ -55,9 +55,11 @@ pub struct Eth1DataVote {
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[ssz(no_decode)]
 pub struct Deposit {
 	/// Branch in the deposit tree
-	pub proof: [H256; DEPOSIT_CONTRACT_TREE_DEPTH],
+	#[ssz(use_fixed)]
+	pub proof: Vec<H256>,
 	/// Index in the deposit tree
 	pub index: u64,
 	/// Data
@@ -65,22 +67,22 @@ pub struct Deposit {
 }
 
 impl Deposit {
-	pub fn is_merkle_valid(&self, deposit_root: &H256) -> bool {
+	pub fn is_merkle_valid<C: Config>(&self, deposit_root: &H256, config: &C) -> bool {
 		let merkle = MerkleProof {
-			leaf: hash(&self.deposit_data.encode()),
-			proof: self.proof,
-			depth: DEPOSIT_CONTRACT_TREE_DEPTH,
+			leaf: config.hash(&self.deposit_data.encode()),
+			proof: self.proof.as_ref(),
+			depth: config.deposit_contract_tree_depth(),
 			index: self.index as usize,
 			root: *deposit_root,
 		};
 
-		merkle.is_valid()
+		merkle.is_valid(config)
 	}
 
-	pub fn is_proof_valid(&self, domain: u64) -> bool {
-		bls_verify(
+	pub fn is_proof_valid<C: Config>(&self, domain: u64, config: &C) -> bool {
+		config.bls_verify(
 			&self.deposit_data.deposit_input.pubkey,
-			&self.deposit_data.deposit_input.truncated_hash::<Hasher>(),
+			&self.deposit_data.deposit_input.truncated_hash::<C::Hasher>(),
 			&self.deposit_data.deposit_input.proof_of_possession,
 			domain
 		)
@@ -109,22 +111,26 @@ pub struct DepositInput {
 	pub proof_of_possession: Signature,
 }
 
-pub struct MerkleProof {
+pub struct MerkleProof<'a> {
 	pub leaf: H256,
-	pub proof: [H256; DEPOSIT_CONTRACT_TREE_DEPTH],
+	pub proof: &'a [H256],
 	pub root: H256,
 	pub depth: usize,
 	pub index: usize,
 }
 
-impl MerkleProof {
-	pub fn is_valid(&self) -> bool {
+impl<'a> MerkleProof<'a> {
+	pub fn is_valid<C: Config>(&self, config: &C) -> bool {
+		if self.proof.len() != config.deposit_contract_tree_depth() {
+			return false
+		}
+
 		let mut value = self.leaf;
 		for i in 0..self.depth {
 			if (self.index / 2usize.pow(i as u32)) % 2 != 0 {
-				value = hash2(self.proof[i].as_ref(), value.as_ref());
+				value = config.hash2(self.proof[i].as_ref(), value.as_ref());
 			} else {
-				value = hash2(value.as_ref(), self.proof[i].as_ref());
+				value = config.hash2(value.as_ref(), self.proof[i].as_ref());
 			}
 		}
 
