@@ -47,7 +47,7 @@ pub mod hash;
 #[cfg(test)]
 mod tests;
 
-pub use self::codec::{Input, Output, Encode, Decode, Prefixable, FixedVec};
+pub use self::codec::{Input, Output, Encode, Decode, Prefixable, Fixed};
 pub use self::hash::{Hashable, Composite};
 
 /// Trait that allows zero-copy read/write of value-references to/from slices in LE format.

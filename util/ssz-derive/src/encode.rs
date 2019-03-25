@@ -19,6 +19,7 @@ use syn::{
 	spanned::Spanned,
 	token::Comma,
 };
+use super::has_attr;
 
 type FieldsList = Punctuated<Field, Comma>;
 
@@ -27,7 +28,7 @@ fn encode_fields<F>(
 	fields: &FieldsList,
 	field_name: F,
 	sorted: bool,
-) -> TokenStream where
+) -> (TokenStream, bool) where
 	F: Fn(usize, &Option<Ident>) -> TokenStream,
 {
 	let mut fields: Vec<_> = fields.iter().collect();
@@ -38,20 +39,30 @@ fn encode_fields<F>(
 		})
 	}
 
+	let mut decodable = true;
+
 	let recurse = fields.iter().enumerate().map(|(i, f)| {
 		let field = field_name(i, &f.ident);
+		let use_fixed = has_attr(&f.attrs, "use_fixed");
 
-		quote_spanned! { f.span() =>
-			#field.encode_to(#dest);
+		if use_fixed {
+			decodable = false;
+			quote_spanned! { f.span() =>
+				::ssz::Fixed(#field.as_ref()).encode_to(#dest);
+			}
+		} else {
+			quote_spanned! { f.span() =>
+				#field.encode_to(#dest);
+			}
 		}
 	});
 
-	quote! {
+	(quote! {
 		#( #recurse )*
-	}
+	}, decodable)
 }
 
-pub fn quote(data: &Data, self_: &TokenStream, dest: &TokenStream, sorted: bool) -> TokenStream {
+pub fn quote(data: &Data, self_: &TokenStream, dest: &TokenStream, sorted: bool) -> (TokenStream, bool) {
 	let call_site = Span::call_site();
 	match *data {
 		Data::Struct(ref data) => match data.fields {
@@ -70,9 +81,9 @@ pub fn quote(data: &Data, self_: &TokenStream, dest: &TokenStream, sorted: bool)
 				},
 				sorted,
 			),
-			Fields::Unit => quote_spanned! { call_site =>
+			Fields::Unit => (quote_spanned! { call_site =>
 				drop(#dest);
-			},
+			}, true),
 		},
 		Data::Enum(_) => panic!("Enum types are not supported."),
 		Data::Union(_) => panic!("Union types are not supported."),

@@ -15,7 +15,7 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use primitives::{H256, ValidatorId, BitField, Version};
-use ssz::{FixedVec, Hashable};
+use ssz::Hashable;
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
 use crate::{Gwei, Slot, Epoch, Timestamp, ValidatorIndex, Shard};
@@ -50,7 +50,8 @@ pub struct BeaconState {
 	pub validator_registry_update_epoch: Epoch,
 
 	// Randomness and committees
-	pub latest_randao_mixes: FixedVec<H256>, //; LATEST_RANDAO_MIXES_LENGTH],
+	#[ssz(use_fixed)]
+	pub latest_randao_mixes: Vec<H256>, //; LATEST_RANDAO_MIXES_LENGTH],
 	pub previous_shuffling_start_shard: Shard,
 	pub current_shuffling_start_shard: Shard,
 	pub previous_shuffling_epoch: Epoch,
@@ -70,11 +71,16 @@ pub struct BeaconState {
 	pub finalized_root: H256,
 
 	// Recent state
-	pub latest_crosslinks: FixedVec<Crosslink>, //; SHARD_COUNT],
-	pub latest_block_roots: FixedVec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
-	pub latest_state_roots: FixedVec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
-	pub latest_active_index_roots: FixedVec<H256>, //; LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
-	pub latest_slashed_balances: FixedVec<u64>, //; LATEST_SLASHED_EXIT_LENGTH], // Balances slashed at every withdrawal period
+	#[ssz(use_fixed)]
+	pub latest_crosslinks: Vec<Crosslink>, //; SHARD_COUNT],
+	#[ssz(use_fixed)]
+	pub latest_block_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	#[ssz(use_fixed)]
+	pub latest_state_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	#[ssz(use_fixed)]
+	pub latest_active_index_roots: Vec<H256>, //; LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
+	#[ssz(use_fixed)]
+	pub latest_slashed_balances: Vec<u64>, //; LATEST_SLASHED_EXIT_LENGTH], // Balances slashed at every withdrawal period
 	pub latest_block_header: BeaconBlockHeader,
 	pub historical_roots: Vec<H256>,
 
@@ -89,9 +95,11 @@ pub struct BeaconState {
 #[ssz(no_decode)]
 pub struct HistoricalBatch {
 	/// Block roots
-	pub block_roots: FixedVec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	#[ssz(use_fixed)]
+	pub block_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
 	/// State roots
-	pub state_roots: FixedVec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	#[ssz(use_fixed)]
+	pub state_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
 }
 
 #[derive(Ssz, Clone, Eq, PartialEq)]
@@ -253,7 +261,7 @@ impl BeaconState {
 			validator_balances: Vec::new(),
 			validator_registry_update_epoch: GENESIS_EPOCH,
 
-			latest_randao_mixes: FixedVec((&[H256::default(); LATEST_RANDAO_MIXES_LENGTH]).to_vec()),
+			latest_randao_mixes: (&[H256::default(); LATEST_RANDAO_MIXES_LENGTH]).to_vec(),
 			previous_shuffling_start_shard: GENESIS_START_SHARD,
 			current_shuffling_start_shard: GENESIS_START_SHARD,
 			previous_shuffling_epoch: GENESIS_EPOCH - 1,
@@ -276,12 +284,12 @@ impl BeaconState {
 				for _ in 0..SHARD_COUNT {
 					ret.push(Crosslink::default());
 				}
-				FixedVec(ret)
+				ret
 			},
-			latest_block_roots: FixedVec((&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec()),
-			latest_state_roots: FixedVec((&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec()),
-			latest_active_index_roots: FixedVec((&[H256::default(); LATEST_ACTIVE_INDEX_ROOTS_LENGTH]).to_vec()),
-			latest_slashed_balances: FixedVec((&[0; LATEST_SLASHED_EXIT_LENGTH]).to_vec()),
+			latest_block_roots: (&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec(),
+			latest_state_roots: (&[H256::default(); SLOTS_PER_HISTORICAL_ROOT]).to_vec(),
+			latest_active_index_roots: (&[H256::default(); LATEST_ACTIVE_INDEX_ROOTS_LENGTH]).to_vec(),
+			latest_slashed_balances: (&[0; LATEST_SLASHED_EXIT_LENGTH]).to_vec(),
 			latest_block_header: BeaconBlockHeader::with_state_root(&BeaconBlock::empty(), H256::default()),
 			historical_roots: Vec::new(),
 
