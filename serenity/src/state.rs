@@ -125,18 +125,22 @@ impl BeaconState {
 
 #[cfg(test)]
 mod tests {
+	use ssz::Hashable;
+
 	use super::*;
+	use crate::{Config, NoVerificationConfig, genesis_state};
 
 	#[test]
 	#[ignore]
 	fn test_empty_genesis_block() {
-		let state = BeaconState::genesis(Default::default(), 0, Eth1Data {
+		let config = NoVerificationConfig::small();
+		let state = genesis_state(Default::default(), 0, Eth1Data {
 			block_hash: Default::default(),
 			// deposit_count: 0,
 			deposit_root: Default::default(),
-		}).unwrap();
+		}, &config).unwrap();
 		assert_eq!(state.current_shuffling_seed.as_ref(), &b">\r\xc3\xf3\x1a\xdd\xb2\x7fu)\xfa1,\\s'=\xf2\xe1\xddZ\xfcW2\xdf\xe1\x83W\x11\xfc[\x95"[..]);
 		assert_eq!(state.latest_block_header.block_body_root.as_ref(), &b"\xd8\xe5\xbaa\xfc\x87\xc2\x8c\xd7\xe6V\x8fl\xa1\xc0\xfd\x03\x18\xca\xd76V\xe6ti\x85I\xc4\x86L\xda#"[..]);
-		assert_eq!(state.hash::<Hasher>().as_ref(), &b"\xc8\xcc\x03\x8ah7\xb3l\xc6rD$\x8b\x91/\xf9\x03\xe1\xcb%\x1f)\x8fj.\xba\xc540\xdaq\x85"[..]);
+		assert_eq!(state.hash::<<NoVerificationConfig as Config>::Hasher>().as_ref(), &b"\xc8\xcc\x03\x8ah7\xb3l\xc6rD$\x8b\x91/\xf9\x03\xe1\xcb%\x1f)\x8fj.\xba\xc540\xdaq\x85"[..]);
 	}
 }
