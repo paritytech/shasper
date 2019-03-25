@@ -1,2 +1,5 @@
 /**/target
 **/*.rs.bk
+/keys
+/data*
+/shell.nix
