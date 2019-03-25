@@ -146,3 +146,14 @@ pub fn check_expected(state: &BeaconState, expected: ExpectedBeaconState) {
 		latest_eth1_data, eth1_data_votes, deposit_index,
 	);
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn sanity_check_small_config_32_vals() {
+		let coll = serde_yaml::from_str(&include_str!("../res/eth2.0-tests/state/sanity-check_small-config_32-vals.yaml")).unwrap();
+		run_collection(coll, None);
+	}
+}
