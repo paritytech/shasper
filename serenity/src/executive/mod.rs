@@ -2,6 +2,7 @@ use crate::{BeaconState, Config};
 
 mod cache;
 mod per_block;
+mod per_epoch;
 
 pub struct Executive<'state, 'config, C: Config> {
 	state: &'state mut BeaconState,
