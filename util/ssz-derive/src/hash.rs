@@ -26,10 +26,15 @@ fn encode_fields<F>(
 		} else {
 			false
 		};
+		let use_fixed = has_attr(&f.attrs, "use_fixed");
 		let field = field_name(i, &f.ident);
 
 		if truncate {
 			quote! { (); }
+		} else if use_fixed {
+			quote_spanned! { f.span() =>
+				#dest.push(::ssz::hash::hash_to_array(::ssz::Hashable::hash::< #generic_param >(&::ssz::Fixed(#field.as_ref()))));
+			}
 		} else {
 			quote_spanned! { f.span() =>
 				#dest.push(::ssz::hash::hash_to_array(::ssz::Hashable::hash::< #generic_param >(#field)));

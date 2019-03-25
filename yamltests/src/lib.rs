@@ -2,7 +2,6 @@ use std::io::{self, Write};
 use std::collections::HashMap;
 
 use serde_derive::{Serialize, Deserialize};
-use ssz::FixedVec;
 use primitives::H256;
 use serenity::{BeaconState, BeaconBlock, Slot, Fork, Timestamp, Validator, Epoch, Shard, Eth1Data, Eth1DataVote, PendingAttestation, Crosslink, BeaconBlockHeader};
 
@@ -20,7 +19,7 @@ pub struct ExpectedBeaconState {
 	pub validator_registry_update_epoch: Option<Epoch>,
 
 	// Randomness and committees
-	pub latest_randao_mixes: Option<FixedVec<H256>>,
+	pub latest_randao_mixes: Option<Vec<H256>>,
 	pub previous_shuffling_start_shard: Option<Shard>,
 	pub current_shuffling_start_shard: Option<Shard>,
 	pub previous_shuffling_epoch: Option<Epoch>,
@@ -40,11 +39,11 @@ pub struct ExpectedBeaconState {
 	pub finalized_root: Option<H256>,
 
 	// Recent state
-	pub latest_crosslinks: Option<FixedVec<Crosslink>>,
-	pub latest_block_roots: Option<FixedVec<H256>>,
-	pub latest_state_roots: Option<FixedVec<H256>>,
-	pub latest_active_index_roots: Option<FixedVec<H256>>,
-	pub latest_slashed_balances: Option<FixedVec<u64>>,
+	pub latest_crosslinks: Option<Vec<Crosslink>>,
+	pub latest_block_roots: Option<Vec<H256>>,
+	pub latest_state_roots: Option<Vec<H256>>,
+	pub latest_active_index_roots: Option<Vec<H256>>,
+	pub latest_slashed_balances: Option<Vec<u64>>,
 	pub latest_block_header: Option<BeaconBlockHeader>,
 	pub historical_roots: Option<Vec<H256>>,
 
