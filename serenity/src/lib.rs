@@ -24,6 +24,7 @@ mod validator;
 mod util;
 mod error;
 mod processing;
+mod config;
 
 pub use attestation::*;
 pub use block::*;
@@ -32,6 +33,7 @@ pub use slashing::*;
 pub use state::*;
 pub use validator::*;
 pub use error::*;
+pub use config::*;
 
 pub type Gwei = u64;
 pub type Slot = u64;
