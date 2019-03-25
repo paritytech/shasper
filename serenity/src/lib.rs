@@ -42,9 +42,8 @@ pub type Shard = u64;
 pub type Timestamp = u64;
 pub type ValidatorIndex = u64;
 
-pub fn execute_block(block: &BeaconBlock, state: &mut BeaconState) -> Result<(), Error> {
-	let config = NoVerificationConfig::small();
-	let mut executive = Executive::new(state, &config);
+pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
+	let mut executive = Executive::new(state, config);
 
 	while executive.state().slot < block.slot {
 		executive.update_cache();

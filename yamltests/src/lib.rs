@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use serde_derive::{Serialize, Deserialize};
 use primitives::H256;
-use serenity::{BeaconState, BeaconBlock, Slot, Fork, Timestamp, Validator, Epoch, Shard, Eth1Data, Eth1DataVote, PendingAttestation, Crosslink, BeaconBlockHeader};
+use serenity::{BeaconState, BeaconBlock, Slot, Fork, Timestamp, Validator, Epoch, Shard, Eth1Data, Eth1DataVote, PendingAttestation, Crosslink, BeaconBlockHeader, Config};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -74,24 +74,24 @@ pub struct Test {
 	pub expected_state: ExpectedBeaconState,
 }
 
-pub fn run_collection(coll: Collection, only: Option<&str>) {
+pub fn run_collection<C: Config>(coll: Collection, config: &C, only: Option<&str>) {
 	for test in coll.test_cases {
 		if let Some(only) = only {
 			if test.name != only {
 				continue
 			}
 		}
-		run_test(test);
+		run_test(test, config);
 	}
 }
 
-pub fn run_test(test: Test) {
+pub fn run_test<C: Config>(test: Test, config: &C) {
 	print!("Running test: {} ...", test.name);
 	io::stdout().flush().ok().expect("Could not flush stdout");
 	let mut state = test.initial_state;
 
 	for block in test.blocks {
-		match serenity::execute_block(&block, &mut state) {
+		match serenity::execute_block(&block, &mut state, config) {
 			Ok(()) => {
 				println!(" done");
 			},
