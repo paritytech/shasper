@@ -25,6 +25,7 @@ mod util;
 mod error;
 mod processing;
 mod config;
+mod executive;
 
 pub use attestation::*;
 pub use block::*;
@@ -34,6 +35,7 @@ pub use state::*;
 pub use validator::*;
 pub use error::*;
 pub use config::*;
+pub use executive::*;
 
 pub type Gwei = u64;
 pub type Slot = u64;

@@ -1,7 +1,12 @@
+use hash_db::Hasher;
+
 use primitives::{Signature, H256, ValidatorId, Version};
-use crate::{Epoch, Slot, Gwei, Shard, Fork};
+use crate::{Epoch, Slot, Gwei, Shard, Fork, ValidatorIndex};
+use crate::util::{split_offset, permuted_index};
 
 pub trait Config {
+	type Hasher: Hasher<Out=H256>;
+
 	fn shard_count(&self) -> usize;
 	fn target_committee_size(&self) -> usize;
 	fn max_balance_churn_quotient(&self) -> Gwei;
@@ -15,7 +20,7 @@ pub trait Config {
 	fn ejection_balance(&self) -> Gwei;
 	fn genesis_fork_version(&self) -> Version;
 	fn genesis_slot(&self) -> Slot;
-	fn genesis_epoch(&self) -> Epoch;
+	fn genesis_epoch(&self) -> Epoch { self.slot_to_epoch(self.genesis_slot()) }
 	fn genesis_start_shard(&self) -> Shard;
 	fn bls_withdrawal_prefix_byte(&self) -> u8;
 	fn seconds_per_slot(&self) -> u64;
@@ -53,6 +58,58 @@ pub trait Config {
 	fn bls_verify(&self, pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool;
 	fn bls_aggregate_pubkeys(&self, pubkeys: &[ValidatorId]) -> Option<ValidatorId>;
 	fn bls_verify_multiple(&self, pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool;
+
+	/// Hash bytes with a hasher.
+	fn hash(&self, seed: &[u8]) -> H256 {
+		Self::Hasher::hash(seed)
+	}
+
+	/// Hash two bytes with a hasher.
+	fn hash2(&self, seed: &[u8], a: &[u8]) -> H256 {
+		let mut v = seed.to_vec();
+		let mut a = a.to_vec();
+		v.append(&mut a);
+		Self::Hasher::hash(&v)
+	}
+
+	/// Hash three bytes with a hasher.
+	fn hash3(&self, seed: &[u8], a: &[u8], b: &[u8]) -> H256 {
+		let mut v = seed.to_vec();
+		let mut a = a.to_vec();
+		let mut b = b.to_vec();
+		v.append(&mut a);
+		v.append(&mut b);
+		Self::Hasher::hash(&v)
+	}
+
+	fn slot_to_epoch(&self, slot: Slot) -> Epoch {
+		slot / self.slots_per_epoch()
+	}
+
+	fn epoch_start_slot(&self, epoch: Epoch) -> Slot {
+		epoch.saturating_mul(self.slots_per_epoch())
+	}
+
+	fn compute_committee(&self, validators: &[ValidatorIndex], seed: &H256, index: usize, total_committees: usize) -> Vec<ValidatorIndex> {
+		let start_offset = split_offset(validators.len(), total_committees, index);
+		let end_offset = split_offset(validators.len(), total_committees, index + 1);
+
+		let mut ret = Vec::new();
+		for i in start_offset..end_offset {
+			ret.push(permuted_index(i, seed, validators.len(), self.shuffle_round_count()) as ValidatorIndex);
+		}
+		ret
+	}
+
+	fn epoch_committee_count(&self, active_validator_count: usize) -> usize {
+		core::cmp::max(
+			1,
+			core::cmp::min(
+				self.shard_count() / self.slots_per_epoch() as usize,
+				active_validator_count / self.slots_per_epoch() as usize / self.target_committee_size(),
+			)
+		) * self.slots_per_epoch() as usize
+	}
 }
 
 pub struct NoVerificationConfig {
@@ -69,7 +126,6 @@ pub struct NoVerificationConfig {
 	pub ejection_balance: Gwei,
 	pub genesis_fork_version: [u8; 4],
 	pub genesis_slot: Slot,
-	pub genesis_epoch: Epoch,
 	pub genesis_start_shard: Shard,
 	pub bls_withdrawal_prefix_byte: u8,
 	pub seconds_per_slot: u64,
@@ -105,6 +161,8 @@ pub struct NoVerificationConfig {
 }
 
 impl Config for NoVerificationConfig {
+	type Hasher = keccak_hasher::KeccakHasher;
+
 	fn shard_count(&self) -> usize { self.shard_count }
 	fn target_committee_size(&self) -> usize { self.target_committee_size }
 	fn max_balance_churn_quotient(&self) -> Gwei { self.max_balance_churn_quotient }
@@ -118,7 +176,6 @@ impl Config for NoVerificationConfig {
 	fn ejection_balance(&self) -> Gwei { self.ejection_balance }
 	fn genesis_fork_version(&self) -> Version { Version::from(self.genesis_fork_version) }
 	fn genesis_slot(&self) -> Slot { self.genesis_slot }
-	fn genesis_epoch(&self) -> Epoch { self.genesis_epoch }
 	fn genesis_start_shard(&self) -> Shard { self.genesis_start_shard }
 	fn bls_withdrawal_prefix_byte(&self) -> u8 { self.bls_withdrawal_prefix_byte }
 	fn seconds_per_slot(&self) -> u64 { self.seconds_per_slot }
@@ -173,5 +230,57 @@ impl Config for NoVerificationConfig {
 	}
 	fn bls_verify_multiple(&self, _pubkeys: &[ValidatorId], _messages: &[H256], _signature: &Signature, _domain: u64) -> bool {
 		true
+	}
+}
+
+impl NoVerificationConfig {
+	pub fn small() -> Self {
+		Self {
+			shard_count: 8,
+			target_committee_size: 4,
+			max_balance_churn_quotient: 32,
+			max_indices_per_slashable_vote: 4096,
+			max_exit_dequeues_per_epoch: 4,
+			shuffle_round_count: 90,
+			deposit_contract_tree_depth: 32,
+			min_deposit_amount: 1_000_000_000,
+			max_deposit_amount: 32_000_000_000,
+			fork_choice_balance_increment: 1_000_000_000,
+			ejection_balance: 16_000_000_000,
+			genesis_fork_version: [0, 0, 0, 0],
+			genesis_slot: 4294967296,
+			genesis_start_shard: 0,
+			bls_withdrawal_prefix_byte: 0,
+			seconds_per_slot: 6,
+			min_attestation_inclusion_delay: 2,
+			slots_per_epoch: 8,
+			min_seed_lookahead: 1,
+			activation_exit_delay: 4,
+			epochs_per_eth1_voting_period: 16,
+			slots_per_historical_root: 64,
+			min_validator_withdrawability_delay: 256,
+			persistent_committee_period: 2048,
+			latest_randao_mixes_length: 64,
+			latest_active_index_roots_length: 64,
+			latest_slashed_exit_length: 64,
+			base_reward_quotient: 32,
+			whistleblower_reward_quotient: 512,
+			attestation_inclusion_reward_quotient: 8,
+			inactivity_penalty_quotient: 16_777_216,
+			min_penalty_quotient: 32,
+			max_proposer_slashings: 16,
+			max_attester_slashings: 1,
+			max_attestations: 128,
+			max_deposits: 16,
+			max_voluntary_exits: 16,
+			max_transfers: 16,
+			domain_beacon_block: 0,
+			domain_randao: 1,
+			domain_attestation: 2,
+			domain_deposit: 3,
+			domain_voluntary_exit: 4,
+			domain_transfer: 5,
+			far_future_epoch: u64::max_value(),
+		}
 	}
 }
