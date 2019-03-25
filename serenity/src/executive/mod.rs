@@ -14,4 +14,12 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	pub fn new(state: &'state mut BeaconState, config: &'config C) -> Self {
 		Self { state, config }
 	}
+
+	pub fn state(&self) -> &BeaconState {
+		self.state
+	}
+
+	pub fn config(&self) -> &C {
+		self.config
+	}
 }
