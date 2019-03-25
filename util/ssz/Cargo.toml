@@ -10,8 +10,6 @@ edition = "2018"
 primitive-types = { version = "0.2", default-features = false }
 arrayvec = { version = "0.4", default-features = false }
 hash-db = { version = "0.11", default-features = false }
-serde = { version = "1.0", default-features = false }
-serde_derive = "1.0"
 
 [dev-dependencies]
 sha2 = "0.8"
@@ -23,5 +21,4 @@ std = [
 	"primitive-types/std",
 	"arrayvec/std",
 	"hash-db/std",
-	"serde/std",
 ]

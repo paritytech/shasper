@@ -62,15 +62,15 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	let dest_ = quote!(dest);
 	let input_ = quote!(input);
 	let hash_param_ = quote!(H);
-	let sorted = sorted(&input.attrs);
-	let no_decode = no_decode(&input.attrs);
+	let sorted = has_attr(&input.attrs, "sorted");
+	let no_decode = has_attr(&input.attrs, "no_decode");
 	let prefixing = prefixable::quote(&input.data, &dest_);
-	let encoding = encode::quote(&input.data, &self_, &dest_, sorted);
+	let (encoding, decodable) = encode::quote(&input.data, &self_, &dest_, sorted);
 	let decoding = decode::quote(&input.data, name, &input_, sorted);
 	let hashing = hash::quote(&input.data, &self_, &dest_, &hash_param_, false);
 	let truncate_hashing = hash::quote(&input.data, &self_, &dest_, &hash_param_, true);
 
-	let decode = if no_decode {
+	let decode = if no_decode || !decodable {
 		quote! { }
 	} else {
 		quote! {
@@ -167,7 +167,7 @@ fn add_trait_bounds(mut generics: Generics, bounds: syn::TypeParamBound) -> Gene
 	generics
 }
 
-fn sorted(attrs: &[syn::Attribute]) -> bool {
+fn has_attr(attrs: &[syn::Attribute], s: &str) -> bool {
 	attrs.iter().any(|attr| {
 		attr.path.segments.first().map(|pair| {
 			let seg = pair.value();
@@ -178,36 +178,7 @@ fn sorted(attrs: &[syn::Attribute]) -> bool {
 				let meta = attr.interpret_meta();
 				if let Some(syn::Meta::List(ref l)) = meta {
 					if let syn::NestedMeta::Meta(syn::Meta::Word(ref w)) = l.nested.last().unwrap().value() {
-						if w == &Ident::new("sorted", w.span()) {
-							true
-						} else {
-							false
-						}
-					} else {
-						panic!("Invalid syntax for `ssz` attribute.");
-					}
-				} else {
-					panic!("Invalid syntax for `ssz` attribute.");
-				}
-			} else {
-				false
-			}
-		}).unwrap_or(false)
-	})
-}
-
-fn no_decode(attrs: &[syn::Attribute]) -> bool {
-	attrs.iter().any(|attr| {
-		attr.path.segments.first().map(|pair| {
-			let seg = pair.value();
-
-			if seg.ident == Ident::new("ssz", seg.ident.span()) {
-				assert_eq!(attr.path.segments.len(), 1);
-
-				let meta = attr.interpret_meta();
-				if let Some(syn::Meta::List(ref l)) = meta {
-					if let syn::NestedMeta::Meta(syn::Meta::Word(ref w)) = l.nested.last().unwrap().value() {
-						if w == &Ident::new("no_decode", w.span()) {
+						if w == &Ident::new(s, w.span()) {
 							true
 						} else {
 							false
