@@ -149,10 +149,12 @@ pub fn check_expected(state: &BeaconState, expected: ExpectedBeaconState) {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use serenity::NoVerificationConfig;
 
 	#[test]
 	fn sanity_check_small_config_32_vals() {
+		let config = NoVerificationConfig::small();
 		let coll = serde_yaml::from_str(&include_str!("../res/eth2.0-tests/state/sanity-check_small-config_32-vals.yaml")).unwrap();
-		run_collection(coll, None);
+		run_collection(coll, &config, None);
 	}
 }
