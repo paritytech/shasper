@@ -14,6 +14,6 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			self.state.latest_block_header.state_root = previous_slot_state_root;
 		}
 
-		self.state.latest_block_roots[(self.state.slot % self.config.slots_per_historical_root() as u64) as usize] = self.state.latest_block_header.hash::<C::Hasher>();
+		self.state.latest_block_roots[(self.state.slot % self.config.slots_per_historical_root() as u64) as usize] = self.state.latest_block_header.truncated_hash::<C::Hasher>();
 	}
 }

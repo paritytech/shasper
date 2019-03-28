@@ -315,14 +315,14 @@ pub fn genesis_state<C: Config>(deposits: Vec<Deposit>, genesis_time: Timestamp,
 		},
 		previous_shuffling_start_shard: config.genesis_start_shard(),
 		current_shuffling_start_shard: config.genesis_start_shard(),
-		previous_shuffling_epoch: config.genesis_epoch() - 1,
+		previous_shuffling_epoch: config.genesis_epoch(),
 		current_shuffling_epoch: config.genesis_epoch(),
 		previous_shuffling_seed: H256::default(),
 		current_shuffling_seed: H256::default(),
 
 		previous_epoch_attestations: Vec::new(),
 		current_epoch_attestations: Vec::new(),
-		previous_justified_epoch: config.genesis_epoch() - 1,
+		previous_justified_epoch: config.genesis_epoch(),
 		current_justified_epoch: config.genesis_epoch(),
 		previous_justified_root: H256::default(),
 		current_justified_root: H256::default(),
@@ -368,7 +368,7 @@ pub fn genesis_state<C: Config>(deposits: Vec<Deposit>, genesis_time: Timestamp,
 			}
 			ret
 		},
-		latest_block_header: BeaconBlockHeader::with_state_root::<C::Hasher>(&BeaconBlock {
+		latest_block_header: BeaconBlockHeader::with_state_root_no_signature::<C::Hasher>(&BeaconBlock {
 			slot: config.genesis_slot(),
 			previous_block_root: H256::default(),
 			state_root: H256::default(),
