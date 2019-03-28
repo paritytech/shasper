@@ -51,13 +51,14 @@ pub struct BeaconBlockHeader {
 }
 
 impl BeaconBlockHeader {
-	pub fn with_state_root<H: Hasher<Out=H256>>(block: &BeaconBlock, state_root: H256) -> Self {
+	pub fn with_state_root_no_signature<H: Hasher<Out=H256>>(block: &BeaconBlock, state_root: H256) -> Self {
 		Self {
 			slot: block.slot,
 			previous_block_root: block.previous_block_root,
 			state_root,
 			block_body_root: block.body.hash::<H>(),
-			signature: block.signature,
+			// signed_root(block) is used for block id purposes so signature is a stub
+			signature: Signature::default(),
 		}
 	}
 }

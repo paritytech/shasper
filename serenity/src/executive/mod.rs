@@ -368,7 +368,7 @@ pub fn genesis_state<C: Config>(deposits: Vec<Deposit>, genesis_time: Timestamp,
 			}
 			ret
 		},
-		latest_block_header: BeaconBlockHeader::with_state_root::<C::Hasher>(&BeaconBlock {
+		latest_block_header: BeaconBlockHeader::with_state_root_no_signature::<C::Hasher>(&BeaconBlock {
 			slot: config.genesis_slot(),
 			previous_block_root: H256::default(),
 			state_root: H256::default(),

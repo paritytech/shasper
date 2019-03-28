@@ -33,11 +33,11 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::BlockSlotInvalid)
 		}
 
-		if block.previous_block_root != self.state.latest_block_header.hash::<C::Hasher>() {
+		if block.previous_block_root != self.state.latest_block_header.truncated_hash::<C::Hasher>() {
 			return Err(Error::BlockPreviousRootInvalid)
 		}
 
-		self.state.latest_block_header = BeaconBlockHeader::with_state_root::<C::Hasher>(block, H256::default());
+		self.state.latest_block_header = BeaconBlockHeader::with_state_root_no_signature::<C::Hasher>(block, H256::default());
 
 		let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
 
