@@ -61,7 +61,7 @@ impl Alternative {
 						sk: alice_sec,
 						pk: alice_pub,
 					};
-					let alice_id = ValidatorId::from_public(alice.pk.clone());
+					let alice_id = primitives::from_public(alice.pk.clone());
 
 					testnet_genesis(
 						vec![
@@ -95,8 +95,8 @@ impl Alternative {
 						sk: bob_sec,
 					};
 
-					let alice_id = ValidatorId::from_public(alice.pk.clone());
-					let bob_id = ValidatorId::from_public(bob.pk.clone());
+					let alice_id = primitives::from_public(alice.pk.clone());
+					let bob_id = primitives::from_public(bob.pk.clone());
 
 					testnet_genesis(
 						vec![

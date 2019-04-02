@@ -87,3 +87,9 @@ impl ssz::Hashable for H384 {
 		ssz::hash::merkleize::<H>(ssz::hash::chunkify(self.as_ref()))
 	}
 }
+
+impl Into<primitive_types::H256> for H384 {
+	fn into(self) -> primitive_types::H256 {
+		primitive_types::H256::from_slice(&self[0..32])
+	}
+}

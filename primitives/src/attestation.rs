@@ -28,7 +28,7 @@ impl UnsignedAttestation {
 		}
 
 		UncheckedAttestation {
-			signature: signature.into(),
+			signature: crate::from_aggregate_signature(signature),
 			data: self,
 		}
 	}
@@ -48,14 +48,14 @@ impl UncheckedAttestation {
 		}
 
 		let mut signature = bls::AggregateSignature::new();
-		signature.add(&match self.signature.into_signature() {
+		signature.add(&match crate::into_signature(&self.signature) {
 			Some(signature) => signature,
 			None => return false,
 		});
 		let to_sign = self.data.encode();
 		signature.add(&bls::Signature::new(&to_sign[..], 0, &secret));
 
-		self.signature = signature.into();
+		self.signature = crate::from_aggregate_signature(signature);
 
 		true
 	}

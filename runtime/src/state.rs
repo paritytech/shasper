@@ -78,7 +78,7 @@ impl PendingAttestationsStore<AttestationContext> for Store {
 
 pub fn check_attestation(unchecked: UncheckedAttestation, check_slot: bool) -> Option<CheckedAttestation> {
 	let mut signature = bls::AggregateSignature::new();
-	signature.add(&unchecked.signature.into_signature()?);
+	signature.add(&primitives::into_signature(&unchecked.signature)?);
 	let validator_ids = {
 		let mut ret = Vec::new();
 		for validator_index in &unchecked.data.validator_indexes {
@@ -89,7 +89,7 @@ pub fn check_attestation(unchecked: UncheckedAttestation, check_slot: bool) -> O
 	let publics = {
 		let mut ret = Vec::new();
 		for validator_id in &validator_ids {
-			ret.push(validator_id.into_public()?);
+			ret.push(primitives::into_public(validator_id)?);
 		}
 		ret
 	};

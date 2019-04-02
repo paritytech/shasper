@@ -22,5 +22,5 @@ mod version;
 pub use authority_id::{H384, ValidatorId};
 pub use bitfield::BitField;
 pub use signature::{H768, Signature};
-pub use version::Version;
+pub use version::{H32, Version};
 pub use primitive_types::H256;

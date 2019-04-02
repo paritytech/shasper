@@ -58,6 +58,23 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "beacon"
+version = "0.1.0"
+dependencies = [
+ "fixed-hash 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hash-db 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "impl-serde 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parity-codec 3.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "plain_hasher 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "primitive-types 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ssz 0.1.1",
+ "ssz-derive 0.1.2",
+ "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1444,6 +1461,7 @@ dependencies = [
 name = "shasper-primitives"
 version = "0.1.0"
 dependencies = [
+ "beacon 0.1.0",
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "casper 0.1.0",
  "fixed-hash 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1456,8 +1474,8 @@ dependencies = [
  "serde 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "shasper-crypto 0.1.0",
- "ssz 0.1.0",
- "ssz-derive 0.1.0",
+ "ssz 0.1.1",
+ "ssz-derive 0.1.2",
 ]
 
 [[package]]
@@ -1485,8 +1503,8 @@ dependencies = [
  "sr-std 0.1.0 (git+https://github.com/paritytech/substrate)",
  "sr-version 0.1.0 (git+https://github.com/paritytech/substrate)",
  "srml-support 0.1.0 (git+https://github.com/paritytech/substrate)",
- "ssz 0.1.0",
- "ssz-derive 0.1.0",
+ "ssz 0.1.1",
+ "ssz-derive 0.1.2",
  "substrate-client 0.1.0 (git+https://github.com/paritytech/substrate)",
  "substrate-consensus-aura-primitives 0.1.0 (git+https://github.com/paritytech/substrate)",
  "substrate-inherents 0.1.0 (git+https://github.com/paritytech/substrate)",
@@ -1697,7 +1715,7 @@ dependencies = [
 
 [[package]]
 name = "ssz"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "hash-db 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1706,7 +1724,7 @@ dependencies = [
 
 [[package]]
 name = "ssz-derive"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "proc-macro2 0.4.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use serde_derive::{Serialize, Deserialize};
 use primitives::H256;
-use serenity::{BeaconState, BeaconBlock, Slot, Fork, Timestamp, Validator, Epoch, Shard, Eth1Data, Eth1DataVote, PendingAttestation, Crosslink, BeaconBlockHeader, Config};
+use beacon::{BeaconState, BeaconBlock, Slot, Fork, Timestamp, Validator, Epoch, Shard, Eth1Data, Eth1DataVote, PendingAttestation, Crosslink, BeaconBlockHeader, Config};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -91,7 +91,7 @@ pub fn run_test<C: Config>(test: Test, config: &C) {
 	let mut state = test.initial_state;
 
 	for block in test.blocks {
-		match serenity::execute_block(&block, &mut state, config) {
+		match beacon::execute_block(&block, &mut state, config) {
 			Ok(()) => {
 				println!(" done");
 			},
@@ -149,7 +149,7 @@ pub fn check_expected(state: &BeaconState, expected: ExpectedBeaconState) {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use serenity::NoVerificationConfig;
+	use beacon::NoVerificationConfig;
 
 	#[test]
 	fn sanity_check_small_config_32_vals() {

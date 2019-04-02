@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 use clap::{App, Arg};
-use serenity::NoVerificationConfig;
+use beacon::NoVerificationConfig;
 use yamltests::{Collection, run_collection};
 
 fn main() {

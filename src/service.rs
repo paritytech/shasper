@@ -20,7 +20,7 @@
 
 use std::sync::Arc;
 use transaction_pool::{self, txpool::{Pool as TransactionPool}};
-use primitives::{H256, ValidatorId};
+use primitives::H256;
 use substrate_primitives::ed25519;
 use runtime::{self, GenesisConfig, RuntimeApi, Block};
 use service::{
@@ -83,7 +83,7 @@ construct_service_factory! {
 		AuthoritySetup = {
 			|service: Self::FullService, executor: TaskExecutor, _: Option<Arc<ed25519::Pair>>| {
 				if let Some(ref key) = service.config.custom.validator_key {
-					info!("Using authority key {}", ValidatorId::from_public(bls::Public::from_secret_key(key)));
+					info!("Using authority key {}", primitives::from_public(bls::Public::from_secret_key(key)));
 					let proposer = Arc::new(basic_authorship::ProposerFactory {
 						client: service.client(),
 						transaction_pool: service.transaction_pool(),

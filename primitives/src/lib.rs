@@ -30,80 +30,20 @@ pub(crate) mod prelude {
 #[prelude_import]
 use crate::prelude::*;
 
-impl H384 {
-	pub fn into_public(&self) -> Option<bls::Public> {
-		bls::Public::from_bytes(self.as_ref()).ok()
-	}
-
-	pub fn from_public(public: bls::Public) -> Self {
-		H384::from_slice(&public.as_bytes())
-	}
-}
-
-impl Into<AuthorityId> for bls::Public {
-	fn into(self) -> AuthorityId {
-		AuthorityId::from_public(self)
-	}
-}
-
-impl Into<primitive_types::H256> for H384 {
-	fn into(self) -> primitive_types::H256 {
-		primitive_types::H256::from_slice(&self[0..32])
-	}
-}
-
-
-impl H768 {
-	pub fn into_signature(&self) -> Option<bls::Signature> {
-		bls::Signature::from_bytes(self.as_ref()).ok()
-	}
-
-	pub fn into_aggregate_signature(&self) -> Option<bls::AggregateSignature> {
-		bls::AggregateSignature::from_bytes(self.as_ref()).ok()
-	}
-
-	pub fn from_signature(sig: bls::Signature) -> Self {
-		H768::from_slice(&sig.as_bytes())
-	}
-
-	pub fn from_aggregate_signature(sig: bls::AggregateSignature) -> Self {
-		H768::from_slice(&sig.as_bytes())
-	}
-}
-
-impl Into<Signature> for bls::Signature {
-	fn into(self) -> Signature {
-		Signature::from_signature(self)
-	}
-}
-
-impl Into<Signature> for bls::AggregateSignature {
-	fn into(self) -> Signature {
-		Signature::from_aggregate_signature(self)
-	}
-}
-
 extern crate parity_codec as codec;
 extern crate parity_codec_derive as codec_derive;
 
-mod authority_id;
-mod bitfield;
-mod signature;
 mod attestation;
-mod version;
 
 pub use crypto;
 pub use keccak_hasher::KeccakHasher;
-pub use signature::{H768, Signature};
-pub use authority_id::{H384, AuthorityId};
-pub use bitfield::BitField;
-pub use version::{H32, Version};
+pub use beacon::{H768, Signature, H384, ValidatorId, BitField, H32, Version};
 pub use attestation::{UnsignedAttestation, UncheckedAttestation, CheckedAttestation, AttestationContext};
 
 pub use primitive_types::H256;
 
 /// Shasper validator public key.
-pub type ValidatorId = AuthorityId;
+pub type AuthorityId = ValidatorId;
 
 /// A hash of some data used by the chain.
 pub type Hash = primitive_types::H256;
@@ -128,3 +68,27 @@ pub type ValidatorIndex = u32;
 
 /// Timestamp value in Shasper.
 pub type Timestamp = u64;
+
+pub fn into_public(value: &H384) -> Option<crypto::bls::Public> {
+	crypto::bls::Public::from_bytes(value.as_ref()).ok()
+}
+
+pub fn from_public(public: crypto::bls::Public) -> H384 {
+	H384::from_slice(&public.as_bytes())
+}
+
+pub fn into_signature(value: &H768) -> Option<crypto::bls::Signature> {
+	crypto::bls::Signature::from_bytes(value.as_ref()).ok()
+}
+
+pub fn into_aggregate_signature(value: &H768) -> Option<crypto::bls::AggregateSignature> {
+	crypto::bls::AggregateSignature::from_bytes(value.as_ref()).ok()
+}
+
+pub fn from_signature(sig: crypto::bls::Signature) -> H768 {
+	H768::from_slice(&sig.as_bytes())
+}
+
+pub fn from_aggregate_signature(sig: crypto::bls::AggregateSignature) -> H768 {
+	H768::from_slice(&sig.as_bytes())
+}
