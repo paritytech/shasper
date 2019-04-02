@@ -15,13 +15,19 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use ssz_derive::Ssz;
+
+#[cfg(feature = "serde")]
 use serde_derive::{Serialize, Deserialize};
+#[cfg(feature = "parity-codec")]
+use codec::{Encode, Decode};
 
 use crate::primitives::{BitField, H256, Signature};
 use crate::Config;
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Crosslink {
 	/// Epoch number
 	pub epoch: u64,
@@ -30,7 +36,9 @@ pub struct Crosslink {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Attestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -43,7 +51,9 @@ pub struct Attestation {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct PendingAttestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -56,7 +66,9 @@ pub struct PendingAttestation {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct AttestationData {
 	// LMD GHOST vote
 	/// Slot number
@@ -93,6 +105,9 @@ impl AttestationData {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct AttestationDataAndCustodyBit {
 	/// Attestation data
 	pub data: AttestationData,

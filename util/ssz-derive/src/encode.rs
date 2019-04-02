@@ -48,11 +48,11 @@ fn encode_fields<F>(
 		if use_fixed {
 			decodable = false;
 			quote_spanned! { f.span() =>
-				::ssz::Fixed(#field.as_ref()).encode_to(#dest);
+				::ssz::Encode::encode_to(&::ssz::Fixed(#field.as_ref()), #dest);
 			}
 		} else {
 			quote_spanned! { f.span() =>
-				#field.encode_to(#dest);
+				::ssz::Encode::encode_to(#field, #dest);
 			}
 		}
 	});

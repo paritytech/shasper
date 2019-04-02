@@ -18,18 +18,27 @@ fixed-hash = { version = "0.3.0", default-features = false }
 parity-codec = { version = "3.2", default-features = false, optional = true, features = ["derive"] }
 
 [features]
-default = ["std"]
+default = ["std", "with-serde", "with-codec"]
+with-serde = [
+	"serde",
+	"serde_derive",
+	"impl-serde",
+	"std",
+	"primitive-types/serde",
+]
+with-codec = [
+	"parity-codec",
+	"primitive-types/codec",
+]
+std-with-codec = [
+	"parity-codec",
+	"primitive-types/codec",
+	"parity-codec/std",
+]
 std = [
 	"ssz/std",
 	"hash-db/std",
 	"plain_hasher/std",
 	"primitive-types/std",
-	"primitive-types/codec",
-	"primitive-types/serde",
 	"fixed-hash/std",
-	"parity-codec",
-	"parity-codec/std",
-	"serde",
-	"impl-serde",
-	"serde_derive",
 ]

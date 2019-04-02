@@ -14,15 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use ssz::{Hashable, Encode};
+use ssz::Hashable;
 use ssz_derive::Ssz;
+
+#[cfg(feature = "serde")]
 use serde_derive::{Serialize, Deserialize};
+#[cfg(feature = "parity-codec")]
+use codec::{Encode, Decode};
 
 use crate::primitives::{H256, ValidatorId, Signature};
 use crate::Config;
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Eth1Data {
 	/// Root of the deposit tree
 	pub deposit_root: H256,
@@ -45,7 +51,9 @@ impl Eth1Data {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Eth1DataVote {
 	/// Data being voted for
 	pub eth1_data: Eth1Data,
@@ -54,7 +62,9 @@ pub struct Eth1DataVote {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz(no_decode)]
 pub struct Deposit {
 	/// Branch in the deposit tree
@@ -69,7 +79,7 @@ pub struct Deposit {
 impl Deposit {
 	pub fn is_merkle_valid<C: Config>(&self, deposit_root: &H256, config: &C) -> bool {
 		let merkle = MerkleProof {
-			leaf: config.hash(&self.deposit_data.encode()),
+			leaf: config.hash(&::ssz::Encode::encode(&self.deposit_data)),
 			proof: self.proof.as_ref(),
 			depth: config.deposit_contract_tree_depth(),
 			index: self.index as usize,
@@ -90,7 +100,9 @@ impl Deposit {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct DepositData {
 	/// Amount in Gwei
 	pub amount: u64,
@@ -101,7 +113,9 @@ pub struct DepositData {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct DepositInput {
 	/// BLS pubkey
 	pub pubkey: ValidatorId,

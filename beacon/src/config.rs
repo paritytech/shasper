@@ -2,6 +2,11 @@ use hash_db::Hasher;
 use tiny_keccak::Keccak;
 use plain_hasher::PlainHasher;
 
+#[cfg(feature = "serde")]
+use serde_derive::{Serialize, Deserialize};
+#[cfg(feature = "parity-codec")]
+use codec::{Encode, Decode};
+
 use crate::primitives::{Signature, H256, ValidatorId, Version};
 use crate::{Epoch, Slot, Gwei, Shard, Fork, ValidatorIndex};
 use crate::util::{split_offset, to_usize};
@@ -154,6 +159,10 @@ impl Hasher for KeccakHasher {
 	}
 }
 
+#[derive(Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct NoVerificationConfig {
 	pub shard_count: usize,
 	pub target_committee_size: usize,
@@ -169,7 +178,7 @@ pub struct NoVerificationConfig {
 	pub genesis_fork_version: [u8; 4],
 	pub genesis_slot: Slot,
 	pub genesis_start_shard: Shard,
-	pub bls_withdrawal_prefix_byte: u8,
+	pub bls_withdrawal_prefix_byte: [u8; 1],
 	pub seconds_per_slot: u64,
 	pub min_attestation_inclusion_delay: Slot,
 	pub slots_per_epoch: Slot,
@@ -219,7 +228,7 @@ impl Config for NoVerificationConfig {
 	fn genesis_fork_version(&self) -> Version { Version::from(self.genesis_fork_version) }
 	fn genesis_slot(&self) -> Slot { self.genesis_slot }
 	fn genesis_start_shard(&self) -> Shard { self.genesis_start_shard }
-	fn bls_withdrawal_prefix_byte(&self) -> u8 { self.bls_withdrawal_prefix_byte }
+	fn bls_withdrawal_prefix_byte(&self) -> u8 { self.bls_withdrawal_prefix_byte[0] }
 	fn seconds_per_slot(&self) -> u64 { self.seconds_per_slot }
 	fn min_attestation_inclusion_delay(&self) -> Slot { self.min_attestation_inclusion_delay }
 	fn slots_per_epoch(&self) -> Slot { self.slots_per_epoch }
@@ -292,7 +301,7 @@ impl NoVerificationConfig {
 			genesis_fork_version: [0, 0, 0, 0],
 			genesis_slot: 4294967296,
 			genesis_start_shard: 0,
-			bls_withdrawal_prefix_byte: 0,
+			bls_withdrawal_prefix_byte: [0],
 			seconds_per_slot: 6,
 			min_attestation_inclusion_delay: 2,
 			slots_per_epoch: 8,
@@ -342,7 +351,7 @@ impl NoVerificationConfig {
 			genesis_fork_version: [0, 0, 0, 0],
 			genesis_slot: 4294967296,
 			genesis_start_shard: 0,
-			bls_withdrawal_prefix_byte: 0,
+			bls_withdrawal_prefix_byte: [0],
 			seconds_per_slot: 6,
 			min_attestation_inclusion_delay: 4,
 			slots_per_epoch: 64,

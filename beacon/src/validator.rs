@@ -15,13 +15,19 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use ssz_derive::Ssz;
+
+#[cfg(feature = "serde")]
 use serde_derive::{Serialize, Deserialize};
+#[cfg(feature = "parity-codec")]
+use codec::{Encode, Decode};
 
 use crate::primitives::{Signature, ValidatorId, H256};
 use crate::Config;
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Validator {
 	/// BLS public key
 	pub pubkey: ValidatorId,
@@ -66,7 +72,9 @@ impl Validator {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct VoluntaryExit {
 	/// Minimum epoch for processing exit
 	pub epoch: u64,
@@ -78,7 +86,9 @@ pub struct VoluntaryExit {
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Transfer {
 	/// Sender index
 	pub sender: u64,
