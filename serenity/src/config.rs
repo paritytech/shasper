@@ -1,5 +1,7 @@
 use hash_db::Hasher;
 
+use tiny_keccak::Keccak;
+use plain_hasher::PlainHasher;
 use primitives::{Signature, H256, ValidatorId, Version};
 use crate::{Epoch, Slot, Gwei, Shard, Fork, ValidatorIndex};
 use crate::util::{split_offset, to_usize};
@@ -138,6 +140,20 @@ pub trait Config {
 	}
 }
 
+pub struct KeccakHasher;
+
+impl Hasher for KeccakHasher {
+	type Out = H256;
+	type StdHasher = PlainHasher;
+	const LENGTH: usize = 32;
+
+	fn hash(x: &[u8]) -> Self::Out {
+		let mut out = [0; 32];
+		Keccak::keccak256(x, &mut out);
+		out.into()
+	}
+}
+
 pub struct NoVerificationConfig {
 	pub shard_count: usize,
 	pub target_committee_size: usize,
@@ -187,7 +203,7 @@ pub struct NoVerificationConfig {
 }
 
 impl Config for NoVerificationConfig {
-	type Hasher = keccak_hasher::KeccakHasher;
+	type Hasher = KeccakHasher;
 
 	fn shard_count(&self) -> usize { self.shard_count }
 	fn target_committee_size(&self) -> usize { self.target_committee_size }
