@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{H256, ValidatorId, Version};
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
+
 use crate::{Slot, Epoch, Timestamp, ValidatorIndex, Shard};
+use crate::primitives::{H256, ValidatorId, Version};
 use crate::eth1::{Eth1Data, Eth1DataVote};
 use crate::attestation::{
 	PendingAttestation, Crosslink,

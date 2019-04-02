@@ -1,4 +1,4 @@
-use primitives::H256;
+use crate::primitives::H256;
 
 pub fn to_bytes(v: u64) -> H256 {
 	let bytes = v.to_le_bytes();

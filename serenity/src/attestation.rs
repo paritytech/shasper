@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{BitField, H256, Signature};
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
 
+use crate::primitives::{BitField, H256, Signature};
 use crate::Config;
 
 #[derive(Ssz, Clone, PartialEq, Eq)]

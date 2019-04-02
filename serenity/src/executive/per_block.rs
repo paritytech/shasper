@@ -1,12 +1,12 @@
 use ssz::Hashable;
 
-use primitives::H256;
 use super::Executive;
 use crate::{
 	Config, Error, BeaconBlockHeader, Transfer, VoluntaryExit, Validator, Deposit, PendingAttestation,
 	AttestationDataAndCustodyBit, Crosslink, Attestation, AttesterSlashing, ProposerSlashing,
 	Eth1DataVote, BeaconBlock, SlashableAttestation, ValidatorIndex,
 };
+use crate::primitives::H256;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	fn slash_validator(&mut self, index: ValidatorIndex) -> Result<(), Error> {

@@ -1,11 +1,11 @@
 use ssz::Hashable;
 
-use primitives::H256;
 use super::Executive;
 use crate::{
 	Config, Error, HistoricalBatch, Crosslink, Gwei, Epoch, ValidatorIndex, PendingAttestation,
 	Slot, Shard,
 };
+use crate::primitives::H256;
 use crate::util::{is_power_of_two, integer_squareroot, compare_hash};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {

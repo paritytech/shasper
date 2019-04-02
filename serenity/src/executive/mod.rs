@@ -1,11 +1,11 @@
 use ssz::Hashable;
 
-use primitives::{H256, BitField, Version, Signature};
 use crate::{
 	BeaconState, Config, Timestamp, Eth1Data, Fork, Error, Crosslink, BeaconBlockHeader,
 	Deposit, BeaconBlock, Slot, ValidatorIndex, Shard, PendingAttestation, AttestationData,
 	Epoch, Gwei, BeaconBlockBody,
 };
+use crate::primitives::{H256, BitField, Version, Signature};
 use crate::util::{is_power_of_two, to_bytes};
 
 mod cache;

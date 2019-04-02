@@ -1,8 +1,8 @@
 use ssz::Hashable;
 
-use primitives::H256;
 use super::Executive;
 use crate::Config;
+use crate::primitives::H256;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	pub fn update_cache(&mut self) {

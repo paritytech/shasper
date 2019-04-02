@@ -1,8 +1,8 @@
 use hash_db::Hasher;
-
 use tiny_keccak::Keccak;
 use plain_hasher::PlainHasher;
-use primitives::{Signature, H256, ValidatorId, Version};
+
+use crate::primitives::{Signature, H256, ValidatorId, Version};
 use crate::{Epoch, Slot, Gwei, Shard, Fork, ValidatorIndex};
 use crate::util::{split_offset, to_usize};
 

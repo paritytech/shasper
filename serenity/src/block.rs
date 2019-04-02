@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{H256, Signature, H768};
 use ssz::Hashable;
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
 use hash_db::Hasher;
 
+use crate::primitives::{H256, Signature, H768};
 use crate::validator::{VoluntaryExit, Transfer};
 use crate::attestation::Attestation;
 use crate::slashing::{AttesterSlashing, ProposerSlashing};

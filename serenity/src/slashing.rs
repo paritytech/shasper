@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{Signature, BitField};
 use ssz_derive::Ssz;
 use serde_derive::{Serialize, Deserialize};
+
+use crate::primitives::{Signature, BitField};
 use crate::attestation::AttestationData;
 use crate::block::BeaconBlockHeader;
 

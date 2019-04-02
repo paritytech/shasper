@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+extern crate parity_codec as codec;
+
 mod attestation;
 mod block;
 mod eth1;
@@ -24,6 +26,7 @@ mod util;
 mod error;
 mod config;
 mod executive;
+mod primitives;
 
 pub use attestation::*;
 pub use block::*;
@@ -34,6 +37,7 @@ pub use validator::*;
 pub use error::*;
 pub use config::*;
 pub use executive::*;
+pub use primitives::*;
 
 pub type Gwei = u64;
 pub type Slot = u64;
