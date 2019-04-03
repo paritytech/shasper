@@ -5,6 +5,7 @@ use crate::Config;
 use crate::primitives::H256;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+	/// Update state cache.
 	pub fn update_cache(&mut self) {
 		let previous_slot_state_root = self.state.hash::<C::Hasher>();
 

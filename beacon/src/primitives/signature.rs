@@ -23,10 +23,11 @@ use impl_serde::serialize as bytes;
 const SIZE: usize = 96;
 
 construct_fixed_hash! {
-	/// Fixed 384-bit hash.
+	/// Fixed 768-bit hash.
 	pub struct H768(SIZE);
 }
 
+/// BLS 768-bit signature.
 pub type Signature = H768;
 
 #[cfg(feature = "serde")]

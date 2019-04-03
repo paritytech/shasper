@@ -13,20 +13,24 @@ mod per_block;
 mod per_epoch;
 mod per_slot;
 
+/// Beacon state executive.
 pub struct Executive<'state, 'config, C: Config> {
 	state: &'state mut BeaconState,
 	config: &'config C,
 }
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+	/// Create a new executive from given state and config.
 	pub fn new(state: &'state mut BeaconState, config: &'config C) -> Self {
 		Self { state, config }
 	}
 
+	/// Get a reference to the underlying state.
 	pub fn state(&self) -> &BeaconState {
 		self.state
 	}
 
+	/// Get a reference to the config.
 	pub fn config(&self) -> &C {
 		self.config
 	}
@@ -278,6 +282,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	}
 }
 
+/// Generate genesis state and genesis block from given deposits, timestamp and eth1 data.
 pub fn genesis<C: Config>(deposits: Vec<Deposit>, genesis_time: Timestamp, latest_eth1_data: Eth1Data, config: &C) -> Result<(BeaconBlock, BeaconState), Error> {
 	let state = genesis_state(deposits, genesis_time, latest_eth1_data, config)?;
 	let mut block = BeaconBlock {
@@ -292,6 +297,7 @@ pub fn genesis<C: Config>(deposits: Vec<Deposit>, genesis_time: Timestamp, lates
 	Ok((block, state))
 }
 
+/// Generate genesis state from given deposits, timestamp, and eth1 data.
 pub fn genesis_state<C: Config>(deposits: Vec<Deposit>, genesis_time: Timestamp, latest_eth1_data: Eth1Data, config: &C) -> Result<BeaconState, Error> {
 	let mut state = BeaconState {
 		slot: config.genesis_slot(),

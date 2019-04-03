@@ -59,10 +59,12 @@ pub trait Output: Sized {
 	/// Write to the output.
 	fn write(&mut self, bytes: &[u8]);
 
+	/// Push a single byte to the output.
 	fn push_byte(&mut self, byte: u8) {
 		self.write(&[byte]);
 	}
 
+	/// Push a value as encoded by Ssz to the output.
 	fn push<V: Encode + ?Sized>(&mut self, value: &V) {
 		value.encode_to(self);
 	}

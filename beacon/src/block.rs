@@ -34,14 +34,18 @@ use crate::eth1::{Deposit, Eth1Data};
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[ssz(no_decode)]
+/// Beacon block.
 pub struct BeaconBlock {
+	/// Slot of the block.
 	pub slot: u64,
+	/// Previous block root.
 	pub previous_block_root: H256,
+	/// State root.
 	pub state_root: H256,
 	/// Body
 	pub body: BeaconBlockBody,
-	/// Signature
 	#[ssz(truncate)]
+	/// Signature
 	pub signature: Signature,
 }
 
@@ -49,16 +53,23 @@ pub struct BeaconBlock {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Beacon block header.
 pub struct BeaconBlockHeader {
+	/// Slot of the block.
     pub slot: u64,
+	/// Previous block root.
     pub previous_block_root: H256,
+	/// State root.
     pub state_root: H256,
+	/// Block body root.
     pub block_body_root: H256,
 	#[ssz(truncate)]
+	/// Signature.
     pub signature: Signature,
 }
 
 impl BeaconBlockHeader {
+	/// Create temporary block header with given state root and no signature.
 	pub fn with_state_root_no_signature<H: Hasher<Out=H256>>(block: &BeaconBlock, state_root: H256) -> Self {
 		Self {
 			slot: block.slot,
@@ -76,18 +87,28 @@ impl BeaconBlockHeader {
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[ssz(no_decode)]
+/// Beacon block body.
 pub struct BeaconBlockBody {
+	/// Randao reveal.
 	pub randao_reveal: H768,
+	/// Eth1 data.
 	pub eth1_data: Eth1Data,
+	/// Proposer slashings.
 	pub proposer_slashings: Vec<ProposerSlashing>,
+	/// Attester slashings.
 	pub attester_slashings: Vec<AttesterSlashing>,
+	/// Attestations.
 	pub attestations: Vec<Attestation>,
+	/// Deposits.
 	pub deposits: Vec<Deposit>,
+	/// Voluntary exits.
 	pub voluntary_exits: Vec<VoluntaryExit>,
+	/// Transfer.
 	pub transfers: Vec<Transfer>,
 }
 
 impl BeaconBlockBody {
+	/// Create an empty block body.
 	pub fn empty() -> Self {
 		Self {
 			proposer_slashings: Vec::new(),

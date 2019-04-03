@@ -29,6 +29,7 @@ use crate::block::BeaconBlockHeader;
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Block proposer slashing.
 pub struct ProposerSlashing {
 	/// Proposer index
 	pub proposer_index: u64,
@@ -44,6 +45,7 @@ pub struct ProposerSlashing {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Block attester slashing.
 pub struct AttesterSlashing {
 	/// First slashable attestation
 	pub slashable_attestation_a: SlashableAttestation,
@@ -55,6 +57,7 @@ pub struct AttesterSlashing {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Slashable attestation.
 pub struct SlashableAttestation {
 	/// Validator indices
 	pub validator_indices: Vec<u64>,

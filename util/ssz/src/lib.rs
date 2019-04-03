@@ -14,7 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+//! SimpleSerialization crate written in Rust.
+
 #![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(alloc_prelude), feature(prelude_import))]
+
+#![warn(missing_docs)]
 
 #[cfg(not(feature = "std"))]
 #[macro_use]

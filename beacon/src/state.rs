@@ -35,55 +35,87 @@ use crate::block::BeaconBlockHeader;
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[ssz(no_decode)]
+/// Beacon state.
 pub struct BeaconState {
 	// Misc
+	/// Current slot.
 	pub slot: Slot,
+	/// Genesis time.
 	pub genesis_time: Timestamp,
-	pub fork: Fork, // For versioning hard forks
+	/// For versioning hard forks.
+	pub fork: Fork,
 
-	// Validator registry
+	/// Validator registry.
 	pub validator_registry: Vec<Validator>,
+	/// Validator balances.
 	pub validator_balances: Vec<u64>,
+	/// Last validator registry update epoch.
 	pub validator_registry_update_epoch: Epoch,
 
 	// Randomness and committees
 	#[ssz(use_fixed)]
-	pub latest_randao_mixes: Vec<H256>, //; LATEST_RANDAO_MIXES_LENGTH],
+	/// Latest randao mixes, of length `LATEST_RANDAO_MIXES_LENGTH`.
+	pub latest_randao_mixes: Vec<H256>,
+	/// Previous shuffling start shard.
 	pub previous_shuffling_start_shard: Shard,
+	/// Current shuffling start shard.
 	pub current_shuffling_start_shard: Shard,
+	/// Previous shuffling epoch.
 	pub previous_shuffling_epoch: Epoch,
+	/// Current shuffling epoch.
 	pub current_shuffling_epoch: Epoch,
+	/// Previous shuffling seed.
 	pub previous_shuffling_seed: H256,
+	/// Current shuffling seed.
 	pub current_shuffling_seed: H256,
 
 	// Finality
+	/// Previous epoch attestations.
 	pub previous_epoch_attestations: Vec<PendingAttestation>,
+	/// Current epoch attestations.
 	pub current_epoch_attestations: Vec<PendingAttestation>,
+	/// Previous justified epoch.
 	pub previous_justified_epoch: Epoch,
+	/// Current justified epoch.
 	pub current_justified_epoch: Epoch,
+	/// Previous justified root.
 	pub previous_justified_root: H256,
+	/// Current justified root.
 	pub current_justified_root: H256,
+	/// Justification bitfield.
 	pub justification_bitfield: u64,
+	/// Finalized epoch.
 	pub finalized_epoch: Epoch,
+	/// Finalized root.
 	pub finalized_root: H256,
 
 	// Recent state
 	#[ssz(use_fixed)]
-	pub latest_crosslinks: Vec<Crosslink>, //; SHARD_COUNT],
+	/// Latest crosslinks, of length `SHARD_COUNT`.
+	pub latest_crosslinks: Vec<Crosslink>,
 	#[ssz(use_fixed)]
-	pub latest_block_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	/// Latest block roots, of length `SLOTS_PER_HISTORICAL_ROOT`.
+	pub latest_block_roots: Vec<H256>,
 	#[ssz(use_fixed)]
-	pub latest_state_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
+	/// Latest state roots, of length `SLOTS_PER_HISTORICAL_ROOT`.
+	pub latest_state_roots: Vec<H256>,
 	#[ssz(use_fixed)]
-	pub latest_active_index_roots: Vec<H256>, //; LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
+	/// Latest active index roots, of length `LATEST_ACTIVE_INDEX_ROOTS_LENGTH`.
+	pub latest_active_index_roots: Vec<H256>,
 	#[ssz(use_fixed)]
-	pub latest_slashed_balances: Vec<u64>, //; LATEST_SLASHED_EXIT_LENGTH], // Balances slashed at every withdrawal period
+	/// Balances slashed at every withdrawal period, of length `LATEST_SLASHED_EXIT_LENGTH`.
+	pub latest_slashed_balances: Vec<u64>,
+	/// Latest block header.
 	pub latest_block_header: BeaconBlockHeader,
+	/// Historical roots.
 	pub historical_roots: Vec<H256>,
 
 	// Ethereum 1.0 chain data
+	/// Latest eth1 data.
 	pub latest_eth1_data: Eth1Data,
+	/// Eth1 data votes.
 	pub eth1_data_votes: Vec<Eth1DataVote>,
+	/// Deposit index.
 	pub deposit_index: u64,
 }
 
@@ -92,6 +124,7 @@ pub struct BeaconState {
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[ssz(no_decode)]
+/// Historical batch information.
 pub struct HistoricalBatch {
 	/// Block roots
 	#[ssz(use_fixed)]
@@ -105,6 +138,7 @@ pub struct HistoricalBatch {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Fork information.
 pub struct Fork {
 	/// Previous fork version
 	pub previous_version: Version,
@@ -115,6 +149,7 @@ pub struct Fork {
 }
 
 impl BeaconState {
+	/// Get validator index from validator ID.
 	pub fn validator_index_by_id(&self, validator_id: &ValidatorId) -> Option<ValidatorIndex> {
 		for (i, validator) in self.validator_registry.iter().enumerate() {
 			if &validator.pubkey == validator_id {
@@ -125,6 +160,7 @@ impl BeaconState {
 		None
 	}
 
+	/// Get active validator indices for given epoch.
 	pub fn active_validator_indices(&self, epoch: Epoch) -> Vec<ValidatorIndex> {
 		self.validator_registry.iter()
 			.enumerate()
