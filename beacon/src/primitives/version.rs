@@ -14,104 +14,76 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-#[cfg(feature = "std")]
+#[cfg(feature = "serde")]
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
-use crypto::bls;
 use fixed_hash::construct_fixed_hash;
-#[cfg(feature = "std")]
+#[cfg(feature = "serde")]
 use impl_serde::serialize as bytes;
 
-const SIZE: usize = 96;
+const SIZE: usize = 4;
 
 construct_fixed_hash! {
 	/// Fixed 384-bit hash.
-	pub struct H768(SIZE);
+	pub struct H32(SIZE);
 }
 
-pub type Signature = H768;
+pub type Version = H32;
 
-#[cfg(feature = "std")]
-impl Serialize for H768 {
+#[cfg(feature = "serde")]
+impl Serialize for H32 {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
 		bytes::serialize(&self.0, serializer)
 	}
 }
 
-#[cfg(feature = "std")]
-impl<'de> Deserialize<'de> for H768 {
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for H32 {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
 		bytes::deserialize_check_len(deserializer, bytes::ExpectedLen::Exact(SIZE))
-			.map(|x| H768::from_slice(&x))
+			.map(|x| H32::from_slice(&x))
 	}
 }
 
-impl codec::Encode for H768 {
+#[cfg(feature = "parity-codec")]
+impl codec::Encode for H32 {
 	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
 		self.0.using_encoded(f)
 	}
 }
-impl codec::Decode for H768 {
+
+#[cfg(feature = "parity-codec")]
+impl codec::Decode for H32 {
 	fn decode<I: codec::Input>(input: &mut I) -> Option<Self> {
-		<[u8; SIZE] as codec::Decode>::decode(input).map(H768)
+		<[u8; SIZE] as codec::Decode>::decode(input).map(H32)
 	}
 }
 
-impl ssz::Encode for H768 {
+impl ssz::Encode for H32 {
 	fn encode_to<W: ::ssz::Output>(&self, dest: &mut W) {
 		dest.write(self.as_ref())
 	}
 }
-impl ssz::Decode for H768 {
+impl ssz::Decode for H32 {
 	fn decode_as<I: ::ssz::Input>(input: &mut I) -> Option<(Self, usize)> {
 		let mut vec = [0u8; SIZE];
 		if input.read(&mut vec[..SIZE]) != SIZE {
 			None
 		} else {
-			Some((H768::from(&vec), SIZE))
+			Some((H32::from(&vec), SIZE))
 		}
 	}
 }
 
-impl ssz::Prefixable for H768 {
+impl ssz::Prefixable for H32 {
 	fn prefixed() -> bool {
 		false
 	}
 }
 
-impl ssz::Composite for H768 { }
+impl ssz::Composite for H32 { }
 
-impl ssz::Hashable for H768 {
+impl ssz::Hashable for H32 {
 	fn hash<H: ::hash_db::Hasher>(&self) -> H::Out {
 		ssz::hash::merkleize::<H>(ssz::hash::chunkify(self.as_ref()))
-	}
-}
-
-impl H768 {
-	pub fn into_signature(&self) -> Option<bls::Signature> {
-		bls::Signature::from_bytes(self.as_ref()).ok()
-	}
-
-	pub fn into_aggregate_signature(&self) -> Option<bls::AggregateSignature> {
-		bls::AggregateSignature::from_bytes(self.as_ref()).ok()
-	}
-
-	pub fn from_signature(sig: bls::Signature) -> Self {
-		H768::from_slice(&sig.as_bytes())
-	}
-
-	pub fn from_aggregate_signature(sig: bls::AggregateSignature) -> Self {
-		H768::from_slice(&sig.as_bytes())
-	}
-}
-
-impl Into<Signature> for bls::Signature {
-	fn into(self) -> Signature {
-		Signature::from_signature(self)
-	}
-}
-
-impl Into<Signature> for bls::AggregateSignature {
-	fn into(self) -> Signature {
-		Signature::from_aggregate_signature(self)
 	}
 }

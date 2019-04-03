@@ -364,7 +364,7 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 
 		if *self.last_proposed_epoch.lock() < current_epoch {
 			debug!(target: "shasper", "Last proposed epoch {} is less than current epoch {}, submitting a new attestation", *self.last_proposed_epoch.lock(), current_epoch);
-			let validator_id = ValidatorId::from_public(public_key.clone());
+			let validator_id = primitives::from_public(public_key.clone());
 			let validator_index = match self.client.runtime_api().validator_index(&BlockId::Hash(chain_head.hash()), validator_id) {
 				Ok(validator_index) => validator_index,
 				Err(_) => {
@@ -456,7 +456,7 @@ impl<B: Block<Hash=H256, Extrinsic=UncheckedExtrinsic>, C, E, I, P, Error> SlotW
 			},
 		};
 
-		let proposal_work = if proposer == ValidatorId::from_public(public_key.clone()) {
+		let proposal_work = if proposer == primitives::from_public(public_key.clone()) {
 			debug!(target: "aura", "Starting authorship at slot {}; timestamp = {}",
 				   slot_num, timestamp);
 
@@ -582,7 +582,7 @@ impl<B: Block<Hash=H256>, C> Verifier<B> for ShasperVerifier<C> where
 		} else {
 			let pre_hash = header.hash();
 			let to_sign = (slot_num, pre_hash).encode();
-			let public = if let Some(public) = proposer.into_public() {
+			let public = if let Some(public) = primitives::into_public(&proposer) {
 				public
 			} else {
 				return Err("Bad public key for header author".to_string())

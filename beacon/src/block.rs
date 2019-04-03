@@ -14,19 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{H256, Signature, H768};
 use ssz::Hashable;
 use ssz_derive::Ssz;
-use serde_derive::{Serialize, Deserialize};
 use hash_db::Hasher;
 
+#[cfg(feature = "serde")]
+use serde_derive::{Serialize, Deserialize};
+#[cfg(feature = "parity-codec")]
+use codec::{Encode, Decode};
+
+use crate::primitives::{H256, Signature, H768};
 use crate::validator::{VoluntaryExit, Transfer};
 use crate::attestation::Attestation;
 use crate::slashing::{AttesterSlashing, ProposerSlashing};
 use crate::eth1::{Deposit, Eth1Data};
 
-#[derive(Ssz)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[derive(Ssz, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz(no_decode)]
 pub struct BeaconBlock {
 	pub slot: u64,
@@ -39,8 +45,10 @@ pub struct BeaconBlock {
 	pub signature: Signature,
 }
 
-#[derive(Ssz, PartialEq, Eq, Clone)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[derive(Ssz, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct BeaconBlockHeader {
     pub slot: u64,
     pub previous_block_root: H256,
@@ -63,8 +71,10 @@ impl BeaconBlockHeader {
 	}
 }
 
-#[derive(Ssz)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[derive(Ssz, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz(no_decode)]
 pub struct BeaconBlockBody {
 	pub randao_reveal: H768,

@@ -50,7 +50,7 @@ members = [
 	"consensus",
 	"crypto",
 	"casper",
-	"serenity",
+	"beacon",
 	"yamltests",
 	"util/ssz",
 	"util/ssz-derive",

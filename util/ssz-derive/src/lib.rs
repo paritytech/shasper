@@ -80,9 +80,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
 					let mut l = 0;
 					let len = if Self::prefixed() {
-						use ::ssz::Decode;
-
-						let (len, i) = <u32>::decode_as(#input_)?;
+						let (len, i) = <u32 as ::ssz::Decode>::decode_as(#input_)?;
 						l += i;
 						Some(len as usize)
 					} else {
@@ -121,7 +119,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 						let #dest_ = &mut bytes;
 						#encoding
 					}
-					(bytes.len() as u32).encode_to(d);
+					::ssz::Encode::encode_to(&(bytes.len() as u32), d);
 					d.write(&bytes);
 				} else {
 					let #dest_ = d;

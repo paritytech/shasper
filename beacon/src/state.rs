@@ -14,10 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{H256, ValidatorId, Version};
 use ssz_derive::Ssz;
+
+#[cfg(feature = "serde")]
 use serde_derive::{Serialize, Deserialize};
+#[cfg(feature = "parity-codec")]
+use codec::{Encode, Decode};
+
 use crate::{Slot, Epoch, Timestamp, ValidatorIndex, Shard};
+use crate::primitives::{H256, ValidatorId, Version};
 use crate::eth1::{Eth1Data, Eth1DataVote};
 use crate::attestation::{
 	PendingAttestation, Crosslink,
@@ -25,9 +30,11 @@ use crate::attestation::{
 use crate::validator::Validator;
 use crate::block::BeaconBlockHeader;
 
-#[derive(Ssz, Clone, Eq, PartialEq)]
+#[derive(Ssz, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz(no_decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
 pub struct BeaconState {
 	// Misc
 	pub slot: Slot,
@@ -80,8 +87,10 @@ pub struct BeaconState {
 	pub deposit_index: u64,
 }
 
-#[derive(Ssz, Clone, Eq, PartialEq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[derive(Ssz, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz(no_decode)]
 pub struct HistoricalBatch {
 	/// Block roots
@@ -92,8 +101,10 @@ pub struct HistoricalBatch {
 	pub state_roots: Vec<H256>, //; SLOTS_PER_HISTORICAL_ROOT],
 }
 
-#[derive(Ssz, Clone, Eq, PartialEq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug), serde(deny_unknown_fields))]
+#[derive(Ssz, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Fork {
 	/// Previous fork version
 	pub previous_version: Version,

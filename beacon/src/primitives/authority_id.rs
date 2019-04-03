@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-#[cfg(feature = "std")]
+#[cfg(feature = "serde")]
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
-use crypto::bls;
 use fixed_hash::construct_fixed_hash;
-#[cfg(feature = "std")]
+#[cfg(feature = "serde")]
 use impl_serde::serialize as bytes;
 
 const SIZE: usize = 48;
@@ -28,16 +27,16 @@ construct_fixed_hash! {
 	pub struct H384(SIZE);
 }
 
-pub type AuthorityId = H384;
+pub type ValidatorId = H384;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "serde")]
 impl Serialize for H384 {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
 		bytes::serialize(&self.0, serializer)
 	}
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for H384 {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
 		bytes::deserialize_check_len(deserializer, bytes::ExpectedLen::Exact(SIZE))
@@ -45,11 +44,14 @@ impl<'de> Deserialize<'de> for H384 {
 	}
 }
 
+#[cfg(feature = "parity-codec")]
 impl codec::Encode for H384 {
 	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
 		self.0.using_encoded(f)
 	}
 }
+
+#[cfg(feature = "parity-codec")]
 impl codec::Decode for H384 {
 	fn decode<I: codec::Input>(input: &mut I) -> Option<Self> {
 		<[u8; SIZE] as codec::Decode>::decode(input).map(H384)
@@ -83,22 +85,6 @@ impl ssz::Composite for H384 { }
 impl ssz::Hashable for H384 {
 	fn hash<H: ::hash_db::Hasher>(&self) -> H::Out {
 		ssz::hash::merkleize::<H>(ssz::hash::chunkify(self.as_ref()))
-	}
-}
-
-impl H384 {
-	pub fn into_public(&self) -> Option<bls::Public> {
-		bls::Public::from_bytes(self.as_ref()).ok()
-	}
-
-	pub fn from_public(public: bls::Public) -> Self {
-		H384::from_slice(&public.as_bytes())
-	}
-}
-
-impl Into<AuthorityId> for bls::Public {
-	fn into(self) -> AuthorityId {
-		AuthorityId::from_public(self)
 	}
 }
 
