@@ -28,6 +28,7 @@ use crate::Config;
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Validator record.
 pub struct Validator {
 	/// BLS public key
 	pub pubkey: ValidatorId,
@@ -46,6 +47,7 @@ pub struct Validator {
 }
 
 impl Validator {
+	/// Activate the validator.
 	pub fn activate<C: Config>(&mut self, delayed_activation_exit_epoch: u64, is_genesis: bool, config: &C) {
 		if is_genesis {
 			self.activation_epoch = config.genesis_epoch();
@@ -54,10 +56,12 @@ impl Validator {
 		}
 	}
 
+	/// Initiate exit for this validator.
 	pub fn initiate_exit(&mut self) {
 		self.initiated_exit = true;
 	}
 
+	/// Exit the validator.
 	pub fn exit(&mut self, delayed_activation_exit_epoch: u64) {
 		if self.exit_epoch <= delayed_activation_exit_epoch {
 			return
@@ -66,6 +70,7 @@ impl Validator {
 		}
 	}
 
+	/// Whether the validator is active in given epoch.
 	pub fn is_active(&self, epoch: u64) -> bool {
 		self.activation_epoch <= epoch && epoch < self.exit_epoch
 	}
@@ -75,6 +80,7 @@ impl Validator {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Block voluntary exit.
 pub struct VoluntaryExit {
 	/// Minimum epoch for processing exit
 	pub epoch: u64,
@@ -89,6 +95,7 @@ pub struct VoluntaryExit {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Block transfer.
 pub struct Transfer {
 	/// Sender index
 	pub sender: u64,

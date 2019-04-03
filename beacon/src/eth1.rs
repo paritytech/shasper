@@ -29,6 +29,7 @@ use crate::Config;
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Eth1 data.
 pub struct Eth1Data {
 	/// Root of the deposit tree
 	pub deposit_root: H256,
@@ -40,6 +41,7 @@ pub struct Eth1Data {
 }
 
 impl Eth1Data {
+	/// Empty eth1 data.
 	pub fn empty() -> Self {
 		Self {
 			deposit_root: H256::default(),
@@ -54,6 +56,7 @@ impl Eth1Data {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Vote for eth1 data.
 pub struct Eth1DataVote {
 	/// Data being voted for
 	pub eth1_data: Eth1Data,
@@ -66,6 +69,7 @@ pub struct Eth1DataVote {
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[ssz(no_decode)]
+/// Block deposit.
 pub struct Deposit {
 	/// Branch in the deposit tree
 	#[ssz(use_fixed)]
@@ -77,6 +81,7 @@ pub struct Deposit {
 }
 
 impl Deposit {
+	/// Whether the merkle chain is valid.
 	pub fn is_merkle_valid<C: Config>(&self, deposit_root: &H256, config: &C) -> bool {
 		let merkle = MerkleProof {
 			leaf: config.hash(&::ssz::Encode::encode(&self.deposit_data)),
@@ -89,6 +94,7 @@ impl Deposit {
 		merkle.is_valid(config)
 	}
 
+	/// Whether proof signature is valid.
 	pub fn is_proof_valid<C: Config>(&self, domain: u64, config: &C) -> bool {
 		config.bls_verify(
 			&self.deposit_data.deposit_input.pubkey,
@@ -103,6 +109,7 @@ impl Deposit {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Deposit data.
 pub struct DepositData {
 	/// Amount in Gwei
 	pub amount: u64,
@@ -116,6 +123,7 @@ pub struct DepositData {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Deposit input.
 pub struct DepositInput {
 	/// BLS pubkey
 	pub pubkey: ValidatorId,
@@ -125,15 +133,22 @@ pub struct DepositInput {
 	pub proof_of_possession: Signature,
 }
 
+/// Merkle proof.
 pub struct MerkleProof<'a> {
+	/// Leaf of the proof.
 	pub leaf: H256,
+	/// The proof chain.
 	pub proof: &'a [H256],
+	/// Root of the proof.
 	pub root: H256,
+	/// Depth of the proof.
 	pub depth: usize,
+	/// Index of the proof.
 	pub index: usize,
 }
 
 impl<'a> MerkleProof<'a> {
+	/// Whether the merkle proof is valid.
 	pub fn is_valid<C: Config>(&self, config: &C) -> bool {
 		if self.proof.len() != config.deposit_contract_tree_depth() {
 			return false

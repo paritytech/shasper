@@ -71,6 +71,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(self.total_balance(&self.attesting_indices(attestations)?))
 	}
 
+	/// Update casper justification and finalization.
 	pub fn update_justification_and_finalization(&mut self) -> Result<(), Error> {
 		let mut new_justified_epoch = self.state.current_justified_epoch;
 		let mut new_finalized_epoch = self.state.finalized_epoch;
@@ -117,6 +118,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Update crosslink data in state.
 	pub fn update_crosslinks(&mut self) -> Result<(), Error> {
 		let current_epoch = self.current_epoch();
 		let previous_epoch = current_epoch.saturating_sub(1);
@@ -139,6 +141,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Update voting period for eth1.
 	pub fn update_eth1_period(&mut self) {
 		if (self.current_epoch() + 1) % self.config.epochs_per_eth1_voting_period() == 0 {
 			for eth1_data_vote in &self.state.eth1_data_votes {
@@ -282,6 +285,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok((rewards, penalties))
 	}
 
+	/// Update validator rewards.
 	pub fn update_rewards(&mut self) -> Result<(), Error> {
 		let delta1 = self.justification_and_finalization_deltas()?;
 		let delta2 = self.crosslink_deltas()?;
@@ -292,6 +296,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Update validator ejections.
 	pub fn update_ejections(&mut self) {
 		for index in self.state.active_validator_indices(self.current_epoch()) {
 			if self.state.validator_balances[index as usize] < self.config.ejection_balance() {
@@ -354,6 +359,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		self.state.validator_registry_update_epoch = current_epoch;
 	}
 
+	/// Update validator registry and shuffling data.
 	pub fn update_registry_and_shuffling_data(&mut self) -> Result<(), Error> {
 		self.state.previous_shuffling_epoch = self.state.current_shuffling_epoch;
 		self.state.previous_shuffling_start_shard = self.state.current_shuffling_start_shard;
@@ -379,6 +385,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Update validator slashings.
 	pub fn update_slashings(&mut self) {
 		let current_epoch = self.current_epoch();
 		let active_validator_indices = self.state.active_validator_indices(current_epoch);
@@ -404,6 +411,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		self.state.validator_registry[index as usize].withdrawable_epoch = self.current_epoch() + self.config.min_validator_withdrawability_delay();
 	}
 
+	/// Process the exit queue.
 	pub fn update_exit_queue(&mut self) {
 		let mut eligible_indices = (0..(self.state.validator_registry.len() as u64)).filter(|index| {
 			if self.state.validator_registry[*index as usize].withdrawable_epoch != self.config.far_future_epoch() {
@@ -424,6 +432,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 	}
 
+	/// Finalize per-epoch update.
 	pub fn update_finalize(&mut self) -> Result<(), Error> {
 		let current_epoch = self.current_epoch();
 		let next_epoch = current_epoch + 1;

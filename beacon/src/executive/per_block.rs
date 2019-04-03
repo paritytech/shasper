@@ -28,6 +28,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Process a block header.
 	pub fn process_block_header(&mut self, block: &BeaconBlock) -> Result<(), Error> {
 		if block.slot != self.state.slot {
 			return Err(Error::BlockSlotInvalid)
@@ -48,6 +49,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Process randao information given in a block.
 	pub fn process_randao(&mut self, block: &BeaconBlock) -> Result<(), Error> {
 		let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
 
@@ -61,6 +63,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Process eth1 data vote given in a block.
 	pub fn process_eth1_data(&mut self, block: &BeaconBlock) {
 		for eth1_data_vote in &mut self.state.eth1_data_votes {
 			if eth1_data_vote.eth1_data == block.body.eth1_data {
@@ -75,6 +78,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		});
 	}
 
+	/// Push a new `ProposerSlashing` to the state.
 	pub fn push_proposer_slashing(&mut self, proposer_slashing: ProposerSlashing) -> Result<(), Error> {
 		if self.config.slot_to_epoch(proposer_slashing.header_a.slot) != self.config.slot_to_epoch(proposer_slashing.header_b.slot) {
 			return Err(Error::ProposerSlashingInvalidSlot)
@@ -162,6 +166,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		)
 	}
 
+	/// Push a new `AttesterSlashing` to the state.
 	pub fn push_attester_slashing(&mut self, attester_slashing: AttesterSlashing) -> Result<(), Error> {
 		let attestation1 = attester_slashing.slashable_attestation_a;
 		let attestation2 = attester_slashing.slashable_attestation_b;
@@ -200,6 +205,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Push a new `Attestation` to the state.
 	pub fn push_attestation(&mut self, attestation: Attestation) -> Result<(), Error> {
 		if attestation.data.slot < self.config.genesis_slot() {
 			return Err(Error::AttestationTooFarInHistory)
@@ -298,6 +304,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Push a new `Deposit` to the state.
 	pub fn push_deposit(&mut self, deposit: Deposit) -> Result<(), Error> {
 		if deposit.index != self.state.deposit_index {
 			return Err(Error::DepositIndexMismatch)
@@ -339,6 +346,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Push a new `VoluntaryExit` to the state.
 	pub fn push_voluntary_exit(&mut self, exit: VoluntaryExit) -> Result<(), Error> {
 		{
 			let validator = &self.state.validator_registry[exit.validator_index as usize];
@@ -373,6 +381,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Push a new `Transfer` to the state.
 	pub fn push_transfer(&mut self, transfer: Transfer) -> Result<(), Error> {
 		if self.state.validator_balances[transfer.sender as usize] < core::cmp::max(transfer.amount, transfer.fee) {
 			return Err(Error::TransferNoFund)

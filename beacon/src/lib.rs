@@ -14,7 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+//! Minimal beacon chain state transition implementation for Serenity.
+
 #![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(alloc_prelude), feature(prelude_import))]
+
+#![warn(missing_docs)]
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -56,13 +60,20 @@ pub use config::*;
 pub use executive::*;
 pub use primitives::*;
 
+/// Gwei as in the currency ETH.
 pub type Gwei = u64;
+/// Slot type.
 pub type Slot = u64;
+/// Epoch type.
 pub type Epoch = u64;
+/// Shard type.
 pub type Shard = u64;
+/// Timestamp type.
 pub type Timestamp = u64;
+/// Index type for validators.
 pub type ValidatorIndex = u64;
 
+/// Given a block, execute based on a parent state.
 pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
 	let mut executive = Executive::new(state, config);
 

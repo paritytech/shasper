@@ -27,6 +27,7 @@ construct_fixed_hash! {
 	pub struct H32(SIZE);
 }
 
+/// Beacon fork version.
 pub type Version = H32;
 
 #[cfg(feature = "serde")]

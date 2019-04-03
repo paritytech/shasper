@@ -28,6 +28,7 @@ use crate::Config;
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Crosslink.
 pub struct Crosslink {
 	/// Epoch number
 	pub epoch: u64,
@@ -39,6 +40,7 @@ pub struct Crosslink {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Attestation.
 pub struct Attestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -54,6 +56,7 @@ pub struct Attestation {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Pending attestation.
 pub struct PendingAttestation {
 	/// Attester aggregation bitfield
 	pub aggregation_bitfield: BitField,
@@ -69,6 +72,7 @@ pub struct PendingAttestation {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Attestation data.
 pub struct AttestationData {
 	// LMD GHOST vote
 	/// Slot number
@@ -94,10 +98,12 @@ pub struct AttestationData {
 }
 
 impl AttestationData {
+	/// Whether it is double vote with another attestation.
 	pub fn is_double_vote<C: Config>(&self, other: &AttestationData, config: &C) -> bool {
 		config.slot_to_epoch(self.slot) == config.slot_to_epoch(other.slot)
 	}
 
+	/// Whether it is surround vote with another attestation.
 	pub fn is_surround_vote<C: Config>(&self, other: &AttestationData, config: &C) -> bool {
 		self.source_epoch < other.source_epoch &&
 			config.slot_to_epoch(other.slot) < config.slot_to_epoch(self.slot)
@@ -108,6 +114,7 @@ impl AttestationData {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Attestation data with custody bit.
 pub struct AttestationDataAndCustodyBit {
 	/// Attestation data
 	pub data: AttestationData,

@@ -27,6 +27,7 @@ construct_fixed_hash! {
 	pub struct H384(SIZE);
 }
 
+/// BLS 384-bit public key.
 pub type ValidatorId = H384;
 
 #[cfg(feature = "serde")]

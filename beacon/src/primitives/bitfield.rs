@@ -26,6 +26,7 @@ use serde::{Serialize, Serializer, Deserialize, Deserializer};
 #[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Variable length bitfield.
 pub struct BitField(pub Vec<u8>);
 
 #[cfg(feature = "serde")]
@@ -71,10 +72,12 @@ impl ssz::Hashable for BitField {
 }
 
 impl BitField {
+	/// Whether bit as given index is `1`.
 	pub fn has_voted(&self, index: usize) -> bool {
 		(self.0[index / 8] >> (index % 8)) == 1
 	}
 
+	/// Verify that the bitfield is of given size.
 	pub fn verify(&self, size: usize) -> bool {
 		if self.0.len() != (size + 7) / 8 {
 			return false

@@ -11,59 +11,111 @@ use crate::primitives::{Signature, H256, ValidatorId, Version};
 use crate::{Epoch, Slot, Gwei, Shard, Fork, ValidatorIndex};
 use crate::util::{split_offset, to_usize};
 
+/// Constants used in beacon block.
 pub trait Config {
+	/// Hash function.
 	type Hasher: Hasher<Out=H256>;
 
+	/// Shard count.
 	fn shard_count(&self) -> usize;
+	/// Target committee size.
 	fn target_committee_size(&self) -> usize;
+	/// Maximum balance churn quotient.
 	fn max_balance_churn_quotient(&self) -> Gwei;
+	/// Maximum indices per slashable vote.
 	fn max_indices_per_slashable_vote(&self) -> usize;
+	/// Maximum exit dequeues per epoch.
 	fn max_exit_dequeues_per_epoch(&self) -> usize;
+	/// Shuffle round count.
 	fn shuffle_round_count(&self) -> usize;
+	/// Deposit contract tree depth.
 	fn deposit_contract_tree_depth(&self) -> usize;
+	/// Minimum deposit amount.
 	fn min_deposit_amount(&self) -> Gwei;
+	/// Maximum deposit amount.
 	fn max_deposit_amount(&self) -> Gwei;
+	/// Fork choice balance increment.
 	fn fork_choice_balance_increment(&self) -> Gwei;
+	/// Ejection balance.
 	fn ejection_balance(&self) -> Gwei;
+	/// Genesis fork version.
 	fn genesis_fork_version(&self) -> Version;
+	/// Genesis slot.
 	fn genesis_slot(&self) -> Slot;
+	/// Genesis epoch.
 	fn genesis_epoch(&self) -> Epoch { self.slot_to_epoch(self.genesis_slot()) }
+	/// Genesis start shard.
 	fn genesis_start_shard(&self) -> Shard;
+	/// BLS withdrawal prefix byte.
 	fn bls_withdrawal_prefix_byte(&self) -> u8;
+	/// Seconds per slot.
 	fn seconds_per_slot(&self) -> u64;
+	/// Minimum attestation inclusion delay.
 	fn min_attestation_inclusion_delay(&self) -> Slot;
+	/// Slots per epoch.
 	fn slots_per_epoch(&self) -> Slot;
+	/// Minimum seed lookahead.
 	fn min_seed_lookahead(&self) -> Epoch;
+	/// Activation exit delay.
 	fn activation_exit_delay(&self) -> Epoch;
+	/// Epoch per eth1 voting period.
 	fn epochs_per_eth1_voting_period(&self) -> Epoch;
+	/// Slots per historical root.
 	fn slots_per_historical_root(&self) -> usize;
+	/// Minimal validator withdrawability delay.
 	fn min_validator_withdrawability_delay(&self) -> Epoch;
+	/// Persistent committee period.
 	fn persistent_committee_period(&self) -> Epoch;
+	/// Latest randao mixes length.
 	fn latest_randao_mixes_length(&self) -> usize;
+	/// Latest active index roots length.
 	fn latest_active_index_roots_length(&self) -> usize;
+	/// Latest slashed exit length.
 	fn latest_slashed_exit_length(&self) -> usize;
+	/// Base reward quotient.
 	fn base_reward_quotient(&self) -> Gwei;
+	/// Whistleblower reward quotient.
 	fn whistleblower_reward_quotient(&self) -> Gwei;
+	/// Attestation inclusion reward quotient.
 	fn attestation_inclusion_reward_quotient(&self) -> Gwei;
+	/// Inactivity penalty quotient.
 	fn inactivity_penalty_quotient(&self) -> Gwei;
+	/// Minimal penalty quotient.
 	fn min_penalty_quotient(&self) -> Gwei;
+	/// Maximum proposer slashings per block.
 	fn max_proposer_slashings(&self) -> usize;
+	/// Maximum attester slashings per block.
 	fn max_attester_slashings(&self) -> usize;
+	/// Maximum attestations per block.
 	fn max_attestations(&self) -> usize;
+	/// Maximum deposits per block.
 	fn max_deposits(&self) -> usize;
+	/// Maximum voluntary exits per block.
 	fn max_voluntary_exits(&self) -> usize;
+	/// Maximum transfers per block.
 	fn max_transfers(&self) -> usize;
+	/// Beacon block domain.
 	fn domain_beacon_block(&self) -> u64;
+	/// Randao domain.
 	fn domain_randao(&self) -> u64;
+	/// Attestation domain.
 	fn domain_attestation(&self) -> u64;
+	/// Deposit domain.
 	fn domain_deposit(&self) -> u64;
+	/// Voluntary exit domain.
 	fn domain_voluntary_exit(&self) -> u64;
+	/// Transfer domain.
 	fn domain_transfer(&self) -> u64;
+	/// Far future epoch.
 	fn far_future_epoch(&self) -> Epoch;
 
+	/// Get domain id for given fork, epoch and type.
 	fn domain_id(&self, fork: &Fork, epoch: Epoch, typ: u64) -> u64;
+	/// Verify BLS signature.
 	fn bls_verify(&self, pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool;
+	/// Aggregate BLS public keys.
 	fn bls_aggregate_pubkeys(&self, pubkeys: &[ValidatorId]) -> Option<ValidatorId>;
+	/// Verify multiple BLS signatures.
 	fn bls_verify_multiple(&self, pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool;
 
 	/// Hash bytes with a hasher.
@@ -89,14 +141,17 @@ pub trait Config {
 		Self::Hasher::hash(&v)
 	}
 
+	/// Convert slot into epoch.
 	fn slot_to_epoch(&self, slot: Slot) -> Epoch {
 		slot / self.slots_per_epoch()
 	}
 
+	/// Get start slot for an epoch.
 	fn epoch_start_slot(&self, epoch: Epoch) -> Slot {
 		epoch.saturating_mul(self.slots_per_epoch())
 	}
 
+	/// Get the permuted index.
 	fn permuted_index(&self, mut index: usize, seed: &H256, len: usize) -> usize {
 		if index >= len {
 			index = index % len;
@@ -123,6 +178,7 @@ pub trait Config {
 		index
 	}
 
+	/// Compute committee.
 	fn compute_committee(&self, validators: &[ValidatorIndex], seed: &H256, index: usize, total_committees: usize) -> Vec<ValidatorIndex> {
 		let start_offset = split_offset(validators.len(), total_committees, index);
 		let end_offset = split_offset(validators.len(), total_committees, index + 1);
@@ -134,6 +190,7 @@ pub trait Config {
 		ret
 	}
 
+	/// Get epoch committee count.
 	fn epoch_committee_count(&self, active_validator_count: usize) -> usize {
 		core::cmp::max(
 			1,
@@ -145,6 +202,7 @@ pub trait Config {
 	}
 }
 
+/// Keccak256 hasher.
 pub struct KeccakHasher;
 
 impl Hasher for KeccakHasher {
@@ -163,51 +221,97 @@ impl Hasher for KeccakHasher {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Config that does not verify BLS signature.
 pub struct NoVerificationConfig {
+	/// Shard count.
 	pub shard_count: usize,
+	/// Target committee size.
 	pub target_committee_size: usize,
+	/// Maximum balance churn quotient.
 	pub max_balance_churn_quotient: Gwei,
+	/// Maximum indices per slashable vote.
 	pub max_indices_per_slashable_vote: usize,
+	/// Maximum exit dequeues per epoch.
 	pub max_exit_dequeues_per_epoch: usize,
+	/// Shuffle round count.
 	pub shuffle_round_count: usize,
+	/// Deposit contract tree depth.
 	pub deposit_contract_tree_depth: usize,
+	/// Minimum deposit amount.
 	pub min_deposit_amount: Gwei,
+	/// Maximum deposit amount.
 	pub max_deposit_amount: Gwei,
+	/// Fork choice balance increment.
 	pub fork_choice_balance_increment: Gwei,
+	/// Ejection balance.
 	pub ejection_balance: Gwei,
+	/// Genesis fork version.
 	pub genesis_fork_version: [u8; 4],
+	/// Genesis slot.
 	pub genesis_slot: Slot,
+	/// Genesis start shard.
 	pub genesis_start_shard: Shard,
+	/// BLS withdrawal prefix byte.
 	pub bls_withdrawal_prefix_byte: [u8; 1],
+	/// Seconds per slot.
 	pub seconds_per_slot: u64,
+	/// Minimum attestation inclusion delay.
 	pub min_attestation_inclusion_delay: Slot,
+	/// Slots per epoch.
 	pub slots_per_epoch: Slot,
+	/// Minimum seed lookahead.
 	pub min_seed_lookahead: Epoch,
+	/// Activation exit delay.
 	pub activation_exit_delay: Epoch,
+	/// Epoch per eth1 voting period.
 	pub epochs_per_eth1_voting_period: Epoch,
+	/// Slots per historical root.
 	pub slots_per_historical_root: usize,
+	/// Minimal validator withdrawability delay.
 	pub min_validator_withdrawability_delay: Epoch,
+	/// Persistent committee period.
 	pub persistent_committee_period: Epoch,
+	/// Latest randao mixes length.
 	pub latest_randao_mixes_length: usize,
+	/// Latest active index roots length.
 	pub latest_active_index_roots_length: usize,
+	/// Latest slashed exit length.
 	pub latest_slashed_exit_length: usize,
+	/// Base reward quotient.
 	pub base_reward_quotient: Gwei,
+	/// Whistleblower reward quotient.
 	pub whistleblower_reward_quotient: Gwei,
+	/// Attestation inclusion reward quotient.
 	pub attestation_inclusion_reward_quotient: Gwei,
+	/// Inactivity penalty quotient.
 	pub inactivity_penalty_quotient: Gwei,
+	/// Minimal penalty quotient.
 	pub min_penalty_quotient: Gwei,
+	/// Maximum proposer slashings per block.
 	pub max_proposer_slashings: usize,
+	/// Maximum attester slashings per block.
 	pub max_attester_slashings: usize,
+	/// Maximum attestations per block.
 	pub max_attestations: usize,
+	/// Maximum deposits per block.
 	pub max_deposits: usize,
+	/// Maximum voluntary exits per block.
 	pub max_voluntary_exits: usize,
+	/// Maximum transfers per block.
 	pub max_transfers: usize,
+	/// Beacon block domain.
 	pub domain_beacon_block: u64,
+	/// Randao domain.
 	pub domain_randao: u64,
+	/// Attestation domain.
 	pub domain_attestation: u64,
+	/// Deposit domain.
 	pub domain_deposit: u64,
+	/// Voluntary exit domain.
 	pub domain_voluntary_exit: u64,
+	/// Transfer domain.
 	pub domain_transfer: u64,
+	/// Far future epoch.
 	pub far_future_epoch: Epoch,
 }
 
@@ -285,6 +389,7 @@ impl Config for NoVerificationConfig {
 }
 
 impl NoVerificationConfig {
+	/// Small config with 8 shards.
 	pub fn small() -> Self {
 		Self {
 			shard_count: 8,
@@ -335,6 +440,7 @@ impl NoVerificationConfig {
 		}
 	}
 
+	/// Full config with 1024 shards.
 	pub fn full() -> Self {
 		Self {
 			shard_count: 1024,
