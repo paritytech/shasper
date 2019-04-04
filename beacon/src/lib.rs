@@ -140,6 +140,10 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 			for transfer in &block.body.transfers {
 				executive.push_transfer(transfer.clone())?;
 			}
+
+			if !executive.verify_state_root(&block) {
+				return Err(Error::InvalidStateRoot)
+			}
 		}
 	}
 

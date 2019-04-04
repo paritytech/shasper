@@ -157,4 +157,11 @@ mod tests {
 		let coll = serde_yaml::from_str(&include_str!("../res/eth2.0-tests/state/sanity-check_small-config_32-vals.yaml")).unwrap();
 		run_collection(coll, &config, None);
 	}
+
+	#[test]
+	fn sanity_check_full_config_100_vals() {
+		let config = NoVerificationConfig::full();
+		let coll = serde_yaml::from_str(&include_str!("../res/eth2.0-tests/state/sanity-check_default-config_100-vals.yaml")).unwrap();
+		run_collection(coll, &config, None);
+	}
 }

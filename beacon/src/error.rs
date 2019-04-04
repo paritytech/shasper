@@ -98,4 +98,6 @@ pub enum Error {
 	TooManyVoluntaryExits,
 	/// Too many transfers in a block.
 	TooManyTransfers,
+	/// Block state root is invalid.
+	InvalidStateRoot,
 }

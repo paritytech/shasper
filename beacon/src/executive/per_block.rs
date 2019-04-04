@@ -419,4 +419,9 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		Ok(())
 	}
+
+	/// Verify the block's `state_root`.
+	pub fn verify_state_root(&self, block: &BeaconBlock) -> bool {
+		self.state.hash::<C::Hasher>() == block.state_root
+	}
 }
