@@ -55,6 +55,6 @@ pub use self::codec::{Input, Output, Encode, Decode, Prefixable, Fixed};
 pub use self::hash::{Hashable, Composite};
 
 /// Trait that allows zero-copy read/write of value-references to/from slices in LE format.
-pub trait Ssz: Decode + Encode + Hashable {}
+pub trait Ssz: Decode + Encode {}
 
-impl<S: Encode + Decode + Hashable> Ssz for S {}
+impl<S: Encode + Decode> Ssz for S {}

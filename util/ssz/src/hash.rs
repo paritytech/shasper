@@ -2,19 +2,19 @@ use primitive_types::{U256, H256, H160};
 use hash_db::Hasher;
 use crate::{Encode, Fixed};
 
-pub trait Hashable {
-	fn hash<H: Hasher>(&self) -> H::Out;
-	fn truncated_hash<H: Hasher>(&self) -> H::Out {
-		self.hash::<H>()
+pub trait Hashable<H: Hasher> {
+	fn hash(&self) -> H::Out;
+	fn truncated_hash(&self) -> H::Out {
+		self.hash()
 	}
 }
 
-pub trait Composite: Hashable { }
+pub trait Composite { }
 
 macro_rules! impl_basic_array {
 	( $t:ty, $( $n:expr )* ) => { $(
-		impl Hashable for [$t; $n] {
-			fn hash<H: Hasher>(&self) -> H::Out {
+		impl<H: Hasher> Hashable<H> for [$t; $n] {
+			fn hash(&self) -> H::Out {
 				merkleize::<H>(pack(self.as_ref()))
 			}
 		}
@@ -23,8 +23,8 @@ macro_rules! impl_basic_array {
 
 macro_rules! impl_basic {
 	( $( $t:ty ),* ) => { $(
-		impl Hashable for $t {
-			fn hash<H: Hasher>(&self) -> H::Out {
+		impl<H: Hasher> Hashable<H> for $t {
+			fn hash(&self) -> H::Out {
 				merkleize::<H>(pack(&[*self]))
 			}
 		}
@@ -34,20 +34,20 @@ macro_rules! impl_basic {
 						  30 31 32 40 48 56 64 72 96 128 160 192
 						  224 256 1024 8192);
 
-		impl<'a> Hashable for Fixed<'a, $t> {
-			fn hash<H: Hasher>(&self) -> H::Out {
+		impl<'a, H: Hasher> Hashable<H> for Fixed<'a, $t> {
+			fn hash(&self) -> H::Out {
 				merkleize::<H>(pack(self.0.as_ref()))
 			}
 		}
 
-		impl Hashable for Vec<$t> {
-			fn hash<H: Hasher>(&self) -> H::Out {
+		impl<H: Hasher> Hashable<H> for Vec<$t> {
+			fn hash(&self) -> H::Out {
 				mix_in_length::<H>(merkleize::<H>(pack(self.as_ref())), self.len() as u32)
 			}
 		}
 
-		impl Hashable for [$t] {
-			fn hash<H: Hasher>(&self) -> H::Out {
+		impl<H: Hasher> Hashable<H> for [$t] {
+			fn hash(&self) -> H::Out {
 				mix_in_length::<H>(merkleize::<H>(pack(self.as_ref())), self.len() as u32)
 			}
 		}
@@ -60,10 +60,10 @@ macro_rules! impl_composite_array {
 	( $( $n:expr )* ) => { $(
 		impl<T: Composite> Composite for [T; $n] { }
 
-		impl<T: Composite> Hashable for [T; $n] {
-			fn hash<H: Hasher>(&self) -> H::Out {
+		impl<T: Composite + Hashable<H>, H: Hasher> Hashable<H> for [T; $n] {
+			fn hash(&self) -> H::Out {
 				let hashes = self.iter()
-					.map(|v| hash_to_array(v.hash::<H>()))
+					.map(|v| hash_to_array(Hashable::<H>::hash(v)))
 					.collect::<Vec<_>>();
 				merkleize::<H>(hashes)
 			}
@@ -78,10 +78,10 @@ impl_composite_array!(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
 
 impl<'a, T: Composite> Composite for Fixed<'a, T> { }
 
-impl<'a, T: Composite> Hashable for Fixed<'a, T> {
-	fn hash<H: Hasher>(&self) -> H::Out {
+impl<'a, T: Composite + Hashable<H>, H: Hasher> Hashable<H> for Fixed<'a, T> {
+	fn hash(&self) -> H::Out {
 		let hashes = self.0.iter()
-			.map(|v| hash_to_array(v.hash::<H>()))
+			.map(|v| hash_to_array(Hashable::<H>::hash(v)))
 			.collect::<Vec<_>>();
 		merkleize::<H>(hashes)
 	}
@@ -89,34 +89,34 @@ impl<'a, T: Composite> Hashable for Fixed<'a, T> {
 
 macro_rules! impl_tuple {
 	($one:ident,) => {
-		impl<$one: Hashable> Hashable for ($one,) {
-			fn hash<H: Hasher>(&self) -> H::Out {
+		impl<H: Hasher, $one: Hashable<H>> Hashable<H> for ($one,) {
+			fn hash(&self) -> H::Out {
 				let mut hashes = Vec::new();
-				hashes.push(hash_to_array(self.0.hash::<H>()));
+				hashes.push(hash_to_array(Hashable::<H>::hash(&self.0)));
 				merkleize::<H>(hashes)
 			}
 		}
 
-		impl<$one: Hashable> Composite for ($one,) { }
+		impl<$one> Composite for ($one,) { }
 	};
 	($first:ident, $($rest:ident,)+) => {
-		impl<$first: Hashable, $($rest: Hashable),+>
+		impl<$first, $($rest),+>
 			Composite for
 			($first, $($rest),+) { }
 
-		impl<$first: Hashable, $($rest: Hashable),+>
-			Hashable for
+		impl<Ha: Hasher, $first: Hashable<Ha>, $($rest: Hashable<Ha>),+>
+			Hashable<Ha> for
 			($first, $($rest),+)
 		{
-			fn hash<Ha: Hasher>(&self) -> Ha::Out {
+			fn hash(&self) -> Ha::Out {
 				let mut hashes = Vec::new();
 				let (
 					ref $first,
 					$(ref $rest),+
 				) = *self;
-				hashes.push(hash_to_array($first.hash::<Ha>()));
+				hashes.push(hash_to_array(Hashable::<Ha>::hash($first)));
 				$(
-					hashes.push(hash_to_array($rest.hash::<Ha>()));
+					hashes.push(hash_to_array(Hashable::<Ha>::hash($rest)));
 				)+
 				merkleize::<Ha>(hashes)
 			}
@@ -134,10 +134,10 @@ mod inner_tuple_impl {
 
 impl<T: Composite> Composite for Vec<T> { }
 
-impl<T: Composite> Hashable for Vec<T> {
-	fn hash<H: Hasher>(&self) -> H::Out {
+impl<T: Composite + Hashable<H>, H: Hasher> Hashable<H> for Vec<T> {
+	fn hash(&self) -> H::Out {
 		let hashes = self.iter()
-			.map(|v| hash_to_array(v.hash::<H>()))
+			.map(|v| hash_to_array(Hashable::<H>::hash(v)))
 			.collect::<Vec<_>>();
 		mix_in_length::<H>(merkleize::<H>(hashes), self.len() as u32)
 	}
@@ -145,10 +145,10 @@ impl<T: Composite> Hashable for Vec<T> {
 
 impl<T: Composite> Composite for [T] { }
 
-impl<T: Composite> Hashable for [T] {
-	fn hash<H: Hasher>(&self) -> H::Out {
+impl<T: Composite + Hashable<H>, H: Hasher> Hashable<H> for [T] {
+	fn hash(&self) -> H::Out {
 		let hashes = self.iter()
-			.map(|v| hash_to_array(v.hash::<H>()))
+			.map(|v| hash_to_array(Hashable::<H>::hash(v)))
 			.collect::<Vec<_>>();
 		mix_in_length::<H>(merkleize::<H>(hashes), self.len() as u32)
 	}
@@ -156,24 +156,24 @@ impl<T: Composite> Hashable for [T] {
 
 impl Composite for Vec<u8> { }
 
-impl Hashable for Vec<u8> {
-	fn hash<H: Hasher>(&self) -> H::Out {
+impl<H: Hasher> Hashable<H> for Vec<u8> {
+	fn hash(&self) -> H::Out {
 		mix_in_length::<H>(merkleize::<H>(chunkify(self)), self.len() as u32)
 	}
 }
 
 impl Composite for [u8] { }
 
-impl Hashable for [u8] {
-	fn hash<H: Hasher>(&self) -> H::Out {
+impl<H: Hasher> Hashable<H> for [u8] {
+	fn hash(&self) -> H::Out {
 		mix_in_length::<H>(merkleize::<H>(chunkify(self)), self.len() as u32)
 	}
 }
 
 macro_rules! impl_fixed_bytes {
 	( $( $n:expr )* ) => { $(
-		impl Hashable for [u8; $n] {
-			fn hash<H: Hasher>(&self) -> H::Out {
+		impl<H: Hasher> Hashable<H> for [u8; $n] {
+			fn hash(&self) -> H::Out {
 				merkleize::<H>(chunkify(self))
 			}
 		}
@@ -189,8 +189,8 @@ macro_rules! impl_fixed_hash {
 	( $( $t:ty ),* ) => { $(
 		impl Composite for $t { }
 
-		impl Hashable for $t {
-			fn hash<H: Hasher>(&self) -> H::Out {
+		impl<H: Hasher> Hashable<H> for $t {
+			fn hash(&self) -> H::Out {
 				merkleize::<H>(chunkify(self.as_ref()))
 			}
 		}
@@ -326,23 +326,23 @@ mod tests {
 
 	#[test]
 	fn test_basic() {
-		assert_eq!(true.hash::<Sha256Hasher>(), H256::from_slice(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
-		assert_eq!(U256::from(452384756).hash::<Sha256Hasher>(), H256::from_slice(b"\xf4\xd7\xf6\x1a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
+		assert_eq!(Hashable::<Sha256Hasher>::hash(&true), H256::from_slice(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
+		assert_eq!(Hashable::<Sha256Hasher>::hash(&U256::from(452384756)), H256::from_slice(b"\xf4\xd7\xf6\x1a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
 	}
 
 	#[test]
 	fn test_basic_fixed_array() {
-		assert_eq!([true, false].hash::<Sha256Hasher>(), H256::from_slice(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
+		assert_eq!(Hashable::<Sha256Hasher>::hash(&[true, false]), H256::from_slice(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
 	}
 
 	#[test]
 	fn test_bytes() {
-		assert_eq!(b"hello, world!".to_vec().hash::<Sha256Hasher>(), H256::from_slice(b"\xaf<\xe8\xbc\xd2\xf0f\xf0.\x07D\xdfI\x93\xef\x97\x9f\xe9.\x14y\x0f\xce\xf0x\xa6\xfa_\x00\x83\xa8\xcb"));
-		assert_eq!(H256::from_slice(b"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb").hash::<Sha256Hasher>(), H256::from_slice(b"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
+		assert_eq!(Hashable::<Sha256Hasher>::hash(&b"hello, world!".to_vec()), H256::from_slice(b"\xaf<\xe8\xbc\xd2\xf0f\xf0.\x07D\xdfI\x93\xef\x97\x9f\xe9.\x14y\x0f\xce\xf0x\xa6\xfa_\x00\x83\xa8\xcb"));
+		assert_eq!(Hashable::<Sha256Hasher>::hash(&H256::from_slice(b"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")), H256::from_slice(b"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
 	}
 
 	#[test]
 	fn test_composite() {
-		assert_eq!(Hashable::hash::<Sha256Hasher>(&(b"hello".to_vec(), b"world".to_vec(), true)), H256::from_slice(b"x\xb19 \x9f\xb2\xec\x07\xff\x1e\x82\x0b\xa4\x83\xa3\x95\xc9%\x86\xd4\x8f\x85\xfao\xe2\xe8\x0eH!\xaa\xd7\t"));
+		assert_eq!(Hashable::<Sha256Hasher>::hash(&(b"hello".to_vec(), b"world".to_vec(), true)), H256::from_slice(b"x\xb19 \x9f\xb2\xec\x07\xff\x1e\x82\x0b\xa4\x83\xa3\x95\xc9%\x86\xd4\x8f\x85\xfao\xe2\xe8\x0eH!\xaa\xd7\t"));
 	}
 }
