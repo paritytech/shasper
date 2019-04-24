@@ -34,7 +34,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::BlockSlotInvalid)
 		}
 
-		if block.previous_block_root != self.state.latest_block_header.truncated_hash::<C::Hasher>() {
+		if block.previous_block_root != Hashable::<C::Hasher>::truncated_hash(&self.state.latest_block_header) {
 			return Err(Error::BlockPreviousRootInvalid)
 		}
 
@@ -42,7 +42,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
 
-		if !self.config.bls_verify(&proposer.pubkey, &block.truncated_hash::<C::Hasher>(), &block.signature, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_beacon_block())) {
+		if !self.config.bls_verify(&proposer.pubkey, &Hashable::<C::Hasher>::truncated_hash(block), &block.signature, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_beacon_block())) {
 			return Err(Error::BlockSignatureInvalid)
 		}
 
@@ -53,7 +53,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	pub fn process_randao(&mut self, block: &BeaconBlock) -> Result<(), Error> {
 		let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
 
-		if !self.config.bls_verify(&proposer.pubkey, &self.current_epoch().hash::<C::Hasher>(), &block.body.randao_reveal, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_randao())) {
+		if !self.config.bls_verify(&proposer.pubkey, &Hashable::<C::Hasher>::hash(&self.current_epoch()), &block.body.randao_reveal, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_randao())) {
 			return Err(Error::RandaoSignatureInvalid)
 		}
 
@@ -96,7 +96,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			}
 
 			for header in [&proposer_slashing.header_a, &proposer_slashing.header_b].into_iter() {
-				if !self.config.bls_verify(&proposer.pubkey, &header.truncated_hash::<C::Hasher>(), &header.signature, self.config.domain_id(&self.state.fork, self.config.slot_to_epoch(header.slot), self.config.domain_beacon_block())) {
+				if !self.config.bls_verify(&proposer.pubkey, &Hashable::<C::Hasher>::truncated_hash(*header), &header.signature, self.config.domain_id(&self.state.fork, self.config.slot_to_epoch(header.slot), self.config.domain_beacon_block())) {
 					return Err(Error::ProposerSlashingInvalidSignature)
 				}
 			}
@@ -152,14 +152,14 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 				},
 			],
 			&[
-				AttestationDataAndCustodyBit {
+				Hashable::<C::Hasher>::hash(&AttestationDataAndCustodyBit {
 					data: slashable.data.clone(),
 					custody_bit: false,
-				}.hash::<C::Hasher>(),
-				AttestationDataAndCustodyBit {
+				}),
+				Hashable::<C::Hasher>::hash(&AttestationDataAndCustodyBit {
 					data: slashable.data.clone(),
 					custody_bit: true,
-				}.hash::<C::Hasher>(),
+				}),
 			],
 			&slashable.aggregate_signature,
 			self.config.domain_id(&self.state.fork, self.config.slot_to_epoch(slashable.data.slot), self.config.domain_attestation())
@@ -268,14 +268,14 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 				self.config.bls_aggregate_pubkeys(&custody_bit_1_participants.iter().map(|i| self.state.validator_registry[*i as usize].pubkey).collect::<Vec<_>>()[..]).ok_or(Error::AttestationInvalidSignature)?,
 			],
 			&[
-				AttestationDataAndCustodyBit {
+				Hashable::<C::Hasher>::hash(&AttestationDataAndCustodyBit {
 					data: attestation.data.clone(),
 					custody_bit: false,
-				}.hash::<C::Hasher>(),
-				AttestationDataAndCustodyBit {
+				}),
+				Hashable::<C::Hasher>::hash(&AttestationDataAndCustodyBit {
 					data: attestation.data.clone(),
 					custody_bit: true,
-				}.hash::<C::Hasher>(),
+				}),
 			],
 			&attestation.aggregate_signature,
 			self.config.domain_id(&self.state.fork, self.config.slot_to_epoch(attestation.data.slot), self.config.domain_attestation())
@@ -369,7 +369,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 			if !self.config.bls_verify(
 				&validator.pubkey,
-				&exit.truncated_hash::<C::Hasher>(),
+				&Hashable::<C::Hasher>::truncated_hash(&exit),
 				&exit.signature,
 				self.config.domain_id(&self.state.fork, exit.epoch, self.config.domain_voluntary_exit())
 			) {
@@ -405,7 +405,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		if !self.config.bls_verify(
 			&transfer.pubkey,
-			&transfer.truncated_hash::<C::Hasher>(),
+			&Hashable::<C::Hasher>::truncated_hash(&transfer),
 			&transfer.signature,
 			self.config.domain_id(&self.state.fork, self.config.slot_to_epoch(transfer.slot), self.config.domain_transfer())
 		) {

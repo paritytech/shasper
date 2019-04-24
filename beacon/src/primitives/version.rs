@@ -83,8 +83,8 @@ impl ssz::Prefixable for H32 {
 
 impl ssz::Composite for H32 { }
 
-impl ssz::Hashable for H32 {
-	fn hash<H: ::hash_db::Hasher>(&self) -> H::Out {
+impl<H: hash_db::Hasher> ssz::Hashable<H> for H32 {
+	fn hash(&self) -> H::Out {
 		ssz::hash::merkleize::<H>(ssz::hash::chunkify(self.as_ref()))
 	}
 }

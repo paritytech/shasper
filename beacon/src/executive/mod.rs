@@ -292,7 +292,7 @@ pub fn genesis<C: Config>(deposits: Vec<Deposit>, genesis_time: Timestamp, lates
 		signature: Signature::default(),
 		body: BeaconBlockBody::empty(),
 	};
-	block.state_root = state.hash::<C::Hasher>();
+	block.state_root = Hashable::<C::Hasher>::hash(&state);
 
 	Ok((block, state))
 }
@@ -400,7 +400,7 @@ pub fn genesis_state<C: Config>(deposits: Vec<Deposit>, genesis_time: Timestamp,
 			}
 		}
 
-		let genesis_active_index_root = executive.state.active_validator_indices(config.genesis_epoch()).hash::<C::Hasher>();
+		let genesis_active_index_root = Hashable::<C::Hasher>::hash(&executive.state.active_validator_indices(config.genesis_epoch()));
 		for index in 0..config.latest_active_index_roots_length() {
 			executive.state.latest_active_index_roots[index] = genesis_active_index_root;
 		}
