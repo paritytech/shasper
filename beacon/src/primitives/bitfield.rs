@@ -65,9 +65,9 @@ impl ssz::Decode for BitField {
 
 impl ssz::Composite for BitField { }
 
-impl ssz::Hashable for BitField {
-	fn hash<H: hash_db::Hasher>(&self) -> H::Out {
-		self.0.hash::<H>()
+impl<H: hash_db::Hasher> ssz::Hashable<H> for BitField {
+	fn hash(&self) -> H::Out {
+		ssz::Hashable::<H>::hash(&self.0)
 	}
 }
 

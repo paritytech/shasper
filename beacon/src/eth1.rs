@@ -98,7 +98,7 @@ impl Deposit {
 	pub fn is_proof_valid<C: Config>(&self, domain: u64, config: &C) -> bool {
 		config.bls_verify(
 			&self.deposit_data.deposit_input.pubkey,
-			&self.deposit_data.deposit_input.truncated_hash::<C::Hasher>(),
+			&Hashable::<C::Hasher>::truncated_hash(&self.deposit_data.deposit_input),
 			&self.deposit_data.deposit_input.proof_of_possession,
 			domain
 		)

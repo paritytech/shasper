@@ -438,15 +438,15 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		let next_epoch = current_epoch + 1;
 
 		let index_root_position = (next_epoch + self.config.activation_exit_delay()) % self.config.latest_active_index_roots_length() as u64;
-		self.state.latest_active_index_roots[index_root_position as usize] = self.state.active_validator_indices(next_epoch + self.config.activation_exit_delay()).hash::<C::Hasher>();
+		self.state.latest_active_index_roots[index_root_position as usize] = Hashable::<C::Hasher>::hash(&self.state.active_validator_indices(next_epoch + self.config.activation_exit_delay()));
 		self.state.latest_slashed_balances[(next_epoch % self.config.latest_slashed_exit_length() as u64) as usize] = self.state.latest_slashed_balances[(current_epoch % self.config.latest_slashed_exit_length() as u64) as usize];
 		self.state.latest_randao_mixes[(next_epoch % self.config.latest_randao_mixes_length() as u64) as usize] = self.randao_mix(current_epoch)?;
 
 		if next_epoch % (self.config.slots_per_historical_root() as u64 / self.config.slots_per_epoch()) == 0 {
-			self.state.historical_roots.push(HistoricalBatch {
+			self.state.historical_roots.push(Hashable::<C::Hasher>::hash(&HistoricalBatch {
 				block_roots: self.state.latest_block_roots.clone(),
 				state_roots: self.state.latest_state_roots.clone(),
-			}.hash::<C::Hasher>());
+			}));
 		}
 		self.state.previous_epoch_attestations = self.state.current_epoch_attestations.clone();
 		self.state.current_epoch_attestations = Vec::new();
