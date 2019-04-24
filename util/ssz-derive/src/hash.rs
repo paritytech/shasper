@@ -33,11 +33,11 @@ fn encode_fields<F>(
 			quote! { (); }
 		} else if use_fixed {
 			quote_spanned! { f.span() =>
-				#dest.push(::ssz::hash::hash_to_array(::ssz::Hashable::hash::< #generic_param >(&::ssz::Fixed(#field.as_ref()))));
+				#dest.push(::ssz::hash::hash_to_array(::ssz::Hashable::< #generic_param >::hash(&::ssz::Fixed(#field.as_ref()))));
 			}
 		} else {
 			quote_spanned! { f.span() =>
-				#dest.push(::ssz::hash::hash_to_array(::ssz::Hashable::hash::< #generic_param >(#field)));
+				#dest.push(::ssz::hash::hash_to_array(::ssz::Hashable::< #generic_param >::hash(#field)));
 			}
 		}
 	});

@@ -46,6 +46,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	let input: DeriveInput = syn::parse(input).expect(ENCODE_ERR);
 	let name = &input.ident;
 
+	let hash_param_ = quote!(H);
+
 	let prefixable_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Prefixable));
 	let (prefixable_impl_generics, prefixable_ty_generics, prefixable_where_clause) = prefixable_generics.split_for_impl();
 
@@ -55,13 +57,20 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	let decode_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Decode));
 	let (decode_impl_generics, decode_ty_generics, decode_where_clause) = decode_generics.split_for_impl();
 
-	let hash_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Hashable));
-	let (hash_impl_generics, hash_ty_generics, hash_where_clause) = hash_generics.split_for_impl();
+	let hash_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Hashable<H>));
+	let mut hash_impl_generics = hash_generics.clone();
+	let mut hash_param: syn::TypeParam = parse_quote!(#hash_param_);
+	hash_param.bounds.push(parse_quote!(::ssz::hash_db::Hasher));
+	hash_impl_generics.params.push(hash_param.into());
+	let (_, hash_ty_generics, hash_where_clause) = hash_generics.split_for_impl();
+
+
+	let composite_generics = input.generics.clone();
+	let (composite_impl_generics, composite_ty_generics, composite_where_clause) = composite_generics.split_for_impl();
 
 	let self_ = quote!(self);
 	let dest_ = quote!(dest);
 	let input_ = quote!(input);
-	let hash_param_ = quote!(H);
 	let sorted = has_attr(&input.attrs, "sorted");
 	let no_decode = has_attr(&input.attrs, "no_decode");
 	let no_encode = has_attr(&input.attrs, "no_encode");
@@ -139,10 +148,10 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
 		#decode
 
-		impl #hash_impl_generics ::ssz::Composite for #name #hash_ty_generics #hash_where_clause { }
+		impl #composite_impl_generics ::ssz::Composite for #name #composite_ty_generics #composite_where_clause { }
 
-		impl #hash_impl_generics ::ssz::Hashable for #name #hash_ty_generics #hash_where_clause {
-			fn hash<#hash_param_ : ::ssz::hash_db::Hasher>(&self) -> H::Out {
+		impl #hash_impl_generics ::ssz::Hashable< #hash_param_ > for #name #hash_ty_generics #hash_where_clause {
+			fn hash(&self) -> #hash_param_ :: Out {
 				let mut #dest_ = ::ssz::prelude::Vec::new();
 				#hashing
 				let len = #dest_.len() as u32;
@@ -151,7 +160,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 				)
 			}
 
-			fn truncated_hash<#hash_param_ : ::ssz::hash_db::Hasher>(&self) -> H::Out {
+			fn truncated_hash(&self) -> #hash_param_ :: Out {
 				let mut #dest_ = ::ssz::prelude::Vec::new();
 				#truncate_hashing
 				let len = #dest_.len() as u32;
