@@ -34,7 +34,7 @@ use crate::block::BeaconBlockHeader;
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[ssz(no_decode)]
+#[ssz(no_decode, no_encode)]
 /// Beacon state.
 pub struct BeaconState {
 	// Misc

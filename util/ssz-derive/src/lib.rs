@@ -64,6 +64,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	let hash_param_ = quote!(H);
 	let sorted = has_attr(&input.attrs, "sorted");
 	let no_decode = has_attr(&input.attrs, "no_decode");
+	let no_encode = has_attr(&input.attrs, "no_encode");
 	let prefixing = prefixable::quote(&input.data, &dest_);
 	let (encoding, decodable) = encode::quote(&input.data, &self_, &dest_, sorted);
 	let decoding = decode::quote(&input.data, name, &input_, sorted);
@@ -99,6 +100,31 @@ pub fn derive(input: TokenStream) -> TokenStream {
 		}
 	};
 
+	let encode = if no_encode {
+		quote! { }
+	} else {
+		quote! {
+			impl #encode_impl_generics ::ssz::Encode for #name #encode_ty_generics #encode_where_clause {
+				fn encode_to<EncOut: ::ssz::Output>(&#self_, d: &mut EncOut) {
+					use ::ssz::Prefixable;
+
+					if Self::prefixed() {
+						let mut bytes = ::ssz::prelude::Vec::new();
+						{
+							let #dest_ = &mut bytes;
+							#encoding
+						}
+						::ssz::Encode::encode_to(&(bytes.len() as u32), d);
+						d.write(&bytes);
+					} else {
+						let #dest_ = d;
+						#encoding
+					}
+				}
+			}
+		}
+	};
+
 	let expanded = quote! {
 		#[allow(unused_imports)]
 		impl #prefixable_impl_generics ::ssz::Prefixable for #name #prefixable_ty_generics #prefixable_where_clause {
@@ -109,24 +135,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 			}
 		}
 
-		impl #encode_impl_generics ::ssz::Encode for #name #encode_ty_generics #encode_where_clause {
-			fn encode_to<EncOut: ::ssz::Output>(&#self_, d: &mut EncOut) {
-				use ::ssz::Prefixable;
-
-				if Self::prefixed() {
-					let mut bytes = ::ssz::prelude::Vec::new();
-					{
-						let #dest_ = &mut bytes;
-						#encoding
-					}
-					::ssz::Encode::encode_to(&(bytes.len() as u32), d);
-					d.write(&bytes);
-				} else {
-					let #dest_ = d;
-					#encoding
-				}
-			}
-		}
+		#encode
 
 		#decode
 
