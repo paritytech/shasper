@@ -1,6 +1,13 @@
 use primitive_types::{U256, H256, H160};
 use hash_db::Hasher;
+use digest::Digest;
+use generic_array::GenericArray;
 use crate::{Encode, Fixed};
+
+pub trait Digestible<D: Digest> {
+	fn hash(&self) -> GenericArray<u8, D::OutputSize>;
+	fn truncated_hash(&self) -> GenericArray<u8, D::OutputSize>;
+}
 
 pub trait Hashable<H: Hasher> {
 	fn hash(&self) -> H::Out;
@@ -15,7 +22,9 @@ macro_rules! impl_basic_array {
 	( $t:ty, $( $n:expr )* ) => { $(
 		impl<H: Hasher> Hashable<H> for [$t; $n] {
 			fn hash(&self) -> H::Out {
-				merkleize::<H>(pack(self.as_ref()))
+				let merkleize = merkleize::<H>;
+
+				merkleize(pack(self.as_ref()))
 			}
 		}
 	)* }
@@ -265,6 +274,74 @@ pub fn mix_in_length<H: Hasher>(root: H::Out, length: u32) -> H::Out {
 	(&mut bytes[0..32]).copy_from_slice(root.as_ref());
 	(&mut bytes[32..36]).copy_from_slice(&length.encode());
 	H::hash(&bytes)
+}
+
+mod hasher {
+	use generic_array::{GenericArray, ArrayLength};
+	use digest::Digest;
+
+	use crate::Encode;
+
+	pub fn chunkify<L: ArrayLength<u8>>(bytes: &[u8]) -> Vec<GenericArray<u8, L>> {
+		let mut ret: Vec<GenericArray<u8, L>> = Vec::new();
+
+		for i in 0..bytes.len() {
+			if i % L::to_usize() == 0 {
+				ret.push(Default::default());
+			}
+			ret.last_mut().expect("Value is pushed when i is 0; cannot be empty; qed")
+				[i % L::to_usize()] = bytes[i];
+		}
+
+		ret
+	}
+
+	pub fn pack<T: Encode, L: ArrayLength<u8>>(values: &[T]) -> Vec<GenericArray<u8, L>> {
+		let mut bytes = Vec::new();
+
+		for value in values {
+			bytes.append(&mut value.encode());
+		}
+
+		chunkify(&bytes)
+	}
+
+	pub fn merkleize<D: Digest>(
+		mut packed: Vec<GenericArray<u8, D::OutputSize>>
+	) -> GenericArray<u8, D::OutputSize> {
+		while !super::is_power_of_two(packed.len()) {
+			packed.push(Default::default());
+		}
+
+		let len = packed.len();
+		let mut tree = Vec::new();
+		for _ in 0..len {
+			tree.push(Default::default());
+		}
+		tree.append(&mut packed);
+
+		for i in (1..(tree.len() / 2)).rev() {
+			let mut hasher = D::new();
+			hasher.input(&tree[i * 2]);
+			hasher.input(&tree[i * 2 + 1]);
+			let hashed = hasher.result();
+			tree[i] = hashed;
+		}
+
+		tree[1].clone()
+	}
+
+	pub fn mix_in_length<D: Digest>(
+		root: GenericArray<u8, D::OutputSize>, length: u32
+	) -> GenericArray<u8, D::OutputSize> {
+		let mut len_bytes: GenericArray<u8, D::OutputSize> = Default::default();
+		(&mut len_bytes[0..4]).copy_from_slice(&length.encode());
+
+		let mut hasher = D::new();
+		hasher.input(root.as_ref());
+		hasher.input(len_bytes.as_ref());
+		hasher.result()
+	}
 }
 
 #[cfg(test)]
