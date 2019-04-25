@@ -15,6 +15,7 @@ fn encode_fields<F>(
 	fields: &FieldsList,
 	field_name: F,
 	skip_truncated: bool,
+	is_digest: bool,
 ) -> TokenStream where
 	F: Fn(usize, &Option<Ident>) -> TokenStream,
 {
@@ -32,12 +33,28 @@ fn encode_fields<F>(
 		if truncate {
 			quote! { (); }
 		} else if use_fixed {
-			quote_spanned! { f.span() =>
-				#dest.push(::ssz::hash::hash_to_array(::ssz::Hashable::< #generic_param >::hash(&::ssz::Fixed(#field.as_ref()))));
+			if is_digest {
+				quote_spanned! {
+					f.span() =>
+						#dest.push(::ssz::Digestible::< #generic_param >::hash(&::ssz::Fixed(#field.as_ref())));
+				}
+			} else {
+				quote_spanned! {
+					f.span() =>
+						#dest.push(::ssz::hash::hash_db_hasher::hash_to_array(::ssz::Hashable::< #generic_param >::hash(&::ssz::Fixed(#field.as_ref()))));
+				}
 			}
 		} else {
-			quote_spanned! { f.span() =>
-				#dest.push(::ssz::hash::hash_to_array(::ssz::Hashable::< #generic_param >::hash(#field)));
+			if is_digest {
+				quote_spanned! {
+					f.span() =>
+						#dest.push(::ssz::Digestible::< #generic_param >::hash(#field));
+				}
+			} else {
+				quote_spanned! {
+					f.span() =>
+						#dest.push(::ssz::hash::hash_db_hasher::hash_to_array(::ssz::Hashable::< #generic_param >::hash(#field)));
+				}
 			}
 		}
 	});
@@ -47,7 +64,7 @@ fn encode_fields<F>(
 	}
 }
 
-pub fn quote(data: &Data, self_: &TokenStream, dest: &TokenStream, generic_param: &TokenStream, skip_truncated: bool) -> TokenStream {
+pub fn quote(data: &Data, self_: &TokenStream, dest: &TokenStream, generic_param: &TokenStream, skip_truncated: bool, is_digest: bool) -> TokenStream {
 	let call_site = proc_macro2::Span::call_site();
 	match *data {
 		Data::Struct(ref data) => match data.fields {
@@ -57,6 +74,7 @@ pub fn quote(data: &Data, self_: &TokenStream, dest: &TokenStream, generic_param
 				&fields.named,
 				|_, name| quote_spanned!(call_site => &#self_.#name),
 				skip_truncated,
+				is_digest,
 			),
 			Fields::Unnamed(ref fields) => encode_fields(
 				dest,
@@ -67,6 +85,7 @@ pub fn quote(data: &Data, self_: &TokenStream, dest: &TokenStream, generic_param
 					quote_spanned!(call_site => &#self_.#index)
 				},
 				skip_truncated,
+				is_digest,
 			),
 			Fields::Unit => quote! { (); },
 		},

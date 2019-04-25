@@ -71,6 +71,12 @@ impl<H: hash_db::Hasher> ssz::Hashable<H> for BitField {
 	}
 }
 
+impl<D: digest::Digest> ssz::Digestible<D> for BitField {
+	fn hash(&self) -> generic_array::GenericArray<u8, D::OutputSize> {
+		ssz::Digestible::<D>::hash(&self.0)
+	}
+}
+
 impl BitField {
 	/// Whether bit as given index is `1`.
 	pub fn has_voted(&self, index: usize) -> bool {

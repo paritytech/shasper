@@ -1,6 +1,15 @@
 use primitive_types::{U256, H256, H160};
 use hash_db::Hasher;
-use crate::{Encode, Fixed};
+use digest::Digest;
+use generic_array::GenericArray;
+use crate::Fixed;
+
+pub trait Digestible<D: Digest> {
+	fn hash(&self) -> GenericArray<u8, D::OutputSize>;
+	fn truncated_hash(&self) -> GenericArray<u8, D::OutputSize> {
+		self.hash()
+	}
+}
 
 pub trait Hashable<H: Hasher> {
 	fn hash(&self) -> H::Out;
@@ -11,23 +20,83 @@ pub trait Hashable<H: Hasher> {
 
 pub trait Composite { }
 
-macro_rules! impl_basic_array {
-	( $t:ty, $( $n:expr )* ) => { $(
-		impl<H: Hasher> Hashable<H> for [$t; $n] {
-			fn hash(&self) -> H::Out {
-				merkleize::<H>(pack(self.as_ref()))
+macro_rules! impl_hashable_and_digestible_with_chunkify {
+	( $t:ty, $self:ident, $merkleize:ident, $chunkify:ident, $mix_in_length:ident, $e:expr ) => {
+		impl<H: Hasher> Hashable<H> for $t {
+			fn hash(&$self) -> H::Out {
+				#[allow(unused_variables)]
+				let $merkleize = self::hash_db_hasher::merkleize::<H>;
+				#[allow(unused_variables)]
+				let $chunkify = self::hash_db_hasher::chunkify;
+				#[allow(unused_variables)]
+				let $mix_in_length = self::hash_db_hasher::mix_in_length::<H>;
+
+				$e
 			}
 		}
+
+		impl<D: Digest> Digestible<D> for $t {
+			fn hash(&$self) -> GenericArray<u8, D::OutputSize> {
+				#[allow(unused_variables)]
+				let $merkleize = self::digest_hasher::merkleize::<D>;
+				#[allow(unused_variables)]
+				let $chunkify = self::digest_hasher::chunkify::<D::OutputSize>;
+				#[allow(unused_variables)]
+				let $mix_in_length = self::digest_hasher::mix_in_length::<D>;
+
+				$e
+			}
+		}
+	}
+}
+
+macro_rules! impl_hashable_and_digestible_with_pack {
+	( $t:ty, $self:ident, $merkleize:ident, $pack:ident, $mix_in_length:ident, $e:expr ) => {
+		impl<H: Hasher> Hashable<H> for $t {
+			fn hash(&$self) -> H::Out {
+				#[allow(unused_variables)]
+				let $merkleize = self::hash_db_hasher::merkleize::<H>;
+				#[allow(unused_variables)]
+				let $pack = self::hash_db_hasher::pack::<_>;
+				#[allow(unused_variables)]
+				let $mix_in_length = self::hash_db_hasher::mix_in_length::<H>;
+
+				$e
+			}
+		}
+
+		impl<D: Digest> Digestible<D> for $t {
+			fn hash(&$self) -> GenericArray<u8, D::OutputSize> {
+				#[allow(unused_variables)]
+				let $merkleize = self::digest_hasher::merkleize::<D>;
+				#[allow(unused_variables)]
+				let $pack = self::digest_hasher::pack::<_, D::OutputSize>;
+				#[allow(unused_variables)]
+				let $mix_in_length = self::digest_hasher::mix_in_length::<D>;
+
+				$e
+			}
+		}
+	}
+}
+
+macro_rules! impl_basic_array {
+	( $t:ty, $( $n:expr )* ) => { $(
+		impl_hashable_and_digestible_with_pack!(
+			[$t; $n], self, merkleize, pack, mix_in_length, {
+				merkleize(pack(self.as_ref()))
+			}
+		);
 	)* }
 }
 
 macro_rules! impl_basic {
 	( $( $t:ty ),* ) => { $(
-		impl<H: Hasher> Hashable<H> for $t {
-			fn hash(&self) -> H::Out {
-				merkleize::<H>(pack(&[*self]))
+		impl_hashable_and_digestible_with_pack!(
+			$t, self, merkleize, pack, mix_in_length, {
+				merkleize(pack(&[*self]))
 			}
-		}
+		);
 
 		impl_basic_array!($t, 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
 						  17 18 19 20 21 22 23 24 25 26 27 28 29
@@ -36,21 +105,31 @@ macro_rules! impl_basic {
 
 		impl<'a, H: Hasher> Hashable<H> for Fixed<'a, $t> {
 			fn hash(&self) -> H::Out {
-				merkleize::<H>(pack(self.0.as_ref()))
+				self::hash_db_hasher::merkleize::<H>(
+					self::hash_db_hasher::pack(self.0.as_ref())
+				)
 			}
 		}
 
-		impl<H: Hasher> Hashable<H> for Vec<$t> {
-			fn hash(&self) -> H::Out {
-				mix_in_length::<H>(merkleize::<H>(pack(self.as_ref())), self.len() as u32)
+		impl<'a, D: Digest> Digestible<D> for Fixed<'a, $t> {
+			fn hash(&self) -> GenericArray<u8, D::OutputSize> {
+				self::digest_hasher::merkleize::<D>(
+					self::digest_hasher::pack::<_, D::OutputSize>(self.0.as_ref())
+				)
 			}
 		}
 
-		impl<H: Hasher> Hashable<H> for [$t] {
-			fn hash(&self) -> H::Out {
-				mix_in_length::<H>(merkleize::<H>(pack(self.as_ref())), self.len() as u32)
+		impl_hashable_and_digestible_with_pack!(
+			Vec<$t>, self, merkleize, pack, mix_in_length, {
+				mix_in_length(merkleize(pack(self.as_ref())), self.len() as u32)
 			}
-		}
+		);
+
+		impl_hashable_and_digestible_with_pack!(
+			[$t], self, merkleize, pack, mix_in_length, {
+				mix_in_length(merkleize(pack(self.as_ref())), self.len() as u32)
+			}
+		);
 	)* }
 }
 
@@ -63,9 +142,18 @@ macro_rules! impl_composite_array {
 		impl<T: Composite + Hashable<H>, H: Hasher> Hashable<H> for [T; $n] {
 			fn hash(&self) -> H::Out {
 				let hashes = self.iter()
-					.map(|v| hash_to_array(Hashable::<H>::hash(v)))
+					.map(|v| self::hash_db_hasher::hash_to_array(Hashable::<H>::hash(v)))
 					.collect::<Vec<_>>();
-				merkleize::<H>(hashes)
+				self::hash_db_hasher::merkleize::<H>(hashes)
+			}
+		}
+
+		impl<T: Composite + Digestible<D>, D: Digest> Digestible<D> for [T; $n] {
+			fn hash(&self) -> GenericArray<u8, D::OutputSize> {
+				let hashes = self.iter()
+					.map(|v| Digestible::<D>::hash(v))
+					.collect::<Vec<_>>();
+				self::digest_hasher::merkleize::<D>(hashes)
 			}
 		}
 	)* }
@@ -81,9 +169,18 @@ impl<'a, T: Composite> Composite for Fixed<'a, T> { }
 impl<'a, T: Composite + Hashable<H>, H: Hasher> Hashable<H> for Fixed<'a, T> {
 	fn hash(&self) -> H::Out {
 		let hashes = self.0.iter()
-			.map(|v| hash_to_array(Hashable::<H>::hash(v)))
+			.map(|v| self::hash_db_hasher::hash_to_array(Hashable::<H>::hash(v)))
 			.collect::<Vec<_>>();
-		merkleize::<H>(hashes)
+		self::hash_db_hasher::merkleize::<H>(hashes)
+	}
+}
+
+impl<'a, T: Composite + Digestible<D>, D: Digest> Digestible<D> for Fixed<'a, T> {
+	fn hash(&self) -> GenericArray<u8, D::OutputSize> {
+		let hashes = self.0.iter()
+			.map(|v| Digestible::<D>::hash(v))
+			.collect::<Vec<_>>();
+		self::digest_hasher::merkleize::<D>(hashes)
 	}
 }
 
@@ -92,8 +189,16 @@ macro_rules! impl_tuple {
 		impl<H: Hasher, $one: Hashable<H>> Hashable<H> for ($one,) {
 			fn hash(&self) -> H::Out {
 				let mut hashes = Vec::new();
-				hashes.push(hash_to_array(Hashable::<H>::hash(&self.0)));
-				merkleize::<H>(hashes)
+				hashes.push(self::hash_db_hasher::hash_to_array(Hashable::<H>::hash(&self.0)));
+				self::hash_db_hasher::merkleize::<H>(hashes)
+			}
+		}
+
+		impl<D: Digest, $one: Digestible<D>> Digestible<D> for ($one,) {
+			fn hash(&self) -> GenericArray<u8, D::OutputSize> {
+				let mut hashes = Vec::new();
+				hashes.push(Digestible::<D>::hash(&self.0));
+				self::digest_hasher::merkleize::<D>(hashes)
 			}
 		}
 
@@ -114,11 +219,29 @@ macro_rules! impl_tuple {
 					ref $first,
 					$(ref $rest),+
 				) = *self;
-				hashes.push(hash_to_array(Hashable::<Ha>::hash($first)));
+				hashes.push(self::hash_db_hasher::hash_to_array(Hashable::<Ha>::hash($first)));
 				$(
-					hashes.push(hash_to_array(Hashable::<Ha>::hash($rest)));
+					hashes.push(self::hash_db_hasher::hash_to_array(Hashable::<Ha>::hash($rest)));
 				)+
-				merkleize::<Ha>(hashes)
+				self::hash_db_hasher::merkleize::<Ha>(hashes)
+			}
+		}
+
+		impl<Ha: Digest, $first: Digestible<Ha>, $($rest: Digestible<Ha>),+>
+			Digestible<Ha> for
+			($first, $($rest),+)
+		{
+			fn hash(&self) -> GenericArray<u8, Ha::OutputSize> {
+				let mut hashes = Vec::new();
+				let (
+					ref $first,
+					$(ref $rest),+
+				) = *self;
+				hashes.push(Digestible::<Ha>::hash($first));
+				$(
+					hashes.push(Digestible::<Ha>::hash($rest));
+				)+
+				self::digest_hasher::merkleize::<Ha>(hashes)
 			}
 		}
 
@@ -137,9 +260,24 @@ impl<T: Composite> Composite for Vec<T> { }
 impl<T: Composite + Hashable<H>, H: Hasher> Hashable<H> for Vec<T> {
 	fn hash(&self) -> H::Out {
 		let hashes = self.iter()
-			.map(|v| hash_to_array(Hashable::<H>::hash(v)))
+			.map(|v| self::hash_db_hasher::hash_to_array(Hashable::<H>::hash(v)))
 			.collect::<Vec<_>>();
-		mix_in_length::<H>(merkleize::<H>(hashes), self.len() as u32)
+		self::hash_db_hasher::mix_in_length::<H>(
+			self::hash_db_hasher::merkleize::<H>(hashes),
+			self.len() as u32
+		)
+	}
+}
+
+impl<T: Composite + Digestible<D>, D: Digest> Digestible<D> for Vec<T> {
+	fn hash(&self) -> GenericArray<u8, D::OutputSize> {
+		let hashes = self.iter()
+			.map(|v| Digestible::<D>::hash(v))
+			.collect::<Vec<_>>();
+		self::digest_hasher::mix_in_length::<D>(
+			self::digest_hasher::merkleize::<D>(hashes),
+			self.len() as u32
+		)
 	}
 }
 
@@ -148,35 +286,50 @@ impl<T: Composite> Composite for [T] { }
 impl<T: Composite + Hashable<H>, H: Hasher> Hashable<H> for [T] {
 	fn hash(&self) -> H::Out {
 		let hashes = self.iter()
-			.map(|v| hash_to_array(Hashable::<H>::hash(v)))
+			.map(|v| self::hash_db_hasher::hash_to_array(Hashable::<H>::hash(v)))
 			.collect::<Vec<_>>();
-		mix_in_length::<H>(merkleize::<H>(hashes), self.len() as u32)
+		self::hash_db_hasher::mix_in_length::<H>(
+			self::hash_db_hasher::merkleize::<H>(hashes),
+			self.len() as u32
+		)
+	}
+}
+
+impl<T: Composite + Digestible<D>, D: Digest> Digestible<D> for [T] {
+	fn hash(&self) -> GenericArray<u8, D::OutputSize> {
+		let hashes = self.iter()
+			.map(|v| Digestible::<D>::hash(v))
+			.collect::<Vec<_>>();
+		self::digest_hasher::mix_in_length::<D>(
+			self::digest_hasher::merkleize::<D>(hashes),
+			self.len() as u32
+		)
 	}
 }
 
 impl Composite for Vec<u8> { }
 
-impl<H: Hasher> Hashable<H> for Vec<u8> {
-	fn hash(&self) -> H::Out {
-		mix_in_length::<H>(merkleize::<H>(chunkify(self)), self.len() as u32)
+impl_hashable_and_digestible_with_chunkify!(
+	Vec<u8>, self, merkleize, chunkify, mix_in_length, {
+		mix_in_length(merkleize(chunkify(self)), self.len() as u32)
 	}
-}
+);
 
 impl Composite for [u8] { }
 
-impl<H: Hasher> Hashable<H> for [u8] {
-	fn hash(&self) -> H::Out {
-		mix_in_length::<H>(merkleize::<H>(chunkify(self)), self.len() as u32)
+impl_hashable_and_digestible_with_chunkify!(
+	[u8], self, merkleize, chunkify, mix_in_length, {
+		mix_in_length(merkleize(chunkify(self)), self.len() as u32)
 	}
-}
+);
 
 macro_rules! impl_fixed_bytes {
 	( $( $n:expr )* ) => { $(
-		impl<H: Hasher> Hashable<H> for [u8; $n] {
-			fn hash(&self) -> H::Out {
-				merkleize::<H>(chunkify(self))
+		impl_hashable_and_digestible_with_chunkify!(
+			[u8; $n], self, merkleize, chunkify, mix_in_length, {
+				merkleize(chunkify(self))
 			}
-		}
+		);
 	)* }
 }
 
@@ -189,82 +342,156 @@ macro_rules! impl_fixed_hash {
 	( $( $t:ty ),* ) => { $(
 		impl Composite for $t { }
 
-		impl<H: Hasher> Hashable<H> for $t {
-			fn hash(&self) -> H::Out {
-				merkleize::<H>(chunkify(self.as_ref()))
+		impl_hashable_and_digestible_with_chunkify!(
+			$t, self, merkleize, chunkify, mix_in_length, {
+				merkleize(chunkify(self.as_ref()))
 			}
-		}
+		);
 	)* }
 }
 
 impl_fixed_hash!(H256, H160);
 
-pub fn hash_to_array<T: AsRef<[u8]>>(value: T) -> [u8; 32] {
-	assert_eq!(value.as_ref().len(), 32);
-	let mut arr = [0u8; 32];
-	(&mut arr).copy_from_slice(value.as_ref());
-	arr
-}
-
-pub fn chunkify(bytes: &[u8]) -> Vec<[u8; 32]> {
-	let mut ret = Vec::new();
-
-	for i in 0..bytes.len() {
-		if i % 32 == 0 {
-			ret.push([0u8; 32]);
-		}
-		ret.last_mut().expect("Value is pushed when i is 0; cannot be empty; qed")
-			[i % 32] = bytes[i];
-	}
-
-	ret
-}
-
-pub fn pack<T: Encode>(values: &[T]) -> Vec<[u8; 32]> {
-	let mut bytes = Vec::new();
-
-	for value in values {
-		bytes.append(&mut value.encode());
-	}
-
-	chunkify(&bytes)
-}
-
 pub fn is_power_of_two(value: usize) -> bool {
 	return (value > 0) && (value & (value - 1) == 0)
 }
 
-pub fn merkleize<H: Hasher>(mut packed: Vec<[u8; 32]>) -> H::Out {
-	while !is_power_of_two(packed.len()) {
-		packed.push([0u8; 32]);
+pub mod hash_db_hasher {
+	use hash_db::Hasher;
+
+	use crate::codec::Encode;
+
+	pub fn hash_to_array<T: AsRef<[u8]>>(value: T) -> [u8; 32] {
+		assert_eq!(value.as_ref().len(), 32);
+		let mut arr = [0u8; 32];
+		(&mut arr).copy_from_slice(value.as_ref());
+		arr
 	}
 
-	let len = packed.len();
-	let mut tree = Vec::new();
-	for _ in 0..len {
-		tree.push([0u8; 32]);
-	}
-	tree.append(&mut packed);
+	pub fn chunkify(bytes: &[u8]) -> Vec<[u8; 32]> {
+		let mut ret = Vec::new();
 
-	for i in (1..(tree.len() / 2)).rev() {
-		let mut hashing = [0u8; 64];
-		(&mut hashing[0..32]).copy_from_slice(&tree[i * 2]);
-		(&mut hashing[32..64]).copy_from_slice(&tree[i * 2 + 1]);
-		let hashed = H::hash(&hashing);
-		assert_eq!(hashed.as_ref().len(), 32);
-		(&mut tree[i]).copy_from_slice(hashed.as_ref());
+		for i in 0..bytes.len() {
+			if i % 32 == 0 {
+				ret.push([0u8; 32]);
+			}
+			ret.last_mut().expect("Value is pushed when i is 0; cannot be empty; qed")
+				[i % 32] = bytes[i];
+		}
+
+		ret
 	}
 
-	let mut out = H::Out::default();
-	out.as_mut().copy_from_slice(&tree[1]);
-	out
+	pub fn pack<T: Encode>(values: &[T]) -> Vec<[u8; 32]> {
+		let mut bytes = Vec::new();
+
+		for value in values {
+			bytes.append(&mut value.encode());
+		}
+
+		chunkify(&bytes)
+	}
+
+	pub fn merkleize<H: Hasher>(mut packed: Vec<[u8; 32]>) -> H::Out {
+		while !super::is_power_of_two(packed.len()) {
+			packed.push([0u8; 32]);
+		}
+
+		let len = packed.len();
+		let mut tree = Vec::new();
+		for _ in 0..len {
+			tree.push([0u8; 32]);
+		}
+		tree.append(&mut packed);
+
+		for i in (1..(tree.len() / 2)).rev() {
+			let mut hashing = [0u8; 64];
+			(&mut hashing[0..32]).copy_from_slice(&tree[i * 2]);
+			(&mut hashing[32..64]).copy_from_slice(&tree[i * 2 + 1]);
+			let hashed = H::hash(&hashing);
+			assert_eq!(hashed.as_ref().len(), 32);
+			(&mut tree[i]).copy_from_slice(hashed.as_ref());
+		}
+
+		let mut out = H::Out::default();
+		out.as_mut().copy_from_slice(&tree[1]);
+		out
+	}
+
+	pub fn mix_in_length<H: Hasher>(root: H::Out, length: u32) -> H::Out {
+		let mut bytes = [0u8; 64];
+		(&mut bytes[0..32]).copy_from_slice(root.as_ref());
+		(&mut bytes[32..36]).copy_from_slice(&length.encode());
+		H::hash(&bytes)
+	}
 }
 
-pub fn mix_in_length<H: Hasher>(root: H::Out, length: u32) -> H::Out {
-	let mut bytes = [0u8; 64];
-	(&mut bytes[0..32]).copy_from_slice(root.as_ref());
-	(&mut bytes[32..36]).copy_from_slice(&length.encode());
-	H::hash(&bytes)
+pub mod digest_hasher {
+	use generic_array::{GenericArray, ArrayLength};
+	use digest::Digest;
+
+	use crate::Encode;
+
+	pub fn chunkify<L: ArrayLength<u8>>(bytes: &[u8]) -> Vec<GenericArray<u8, L>> {
+		let mut ret: Vec<GenericArray<u8, L>> = Vec::new();
+
+		for i in 0..bytes.len() {
+			if i % L::to_usize() == 0 {
+				ret.push(Default::default());
+			}
+			ret.last_mut().expect("Value is pushed when i is 0; cannot be empty; qed")
+				[i % L::to_usize()] = bytes[i];
+		}
+
+		ret
+	}
+
+	pub fn pack<T: Encode, L: ArrayLength<u8>>(values: &[T]) -> Vec<GenericArray<u8, L>> {
+		let mut bytes = Vec::new();
+
+		for value in values {
+			bytes.append(&mut value.encode());
+		}
+
+		chunkify(&bytes)
+	}
+
+	pub fn merkleize<D: Digest>(
+		mut packed: Vec<GenericArray<u8, D::OutputSize>>
+	) -> GenericArray<u8, D::OutputSize> {
+		while !super::is_power_of_two(packed.len()) {
+			packed.push(Default::default());
+		}
+
+		let len = packed.len();
+		let mut tree = Vec::new();
+		for _ in 0..len {
+			tree.push(Default::default());
+		}
+		tree.append(&mut packed);
+
+		for i in (1..(tree.len() / 2)).rev() {
+			let mut hasher = D::new();
+			hasher.input(&tree[i * 2]);
+			hasher.input(&tree[i * 2 + 1]);
+			let hashed = hasher.result();
+			tree[i] = hashed;
+		}
+
+		tree[1].clone()
+	}
+
+	pub fn mix_in_length<D: Digest>(
+		root: GenericArray<u8, D::OutputSize>, length: u32
+	) -> GenericArray<u8, D::OutputSize> {
+		let mut len_bytes: GenericArray<u8, D::OutputSize> = Default::default();
+		(&mut len_bytes[0..4]).copy_from_slice(&length.encode());
+
+		let mut hasher = D::new();
+		hasher.input(root.as_ref());
+		hasher.input(len_bytes.as_ref());
+		hasher.result()
+	}
 }
 
 #[cfg(test)]
@@ -291,7 +518,7 @@ mod tests {
 
 	#[test]
 	fn test_chunkify() {
-		let chunkified = chunkify(b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf");
+		let chunkified = hash_db_hasher::chunkify(b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf");
 		assert_eq!(chunkified.len(), 2);
 		assert_eq!(&chunkified[0][..], b"hello, worldasdfalsgfawieuyfawue");
 		assert_eq!(&chunkified[1][..], b"ygkdhbvldzadfasdf\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
@@ -299,7 +526,7 @@ mod tests {
 
 	#[test]
 	fn test_pack() {
-		let packed = pack(&[
+		let packed = hash_db_hasher::pack(&[
 			b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf".to_vec(),
 			b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf".to_vec()
 		]);
@@ -312,15 +539,15 @@ mod tests {
 
 	#[test]
 	fn test_merkleize() {
-		let packed = pack(&[true, false]);
-		let m = merkleize::<Sha256Hasher>(packed);
+		let packed = hash_db_hasher::pack(&[true, false]);
+		let m = hash_db_hasher::merkleize::<Sha256Hasher>(packed);
 		assert_eq!(m, H256::from_slice(b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"));
 
-		let packed = pack(&[
+		let packed = hash_db_hasher::pack(&[
 			b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf".to_vec(),
 			b"hello, worldasdfalsgfawieuyfawueygkdhbvldzadfasdf".to_vec()
 		]);
-		let m = merkleize::<Sha256Hasher>(packed);
+		let m = hash_db_hasher::merkleize::<Sha256Hasher>(packed);
 		assert_eq!(m, H256::from_slice(b"\x06\xec\x0c\xefK\x08l\x03\xe8\x07AnC\xe7O\xb6+\\\xfd\x88i\x7f\x19\x9d\xcb\x0e\xfdx}\x1c)'"));
 	}
 
