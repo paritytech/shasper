@@ -6,7 +6,7 @@ use crate::{
 	Epoch, Gwei, BeaconBlockBody,
 };
 use crate::primitives::{H256, BitField, Version, Signature};
-use crate::util::{is_power_of_two, to_bytes};
+use crate::utils::{is_power_of_two, to_bytes};
 
 mod cache;
 mod per_block;

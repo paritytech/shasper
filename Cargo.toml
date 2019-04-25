@@ -52,9 +52,9 @@ members = [
 	"casper",
 	"beacon",
 	"yamltests",
-	"util/ssz",
-	"util/ssz-derive",
-	"util/keccak-hasher",
+	"utils/ssz",
+	"utils/ssz-derive",
+	"utils/keccak-hasher",
 ]
 exclude = [
 	"runtime/wasm",

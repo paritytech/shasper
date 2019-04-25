@@ -43,7 +43,7 @@ mod eth1;
 mod slashing;
 mod state;
 mod validator;
-mod util;
+mod utils;
 mod error;
 mod config;
 mod executive;
