@@ -13,10 +13,10 @@ serde_derive = { version = "1.0", optional = true }
 primitive-types = { version = "0.2", default-features = false, features = ["codec"] }
 impl-serde = { version = "0.1", optional = true }
 crypto = { package = "shasper-crypto", path = "../crypto", default-features = false }
-ssz = { path = "../util/ssz", default-features = false }
-ssz-derive = { path = "../util/ssz-derive", default-features = false }
+ssz = { path = "../utils/ssz", default-features = false }
+ssz-derive = { path = "../utils/ssz-derive", default-features = false }
 hash-db = { version = "0.11", default-features = false }
-keccak-hasher = { path = "../util/keccak-hasher", default-features = false }
+keccak-hasher = { path = "../utils/keccak-hasher", default-features = false }
 byteorder = { version = "1.2", default-features = false }
 casper = { path = "../casper", default-features = false }
 beacon = { path = "../beacon", default-features = false, features = ["with-codec"] }

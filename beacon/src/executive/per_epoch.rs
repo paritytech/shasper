@@ -6,7 +6,7 @@ use crate::{
 	Slot, Shard,
 };
 use crate::primitives::H256;
-use crate::util::{is_power_of_two, integer_squareroot, compare_hash};
+use crate::utils::{is_power_of_two, integer_squareroot, compare_hash};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	fn attesting_indices(&self, attestations: &[PendingAttestation]) -> Result<Vec<ValidatorIndex>, Error> {

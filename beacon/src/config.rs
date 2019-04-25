@@ -9,7 +9,7 @@ use codec::{Encode, Decode};
 
 use crate::primitives::{Signature, H256, ValidatorId, Version};
 use crate::{Epoch, Slot, Gwei, Shard, Fork, ValidatorIndex};
-use crate::util::{split_offset, to_usize};
+use crate::utils::{split_offset, to_usize};
 
 /// Constants used in beacon block.
 pub trait Config {
