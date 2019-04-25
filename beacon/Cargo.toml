@@ -18,6 +18,8 @@ ssz = { version = "0.1.1", path = "../util/ssz", default-features = false }
 ssz-derive = { version = "0.1.1", path = "../util/ssz-derive" }
 fixed-hash = { version = "0.3.0", default-features = false }
 parity-codec = { version = "3.2", default-features = false, optional = true, features = ["derive"] }
+digest = "0.8"
+generic-array = "0.12"
 
 [features]
 default = ["std", "with-serde", "with-codec"]

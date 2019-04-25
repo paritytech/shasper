@@ -85,7 +85,13 @@ impl ssz::Composite for H384 { }
 
 impl<H: hash_db::Hasher> ssz::Hashable<H> for H384 {
 	fn hash(&self) -> H::Out {
-		ssz::hash::merkleize::<H>(ssz::hash::chunkify(self.as_ref()))
+		ssz::hash::hash_db_hasher::merkleize::<H>(ssz::hash::hash_db_hasher::chunkify(self.as_ref()))
+	}
+}
+
+impl<D: digest::Digest> ssz::Digestible<D> for H384 {
+	fn hash(&self) -> generic_array::GenericArray<u8, D::OutputSize> {
+		ssz::hash::digest_hasher::merkleize::<D>(ssz::hash::digest_hasher::chunkify(self.as_ref()))
 	}
 }
 
