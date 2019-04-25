@@ -54,6 +54,7 @@ members = [
 	"yamltests",
 	"utils/ssz",
 	"utils/ssz-derive",
+	"utils/ssz-merkle",
 	"utils/keccak-hasher",
 ]
 exclude = [
