@@ -47,6 +47,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	let name = &input.ident;
 
 	let hash_param_ = quote!(H);
+	let digest_param_ = quote!(D);
 
 	let prefixable_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Prefixable));
 	let (prefixable_impl_generics, prefixable_ty_generics, prefixable_where_clause) = prefixable_generics.split_for_impl();
@@ -57,13 +58,19 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	let decode_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Decode));
 	let (decode_impl_generics, decode_ty_generics, decode_where_clause) = decode_generics.split_for_impl();
 
-	let hash_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Hashable<H>));
+	let hash_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Hashable<#hash_param_>));
 	let mut hash_impl_generics = hash_generics.clone();
 	let mut hash_param: syn::TypeParam = parse_quote!(#hash_param_);
 	hash_param.bounds.push(parse_quote!(::ssz::hash_db::Hasher));
 	hash_impl_generics.params.push(hash_param.into());
 	let (_, hash_ty_generics, hash_where_clause) = hash_generics.split_for_impl();
 
+	let digest_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Digestible<#digest_param_>));
+	let mut digest_impl_generics = digest_generics.clone();
+	let mut digest_param: syn::TypeParam = parse_quote!(#digest_param_);
+	digest_param.bounds.push(parse_quote!(::ssz::digest::Digest));
+	digest_impl_generics.params.push(digest_param.into());
+	let (_, digest_ty_generics, digest_where_clause) = digest_generics.split_for_impl();
 
 	let composite_generics = input.generics.clone();
 	let (composite_impl_generics, composite_ty_generics, composite_where_clause) = composite_generics.split_for_impl();
@@ -77,8 +84,10 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	let prefixing = prefixable::quote(&input.data, &dest_);
 	let (encoding, decodable) = encode::quote(&input.data, &self_, &dest_, sorted);
 	let decoding = decode::quote(&input.data, name, &input_, sorted);
-	let hashing = hash::quote(&input.data, &self_, &dest_, &hash_param_, false);
-	let truncate_hashing = hash::quote(&input.data, &self_, &dest_, &hash_param_, true);
+	let hashing = hash::quote(&input.data, &self_, &dest_, &hash_param_, false, false);
+	let digesting = hash::quote(&input.data, &self_, &dest_, &digest_param_, false, true);
+	let truncate_hashing = hash::quote(&input.data, &self_, &dest_, &hash_param_, true, false);
+	let truncate_digesting = hash::quote(&input.data, &self_, &dest_, &digest_param_, true, true);
 
 	let decode = if no_decode || !decodable {
 		quote! { }
@@ -155,7 +164,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 				let mut #dest_ = ::ssz::prelude::Vec::new();
 				#hashing
 				let len = #dest_.len() as u32;
-				::ssz::hash::merkleize :: <#hash_param_> (
+				::ssz::hash::hash_db_hasher::merkleize :: <#hash_param_> (
 					#dest_
 				)
 			}
@@ -164,7 +173,27 @@ pub fn derive(input: TokenStream) -> TokenStream {
 				let mut #dest_ = ::ssz::prelude::Vec::new();
 				#truncate_hashing
 				let len = #dest_.len() as u32;
-				::ssz::hash::merkleize :: <#hash_param_> (
+				::ssz::hash::hash_db_hasher::merkleize :: <#hash_param_> (
+					#dest_
+				)
+			}
+		}
+
+		impl #digest_impl_generics ::ssz::Digestible< #digest_param_ > for #name #digest_ty_generics #digest_where_clause {
+			fn hash(&self) -> ::ssz::generic_array::GenericArray< u8, #digest_param_ :: OutputSize > {
+				let mut #dest_ = ::ssz::prelude::Vec::new();
+				#digesting
+				let len = #dest_.len() as u32;
+				::ssz::hash::digest_hasher::merkleize :: <#digest_param_> (
+					#dest_
+				)
+			}
+
+			fn truncated_hash(&self) -> ::ssz::generic_array::GenericArray< u8, #digest_param_ :: OutputSize > {
+				let mut #dest_ = ::ssz::prelude::Vec::new();
+				#truncate_digesting
+				let len = #dest_.len() as u32;
+				::ssz::hash::digest_hasher::merkleize :: <#digest_param_> (
 					#dest_
 				)
 			}

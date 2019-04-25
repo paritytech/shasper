@@ -40,6 +40,12 @@ pub mod prelude {
 #[doc(hidden)]
 pub use hash_db;
 
+#[doc(hidden)]
+pub use digest;
+
+#[doc(hidden)]
+pub use generic_array;
+
 #[cfg(not(feature = "std"))]
 #[allow(unused)]
 #[prelude_import]
@@ -52,7 +58,7 @@ pub mod hash;
 mod tests;
 
 pub use self::codec::{Input, Output, Encode, Decode, Prefixable, Fixed};
-pub use self::hash::{Hashable, Composite};
+pub use self::hash::{Hashable, Digestible, Composite};
 
 /// Trait that allows zero-copy read/write of value-references to/from slices in LE format.
 pub trait Ssz: Decode + Encode {}
