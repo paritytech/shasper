@@ -20,6 +20,7 @@ extern crate ssz;
 extern crate ssz_derive;
 
 use core::fmt::Debug;
+use core::marker::PhantomData;
 use ssz::{Encode, Decode, Prefixable};
 
 fn assert_ed<T: Encode + Decode + Debug + PartialEq>(t: T, mut a: &[u8]) {
@@ -99,4 +100,32 @@ fn generic() {
 	assert_eq!(IndexedGeneric::<Vec<u8>, bool>::prefixed(), true);
 	assert_eq!(NamedGeneric::<bool, bool>::prefixed(), false);
 	assert_eq!(NamedGeneric::<Vec<u8>, bool>::prefixed(), true);
+}
+
+#[derive(Debug, PartialEq, Ssz)]
+#[ssz(no_bound(A))]
+struct Skipped<A> {
+	#[ssz(skip_default)]
+	_marker: PhantomData<A>
+}
+
+#[derive(Debug, PartialEq, Ssz)]
+#[ssz(no_bound(A))]
+struct Skipped2<A>(
+	#[ssz(skip_default)]
+	PhantomData<A>
+);
+
+#[test]
+fn skipped() {
+	let skipped = Skipped::<()> {
+		_marker: PhantomData,
+	};
+	let skipped2 = Skipped2::<()>(PhantomData);
+
+	let skipped_encode = skipped.encode();
+	let skipped2_encode = skipped2.encode();
+
+	assert_ed(skipped, &skipped_encode);
+	assert_ed(skipped2, &skipped2_encode);
 }

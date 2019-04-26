@@ -17,6 +17,7 @@ use syn::{
 	Data, Fields,
 	spanned::Spanned,
 };
+use super::has_attr;
 
 pub fn quote(data: &Data, type_name: &Ident, input: &TokenStream, sorted: bool) -> TokenStream {
 	let call_site = Span::call_site();
@@ -54,12 +55,18 @@ fn create_instance(call_site: Span, name: TokenStream, input: &TokenStream, fiel
 			let recurse = named_fields.iter().map(|f| {
 				let name = &f.ident;
 				let field = quote_spanned!(call_site => #name);
+				let skip = has_attr(&f.attrs, "skip_default");
 
-				quote_spanned! { f.span() =>
-					#field: {
-						let (value, i) = ::ssz::Decode::decode_as(#input)?;
-						l += i;
-						value
+				if skip {
+					quote_spanned! { f.span() => #field: Default::default() }
+				} else {
+					quote_spanned! {
+						f.span() =>
+							#field: {
+								let (value, i) = ::ssz::Decode::decode_as(#input)?;
+								l += i;
+								value
+							}
 					}
 				}
 			});
@@ -72,11 +79,17 @@ fn create_instance(call_site: Span, name: TokenStream, input: &TokenStream, fiel
 		},
 		Fields::Unnamed(ref fields) => {
 			let recurse = fields.unnamed.iter().map(|f| {
-				quote_spanned! { f.span() =>
-					{
-						let (value, i) = ::ssz::Decode::decode_as(#input)?;
-						l += i;
-						value
+				let skip = has_attr(&f.attrs, "skip_default");
+
+				if skip {
+					quote! { Default::default() }
+				} else {
+					quote_spanned! {
+						f.span() => {
+							let (value, i) = ::ssz::Decode::decode_as(#input)?;
+							l += i;
+							value
+						}
 					}
 				}
 			});

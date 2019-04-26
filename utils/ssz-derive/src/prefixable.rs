@@ -19,6 +19,7 @@ use syn::{
 	spanned::Spanned,
 	token::Comma,
 };
+use super::has_attr;
 
 type FieldsList = Punctuated<Field, Comma>;
 
@@ -30,11 +31,16 @@ fn encode_fields(
 
 	let recurse = fields.iter().map(|f| {
 		let ty = &f.ty;
+		let skip = has_attr(&f.attrs, "skip_default");
 
-		quote_spanned! { f.span() =>
-			{
-				use ::ssz::Prefixable;
-				#dest = #dest || <#ty>::prefixed();
+		if skip {
+			quote! { (); }
+		} else {
+			quote_spanned! {
+				f.span() => {
+					use ::ssz::Prefixable;
+					#dest = #dest || <#ty>::prefixed();
+				}
 			}
 		}
 	});
