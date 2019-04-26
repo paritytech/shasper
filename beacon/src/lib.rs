@@ -73,6 +73,126 @@ pub type Timestamp = u64;
 /// Index type for validators.
 pub type ValidatorIndex = u64;
 
+/// Beacon block inherent.
+pub struct Inherent {
+	/// New slot.
+	pub slot: u64,
+	/// New RANDAO reveal.
+	pub randao_reveal: H768,
+	/// New eth1 data.
+	pub eth1_data: Eth1Data,
+}
+
+/// Beacon block transaction.
+pub enum Transaction {
+	/// Proposer slashing.
+	ProposerSlashing(ProposerSlashing),
+	/// Attester slashing.
+	AttesterSlashing(AttesterSlashing),
+	/// Attestation.
+	Attestation(Attestation),
+	/// Deposit.
+	Deposit(Deposit),
+	/// Voluntary exit.
+	VoluntaryExit(VoluntaryExit),
+	/// Transfer.
+	Transfer(Transfer),
+}
+
+/// Initialize a block, and apply inherents.
+pub fn initialize_block<C: Config>(parent_block: &mut BeaconBlock, state: &mut BeaconState, inherent: Inherent, config: &C) -> Result<(), Error> {
+	let block = parent_block;
+	block.signature = Signature::default();
+	block.slot = inherent.slot;
+	block.body.randao_reveal = inherent.randao_reveal;
+	block.body.eth1_data = inherent.eth1_data;
+
+	let mut executive = Executive::new(state, config);
+
+	while executive.state().slot < block.slot {
+		executive.update_cache();
+
+		if (executive.state().slot + 1) % config.slots_per_epoch() == 0 {
+			executive.update_justification_and_finalization()?;
+			executive.update_crosslinks()?;
+			executive.update_eth1_period();
+			executive.update_rewards()?;
+			executive.update_ejections();
+			executive.update_registry_and_shuffling_data()?;
+			executive.update_slashings();
+			executive.update_exit_queue();
+			executive.update_finalize()?;
+		}
+
+		executive.advance_slot();
+	}
+
+	assert!(executive.state().slot == block.slot);
+	executive.process_randao(block)?;
+	executive.process_eth1_data(block);
+
+	Ok(())
+}
+
+/// Apply a transaction to the block.
+pub fn apply_transaction<C: Config>(block: &mut BeaconBlock, state: &mut BeaconState, extrinsic: Transaction, config: &C) -> Result<(), Error> {
+	let mut executive = Executive::new(state, config);
+
+	match extrinsic {
+		Transaction::ProposerSlashing(slashing) => {
+			if block.body.proposer_slashings.len() >= config.max_proposer_slashings() {
+				return Err(Error::TooManyProposerSlashings)
+			}
+			executive.push_proposer_slashing(slashing.clone())?;
+			block.body.proposer_slashings.push(slashing);
+		},
+		Transaction::AttesterSlashing(slashing) => {
+			if block.body.attester_slashings.len() >= config.max_attester_slashings() {
+				return Err(Error::TooManyAttesterSlashings)
+			}
+			executive.push_attester_slashing(slashing.clone())?;
+			block.body.attester_slashings.push(slashing);
+		},
+		Transaction::Attestation(attestation) => {
+			if block.body.attestations.len() >= config.max_attestations() {
+				return Err(Error::TooManyAttestations)
+			}
+			executive.push_attestation(attestation.clone())?;
+			block.body.attestations.push(attestation);
+		},
+		Transaction::Deposit(deposit) => {
+			if block.body.deposits.len() >= config.max_deposits() {
+				return Err(Error::TooManyDeposits)
+			}
+			executive.push_deposit(deposit.clone())?;
+			block.body.deposits.push(deposit);
+		},
+		Transaction::VoluntaryExit(voluntary_exit) => {
+			if block.body.voluntary_exits.len() >= config.max_voluntary_exits() {
+				return Err(Error::TooManyVoluntaryExits)
+			}
+			executive.push_voluntary_exit(voluntary_exit.clone())?;
+			block.body.voluntary_exits.push(voluntary_exit);
+		},
+		Transaction::Transfer(transfer) => {
+			if block.body.transfers.len() >= config.max_transfers() {
+				return Err(Error::TooManyTransfers)
+			}
+			executive.push_transfer(transfer.clone())?;
+			block.body.transfers.push(transfer);
+		},
+	}
+	Ok(())
+}
+
+/// Finalize an unsealed block.
+pub fn finalize_block<C: Config>(block: &mut BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
+	let mut executive = Executive::new(state, config);
+
+	executive.process_block_header(block, false)?;
+	Ok(())
+}
+
 /// Given a block, execute based on a parent state.
 pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
 	let mut executive = Executive::new(state, config);
@@ -95,7 +215,6 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 		executive.advance_slot();
 
 		if executive.state().slot == block.slot {
-			executive.process_block_header(block)?;
 			executive.process_randao(block)?;
 			executive.process_eth1_data(block);
 
@@ -140,6 +259,8 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 			for transfer in &block.body.transfers {
 				executive.push_transfer(transfer.clone())?;
 			}
+
+			executive.process_block_header(block, true)?;
 		}
 	}
 

@@ -29,7 +29,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	}
 
 	/// Process a block header.
-	pub fn process_block_header(&mut self, block: &BeaconBlock) -> Result<(), Error> {
+	pub fn process_block_header(&mut self, block: &BeaconBlock, validate_signature: bool) -> Result<(), Error> {
 		if block.slot != self.state.slot {
 			return Err(Error::BlockSlotInvalid)
 		}
@@ -40,10 +40,12 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		self.state.latest_block_header = BeaconBlockHeader::with_state_root_no_signature::<C::Hasher>(block, H256::default());
 
-		let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
+		if validate_signature {
+			let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
 
-		if !self.config.bls_verify(&proposer.pubkey, &Hashable::<C::Hasher>::truncated_hash(block), &block.signature, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_beacon_block())) {
-			return Err(Error::BlockSignatureInvalid)
+			if !self.config.bls_verify(&proposer.pubkey, &Hashable::<C::Hasher>::truncated_hash(block), &block.signature, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_beacon_block())) {
+				return Err(Error::BlockSignatureInvalid)
+			}
 		}
 
 		Ok(())
