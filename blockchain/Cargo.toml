@@ -1,0 +1,11 @@
+[package]
+name = "shasper-blockchain"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+description = "Blockchain interface for Shasper beacon chain."
+edition = "2018"
+
+[dependencies]
+beacon = { path = "../beacon" }
+blockchain = "0.4"
+ssz = { path = "../utils/ssz" }
