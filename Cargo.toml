@@ -51,6 +51,7 @@ members = [
 	"crypto",
 	"casper",
 	"beacon",
+	"blockchain",
 	"yamltests",
 	"utils/ssz",
 	"utils/ssz-derive",
