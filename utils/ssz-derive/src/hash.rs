@@ -28,9 +28,10 @@ fn encode_fields<F>(
 			false
 		};
 		let use_fixed = has_attr(&f.attrs, "use_fixed");
+		let skip = has_attr(&f.attrs, "skip_default");
 		let field = field_name(i, &f.ident);
 
-		if truncate {
+		if truncate || skip {
 			quote! { (); }
 		} else if use_fixed {
 			if is_digest {

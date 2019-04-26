@@ -49,23 +49,25 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	let hash_param_ = quote!(H);
 	let digest_param_ = quote!(D);
 
-	let prefixable_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Prefixable));
+	let no_bounds = no_bound(&input.attrs);
+
+	let prefixable_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Prefixable), &no_bounds);
 	let (prefixable_impl_generics, prefixable_ty_generics, prefixable_where_clause) = prefixable_generics.split_for_impl();
 
-	let encode_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Encode));
+	let encode_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Encode), &no_bounds);
 	let (encode_impl_generics, encode_ty_generics, encode_where_clause) = encode_generics.split_for_impl();
 
-	let decode_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Decode));
+	let decode_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Decode), &no_bounds);
 	let (decode_impl_generics, decode_ty_generics, decode_where_clause) = decode_generics.split_for_impl();
 
-	let hash_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Hashable<#hash_param_>));
+	let hash_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Hashable<#hash_param_>), &no_bounds);
 	let mut hash_impl_generics = hash_generics.clone();
 	let mut hash_param: syn::TypeParam = parse_quote!(#hash_param_);
 	hash_param.bounds.push(parse_quote!(::ssz::hash_db::Hasher));
 	hash_impl_generics.params.push(hash_param.into());
 	let (_, hash_ty_generics, hash_where_clause) = hash_generics.split_for_impl();
 
-	let digest_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Digestible<#digest_param_>));
+	let digest_generics = add_trait_bounds(input.generics.clone(), parse_quote!(::ssz::Digestible<#digest_param_>), &no_bounds);
 	let mut digest_impl_generics = digest_generics.clone();
 	let mut digest_param: syn::TypeParam = parse_quote!(#digest_param_);
 	digest_param.bounds.push(parse_quote!(::ssz::digest::Digest));
@@ -81,6 +83,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	let sorted = has_attr(&input.attrs, "sorted");
 	let no_decode = has_attr(&input.attrs, "no_decode");
 	let no_encode = has_attr(&input.attrs, "no_encode");
+
 	let prefixing = prefixable::quote(&input.data, &dest_);
 	let (encoding, decodable) = encode::quote(&input.data, &self_, &dest_, sorted);
 	let decoding = decode::quote(&input.data, name, &input_, sorted);
@@ -203,13 +206,47 @@ pub fn derive(input: TokenStream) -> TokenStream {
 	expanded.into()
 }
 
-fn add_trait_bounds(mut generics: Generics, bounds: syn::TypeParamBound) -> Generics {
+fn add_trait_bounds(mut generics: Generics, bounds: syn::TypeParamBound, no_bounds: &[Ident]) -> Generics {
 	for param in &mut generics.params {
 		if let GenericParam::Type(ref mut type_param) = *param {
-			type_param.bounds.push(bounds.clone());
+			if !no_bounds.iter().any(|ident| ident.to_string() == type_param.ident.to_string()) {
+				type_param.bounds.push(bounds.clone());
+			}
 		}
 	}
 	generics
+}
+
+fn no_bound(attrs: &[syn::Attribute]) -> Vec<Ident> {
+	let mut ret = Vec::new();
+	for attr in attrs {
+		attr.path.segments.first().map(|pair| {
+			let seg = pair.value();
+
+			if seg.ident == Ident::new("ssz", seg.ident.span()) {
+				assert_eq!(attr.path.segments.len(), 1);
+
+				let meta = attr.interpret_meta();
+				if let Some(syn::Meta::List(ref l)) = meta {
+					for a in &l.nested {
+						if let syn::NestedMeta::Meta(syn::Meta::List(ref l)) = a {
+							if l.ident == Ident::new("no_bound", l.ident.span()) {
+								for v in &l.nested {
+									if let syn::NestedMeta::Meta(syn::Meta::Word(ref w)) = v {
+										ret.push(w.clone());
+									} else {
+										panic!("Invalid ssz attribute syntax");
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		});
+	}
+
+	ret
 }
 
 fn has_attr(attrs: &[syn::Attribute], s: &str) -> bool {
@@ -222,15 +259,14 @@ fn has_attr(attrs: &[syn::Attribute], s: &str) -> bool {
 
 				let meta = attr.interpret_meta();
 				if let Some(syn::Meta::List(ref l)) = meta {
-					if let syn::NestedMeta::Meta(syn::Meta::Word(ref w)) = l.nested.last().unwrap().value() {
-						if w == &Ident::new(s, w.span()) {
-							true
-						} else {
-							false
+					for a in &l.nested {
+						if let syn::NestedMeta::Meta(syn::Meta::Word(ref w)) = a {
+							if w == &Ident::new(s, w.span()) {
+								return true
+							}
 						}
-					} else {
-						panic!("Invalid syntax for `ssz` attribute.");
 					}
+					false
 				} else {
 					panic!("Invalid syntax for `ssz` attribute.");
 				}

@@ -44,8 +44,13 @@ fn encode_fields<F>(
 	let recurse = fields.iter().enumerate().map(|(i, f)| {
 		let field = field_name(i, &f.ident);
 		let use_fixed = has_attr(&f.attrs, "use_fixed");
+		let skip = has_attr(&f.attrs, "skip_default");
 
-		if use_fixed {
+		if skip {
+			quote! {
+				();
+			}
+		} else if use_fixed {
 			decodable = false;
 			quote_spanned! { f.span() =>
 				::ssz::Encode::encode_to(&::ssz::Fixed(#field.as_ref()), #dest);
