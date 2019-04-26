@@ -2,6 +2,8 @@ use primitive_types::{U256, H256, H160};
 use hash_db::Hasher;
 use digest::Digest;
 use generic_array::GenericArray;
+use core::marker::PhantomData;
+
 use crate::Fixed;
 
 pub trait Digestible<D: Digest> {
@@ -19,6 +21,32 @@ pub trait Hashable<H: Hasher> {
 }
 
 pub trait Composite { }
+
+pub struct RawDigestible<D: Digest> {
+	hash: GenericArray<u8, D::OutputSize>,
+	_marker: PhantomData<D>,
+}
+
+impl<D: Digest> Composite for RawDigestible<D> { }
+
+impl<D: Digest> Digestible<D> for RawDigestible<D> {
+	fn hash(&self) -> GenericArray<u8, D::OutputSize> {
+		self.hash.clone()
+	}
+}
+
+pub struct RawHashable<H: Hasher> {
+	hash: H::Out,
+	_marker: PhantomData<H>,
+}
+
+impl<H: Hasher> Composite for RawHashable<H> { }
+
+impl<H: Hasher> Hashable<H> for RawHashable<H> {
+	fn hash(&self) -> H::Out {
+		self.hash.clone()
+	}
+}
 
 macro_rules! impl_hashable_and_digestible_with_chunkify {
 	( $t:ty, $self:ident, $merkleize:ident, $chunkify:ident, $mix_in_length:ident, $e:expr ) => {
