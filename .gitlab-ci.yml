@@ -2,22 +2,18 @@ stages:
   - test
   - build
 
-image:                             parity/rust:nightly
+image:                             parity/rust-parity-ethereum-build:xenial
 
 variables:
-  CI_SERVER_NAME:                  "GitLab CI"
-  CARGO_HOME:                      "${CI_PROJECT_DIR}/.cargo"
+  GIT_STRATEGY:                    fetch
+  GIT_SUBMODULE_STRATEGY:          recursive
   RUST_TOOLCHAIN:                  "stable"
-  GIT_SUBMODULE_STRATEGY:          "recursive"
-
-cache:
-  key:                             "${CI_JOB_NAME}"
-  paths:
-    - ./target/
-    - ./.cargo/
-
+  CI_SERVER_NAME:                  "GitLab CI"
+  CARGO_HOME:                      "/ci-cache/shasper/cargo/${CI_JOB_NAME}"
+  SCCACHE_CACHE_SIZE:              50G
 
 before_script:
+  - sccache -s
   - ./scripts/init.sh
   - export PATH="${CI_PROJECT_DIR}/cargo/bin/:$PATH"
   - ./scripts/build.sh
@@ -29,6 +25,7 @@ test-rust-stable:
   stage:                           test
   script:
     - time cargo test --all --release --locked
+    - sccache -s
   only:
     - triggers
     - tags
@@ -37,7 +34,7 @@ test-rust-stable:
     - web
     - /^[0-9]+$/
   tags:
-    - rust-stable
+    - linux-docker
 
 
 #### stage:                        build
@@ -45,9 +42,10 @@ test-rust-stable:
 build-linux:
   stage:                           build
   script:
-    - cargo build --release
+    - time cargo build --release
+    - sccache -s
   tags:
-    - rust-stable
+    - linux-docker
   only:
     - master
     - tags
