@@ -60,6 +60,8 @@ pub use config::*;
 pub use executive::*;
 pub use primitives::*;
 
+use ssz::Hashable;
+
 /// Gwei as in the currency ETH.
 pub type Gwei = u64;
 /// Slot type.
@@ -100,12 +102,23 @@ pub enum Transaction {
 }
 
 /// Initialize a block, and apply inherents.
-pub fn initialize_block<C: Config>(parent_block: &mut BeaconBlock, state: &mut BeaconState, inherent: Inherent, config: &C) -> Result<(), Error> {
-	let block = parent_block;
-	block.signature = Signature::default();
-	block.slot = inherent.slot;
-	block.body.randao_reveal = inherent.randao_reveal;
-	block.body.eth1_data = inherent.eth1_data;
+pub fn initialize_block<C: Config>(parent_block: &BeaconBlock, state: &mut BeaconState, inherent: Inherent, config: &C) -> Result<UnsealedBeaconBlock, Error> {
+	let body = BeaconBlockBody {
+		randao_reveal: inherent.randao_reveal,
+		eth1_data: inherent.eth1_data,
+		proposer_slashings: Vec::new(),
+		attester_slashings: Vec::new(),
+		attestations: Vec::new(),
+		deposits: Vec::new(),
+		voluntary_exits: Vec::new(),
+		transfers: Vec::new(),
+	};
+	let block = UnsealedBeaconBlock {
+		slot: inherent.slot,
+		previous_block_root: Hashable::<C::Hasher>::hash(parent_block),
+		state_root: parent_block.state_root,
+		body,
+	};
 
 	let mut executive = Executive::new(state, config);
 
@@ -128,14 +141,14 @@ pub fn initialize_block<C: Config>(parent_block: &mut BeaconBlock, state: &mut B
 	}
 
 	assert!(executive.state().slot == block.slot);
-	executive.process_randao(block)?;
-	executive.process_eth1_data(block);
+	executive.process_randao(&block)?;
+	executive.process_eth1_data(&block);
 
-	Ok(())
+	Ok(block)
 }
 
 /// Apply a transaction to the block.
-pub fn apply_transaction<C: Config>(block: &mut BeaconBlock, state: &mut BeaconState, extrinsic: Transaction, config: &C) -> Result<(), Error> {
+pub fn apply_transaction<C: Config>(block: &mut UnsealedBeaconBlock, state: &mut BeaconState, extrinsic: Transaction, config: &C) -> Result<(), Error> {
 	let mut executive = Executive::new(state, config);
 
 	match extrinsic {
@@ -186,10 +199,10 @@ pub fn apply_transaction<C: Config>(block: &mut BeaconBlock, state: &mut BeaconS
 }
 
 /// Finalize an unsealed block.
-pub fn finalize_block<C: Config>(block: &mut BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
+pub fn finalize_block<C: Config>(block: &mut UnsealedBeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
 	let mut executive = Executive::new(state, config);
 
-	executive.process_block_header(block, false)?;
+	executive.process_block_header(block)?;
 	Ok(())
 }
 
@@ -260,7 +273,7 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 				executive.push_transfer(transfer.clone())?;
 			}
 
-			executive.process_block_header(block, true)?;
+			executive.process_block_header(block)?;
 		}
 	}
 
