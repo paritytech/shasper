@@ -7,5 +7,5 @@ edition = "2018"
 
 [dependencies]
 beacon = { path = "../beacon" }
-blockchain = "0.4"
+blockchain = "0.5"
 ssz = { path = "../utils/ssz" }
