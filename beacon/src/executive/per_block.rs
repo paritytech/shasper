@@ -4,7 +4,7 @@ use super::Executive;
 use crate::{
 	Config, Error, BeaconBlockHeader, Transfer, VoluntaryExit, Validator, Deposit, PendingAttestation,
 	AttestationDataAndCustodyBit, Crosslink, Attestation, AttesterSlashing, ProposerSlashing,
-	Eth1DataVote, BeaconBlock, SlashableAttestation, ValidatorIndex,
+	Eth1DataVote, SlashableAttestation, ValidatorIndex, Block,
 };
 use crate::primitives::H256;
 
@@ -29,21 +29,21 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	}
 
 	/// Process a block header.
-	pub fn process_block_header(&mut self, block: &BeaconBlock, validate_signature: bool) -> Result<(), Error> {
-		if block.slot != self.state.slot {
+	pub fn process_block_header<B: Block + Hashable<C::Hasher>>(&mut self, block: &B) -> Result<(), Error> {
+		if block.slot() != self.state.slot {
 			return Err(Error::BlockSlotInvalid)
 		}
 
-		if block.previous_block_root != Hashable::<C::Hasher>::truncated_hash(&self.state.latest_block_header) {
+		if block.previous_block_root() != &Hashable::<C::Hasher>::truncated_hash(&self.state.latest_block_header) {
 			return Err(Error::BlockPreviousRootInvalid)
 		}
 
-		self.state.latest_block_header = BeaconBlockHeader::with_state_root_no_signature::<C::Hasher>(block, H256::default());
+		self.state.latest_block_header = BeaconBlockHeader::with_state_root_no_signature::<_, C::Hasher>(block, H256::default());
 
-		if validate_signature {
+		if let Some(signature) = block.signature() {
 			let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
 
-			if !self.config.bls_verify(&proposer.pubkey, &Hashable::<C::Hasher>::truncated_hash(block), &block.signature, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_beacon_block())) {
+			if !self.config.bls_verify(&proposer.pubkey, &Hashable::<C::Hasher>::truncated_hash(block), signature, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_beacon_block())) {
 				return Err(Error::BlockSignatureInvalid)
 			}
 		}
@@ -52,30 +52,30 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	}
 
 	/// Process randao information given in a block.
-	pub fn process_randao(&mut self, block: &BeaconBlock) -> Result<(), Error> {
+	pub fn process_randao<B: Block>(&mut self, block: &B) -> Result<(), Error> {
 		let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
 
-		if !self.config.bls_verify(&proposer.pubkey, &Hashable::<C::Hasher>::hash(&self.current_epoch()), &block.body.randao_reveal, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_randao())) {
+		if !self.config.bls_verify(&proposer.pubkey, &Hashable::<C::Hasher>::hash(&self.current_epoch()), &block.body().randao_reveal, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_randao())) {
 			return Err(Error::RandaoSignatureInvalid)
 		}
 
 		let current_epoch = self.current_epoch();
-		self.state.latest_randao_mixes[(current_epoch % self.config.latest_randao_mixes_length() as u64) as usize] = self.randao_mix(current_epoch)? ^ self.config.hash(&block.body.randao_reveal[..]);
+		self.state.latest_randao_mixes[(current_epoch % self.config.latest_randao_mixes_length() as u64) as usize] = self.randao_mix(current_epoch)? ^ self.config.hash(&block.body().randao_reveal[..]);
 
 		Ok(())
 	}
 
 	/// Process eth1 data vote given in a block.
-	pub fn process_eth1_data(&mut self, block: &BeaconBlock) {
+	pub fn process_eth1_data<B: Block>(&mut self, block: &B) {
 		for eth1_data_vote in &mut self.state.eth1_data_votes {
-			if eth1_data_vote.eth1_data == block.body.eth1_data {
+			if eth1_data_vote.eth1_data == block.body().eth1_data {
 				eth1_data_vote.vote_count += 1;
 				return
 			}
 		}
 
 		self.state.eth1_data_votes.push(Eth1DataVote {
-			eth1_data: block.body.eth1_data.clone(),
+			eth1_data: block.body().eth1_data.clone(),
 			vote_count: 1
 		});
 	}

@@ -29,6 +29,45 @@ use crate::attestation::Attestation;
 use crate::slashing::{AttesterSlashing, ProposerSlashing};
 use crate::eth1::{Deposit, Eth1Data};
 
+/// Sealed or unsealed block.
+pub trait Block {
+	/// Slot of the block.
+	fn slot(&self) -> u64;
+	/// Previous block root.
+	fn previous_block_root(&self) -> &H256;
+	/// State root.
+	fn state_root(&self) -> &H256;
+	/// Body.
+	fn body(&self) -> &BeaconBlockBody;
+	/// Signature of the block. None for unsealed block.
+	fn signature(&self) -> Option<&Signature>;
+}
+
+#[derive(Ssz, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
+#[ssz(no_decode)]
+/// Unsealed beacon block.
+pub struct UnsealedBeaconBlock {
+	/// Slot of the block.
+	pub slot: u64,
+	/// Previous block root.
+	pub previous_block_root: H256,
+	/// State root.
+	pub state_root: H256,
+	/// Body
+	pub body: BeaconBlockBody,
+}
+
+impl Block for UnsealedBeaconBlock {
+	fn slot(&self) -> u64 { self.slot }
+	fn previous_block_root(&self) -> &H256 { &self.previous_block_root }
+	fn state_root(&self) -> &H256 { &self.state_root }
+	fn body(&self) -> &BeaconBlockBody { &self.body }
+	fn signature(&self) -> Option<&Signature> { None }
+}
+
 #[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
@@ -42,11 +81,19 @@ pub struct BeaconBlock {
 	pub previous_block_root: H256,
 	/// State root.
 	pub state_root: H256,
-	/// Body
+	/// Body.
 	pub body: BeaconBlockBody,
 	#[ssz(truncate)]
-	/// Signature
+	/// Signature.
 	pub signature: Signature,
+}
+
+impl Block for BeaconBlock {
+	fn slot(&self) -> u64 { self.slot }
+	fn previous_block_root(&self) -> &H256 { &self.previous_block_root }
+	fn state_root(&self) -> &H256 { &self.state_root }
+	fn body(&self) -> &BeaconBlockBody { &self.body }
+	fn signature(&self) -> Option<&Signature> { Some(&self.signature) }
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
@@ -70,12 +117,12 @@ pub struct BeaconBlockHeader {
 
 impl BeaconBlockHeader {
 	/// Create temporary block header with given state root and no signature.
-	pub fn with_state_root_no_signature<H: Hasher<Out=H256>>(block: &BeaconBlock, state_root: H256) -> Self {
+	pub fn with_state_root_no_signature<B: Block, H: Hasher<Out=H256>>(block: &B, state_root: H256) -> Self {
 		Self {
-			slot: block.slot,
-			previous_block_root: block.previous_block_root,
+			slot: block.slot(),
+			previous_block_root: block.previous_block_root().clone(),
 			state_root,
-			block_body_root: Hashable::<H>::hash(&block.body),
+			block_body_root: Hashable::<H>::hash(block.body()),
 			// signed_root(block) is used for block id purposes so signature is a stub
 			signature: Signature::default(),
 		}

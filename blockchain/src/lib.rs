@@ -1,5 +1,5 @@
-use beacon::{H256, KeccakHasher, BeaconState, BeaconBlock, Error as BeaconError, NoVerificationConfig, Inherent, Transaction, Signature};
-use blockchain::traits::{Block as BlockT, ExecuteContext, ImportContext, BlockExecutor, ExternalitiesOf, BlockOf, BuilderExecutor};
+use beacon::{H256, KeccakHasher, BeaconState, BeaconBlock, Error as BeaconError, NoVerificationConfig, Inherent, Transaction, UnsealedBeaconBlock};
+use blockchain::traits::{Block as BlockT, BlockExecutor, BuilderExecutor};
 use ssz::Hashable;
 
 #[derive(Eq, PartialEq, Clone)]
@@ -21,53 +21,24 @@ impl BlockT for Block {
 	}
 }
 
-#[derive(Clone, Copy)]
-pub enum Status {
-	ApplyInherent,
-	ApplyTransaction,
-}
-
 pub trait StateExternalities {
 	fn state(&mut self) -> &mut BeaconState;
-	fn status(&self) -> Status;
-	fn set_status(&mut self, status: Status);
 }
 
 pub struct State {
 	state: BeaconState,
-	status: Status,
 }
 
 impl StateExternalities for State {
 	fn state(&mut self) -> &mut BeaconState {
 		&mut self.state
 	}
-
-	fn status(&self) -> Status {
-		self.status
-	}
-
-	fn set_status(&mut self, status: Status) {
-		self.status = status;
-	}
-}
-
-pub struct Context;
-
-impl ExecuteContext for Context {
-	type Block = Block;
-	type Externalities = dyn StateExternalities + 'static;
-}
-
-impl ImportContext for Context {
-	type Auxiliary = ();
 }
 
 #[derive(Debug)]
 pub enum Error {
 	Backend(Box<std::error::Error>),
 	Beacon(BeaconError),
-	InvalidStatus,
 }
 
 impl std::fmt::Display for Error {
@@ -82,12 +53,13 @@ pub struct Executor;
 
 impl BlockExecutor for Executor {
 	type Error = Error;
-	type Context = Context;
+	type Block = Block;
+	type Externalities = dyn StateExternalities + 'static;
 
 	fn execute_block(
 		&self,
 		block: &Block,
-		state: &mut ExternalitiesOf<Context>,
+		state: &mut Self::Externalities,
 	) -> Result<(), Error> {
 		let config = NoVerificationConfig::full();
 
@@ -96,72 +68,46 @@ impl BlockExecutor for Executor {
 	}
 }
 
-pub enum Extrinsic {
-	Inherent(Inherent),
-	Transaction(Transaction),
-}
-
 impl BuilderExecutor for Executor {
 	type Error = Error;
-	type Context = Context;
-	type Extrinsic = Extrinsic;
+	type Block = Block;
+	type BuildBlock = UnsealedBeaconBlock;
+	type Externalities = dyn StateExternalities + 'static;
+	type Inherent = Inherent;
+	type Extrinsic = Transaction;
 
 	fn initialize_block(
 		&self,
-		block: &mut BlockOf<Self::Context>,
-		_state: &mut ExternalitiesOf<Self::Context>,
-	) -> Result<(), Self::Error> {
-		block.0.signature = Signature::default();
-		Ok(())
+		parent_block: &Block,
+		state: &mut Self::Externalities,
+		inherent: Inherent,
+	) -> Result<UnsealedBeaconBlock, Self::Error> {
+		let config = NoVerificationConfig::full();
+
+		beacon::initialize_block(&parent_block.0, state.state(), inherent, &config)
+			.map_err(|e| Error::Beacon(e))
 	}
 
 	fn apply_extrinsic(
 		&self,
-		block: &mut BlockOf<Self::Context>,
-		extrinsic: Self::Extrinsic,
-		state: &mut ExternalitiesOf<Self::Context>,
+		block: &mut UnsealedBeaconBlock,
+		extrinsic: Transaction,
+		state: &mut Self::Externalities,
 	) -> Result<(), Self::Error> {
 		let config = NoVerificationConfig::full();
 
-		match state.status() {
-			Status::ApplyInherent => {
-				match extrinsic {
-					Extrinsic::Inherent(inherent) => {
-						beacon::initialize_block(&mut block.0, state.state(), inherent, &config)
-							.map_err(|e| Error::Beacon(e))?;
-					},
-					Extrinsic::Transaction(_) => {
-						return Err(Error::InvalidStatus)
-					},
-				}
-				state.set_status(Status::ApplyTransaction);
-			},
-			Status::ApplyTransaction => {
-				match extrinsic {
-					Extrinsic::Inherent(_) => {
-						return Err(Error::InvalidStatus)
-					},
-					Extrinsic::Transaction(transaction) => {
-						beacon::apply_transaction(&mut block.0, state.state(), transaction, &config)
-							.map_err(|e| Error::Beacon(e))?;
-					},
-				}
-			},
-		}
-
-		Ok(())
+		beacon::apply_transaction(block, state.state(), extrinsic, &config)
+			.map_err(|e| Error::Beacon(e))
 	}
 
 	fn finalize_block(
 		&self,
-		block: &mut BlockOf<Self::Context>,
-		state: &mut ExternalitiesOf<Self::Context>,
+		block: &mut UnsealedBeaconBlock,
+		state: &mut Self::Externalities,
 	) -> Result<(), Self::Error> {
 		let config = NoVerificationConfig::full();
 
-		beacon::finalize_block(&mut block.0, state.state(), &config)
-			.map_err(|e| Error::Beacon(e))?;
-
-		Ok(())
+		beacon::finalize_block(block, state.state(), &config)
+			.map_err(|e| Error::Beacon(e))
 	}
 }
