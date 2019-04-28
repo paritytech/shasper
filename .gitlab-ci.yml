@@ -2,7 +2,7 @@ stages:
   - test
   - build
 
-image:                             parity/rust-parity-ethereum-build:xenial
+image:                             parity/shasper-ci:stretch
 
 variables:
   GIT_STRATEGY:                    fetch
@@ -15,7 +15,6 @@ variables:
 before_script:
   - sccache -s
   - ./scripts/init.sh
-  - export PATH="${CI_PROJECT_DIR}/cargo/bin/:$PATH"
   - ./scripts/build.sh
 
 
