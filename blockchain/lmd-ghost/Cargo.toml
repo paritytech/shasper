@@ -1,0 +1,9 @@
+[package]
+name = "lmd-ghost"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+description = "Cached LMD Ghost implementation"
+edition = "2018"
+
+[dependencies]
+blockchain = "0.5"
