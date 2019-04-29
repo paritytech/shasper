@@ -52,6 +52,7 @@ members = [
 	"casper",
 	"beacon",
 	"blockchain",
+	"blockchain/lmd-ghost",
 	"yamltests",
 	"utils/ssz",
 	"utils/ssz-derive",
