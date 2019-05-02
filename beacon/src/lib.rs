@@ -132,7 +132,7 @@ pub fn initialize_block<C: Config>(parent_block: &BeaconBlock, state: &mut Beaco
 			executive.update_eth1_period();
 			executive.update_rewards()?;
 			executive.update_ejections();
-			executive.update_registry_and_shuffling_data()?;
+			executive.update_registry()?;
 			executive.update_slashings();
 			executive.update_exit_queue();
 			executive.update_finalize()?;
@@ -224,7 +224,7 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 			executive.update_eth1_period();
 			executive.update_rewards()?;
 			executive.update_ejections();
-			executive.update_registry_and_shuffling_data()?;
+			executive.update_registry()?;
 			executive.update_slashings();
 			executive.update_exit_queue();
 			executive.update_finalize()?;

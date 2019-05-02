@@ -6,7 +6,7 @@ use crate::{
 	Epoch, Gwei, BeaconBlockBody,
 };
 use crate::primitives::{H256, BitField, Version, Signature};
-use crate::utils::{is_power_of_two, to_bytes};
+use crate::utils::to_bytes;
 
 mod cache;
 mod per_block;
@@ -35,7 +35,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		self.config
 	}
 
-	fn crosslink_committees_at_slot(&self, slot: Slot, registry_change: bool) -> Result<Vec<(Vec<ValidatorIndex>, Shard)>, Error> {
+	fn crosslink_committees_at_slot(&self, slot: Slot) -> Result<Vec<(Vec<ValidatorIndex>, Shard)>, Error> {
 		let epoch = self.config.slot_to_epoch(slot);
 		let current_epoch = self.current_epoch();
 		let previous_epoch = self.previous_epoch();
@@ -45,70 +45,40 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::EpochOutOfRange);
 		}
 
-		let (committees_per_epoch, seed, shuffling_epoch, shuffling_start_shard) = if epoch == current_epoch {
-			let committees_per_epoch = self.current_epoch_committee_count();
-			let seed = self.state.current_shuffling_seed;
-			let shuffling_epoch = self.state.current_shuffling_epoch;
-			let shuffling_start_shard = self.state.current_shuffling_start_shard;
+		let active_validators = self.state.active_validator_indices(epoch);
+		let committees_per_epoch = self.config.epoch_committee_count(active_validators.len()) as u64;
 
-			(committees_per_epoch, seed, shuffling_epoch, shuffling_start_shard)
+		let start_shard = if epoch == current_epoch {
+			self.state.latest_start_shard
 		} else if epoch == previous_epoch {
-			let committees_per_epoch = self.previous_epoch_committee_count();
-			let seed = self.state.previous_shuffling_seed;
-			let shuffling_epoch = self.state.previous_shuffling_epoch;
-			let shuffling_start_shard = self.state.previous_shuffling_start_shard;
-
-			(committees_per_epoch, seed, shuffling_epoch, shuffling_start_shard)
+			(self.state.latest_start_shard - committees_per_epoch) % self.config.shard_count() as u64
 		} else {
-			let epochs_since_last_registry_update = current_epoch - self.state.validator_registry_update_epoch;
-
-			if registry_change {
-				let committees_per_epoch = self.next_epoch_committee_count();
-				let seed = self.seed(next_epoch)?;
-				let shuffling_epoch = next_epoch;
-				let current_committees_per_epoch = self.current_epoch_committee_count();
-				let shuffling_start_shard = (self.state.current_shuffling_start_shard + current_committees_per_epoch as u64) % self.config.shard_count() as u64;
-
-				(committees_per_epoch, seed, shuffling_epoch, shuffling_start_shard)
-			} else if epochs_since_last_registry_update > 1 && is_power_of_two(epochs_since_last_registry_update) {
-				let committees_per_epoch = self.next_epoch_committee_count();
-				let seed = self.seed(next_epoch)?;
-				let shuffling_epoch = next_epoch;
-				let shuffling_start_shard = self.state.current_shuffling_start_shard;
-
-				(committees_per_epoch, seed, shuffling_epoch, shuffling_start_shard)
-			} else {
-				let committees_per_epoch = self.current_epoch_committee_count();
-				let seed = self.state.current_shuffling_seed;
-				let shuffling_epoch = self.state.current_shuffling_epoch;
-				let shuffling_start_shard = self.state.current_shuffling_start_shard;
-
-				(committees_per_epoch, seed, shuffling_epoch, shuffling_start_shard)
-			}
+			let current_epoch_committees = self.current_epoch_committee_count();
+			(self.state.latest_start_shard + current_epoch_committees as u64) % self.config.shard_count() as u64
 		};
 
-		let active_validators = self.state.active_validator_indices(shuffling_epoch);
-		let committees_per_slot = committees_per_epoch as u64 / self.config.slots_per_epoch();
+		let committees_per_slot = committees_per_epoch / self.config.slots_per_epoch() as u64;
 		let offset = slot % self.config.slots_per_epoch();
-		let slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % self.config.shard_count() as u64;
+		let slot_start_shard = (start_shard + committees_per_slot * offset) % self.config.shard_count() as u64;
+		let seed = self.seed(epoch)?;
 
 		let mut ret = Vec::new();
 		for i in 0..committees_per_slot {
 			ret.push(
-				(self.config.compute_committee(&active_validators, &seed, (committees_per_slot * offset + i) as usize, committees_per_epoch), (slot_start_shard + i as u64) % self.config.shard_count() as u64)
+				(self.config.compute_committee(&active_validators, &seed, (committees_per_slot * offset + i) as usize, committees_per_epoch as usize), (slot_start_shard + i as u64) % self.config.shard_count() as u64)
 			);
 		}
 		Ok(ret)
 	}
 
-	fn beacon_proposer_index(&self, slot: Slot, registry_change: bool) -> Result<ValidatorIndex, Error> {
+	fn beacon_proposer_index(&self, slot: Slot) -> Result<ValidatorIndex, Error> {
 		let current_epoch = self.current_epoch();
 
 		if self.config.slot_to_epoch(slot) != current_epoch {
 			return Err(Error::EpochOutOfRange)
 		}
 
-		let (first_committee, _) = self.crosslink_committees_at_slot(slot, registry_change)?[0].clone();
+		let (first_committee, _) = self.crosslink_committees_at_slot(slot)?[0].clone();
 		let mut i: usize = 0;
 		loop {
 			let rand_byte = self.config.hash2(
@@ -124,7 +94,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	}
 
 	fn attestation_participants(&self, attestation: &AttestationData, bitfield: &BitField) -> Result<Vec<ValidatorIndex>, Error> {
-		let crosslink_committees = self.crosslink_committees_at_slot(attestation.slot, false)?;
+		let crosslink_committees = self.crosslink_committees_at_slot(attestation.slot)?;
 
 		let matched_committees = crosslink_committees.iter().filter(|(_, s)| s == &attestation.shard).collect::<Vec<_>>();
 		if matched_committees.len() == 0 {
@@ -263,19 +233,9 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		self.current_epoch().saturating_sub(1)
 	}
 
-	fn previous_epoch_committee_count(&self) -> usize {
-		let previous_active_validators = self.state.active_validator_indices(self.state.previous_shuffling_epoch);
-		self.config.epoch_committee_count(previous_active_validators.len())
-	}
-
 	fn current_epoch_committee_count(&self) -> usize {
-		let current_active_validators = self.state.active_validator_indices(self.state.current_shuffling_epoch);
+		let current_active_validators = self.state.active_validator_indices(self.current_epoch());
 		self.config.epoch_committee_count(current_active_validators.len())
-	}
-
-	fn next_epoch_committee_count(&self) -> usize {
-		let next_active_validators = self.state.active_validator_indices(self.current_epoch() + 1);
-		self.config.epoch_committee_count(next_active_validators.len())
 	}
 
 	fn current_epoch_boundary_attestations(&self) -> Result<Vec<PendingAttestation>, Error> {
@@ -354,12 +314,7 @@ pub fn genesis_state<C: Config>(deposits: Vec<Deposit>, genesis_time: Timestamp,
 			}
 			ret
 		},
-		previous_shuffling_start_shard: config.genesis_start_shard(),
-		current_shuffling_start_shard: config.genesis_start_shard(),
-		previous_shuffling_epoch: config.genesis_epoch(),
-		current_shuffling_epoch: config.genesis_epoch(),
-		previous_shuffling_seed: H256::default(),
-		current_shuffling_seed: H256::default(),
+		latest_start_shard: config.genesis_start_shard(),
 
 		previous_epoch_attestations: Vec::new(),
 		current_epoch_attestations: Vec::new(),
@@ -439,7 +394,6 @@ pub fn genesis_state<C: Config>(deposits: Vec<Deposit>, genesis_time: Timestamp,
 		for index in 0..config.latest_active_index_roots_length() {
 			executive.state.latest_active_index_roots[index] = genesis_active_index_root;
 		}
-		executive.state.current_shuffling_seed = executive.seed(config.genesis_epoch())?;
 	}
 
 	Ok(state)

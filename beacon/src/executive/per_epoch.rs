@@ -6,7 +6,8 @@ use crate::{
 	Slot, Shard,
 };
 use crate::primitives::H256;
-use crate::utils::{is_power_of_two, integer_squareroot, compare_hash};
+use crate::utils::{integer_squareroot, compare_hash};
+use core::cmp;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	fn attesting_indices(&self, attestations: &[PendingAttestation]) -> Result<Vec<ValidatorIndex>, Error> {
@@ -121,17 +122,17 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Update crosslink data in state.
 	pub fn update_crosslinks(&mut self) -> Result<(), Error> {
 		let current_epoch = self.current_epoch();
-		let previous_epoch = current_epoch.saturating_sub(1);
+		let previous_epoch = cmp::max(current_epoch.saturating_sub(1), self.config.genesis_epoch());
 		let next_epoch = current_epoch + 1;
 
 		for slot in self.config.epoch_start_slot(previous_epoch)..self.config.epoch_start_slot(next_epoch) {
-			for (crosslink_committee, shard) in self.crosslink_committees_at_slot(slot, false)? {
+			for (crosslink_committee, shard) in self.crosslink_committees_at_slot(slot)? {
 				let (winning_root, participants) = self.winning_root_and_participants(shard)?;
 				let participating_balance = self.total_balance(&participants);
 				let total_balance = self.total_balance(&crosslink_committee);
 				if 3 * participating_balance >= 2 * total_balance {
 					self.state.latest_crosslinks[shard as usize] = Crosslink {
-						epoch: self.config.slot_to_epoch(slot),
+						epoch: cmp::min(self.config.slot_to_epoch(slot), self.state.latest_crosslinks[shard as usize].epoch + self.config.max_crosslink_epochs()),
 						crosslink_data_root: winning_root,
 					};
 				}
@@ -209,7 +210,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			}
 
 			if self.attesting_indices(&self.state.previous_epoch_attestations)?.contains(&index) {
-				let proposer_index = self.beacon_proposer_index(self.inclusion_slot(index)?, false)?;
+				let proposer_index = self.beacon_proposer_index(self.inclusion_slot(index)?)?;
 				rewards[proposer_index as usize] += self.base_reward(index) / self.config.attestation_inclusion_reward_quotient();
 			}
 		}
@@ -268,7 +269,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		let current_epoch_start_slot = self.config.epoch_start_slot(self.current_epoch());
 
 		for slot in previous_epoch_start_slot..current_epoch_start_slot {
-			for (crosslink_committee, shard) in self.crosslink_committees_at_slot(slot, false)? {
+			for (crosslink_committee, shard) in self.crosslink_committees_at_slot(slot)? {
 				let (_, participants) = self.winning_root_and_participants(shard)?;
 				let participating_balance = self.total_balance(&participants);
 				let total_balance = self.total_balance(&crosslink_committee);
@@ -305,21 +306,6 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 				self.initiate_validator_exit(index);
 			}
 		}
-	}
-
-	fn should_update_validator_registry(&self) -> bool {
-		if self.state.finalized_epoch <= self.state.validator_registry_update_epoch {
-			return false
-		}
-
-		for i in 0..self.current_epoch_committee_count() {
-			let s = (self.state.current_shuffling_start_shard as usize + i) % self.config.shard_count();
-			if self.state.latest_crosslinks[s].epoch <= self.state.validator_registry_update_epoch {
-				return false
-			}
-		}
-
-		true
 	}
 
 	fn update_validator_registry(&mut self) {
@@ -367,27 +353,13 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	}
 
 	/// Update validator registry and shuffling data.
-	pub fn update_registry_and_shuffling_data(&mut self) -> Result<(), Error> {
-		self.state.previous_shuffling_epoch = self.state.current_shuffling_epoch;
-		self.state.previous_shuffling_start_shard = self.state.current_shuffling_start_shard;
-		self.state.previous_shuffling_seed = self.state.current_shuffling_seed;
-
-		let current_epoch = self.current_epoch();
-		let next_epoch = current_epoch + 1;
-
-		if self.should_update_validator_registry() {
+	pub fn update_registry(&mut self) -> Result<(), Error> {
+		if self.state.finalized_epoch > self.state.validator_registry_update_epoch {
 			self.update_validator_registry();
-
-			self.state.current_shuffling_epoch = next_epoch;
-			self.state.current_shuffling_start_shard = self.state.current_shuffling_start_shard + (self.current_epoch_committee_count() % self.config.shard_count()) as u64;
-			self.state.current_shuffling_seed = self.seed(self.state.current_shuffling_epoch)?;
-		} else {
-			let epochs_since_last_registry_update = current_epoch - self.state.validator_registry_update_epoch;
-			if epochs_since_last_registry_update > 1 && is_power_of_two(epochs_since_last_registry_update) {
-				self.state.current_shuffling_epoch = next_epoch;
-				self.state.current_shuffling_seed = self.seed(self.state.current_shuffling_epoch)?;
-			}
 		}
+		self.state.latest_start_shard =
+			(self.state.latest_start_shard +
+			 self.current_epoch_committee_count() as u64) % self.config.shard_count() as u64;
 
 		Ok(())
 	}

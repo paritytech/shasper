@@ -56,18 +56,8 @@ pub struct BeaconState {
 	#[ssz(use_fixed)]
 	/// Latest randao mixes, of length `LATEST_RANDAO_MIXES_LENGTH`.
 	pub latest_randao_mixes: Vec<H256>,
-	/// Previous shuffling start shard.
-	pub previous_shuffling_start_shard: Shard,
-	/// Current shuffling start shard.
-	pub current_shuffling_start_shard: Shard,
-	/// Previous shuffling epoch.
-	pub previous_shuffling_epoch: Epoch,
-	/// Current shuffling epoch.
-	pub current_shuffling_epoch: Epoch,
-	/// Previous shuffling seed.
-	pub previous_shuffling_seed: H256,
-	/// Current shuffling seed.
-	pub current_shuffling_seed: H256,
+	/// Latest start shard.
+	pub latest_start_shard: Shard,
 
 	// Finality
 	/// Previous epoch attestations.

@@ -108,6 +108,8 @@ pub trait Config {
 	fn domain_transfer(&self) -> u64;
 	/// Far future epoch.
 	fn far_future_epoch(&self) -> Epoch;
+	/// Maximum crosslink epochs.
+	fn max_crosslink_epochs(&self) -> Epoch;
 
 	/// Get domain id for given fork, epoch and type.
 	fn domain_id(&self, fork: &Fork, epoch: Epoch, typ: u64) -> u64;
@@ -313,6 +315,8 @@ pub struct NoVerificationConfig {
 	pub domain_transfer: u64,
 	/// Far future epoch.
 	pub far_future_epoch: Epoch,
+	/// Maximum crosslink epochs.
+	pub max_crosslink_epochs: Epoch,
 }
 
 impl Config for NoVerificationConfig {
@@ -363,6 +367,7 @@ impl Config for NoVerificationConfig {
 	fn domain_voluntary_exit(&self) -> u64 { self.domain_voluntary_exit }
 	fn domain_transfer(&self) -> u64 { self.domain_transfer }
 	fn far_future_epoch(&self) -> Epoch { self.far_future_epoch }
+	fn max_crosslink_epochs(&self) -> Epoch { self.max_crosslink_epochs }
 
 	fn domain_id(&self, fork: &Fork, epoch: Epoch, typ: u64) -> u64 {
 		let version = if epoch < fork.epoch {
@@ -437,6 +442,7 @@ impl NoVerificationConfig {
 			domain_voluntary_exit: 4,
 			domain_transfer: 5,
 			far_future_epoch: u64::max_value(),
+			max_crosslink_epochs: 64,
 		}
 	}
 
@@ -488,6 +494,7 @@ impl NoVerificationConfig {
 			domain_voluntary_exit: 4,
 			domain_transfer: 5,
 			far_future_epoch: u64::max_value(),
+			max_crosslink_epochs: 64,
 		}
 	}
 }

@@ -7,6 +7,7 @@ use crate::{
 	Eth1DataVote, SlashableAttestation, ValidatorIndex, Block, Epoch,
 };
 use crate::primitives::H256;
+use core::cmp;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	fn slash_validator(&mut self, index: ValidatorIndex) -> Result<(), Error> {
@@ -15,7 +16,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		let current_epoch = self.current_epoch();
 		self.state.latest_slashed_balances[(current_epoch % self.config.latest_slashed_exit_length() as u64) as usize] += self.effective_balance(index);
 
-		let whistleblower_index = self.beacon_proposer_index(self.state.slot, false)?;
+		let whistleblower_index = self.beacon_proposer_index(self.state.slot)?;
 		let whistleblower_reward = self.effective_balance(index) / self.config.whistleblower_reward_quotient();
 		self.increase_balance(whistleblower_index, whistleblower_reward);
 		self.decrease_balance(index, whistleblower_reward);
@@ -38,7 +39,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		self.state.latest_block_header = BeaconBlockHeader::with_state_root_no_signature::<_, C::Hasher>(block, H256::default());
 
 		if let Some(signature) = block.signature() {
-			let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
+			let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot)? as usize];
 
 			if proposer.slashed {
 				return Err(Error::BlockProposerSlashed)
@@ -54,7 +55,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 	/// Process randao information given in a block.
 	pub fn process_randao<B: Block>(&mut self, block: &B) -> Result<(), Error> {
-		let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
+		let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot)? as usize];
 
 		if !self.config.bls_verify(&proposer.pubkey, &Hashable::<C::Hasher>::hash(&self.current_epoch()), &block.body().randao_reveal, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_randao())) {
 			return Err(Error::RandaoSignatureInvalid)
@@ -238,7 +239,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::AttestationIncorrectJustifiedEpochOrBlockRoot)
 		}
 
-		if !(self.state.latest_crosslinks[attestation.data.shard as usize] == attestation.data.previous_crosslink || self.state.latest_crosslinks[attestation.data.shard as usize] == Crosslink { crosslink_data_root: attestation.data.crosslink_data_root, epoch: self.config.slot_to_epoch(attestation.data.slot) }) {
+		if !(self.state.latest_crosslinks[attestation.data.shard as usize] == attestation.data.previous_crosslink || self.state.latest_crosslinks[attestation.data.shard as usize] == Crosslink { crosslink_data_root: attestation.data.crosslink_data_root, epoch: cmp::min(self.config.slot_to_epoch(attestation.data.slot), attestation.data.previous_crosslink.epoch + self.config.max_crosslink_epochs()) }) {
 			return Err(Error::AttestationIncorrectCrosslinkData)
 		}
 
@@ -250,7 +251,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::AttestationEmptyCustody)
 		}
 
-		let crosslink_committee = self.crosslink_committees_at_slot(attestation.data.slot, false)?
+		let crosslink_committee = self.crosslink_committees_at_slot(attestation.data.slot)?
 			.into_iter()
 			.filter(|(_, s)| s == &attestation.data.shard)
 			.map(|(c, _)| c)
@@ -425,7 +426,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		self.decrease_balance(transfer.sender, transfer.amount + transfer.fee);
 		self.increase_balance(transfer.recipient, transfer.amount);
-		let proposer_index = self.beacon_proposer_index(self.state.slot, false)?;
+		let proposer_index = self.beacon_proposer_index(self.state.slot)?;
 		self.increase_balance(proposer_index, transfer.fee);
 
 		Ok(())
