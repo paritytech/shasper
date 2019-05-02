@@ -1,0 +1,24 @@
+[package]
+name = "sha256-hasher"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+description = "SHA-256 implementation of the Hasher trait"
+license = "GPL-3.0"
+edition = "2018"
+
+[dependencies]
+hash-db = { version = "0.11", default-features = false }
+primitive-types = { version = "0.2", default-features = false }
+sha2 = "0.8"
+parity-codec = { version = "3.0", default-features = false }
+parity-codec-derive = "3.0"
+plain_hasher = { version = "0.2", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"plain_hasher/std",
+	"parity-codec/std",
+	"hash-db/std",
+	"primitive-types/std",
+]

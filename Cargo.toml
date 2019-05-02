@@ -58,6 +58,7 @@ members = [
 	"utils/ssz-derive",
 	"utils/ssz-merkle",
 	"utils/keccak-hasher",
+	"utils/sha256-hasher",
 ]
 exclude = [
 	"runtime/wasm",
