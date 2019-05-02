@@ -290,7 +290,9 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		let delta1 = self.justification_and_finalization_deltas()?;
 		let delta2 = self.crosslink_deltas()?;
 		for i in 0..self.state.validator_registry.len() {
-			self.state.validator_balances[i] = (self.state.validator_balances[i] + delta1.0[i] + delta2.0[i]).saturating_sub(delta1.1[i] + delta2.1[i]);
+			let new_balance = (self.balance(i as u64) + delta1.0[i] + delta2.0[i])
+				.saturating_sub(delta1.1[i] + delta2.1[i]);
+			self.set_balance(i as u64, new_balance);
 		}
 
 		Ok(())
@@ -299,7 +301,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Update validator ejections.
 	pub fn update_ejections(&mut self) {
 		for index in self.state.active_validator_indices(self.current_epoch()) {
-			if self.state.validator_balances[index as usize] < self.config.ejection_balance() {
+			if self.balance(index) < self.config.ejection_balance() {
 				self.initiate_validator_exit(index);
 			}
 		}
@@ -333,7 +335,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		let mut balance_churn = 0;
 		for (i, validator) in self.state.validator_registry.clone().into_iter().enumerate() {
 			let index = i as u64;
-			if validator.activation_epoch == self.config.far_future_epoch() && self.state.validator_balances[i] >= self.config.max_deposit_amount() {
+			if validator.activation_epoch == self.config.far_future_epoch() && self.balance(index) >= self.config.max_deposit_amount() {
 				balance_churn += self.effective_balance(index);
 				if balance_churn > max_balance_churn {
 					break
@@ -407,7 +409,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 					self.effective_balance(index) * core::cmp::min(total_penalties * 3, total_balance) / total_balance,
 					self.effective_balance(index) / self.config.min_penalty_quotient()
 				);
-				self.state.validator_balances[i] -= penalty;
+				self.decrease_balance(index, penalty);
 			}
 		}
 	}

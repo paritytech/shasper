@@ -35,7 +35,7 @@ pub trait Config {
 	/// Maximum deposit amount.
 	fn max_deposit_amount(&self) -> Gwei;
 	/// Fork choice balance increment.
-	fn fork_choice_balance_increment(&self) -> Gwei;
+	fn high_balance_increment(&self) -> Gwei;
 	/// Ejection balance.
 	fn ejection_balance(&self) -> Gwei;
 	/// Genesis fork version.
@@ -241,8 +241,8 @@ pub struct NoVerificationConfig {
 	pub min_deposit_amount: Gwei,
 	/// Maximum deposit amount.
 	pub max_deposit_amount: Gwei,
-	/// Fork choice balance increment.
-	pub fork_choice_balance_increment: Gwei,
+	/// High balance increment.
+	pub high_balance_increment: Gwei,
 	/// Ejection balance.
 	pub ejection_balance: Gwei,
 	/// Genesis fork version.
@@ -327,7 +327,7 @@ impl Config for NoVerificationConfig {
 	fn deposit_contract_tree_depth(&self) -> usize { self.deposit_contract_tree_depth }
 	fn min_deposit_amount(&self) -> Gwei { self.min_deposit_amount }
 	fn max_deposit_amount(&self) -> Gwei { self.max_deposit_amount }
-	fn fork_choice_balance_increment(&self) -> Gwei { self.fork_choice_balance_increment }
+	fn high_balance_increment(&self) -> Gwei { self.high_balance_increment }
 	fn ejection_balance(&self) -> Gwei { self.ejection_balance }
 	fn genesis_fork_version(&self) -> Version { Version::from(self.genesis_fork_version) }
 	fn genesis_slot(&self) -> Slot { self.genesis_slot }
@@ -401,7 +401,7 @@ impl NoVerificationConfig {
 			deposit_contract_tree_depth: 32,
 			min_deposit_amount: 1_000_000_000,
 			max_deposit_amount: 32_000_000_000,
-			fork_choice_balance_increment: 1_000_000_000,
+			high_balance_increment: 1_000_000_000,
 			ejection_balance: 16_000_000_000,
 			genesis_fork_version: [0, 0, 0, 0],
 			genesis_slot: 4294967296,
@@ -452,7 +452,7 @@ impl NoVerificationConfig {
 			deposit_contract_tree_depth: 32,
 			min_deposit_amount: 1_000_000_000,
 			max_deposit_amount: 32_000_000_000,
-			fork_choice_balance_increment: 1_000_000_000,
+			high_balance_increment: 1_000_000_000,
 			ejection_balance: 16_000_000_000,
 			genesis_fork_version: [0, 0, 0, 0],
 			genesis_slot: 4294967296,

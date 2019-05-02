@@ -44,6 +44,8 @@ pub struct Validator {
 	pub initiated_exit: bool,
 	/// Was the validator slashed
 	pub slashed: bool,
+	/// High balance
+	pub high_balance: u64,
 }
 
 impl Validator {

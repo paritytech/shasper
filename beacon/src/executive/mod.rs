@@ -155,8 +155,35 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(self.earliest_attestation(index)?.inclusion_slot)
 	}
 
+	fn balance(&self, index: ValidatorIndex) -> Gwei {
+		self.state.balances[index as usize]
+	}
+
+	fn set_balance(&mut self, index: ValidatorIndex, balance: Gwei) {
+		let half_increment = self.config.high_balance_increment() / 2;
+
+		let validator = &mut self.state.validator_registry[index as usize];
+		if validator.high_balance > balance || validator.high_balance + 3 * half_increment < balance {
+			validator.high_balance = balance - balance % self.config.high_balance_increment();
+		}
+		self.state.balances[index as usize] = balance;
+	}
+
+	fn increase_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
+		self.set_balance(index, self.balance(index) + delta);
+	}
+
+	fn decrease_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
+		let cur_balance = self.balance(index);
+		self.set_balance(index, if cur_balance >= delta {
+			cur_balance - delta
+		} else {
+			0
+		});
+	}
+
 	fn effective_balance(&self, index: ValidatorIndex) -> Gwei {
-		core::cmp::min(self.state.validator_balances[index as usize], self.config.max_deposit_amount())
+		core::cmp::min(self.balance(index), self.config.max_deposit_amount())
 	}
 
 	fn total_balance(&self, indices: &[ValidatorIndex]) -> Gwei {
@@ -309,7 +336,7 @@ pub fn genesis_state<C: Config>(deposits: Vec<Deposit>, genesis_time: Timestamp,
 		},
 
 		validator_registry: Vec::new(),
-		validator_balances: Vec::new(),
+		balances: Vec::new(),
 		validator_registry_update_epoch: config.genesis_epoch(),
 
 		latest_randao_mixes: {

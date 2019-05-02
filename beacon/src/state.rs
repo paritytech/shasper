@@ -47,8 +47,8 @@ pub struct BeaconState {
 
 	/// Validator registry.
 	pub validator_registry: Vec<Validator>,
-	/// Validator balances.
-	pub validator_balances: Vec<u64>,
+	/// Balances.
+	pub balances: Vec<u64>,
 	/// Last validator registry update epoch.
 	pub validator_registry_update_epoch: Epoch,
 

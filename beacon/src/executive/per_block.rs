@@ -20,8 +20,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		let whistleblower_index = self.beacon_proposer_index(self.state.slot, false)?;
 		let whistleblower_reward = self.effective_balance(index) / self.config.whistleblower_reward_quotient();
-		self.state.validator_balances[whistleblower_index as usize] += whistleblower_reward;
-		self.state.validator_balances[index as usize] -= whistleblower_reward;
+		self.increase_balance(whistleblower_index, whistleblower_reward);
+		self.decrease_balance(index, whistleblower_reward);
 		self.state.validator_registry[index as usize].slashed = true;
 		self.state.validator_registry[index as usize].withdrawable_epoch = self.current_epoch() + self.config.latest_slashed_exit_length() as u64;
 
@@ -324,7 +324,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		match self.state.validator_index_by_id(&deposit.deposit_data.deposit_input.pubkey) {
 			Some(index) => {
-				self.state.validator_balances[index as usize] += deposit.deposit_data.amount;
+				self.increase_balance(index, deposit.deposit_data.amount);
 			},
 			None => {
 				if !deposit.is_proof_valid(
@@ -342,10 +342,14 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 					withdrawable_epoch: self.config.far_future_epoch(),
 					initiated_exit: false,
 					slashed: false,
+					high_balance: 0,
 				};
+				let validator_index = self.state.validator_registry.len() as u64;
 
 				self.state.validator_registry.push(validator);
-				self.state.validator_balances.push(deposit.deposit_data.amount);
+				self.state.balances.push(0);
+
+				self.set_balance(validator_index, deposit.deposit_data.amount);
 			},
 		}
 
@@ -389,11 +393,11 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 	/// Push a new `Transfer` to the state.
 	pub fn push_transfer(&mut self, transfer: Transfer) -> Result<(), Error> {
-		if self.state.validator_balances[transfer.sender as usize] < core::cmp::max(transfer.amount, transfer.fee) {
+		if self.balance(transfer.sender) < core::cmp::max(transfer.amount, transfer.fee) {
 			return Err(Error::TransferNoFund)
 		}
 
-		if !(self.state.validator_balances[transfer.sender as usize] == transfer.amount + transfer.fee || self.state.validator_balances[transfer.sender as usize] >= transfer.amount + transfer.fee + self.config.min_deposit_amount()) {
+		if !(self.balance(transfer.sender) == transfer.amount + transfer.fee || self.balance(transfer.sender) >= transfer.amount + transfer.fee + self.config.min_deposit_amount()) {
 			return Err(Error::TransferNoFund)
 		}
 
@@ -418,10 +422,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::TransferInvalidSignature)
 		}
 
-		self.state.validator_balances[transfer.sender as usize] -= transfer.amount + transfer.fee;
-		self.state.validator_balances[transfer.recipient as usize] += transfer.amount;
+		self.decrease_balance(transfer.sender, transfer.amount + transfer.fee);
+		self.increase_balance(transfer.recipient, transfer.amount);
 		let proposer_index = self.beacon_proposer_index(self.state.slot, false)?;
-		self.state.validator_balances[proposer_index as usize] += transfer.fee;
+		self.increase_balance(proposer_index, transfer.fee);
 
 		Ok(())
 	}
