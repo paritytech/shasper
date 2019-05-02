@@ -43,6 +43,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		if let Some(signature) = block.signature() {
 			let proposer = &self.state.validator_registry[self.beacon_proposer_index(self.state.slot, false)? as usize];
 
+			if proposer.slashed {
+				return Err(Error::BlockProposerSlashed)
+			}
+
 			if !self.config.bls_verify(&proposer.pubkey, &Hashable::<C::Hasher>::truncated_hash(block), signature, self.config.domain_id(&self.state.fork, self.current_epoch(), self.config.domain_beacon_block())) {
 				return Err(Error::BlockSignatureInvalid)
 			}

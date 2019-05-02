@@ -28,6 +28,8 @@ pub enum Error {
 	BlockPreviousRootInvalid,
 	/// Block signature is invalid.
 	BlockSignatureInvalid,
+	/// Block proposer has been slashed.
+	BlockProposerSlashed,
 	/// Randao signature is invalid.
 	RandaoSignatureInvalid,
 	/// Proposer slashing contains invalid slot.
