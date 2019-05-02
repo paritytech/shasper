@@ -300,7 +300,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	pub fn update_ejections(&mut self) {
 		for index in self.state.active_validator_indices(self.current_epoch()) {
 			if self.state.validator_balances[index as usize] < self.config.ejection_balance() {
-				self.exit_validator(index);
+				self.initiate_validator_exit(index);
 			}
 		}
 	}
