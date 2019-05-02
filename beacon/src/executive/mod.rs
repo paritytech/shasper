@@ -102,17 +102,25 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	}
 
 	fn beacon_proposer_index(&self, slot: Slot, registry_change: bool) -> Result<ValidatorIndex, Error> {
-		let epoch = self.config.slot_to_epoch(slot);
 		let current_epoch = self.current_epoch();
-		let previous_epoch = self.previous_epoch();
-		let next_epoch = current_epoch + 1;
 
-		if previous_epoch > epoch || epoch > next_epoch {
+		if self.config.slot_to_epoch(slot) != current_epoch {
 			return Err(Error::EpochOutOfRange)
 		}
 
 		let (first_committee, _) = self.crosslink_committees_at_slot(slot, registry_change)?[0].clone();
-		Ok(first_committee[(epoch % first_committee.len() as u64) as usize])
+		let mut i: usize = 0;
+		loop {
+			let rand_byte = self.config.hash2(
+				&self.seed(current_epoch)?[..],
+				&to_bytes((i / 32) as u64)[..]
+			)[i % 32];
+			let candidate = first_committee[((current_epoch + i as u64) % first_committee.len() as u64) as usize];
+			if self.effective_balance(candidate) * 256 > self.config.max_deposit_amount() * rand_byte as u64 {
+				return Ok(candidate)
+			}
+			i += 1;
+		}
 	}
 
 	fn attestation_participants(&self, attestation: &AttestationData, bitfield: &BitField) -> Result<Vec<ValidatorIndex>, Error> {
