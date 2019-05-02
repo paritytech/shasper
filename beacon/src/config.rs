@@ -191,17 +191,6 @@ pub trait Config {
 		}
 		ret
 	}
-
-	/// Get epoch committee count.
-	fn epoch_committee_count(&self, active_validator_count: usize) -> usize {
-		core::cmp::max(
-			1,
-			core::cmp::min(
-				self.shard_count() / self.slots_per_epoch() as usize,
-				active_validator_count / self.slots_per_epoch() as usize / self.target_committee_size(),
-			)
-		) * self.slots_per_epoch() as usize
-	}
 }
 
 /// Keccak256 hasher.

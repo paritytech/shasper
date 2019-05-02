@@ -359,7 +359,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 		self.state.latest_start_shard =
 			(self.state.latest_start_shard +
-			 self.current_epoch_committee_count() as u64) % self.config.shard_count() as u64;
+			 self.shard_delta(self.current_epoch())) % self.config.shard_count() as u64;
 
 		Ok(())
 	}

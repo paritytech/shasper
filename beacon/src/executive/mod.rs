@@ -7,6 +7,7 @@ use crate::{
 };
 use crate::primitives::{H256, BitField, Version, Signature};
 use crate::utils::to_bytes;
+use core::cmp;
 
 mod cache;
 mod per_block;
@@ -46,17 +47,18 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		let active_validators = self.state.active_validator_indices(epoch);
-		let committees_per_epoch = self.config.epoch_committee_count(active_validators.len()) as u64;
 
 		let start_shard = if epoch == current_epoch {
 			self.state.latest_start_shard
 		} else if epoch == previous_epoch {
-			(self.state.latest_start_shard - committees_per_epoch) % self.config.shard_count() as u64
+			let previous_shard_delta = self.shard_delta(previous_epoch);
+			(self.state.latest_start_shard - previous_shard_delta) % self.config.shard_count() as u64
 		} else {
-			let current_epoch_committees = self.current_epoch_committee_count();
-			(self.state.latest_start_shard + current_epoch_committees as u64) % self.config.shard_count() as u64
+			let current_shard_delta = self.shard_delta(current_epoch);
+			(self.state.latest_start_shard + current_shard_delta) % self.config.shard_count() as u64
 		};
 
+		let committees_per_epoch = self.epoch_committee_count(epoch) as u64;
 		let committees_per_slot = committees_per_epoch / self.config.slots_per_epoch() as u64;
 		let offset = slot % self.config.slots_per_epoch();
 		let slot_start_shard = (start_shard + committees_per_slot * offset) % self.config.shard_count() as u64;
@@ -233,9 +235,19 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		self.current_epoch().saturating_sub(1)
 	}
 
-	fn current_epoch_committee_count(&self) -> usize {
-		let current_active_validators = self.state.active_validator_indices(self.current_epoch());
-		self.config.epoch_committee_count(current_active_validators.len())
+	fn shard_delta(&self, epoch: Epoch) -> Shard {
+		cmp::min(self.epoch_committee_count(epoch) as u64, self.config.shard_count() as u64 - self.config.shard_count() as u64 / self.config.slots_per_epoch())
+	}
+
+	fn epoch_committee_count(&self, epoch: Epoch) -> usize {
+		let active_validators = self.state.active_validator_indices(epoch);
+		core::cmp::max(
+			1,
+			core::cmp::min(
+				self.config.shard_count() / self.config.slots_per_epoch() as usize,
+				active_validators.len() / self.config.slots_per_epoch() as usize / self.config.target_committee_size(),
+			)
+		) * self.config.slots_per_epoch() as usize
 	}
 
 	fn current_epoch_boundary_attestations(&self) -> Result<Vec<PendingAttestation>, Error> {
