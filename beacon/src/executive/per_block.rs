@@ -4,15 +4,12 @@ use super::Executive;
 use crate::{
 	Config, Error, BeaconBlockHeader, Transfer, VoluntaryExit, Validator, Deposit, PendingAttestation,
 	AttestationDataAndCustodyBit, Crosslink, Attestation, AttesterSlashing, ProposerSlashing,
-	Eth1DataVote, SlashableAttestation, ValidatorIndex, Block,
+	Eth1DataVote, SlashableAttestation, ValidatorIndex, Block, Epoch,
 };
 use crate::primitives::H256;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	fn slash_validator(&mut self, index: ValidatorIndex) -> Result<(), Error> {
-		if self.state.slot >= self.config.epoch_start_slot(self.state.validator_registry[index as usize].withdrawable_epoch) {
-			return Err(Error::ValidatorNotWithdrawable);
-		}
 		self.exit_validator(index);
 
 		let current_epoch = self.current_epoch();
@@ -84,6 +81,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		});
 	}
 
+	fn is_slashable_validator(&self, validator: &Validator, epoch: Epoch) -> bool {
+		validator.activation_epoch <= epoch && epoch < validator.withdrawable_epoch && validator.slashed == false
+	}
+
 	/// Push a new `ProposerSlashing` to the state.
 	pub fn push_proposer_slashing(&mut self, proposer_slashing: ProposerSlashing) -> Result<(), Error> {
 		if self.config.slot_to_epoch(proposer_slashing.header_a.slot) != self.config.slot_to_epoch(proposer_slashing.header_b.slot) {
@@ -97,7 +98,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		{
 			let proposer = &self.state.validator_registry[proposer_slashing.proposer_index as usize];
 
-			if proposer.slashed {
+			if !self.is_slashable_validator(&proposer, self.current_epoch()) {
 				return Err(Error::ProposerSlashingAlreadySlashed)
 			}
 
@@ -195,7 +196,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		let mut slashable_indices = Vec::new();
 		for index in &attestation1.validator_indices {
-			if attestation2.validator_indices.contains(index) && !self.state.validator_registry[*index as usize].slashed {
+			if attestation2.validator_indices.contains(index) && self.is_slashable_validator(&self.state.validator_registry[*index as usize], self.current_epoch()) {
 				slashable_indices.push(*index);
 			}
 		}

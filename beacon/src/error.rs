@@ -18,8 +18,6 @@ pub enum Error {
 	AttestationShardInvalid,
 	/// Attestation bitfield is invalid.
 	AttestationBitFieldInvalid,
-	/// Validator is not yet withdrawable.
-	ValidatorNotWithdrawable,
 	/// Validator's attestation not found.
 	ValidatorAttestationNotFound,
 	/// Block slot is invalid.
