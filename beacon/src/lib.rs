@@ -61,6 +61,7 @@ pub use executive::*;
 pub use primitives::*;
 
 use ssz::Hashable;
+use core::cmp;
 
 /// Gwei as in the currency ETH.
 pub type Gwei = u64;
@@ -202,6 +203,10 @@ pub fn apply_transaction<C: Config>(block: &mut UnsealedBeaconBlock, state: &mut
 pub fn finalize_block<C: Config>(block: &mut UnsealedBeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
 	let mut executive = Executive::new(state, config);
 
+	if block.body.deposits.len() != cmp::min(config.max_deposits(), (executive.state().latest_eth1_data.deposit_count - executive.state().deposit_index) as usize) {
+		return Err(Error::TooFewDeposits)
+	}
+
 	executive.process_block_header(block)?;
 	Ok(())
 }
@@ -254,6 +259,9 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 
 			if block.body.deposits.len() > config.max_deposits() {
 				return Err(Error::TooManyDeposits)
+			}
+			if block.body.deposits.len() != cmp::min(config.max_deposits(), (executive.state().latest_eth1_data.deposit_count - executive.state().deposit_index) as usize) {
+				return Err(Error::TooFewDeposits)
 			}
 			for deposit in &block.body.deposits {
 				executive.push_deposit(deposit.clone())?;

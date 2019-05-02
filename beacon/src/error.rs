@@ -96,6 +96,8 @@ pub enum Error {
 	TooManyAttestations,
 	/// Too many deposits in a block.
 	TooManyDeposits,
+	/// Too few deposits in a block.
+	TooFewDeposits,
 	/// Too many voluntary exits in a block.
 	TooManyVoluntaryExits,
 	/// Too many transfers in a block.
