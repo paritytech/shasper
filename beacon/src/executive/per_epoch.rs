@@ -343,16 +343,21 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			}
 		}
 
-		let mut balance_churn = 0;
-		for (i, validator) in self.state.validator_registry.clone().into_iter().enumerate() {
-			let index = i as u64;
-			if validator.exit_epoch == self.config.far_future_epoch() && validator.initiated_exit {
-				balance_churn += self.effective_balance(index);
-				if balance_churn > max_balance_churn {
-					break
-				}
+		if current_epoch < self.state.validator_registry_update_epoch + self.config.latest_slashed_exit_length() as u64 {
+			let mut balance_churn =
+				self.state.latest_slashed_balances[(self.state.validator_registry_update_epoch % self.config.latest_slashed_exit_length() as u64) as usize] -
+				self.state.latest_slashed_balances[(current_epoch % self.config.latest_slashed_exit_length() as u64) as usize];
 
-				self.exit_validator(index);
+			for (i, validator) in self.state.validator_registry.clone().into_iter().enumerate() {
+				let index = i as u64;
+				if validator.exit_epoch == self.config.far_future_epoch() && validator.initiated_exit {
+					balance_churn += self.effective_balance(index);
+					if balance_churn > max_balance_churn {
+						break
+					}
+
+					self.exit_validator(index);
+				}
 			}
 		}
 
