@@ -2,15 +2,16 @@ stages:
   - test
   - build
 
-image:                             parity/shasper-ci:stretch
+image:                             parity/rust-builder:latest
 
 variables:
   GIT_STRATEGY:                    fetch
   GIT_SUBMODULE_STRATEGY:          recursive
-  RUST_TOOLCHAIN:                  "stable"
-  CI_SERVER_NAME:                  "GitLab CI"
-  CARGO_HOME:                      "/ci-cache/shasper/cargo/${CI_JOB_NAME}"
+  CARGO_HOME:                      "/ci-cache/${CI_PROJECT_NAME}/cargo/${CI_JOB_NAME}"
+  SCCACHE_DIR:                     "/ci-cache/${CI_PROJECT_NAME}/sccache"
   SCCACHE_CACHE_SIZE:              50G
+  CI_SERVER_NAME:                  "GitLab CI"
+  RUST_TOOLCHAIN:                  "stable"
 
 before_script:
   - sccache -s
