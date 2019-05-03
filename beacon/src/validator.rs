@@ -78,6 +78,12 @@ impl Validator {
 	pub fn is_active(&self, epoch: u64) -> bool {
 		self.activation_epoch <= epoch && epoch < self.exit_epoch
 	}
+	/// Whether the validator is slashable.
+	pub fn is_slahsable(&self, epoch: u64) -> bool {
+		self.slashed == false &&
+			self.activation_epoch <= epoch &&
+			epoch < self.withdrawable_epoch
+	}
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]

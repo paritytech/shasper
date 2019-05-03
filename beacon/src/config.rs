@@ -366,19 +366,6 @@ impl Config for NoVerificationConfig {
 	fn domain_transfer(&self) -> u64 { self.domain_transfer }
 	fn far_future_epoch(&self) -> Epoch { self.far_future_epoch }
 
-	fn domain_id(&self, fork: &Fork, epoch: Epoch, typ: u64) -> u64 {
-		let version = if epoch < fork.epoch {
-			&fork.previous_version
-		} else {
-			&fork.current_version
-		};
-
-		let mut bytes = [0u8; 8];
-		(&mut bytes[0..4]).copy_from_slice(version.as_ref());
-		(&mut bytes[4..8]).copy_from_slice(&typ.to_le_bytes()[0..4]);
-
-		u64::from_le_bytes(bytes)
-	}
 	fn bls_verify(&self, _pubkey: &ValidatorId, _message: &H256, _signature: &Signature, _domain: u64) -> bool {
 		true
 	}

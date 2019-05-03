@@ -17,10 +17,6 @@ pub fn split_offset(len: usize, chunks: usize, index: usize) -> usize {
 	(len * index) / chunks
 }
 
-pub fn is_power_of_two(value: u64) -> bool {
-	return (value > 0) && (value & (value - 1) == 0)
-}
-
 pub fn compare_hash(a: &H256, b: &H256) -> core::cmp::Ordering {
 	for i in 0..32 {
 		if a[i] > b[i] {

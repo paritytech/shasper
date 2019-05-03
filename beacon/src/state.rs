@@ -48,7 +48,7 @@ pub struct BeaconState {
 	/// Validator registry.
 	pub validator_registry: Vec<Validator>,
 	/// Validator balances.
-	pub validator_balances: Vec<u64>,
+	pub balances: Vec<u64>,
 	/// Last validator registry update epoch.
 	pub validator_registry_update_epoch: Epoch,
 
@@ -160,6 +160,16 @@ impl BeaconState {
 			.filter(|(_, v)| v.is_active(epoch))
 			.map(|(i, _)| i as u64)
 			.collect::<Vec<_>>()
+	}
+
+	/// Increase balance.
+	pub fn increase_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
+		self.balances[index] += delta;
+	}
+
+	/// Decrease balance.
+	pub fn decrease_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
+		self.balances[index] = self.balances[index].saturating_sub(delta);
 	}
 }
 

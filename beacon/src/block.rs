@@ -115,20 +115,6 @@ pub struct BeaconBlockHeader {
     pub signature: Signature,
 }
 
-impl BeaconBlockHeader {
-	/// Create temporary block header with given state root and no signature.
-	pub fn with_state_root_no_signature<B: Block, H: Hasher<Out=H256>>(block: &B, state_root: H256) -> Self {
-		Self {
-			slot: block.slot(),
-			previous_block_root: block.previous_block_root().clone(),
-			state_root,
-			block_body_root: Hashable::<H>::hash(block.body()),
-			// signed_root(block) is used for block id purposes so signature is a stub
-			signature: Signature::default(),
-		}
-	}
-}
-
 #[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
