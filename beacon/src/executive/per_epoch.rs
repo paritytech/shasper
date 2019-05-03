@@ -407,10 +407,6 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 	}
 
-	fn prepare_validator_for_withdrawal(&mut self, index: ValidatorIndex) {
-		self.state.validator_registry[index as usize].withdrawable_epoch = self.current_epoch() + self.config.min_validator_withdrawability_delay();
-	}
-
 	/// Process the exit queue.
 	pub fn update_exit_queue(&mut self) {
 		let mut eligible_indices = (0..(self.state.validator_registry.len() as u64)).filter(|index| {

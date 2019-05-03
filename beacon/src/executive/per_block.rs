@@ -107,64 +107,55 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		self.slash_validator(proposer_slashing.proposer_index)
 	}
 
-	fn verify_slashable_attestation(&self, slashable: &SlashableAttestation) -> bool {
-		for bit in &slashable.custody_bitfield.0 {
-			if *bit != 0 {
-				return false;
-			}
+	fn verify_indexed_attestation(&self, indexed: &IndexedAttestation) -> bool {
+		let intersection = indexed.custody_bit_0_indices
+			.iter()
+			.any(|v| indexed.custody_bit_1_indices.contains(v));
+
+		if intersection {
+			return false
 		}
 
-		if slashable.validator_indices.len() == 0 {
-			return false;
+		if indexed.custody_bit_1_indices.len() > 0 {
+			return false
 		}
 
-		for i in 0..(slashable.validator_indices.len() - 1) {
-			if slashable.validator_indices[i] > slashable.validator_indices[i + 1] {
-				return false;
-			}
+		let total = indexed.custody_bit_0_indices.len() + indexed.custody_bit_1_indices.len();
+		if total < 1 || total > self.config.max_indices_per_attestation() {
+			return false
 		}
 
-		if !slashable.custody_bitfield.verify(slashable.validator_indices.len()) {
-			return false;
+		if !indexed.custody_bit_0_indices.windows(2).all(|w| w[0] <= w[1]) {
+			return false
 		}
 
-		if slashable.validator_indices.len() > self.config.max_indices_per_slashable_vote() {
-			return false;
-		}
-
-		let mut custody_bit_0_indices = Vec::new();
-		let mut custody_bit_1_indices = Vec::new();
-		for (i, validator_index) in slashable.validator_indices.iter().enumerate() {
-			if !slashable.custody_bitfield.has_voted(i) {
-				custody_bit_0_indices.push(validator_index);
-			} else {
-				custody_bit_1_indices.push(validator_index);
-			}
+		if !indexed.custody_bit_1_indices.windows(2).all(|w| w[0] <= w[1]) {
+			return false
 		}
 
 		self.config.bls_verify_multiple(
 			&[
-				match self.config.bls_aggregate_pubkeys(&custody_bit_0_indices.iter().map(|i| self.state.validator_registry[**i as usize].pubkey).collect::<Vec<_>>()[..]) {
+				match self.config.bls_aggregate_pubkeys(&indexed.custody_bit_0_indices.iter().map(|i| self.state.validator_registry[**i as usize].pubkey).collect::<Vec<_>>()[..]) {
 					Some(k) => k,
 					None => return false,
 				},
-				match self.config.bls_aggregate_pubkeys(&custody_bit_1_indices.iter().map(|i| self.state.validator_registry[**i as usize].pubkey).collect::<Vec<_>>()[..]) {
+				match self.config.bls_aggregate_pubkeys(&indexed.custody_bit_1_indices.iter().map(|i| self.state.validator_registry[**i as usize].pubkey).collect::<Vec<_>>()[..]) {
 					Some(k) => k,
 					None => return false,
 				},
 			],
 			&[
 				Hashable::<C::Hasher>::hash(&AttestationDataAndCustodyBit {
-					data: slashable.data.clone(),
+					data: indexed.data.clone(),
 					custody_bit: false,
 				}),
 				Hashable::<C::Hasher>::hash(&AttestationDataAndCustodyBit {
-					data: slashable.data.clone(),
+					data: indexed.data.clone(),
 					custody_bit: true,
 				}),
 			],
 			&slashable.aggregate_signature,
-			self.config.domain_id(&self.state.fork, self.config.slot_to_epoch(slashable.data.slot), self.config.domain_attestation())
+			self.config.domain_id(&self.state.fork, self.config.slot_to_epoch(indexed.data.slot), self.config.domain_attestation())
 		)
 	}
 

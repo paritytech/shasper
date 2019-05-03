@@ -261,18 +261,58 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(ret)
 	}
 
-	fn activate_validator(&mut self, index: ValidatorIndex, is_genesis: bool) {
-		let delayed_activation_exit_epoch = self.delayed_activation_exit_epoch();
-		self.state.validator_registry[index as usize].activate(delayed_activation_exit_epoch, is_genesis, self.config);
-	}
-
 	fn initiate_validator_exit(&mut self, index: ValidatorIndex) {
-		self.state.validator_registry[index as usize].initiate_exit();
+		if self.state.validator_registry[index].exit_epoch != self.config.far_future_epoch() {
+			return
+		}
+
+		let exit_epochs = {
+			let ret = Vec::new();
+			for validator in &self.state.validator_registry {
+				if validator.exit_epoch != self.config.far_future_epoch() {
+					ret.push(validator.exit_epoch);
+				}
+			}
+			ret
+		};
+		let mut exit_queue_epoch = cmp::max(
+			exit_epochs.fold(0, cmp::max),
+			self.delayed_activation_exit_epoch(self.current_epoch())
+		);
+		let exit_queue_churn = exit_epochs.fold(0, |sum, i| {
+			if i == exit_queue_epoch {
+				sum + 1
+			} else {
+				sum
+			}
+		});
+
+		if exit_queue_churn >= self.churn_limit() {
+			exit_queue_epoch += 1;
+		}
+
+		let validator = &mut self.state.validator_registry[index];
+		validator.exit_epoch = exit_queue_epoch;
+		validator.withdrawable_epoch = validator.exit_epoch + self.config.min_validator_withdrawability_delay();
 	}
 
-	fn exit_validator(&mut self, index: ValidatorIndex) {
-		let delayed_activation_exit_epoch = self.delayed_activation_exit_epoch();
-		self.state.validator_registry[index as usize].exit(delayed_activation_exit_epoch);
+	fn slash_validator(&mut self, slashed_index: ValidatorIndex, whistleblower_index: Option<ValidatorIndex>) {
+		let current_epoch = self.current_epoch();
+		self.initiate_validator_exit(slashed_index);
+
+		self.state.validator_registry[slashed_index].slashed = true;
+		self.state.validator_registry[slashed_index].withdrawable_epoch = current_epoch + self.config.latest_slashed_exit_length();
+		let slashed_balance = self.state.validator_registry[slashed_index].effective_balance;
+		self.state.latest_slashed_balances[current_epoch % self.config.latest_slashed_exit_length] += slahsed_balance;
+
+		let proposer_index = self.beacon_proposer_index();
+		let whistleblower_index = whistleblower_index.unwrap_or(proposer_index);
+		let whistleblower_reward = slashed_balance / self.config.whistleblowing_reward_quotient();
+		let proposer_reward = whistleblowing_reward / self.config.proposer_reward_quotient();
+
+		self.state.decrease_balance(slashed_index, whistleblowing_reward);
+		self.state.increase_balance(proposer_index, proposer_reward);
+		self.state.increase_balance(whistleblower_index, whistleblowing_reward - proposer_reward);
 	}
 
 	fn domain_id(&self, domain_type: u64, message_epoch: Option<u64>) -> u64 {
@@ -288,6 +328,29 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		(&mut bytes[4..8]).copy_from_slice(&domain_type.to_le_bytes()[0..4]);
 
 		u64::from_le_bytes(bytes)
+	}
+
+	fn to_indexed(&self, attestation: Attestation) -> IndexedAttestation {
+		let attesting_indices = self.attesting_indices(&attestation.data, &attestation.aggregation_bitfield);
+		let custody_bit_1_indices = self.attesting_indices(&attestation.data, &attestation.custody_bitfield);
+		let custody_bit_0_indices = {
+			let mut ret = attesting_indices.clone();
+			ret.retain(|v| !custody_bit_1_indices.contains(&v));
+			ret
+		};
+
+		IndexedAttestation {
+			data: attestation.data,
+			signature: attestation.signature,
+			custody_bit_0_indices, custody_bit_1_indices,
+		}
+	}
+
+	fn churn_limit(&self) -> usize {
+		cmp::max(
+			self.config.min_per_epoch_churn_limit(),
+			self.state.active_validator_indices(self.current_epoch()) / self.config.churn_limit_quotient()
+		)
 	}
 }
 
