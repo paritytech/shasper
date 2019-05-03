@@ -48,23 +48,23 @@ pub struct ProposerSlashing {
 /// Block attester slashing.
 pub struct AttesterSlashing {
 	/// First slashable attestation
-	pub slashable_attestation_a: SlashableAttestation,
+	pub attestation_a: IndexedAttestation,
 	/// Second slashable attestation
-	pub slashable_attestation_b: SlashableAttestation,
+	pub attestation_b: IndexedAttestation,
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
-/// Slashable attestation.
-pub struct SlashableAttestation {
-	/// Validator indices
-	pub validator_indices: Vec<u64>,
+/// Indexed attestation.
+pub struct IndexedAttestation {
+	/// Validator indices of custody bit 0.
+	pub custody_bit_0_indices: Vec<u64>,
+	/// Validator indices of custody bit 1
+	pub custody_bit_1_indices: Vec<u64>,
 	/// Attestation data
 	pub data: AttestationData,
-	/// Custody bitfield
-	pub custody_bitfield: BitField,
 	/// Aggregate signature
-	pub aggregate_signature: Signature,
+	pub signature: Signature,
 }

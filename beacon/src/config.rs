@@ -20,32 +20,30 @@ pub trait Config {
 	fn shard_count(&self) -> usize;
 	/// Target committee size.
 	fn target_committee_size(&self) -> usize;
-	/// Maximum balance churn quotient.
-	fn max_balance_churn_quotient(&self) -> Gwei;
-	/// Maximum indices per slashable vote.
-	fn max_indices_per_slashable_vote(&self) -> usize;
-	/// Maximum exit dequeues per epoch.
-	fn max_exit_dequeues_per_epoch(&self) -> usize;
+	/// Maximum indices per attestation.
+	fn max_indices_per_attestation(&self) -> usize;
+	/// Minimum per-epoch churn limit.
+	fn min_per_epoch_churn_limit(&self) -> usize;
+	/// Churn limit quotient.
+	fn churn_limit_quotient(&self) -> usize;
+	/// Base rewards per epoch.
+	fn base_rewards_per_epoch(&self) -> usize;
 	/// Shuffle round count.
 	fn shuffle_round_count(&self) -> usize;
 	/// Deposit contract tree depth.
 	fn deposit_contract_tree_depth(&self) -> usize;
 	/// Minimum deposit amount.
 	fn min_deposit_amount(&self) -> Gwei;
-	/// Maximum deposit amount.
-	fn max_deposit_amount(&self) -> Gwei;
-	/// Fork choice balance increment.
-	fn fork_choice_balance_increment(&self) -> Gwei;
+	/// Maximum effective balance.
+	fn max_effective_balance(&self) -> Gwei;
 	/// Ejection balance.
 	fn ejection_balance(&self) -> Gwei;
-	/// Genesis fork version.
-	fn genesis_fork_version(&self) -> Version;
+	/// Effective balance increment.
+	fn effective_balance_increment(&self) -> Gwei;
 	/// Genesis slot.
 	fn genesis_slot(&self) -> Slot;
 	/// Genesis epoch.
 	fn genesis_epoch(&self) -> Epoch { self.slot_to_epoch(self.genesis_slot()) }
-	/// Genesis start shard.
-	fn genesis_start_shard(&self) -> Shard;
 	/// BLS withdrawal prefix byte.
 	fn bls_withdrawal_prefix_byte(&self) -> u8;
 	/// Seconds per slot.
@@ -58,14 +56,18 @@ pub trait Config {
 	fn min_seed_lookahead(&self) -> Epoch;
 	/// Activation exit delay.
 	fn activation_exit_delay(&self) -> Epoch;
-	/// Epoch per eth1 voting period.
-	fn epochs_per_eth1_voting_period(&self) -> Epoch;
+	/// Slots per eth1 voting period.
+	fn slots_per_eth1_voting_period(&self) -> Slot;
 	/// Slots per historical root.
 	fn slots_per_historical_root(&self) -> usize;
 	/// Minimal validator withdrawability delay.
 	fn min_validator_withdrawability_delay(&self) -> Epoch;
 	/// Persistent committee period.
 	fn persistent_committee_period(&self) -> Epoch;
+	/// Maximum crosslink epochs.
+	fn max_crosslink_epochs(&self) -> Epoch;
+	/// Minimum epochs to inactivity penalty.
+	fn min_epochs_to_inactivity_penalty(&self) -> Epoch;
 	/// Latest randao mixes length.
 	fn latest_randao_mixes_length(&self) -> usize;
 	/// Latest active index roots length.
@@ -74,14 +76,14 @@ pub trait Config {
 	fn latest_slashed_exit_length(&self) -> usize;
 	/// Base reward quotient.
 	fn base_reward_quotient(&self) -> Gwei;
-	/// Whistleblower reward quotient.
-	fn whistleblower_reward_quotient(&self) -> Gwei;
-	/// Attestation inclusion reward quotient.
-	fn attestation_inclusion_reward_quotient(&self) -> Gwei;
+	/// Whistleblowing reward quotient.
+	fn whistleblowing_reward_quotient(&self) -> Gwei;
+	/// Proposer reward quotient.
+	fn proposer_reward_quotient(&self) -> Gwei;
 	/// Inactivity penalty quotient.
 	fn inactivity_penalty_quotient(&self) -> Gwei;
-	/// Minimal penalty quotient.
-	fn min_penalty_quotient(&self) -> Gwei;
+	/// Minimal slashing penalty quotient.
+	fn min_slashing_penalty_quotient(&self) -> Gwei;
 	/// Maximum proposer slashings per block.
 	fn max_proposer_slashings(&self) -> usize;
 	/// Maximum attester slashings per block.
@@ -94,8 +96,8 @@ pub trait Config {
 	fn max_voluntary_exits(&self) -> usize;
 	/// Maximum transfers per block.
 	fn max_transfers(&self) -> usize;
-	/// Beacon block domain.
-	fn domain_beacon_block(&self) -> u64;
+	/// Beacon proposer domain.
+	fn domain_beacon_proposer(&self) -> u64;
 	/// Randao domain.
 	fn domain_randao(&self) -> u64;
 	/// Attestation domain.

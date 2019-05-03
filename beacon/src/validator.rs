@@ -34,6 +34,8 @@ pub struct Validator {
 	pub pubkey: ValidatorId,
 	/// Withdrawal credentials
 	pub withdrawal_credentials: H256,
+	/// Epoch when became eligible for activation
+	pub activation_eligibility_epoch: u64,
 	/// Epoch when validator activated
 	pub activation_epoch: u64,
 	/// Epoch when validator exited
@@ -44,6 +46,8 @@ pub struct Validator {
 	pub initiated_exit: bool,
 	/// Was the validator slashed
 	pub slashed: bool,
+	/// Effective balance
+	pub effective_balance: u64,
 }
 
 impl Validator {

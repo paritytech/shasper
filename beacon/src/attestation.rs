@@ -32,7 +32,9 @@ use crate::Config;
 pub struct Crosslink {
 	/// Epoch number
 	pub epoch: u64,
-	/// Shard data since the previous crosslink
+	/// Root of the previous crosslink
+	pub previous_crosslink_root: H256,
+	/// Root of the crosslinked shard data since the previous crosslink
 	pub crosslink_data_root: H256,
 }
 
@@ -49,7 +51,7 @@ pub struct Attestation {
 	/// Custody bitfield
 	pub custody_bitfield: BitField,
 	/// BLS aggregate signature
-	pub aggregate_signature: Signature,
+	pub signature: Signature,
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
@@ -62,10 +64,10 @@ pub struct PendingAttestation {
 	pub aggregation_bitfield: BitField,
 	/// Attestation data
 	pub data: AttestationData,
-	/// Custody bitfield
-	pub custody_bitfield: BitField,
 	/// Inclusion slot
 	pub inclusion_slot: u64,
+	/// Proposer index
+	pub proposer_index: u64,
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
@@ -92,7 +94,7 @@ pub struct AttestationData {
 	/// Shard number
 	pub shard: u64,
 	/// Last crosslink
-	pub previous_crosslink: Crosslink,
+	pub previous_crosslink_root: H256,
 	/// Data from the shard since the last attestation
 	pub crosslink_data_root: H256,
 }

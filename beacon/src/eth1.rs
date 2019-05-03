@@ -34,8 +34,7 @@ pub struct Eth1Data {
 	/// Root of the deposit tree
 	pub deposit_root: H256,
 	/// Total number of deposits
-	// TODO: this field is not present in current test spec.
-	// pub deposit_count: u64,
+	pub deposit_count: u64,
 	/// Block hash
 	pub block_hash: H256,
 }
@@ -56,18 +55,6 @@ impl Eth1Data {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
-/// Vote for eth1 data.
-pub struct Eth1DataVote {
-	/// Data being voted for
-	pub eth1_data: Eth1Data,
-	/// Vote count
-	pub vote_count: u64,
-}
-
-#[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 #[ssz(no_decode)]
 /// Block deposit.
 pub struct Deposit {
@@ -77,7 +64,7 @@ pub struct Deposit {
 	/// Index in the deposit tree
 	pub index: u64,
 	/// Data
-	pub deposit_data: DepositData,
+	pub data: DepositData,
 }
 
 impl Deposit {
@@ -111,26 +98,14 @@ impl Deposit {
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Deposit data.
 pub struct DepositData {
-	/// Amount in Gwei
-	pub amount: u64,
-	/// Timestamp from deposit contract
-	pub timestamp: u64,
-	/// Deposit input
-	pub deposit_input: DepositInput,
-}
-
-#[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
-/// Deposit input.
-pub struct DepositInput {
 	/// BLS pubkey
 	pub pubkey: ValidatorId,
 	/// Withdrawal credentials
 	pub withdrawal_credentials: H256,
-	/// A BLS signature of this `DepositInput`
-	pub proof_of_possession: Signature,
+	/// Amount in Gwei
+	pub amount: u64,
+	/// Container self-signature
+	pub signature: Signature,
 }
 
 /// Merkle proof.

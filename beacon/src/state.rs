@@ -56,18 +56,8 @@ pub struct BeaconState {
 	#[ssz(use_fixed)]
 	/// Latest randao mixes, of length `LATEST_RANDAO_MIXES_LENGTH`.
 	pub latest_randao_mixes: Vec<H256>,
-	/// Previous shuffling start shard.
-	pub previous_shuffling_start_shard: Shard,
-	/// Current shuffling start shard.
-	pub current_shuffling_start_shard: Shard,
-	/// Previous shuffling epoch.
-	pub previous_shuffling_epoch: Epoch,
-	/// Current shuffling epoch.
-	pub current_shuffling_epoch: Epoch,
-	/// Previous shuffling seed.
-	pub previous_shuffling_seed: H256,
-	/// Current shuffling seed.
-	pub current_shuffling_seed: H256,
+	/// Latest start shard.
+	pub latest_start_shard: u64,
 
 	// Finality
 	/// Previous epoch attestations.
@@ -91,8 +81,11 @@ pub struct BeaconState {
 
 	// Recent state
 	#[ssz(use_fixed)]
-	/// Latest crosslinks, of length `SHARD_COUNT`.
-	pub latest_crosslinks: Vec<Crosslink>,
+	/// Current crosslinks, of length `SHARD_COUNT`.
+	pub current_crosslinks: Vec<Crosslink>,
+	#[ssz(use_fixed)]
+	/// Previous crosslinks, of length `SHARD_COUNT`.
+	pub previous_crosslinks: Vec<Crosslink>,
 	#[ssz(use_fixed)]
 	/// Latest block roots, of length `SLOTS_PER_HISTORICAL_ROOT`.
 	pub latest_block_roots: Vec<H256>,
@@ -114,7 +107,7 @@ pub struct BeaconState {
 	/// Latest eth1 data.
 	pub latest_eth1_data: Eth1Data,
 	/// Eth1 data votes.
-	pub eth1_data_votes: Vec<Eth1DataVote>,
+	pub eth1_data_votes: Vec<Eth1Data>,
 	/// Deposit index.
 	pub deposit_index: u64,
 }
