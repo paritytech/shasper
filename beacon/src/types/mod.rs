@@ -14,32 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Minimal beacon chain state transition implementation for Serenity.
+//! Beacon types
 
-#![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(alloc_prelude), feature(prelude_import))]
+mod misc;
+mod operation;
+mod block;
+mod state;
 
-#![warn(missing_docs)]
-
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-
-#[cfg(not(feature = "std"))]
-pub(crate) mod prelude {
-	pub use core::prelude::v1::*;
-	pub use alloc::prelude::v1::*;
-}
-
-#[cfg(not(feature = "std"))]
-#[allow(unused)]
-#[prelude_import]
-use crate::prelude::*;
-
-#[cfg(feature = "parity-codec")]
-extern crate parity_codec as codec;
-
-mod config;
-mod utils;
-
-pub mod primitives;
-pub mod types;
-pub use crate::config::*;
+pub use misc::*;
+pub use operation::*;
+pub use block::*;
+pub use state::*;

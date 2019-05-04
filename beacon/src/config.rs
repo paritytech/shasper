@@ -15,7 +15,7 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use digest::Digest;
-use crate::Uint;
+use crate::primitives::Uint;
 
 /// Constants used in beacon block.
 pub trait Config {
