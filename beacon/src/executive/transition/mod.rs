@@ -14,16 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-mod helpers;
-mod transition;
-
-use crate::types::BeaconState;
-use crate::Config;
-
-/// Beacon state executive.
-pub struct Executive<'state, 'config, C: Config> {
-	/// Beacon state.
-	pub state: &'state mut BeaconState,
-	/// Beacon config.
-	pub config: &'config C,
-}
+mod cache;
+mod per_epoch;

@@ -24,11 +24,11 @@ use crate::{Config, Executive, Error};
 mod validator;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
-	fn current_epoch(&self) -> Epoch {
+	pub(crate) fn current_epoch(&self) -> Epoch {
 		self.config.slot_to_epoch(self.state.slot)
 	}
 
-	fn previous_epoch(&self) -> Epoch {
+	pub(crate) fn previous_epoch(&self) -> Epoch {
 		let current_epoch = self.current_epoch();
 		if current_epoch > self.config.genesis_epoch() {
 			current_epoch.saturating_sub(1)
@@ -37,7 +37,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 	}
 
-	fn active_validator_indices(&self, epoch: Uint) -> Vec<ValidatorIndex> {
+	pub(crate) fn active_validator_indices(&self, epoch: Uint) -> Vec<ValidatorIndex> {
 		self.state.validator_registry
 			.iter()
 			.enumerate()
@@ -46,16 +46,16 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			.collect()
 	}
 
-	fn increase_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
+	pub(crate) fn increase_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
 		self.state.balances[index as usize] += delta;
 	}
 
-	fn decrease_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
+	pub(crate) fn decrease_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
 		self.state.balances[index as usize] =
 			self.state.balances[index as usize].saturating_sub(delta);
 	}
 
-	fn epoch_committee_count(&self, epoch: Epoch) -> Uint {
+	pub(crate) fn epoch_committee_count(&self, epoch: Epoch) -> Uint {
 		let active_validator_indices = self.active_validator_indices(epoch);
 		max(
 			1,
@@ -68,7 +68,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		) * self.config.slots_per_epoch()
 	}
 
-	fn shard_delta(&self, epoch: Epoch) -> Uint {
+	pub(crate) fn shard_delta(&self, epoch: Epoch) -> Uint {
 		min(
 			self.epoch_committee_count(epoch),
 			self.config.shard_count() -
@@ -76,7 +76,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		)
 	}
 
-	fn epoch_start_shard(&self, epoch: Epoch) -> Result<Shard, Error> {
+	pub(crate) fn epoch_start_shard(&self, epoch: Epoch) -> Result<Shard, Error> {
 		if !(epoch <= self.current_epoch() + 1) {
 			return Err(Error::EpochOutOfRange)
 		}
@@ -96,10 +96,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(shard)
 	}
 
-	fn attestation_slot(&self, attestation: &Attestation) -> Result<Slot, Error> {
-		let epoch = attestation.data.target_epoch;
+	pub(crate) fn attestation_slot(&self, attestation: &AttestationData) -> Result<Slot, Error> {
+		let epoch = attestation.target_epoch;
 		let committee_count = self.epoch_committee_count(epoch);
-		let offset = (attestation.data.shard + self.config.shard_count() -
+		let offset = (attestation.shard + self.config.shard_count() -
 					  self.epoch_start_shard(epoch)?) %
 			self.config.shard_count();
 
@@ -107,7 +107,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		   offset / (committee_count / self.config.slots_per_epoch()))
 	}
 
-	fn block_root_at_slot(&self, slot: Slot) -> Result<H256, Error> {
+	pub(crate) fn block_root_at_slot(&self, slot: Slot) -> Result<H256, Error> {
 		if !(slot < self.state.slot &&
 			 self.state.slot <= slot + self.config.slots_per_historical_root())
 		{
@@ -119,11 +119,11 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		])
 	}
 
-	fn block_root(&self, epoch: Epoch) -> Result<H256, Error> {
+	pub(crate) fn block_root(&self, epoch: Epoch) -> Result<H256, Error> {
 		self.block_root_at_slot(self.config.epoch_start_slot(epoch))
 	}
 
-	fn randao_mix(&self, epoch: Epoch) -> H256 {
+	pub(crate) fn randao_mix(&self, epoch: Epoch) -> H256 {
 		// `epoch` expected to be between
 		// (current_epoch - LATEST_RANDAO_MIXES_LENGTH, current_epoch].
 		self.state.latest_randao_mixes[
@@ -131,13 +131,13 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		]
 	}
 
-	fn active_index_root(&self, epoch: Epoch) -> H256 {
+	pub(crate) fn active_index_root(&self, epoch: Epoch) -> H256 {
 		self.state.latest_active_index_roots[
 			(epoch % self.config.latest_active_index_roots_length()) as usize
 		]
 	}
 
-	fn generate_seed(&self, epoch: Epoch) -> H256 {
+	pub(crate) fn generate_seed(&self, epoch: Epoch) -> H256 {
 		self.config.hash(&[
 			&self.randao_mix(epoch +
 							 self.config.latest_randao_mixes_length() -
@@ -147,7 +147,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		])
 	}
 
-	fn beacon_proposer_index(&self) -> Result<ValidatorIndex, Error> {
+	pub(crate) fn beacon_proposer_index(&self) -> Result<ValidatorIndex, Error> {
 		let epoch = self.current_epoch();
 		let committees_per_slot =
 			self.epoch_committee_count(epoch) / self.config.slots_per_epoch();
@@ -179,7 +179,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 	}
 
-	fn crosslink_committee(
+	pub(crate) fn crosslink_committee(
 		&self, epoch: Epoch, shard: Shard
 	) -> Result<Vec<ValidatorIndex>, Error> {
 		let indices = self.active_validator_indices(epoch);
@@ -200,7 +200,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}).collect::<Result<Vec<_>, Error>>()
 	}
 
-	fn attesting_indices(
+	pub(crate) fn attesting_indices(
 		&self, attestation_data: &AttestationData, bitfield: &BitField,
 	) -> Result<Vec<ValidatorIndex>, Error> {
 		let committee = self.crosslink_committee(
@@ -219,13 +219,13 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(ret)
 	}
 
-	fn total_balance(&self, indices: &[ValidatorIndex]) -> Gwei {
+	pub(crate) fn total_balance(&self, indices: &[ValidatorIndex]) -> Gwei {
 		indices.iter().fold(0, |sum, index| {
 			sum + self.state.validator_registry[*index as usize].effective_balance
 		})
 	}
 
-	fn domain(&self, domain_type: Uint, message_epoch: Option<Uint>) -> Uint {
+	pub(crate) fn domain(&self, domain_type: Uint, message_epoch: Option<Uint>) -> Uint {
 		let epoch = message_epoch.unwrap_or(self.current_epoch());
 		let fork_version = if epoch < self.state.fork.epoch {
 			self.state.fork.previous_version
@@ -240,7 +240,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		u64::from_le_bytes(bytes)
 	}
 
-	fn covert_to_indexed(&self, attestation: Attestation) -> Result<IndexedAttestation, Error> {
+	pub(crate) fn covert_to_indexed(&self, attestation: Attestation) -> Result<IndexedAttestation, Error> {
 		let attesting_indices = self.attesting_indices(
 			&attestation.data, &attestation.aggregation_bitfield
 		)?;
@@ -259,7 +259,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		})
 	}
 
-	fn verify_indexed_attestation(&self, indexed_attestation: &IndexedAttestation) -> Result<bool, Error> {
+	pub(crate) fn verify_indexed_attestation(&self, indexed_attestation: &IndexedAttestation) -> Result<bool, Error> {
 		let custody_bit_0_indices = &indexed_attestation.custody_bit_0_indices;
 		let custody_bit_1_indices = &indexed_attestation.custody_bit_1_indices;
 
@@ -325,7 +325,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		))
 	}
 
-	fn churn_limit(&self) -> Uint {
+	pub(crate) fn churn_limit(&self) -> Uint {
 		max(
 			self.config.min_per_epoch_churn_limit(),
 			self.active_validator_indices(self.current_epoch()).len() as u64 /

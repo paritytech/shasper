@@ -44,3 +44,14 @@ pub fn integer_squareroot(n: u64) -> u64 {
 	}
 	x
 }
+
+pub fn compare_hash(a: &H256, b: &H256) -> core::cmp::Ordering {
+	for i in 0..32 {
+		if a[i] > b[i] {
+			return core::cmp::Ordering::Greater
+		} else if a[i] < b[i] {
+			return core::cmp::Ordering::Less
+		}
+	}
+	core::cmp::Ordering::Equal
+}
