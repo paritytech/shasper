@@ -39,7 +39,11 @@ extern crate parity_codec as codec;
 
 mod config;
 mod utils;
+mod error;
+mod executive;
 
 pub mod primitives;
 pub mod types;
 pub use crate::config::*;
+pub use crate::executive::Executive;
+pub use crate::error::Error;

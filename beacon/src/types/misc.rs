@@ -97,6 +97,15 @@ pub struct AttestationData {
 	pub crosslink_data_root: H256,
 }
 
+impl AttestationData {
+	/// Is slashable.
+	pub fn is_slashable(&self, other: &AttestationData) -> bool {
+		(self != other && self.target_epoch == other.target_epoch) ||
+			(self.source_epoch < other.source_epoch &&
+			 other.target_epoch < self.target_epoch)
+	}
+}
+
 #[derive(Ssz, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
@@ -184,6 +193,19 @@ pub struct Validator {
 	pub slashed: bool,
 	/// Effective balance
 	pub effective_balance: Uint,
+}
+
+impl Validator {
+	/// Whether it is active validator.
+	pub fn is_active(&self, epoch: Uint) -> bool {
+		self.activation_epoch <= epoch && epoch < self.exit_epoch
+	}
+
+	/// Whether it is slashable.
+	pub fn is_slashable(&self, epoch: Uint) -> bool {
+		self.slashed == false &&
+			self.activation_epoch <= epoch && epoch < self.withdrawable_epoch
+	}
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq, Default)]

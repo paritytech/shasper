@@ -14,33 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::primitives::H256;
+mod helpers;
 
-pub fn fixed_vec<T: Default>(len: u64) -> Vec<T> {
-	let mut ret = Vec::new();
-	ret.resize_with(len as usize, Default::default);
-	ret
-}
+use crate::types::BeaconState;
+use crate::Config;
 
-pub fn to_bytes(v: u64) -> H256 {
-	let bytes = v.to_le_bytes();
-	let mut ret = H256::default();
-	(&mut ret[0..bytes.len()]).copy_from_slice(&bytes);
-	ret
-}
-
-pub fn to_uint(v: &[u8]) -> u64 {
-	let mut ret = 0u64.to_le_bytes();
-	(&mut ret[..]).copy_from_slice(&v[..v.len()]);
-	u64::from_le_bytes(ret)
-}
-
-pub fn integer_squareroot(n: u64) -> u64 {
-	let mut x = n;
-	let mut y = (x + 1) / 2;
-	while y < x {
-		x = y;
-		y = (x + n / x) / 2
-	}
-	x
+/// Beacon state executive.
+pub struct Executive<'state, 'config, C: Config> {
+	/// Beacon state.
+	pub state: &'state mut BeaconState,
+	/// Beacon config.
+	pub config: &'config C,
 }

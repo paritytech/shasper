@@ -29,3 +29,13 @@ pub use primitive_types::H256;
 
 /// Alias to u64.
 pub type Uint = u64;
+/// A slot number.
+pub type Slot = Uint;
+/// An epoch number.
+pub type Epoch = Uint;
+/// A shard number.
+pub type Shard = Uint;
+/// A validator registry index.
+pub type ValidatorIndex = Uint;
+/// An amount in Gwei.
+pub type Gwei = Uint;

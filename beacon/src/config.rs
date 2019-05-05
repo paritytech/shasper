@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+use core::cmp::max;
 use digest::Digest;
-use crate::primitives::Uint;
+use crate::primitives::{H256, Uint, Epoch, Slot, ValidatorIndex, Signature, ValidatorId};
+use crate::utils::to_uint;
 
 /// Constants used in beacon block.
 pub trait Config {
-	/// Hash function.
 	type Digest: Digest;
 
 	// === Misc ===
@@ -131,4 +132,95 @@ pub trait Config {
 	fn domain_voluntary_exit(&self) -> Uint;
 	/// Transfer domain.
 	fn domain_transfer(&self) -> Uint;
+
+	// == BLS ==
+	/// Verify BLS signature.
+	fn bls_verify(
+		&self,
+		pubkey: &ValidatorId,
+		message: &H256,
+		signature: &Signature,
+		domain: u64
+	) -> bool;
+	/// Aggregate BLS public keys.
+	fn bls_aggregate_pubkeys(&self, pubkeys: &[ValidatorId]) -> ValidatorId;
+	/// Verify multiple BLS signatures.
+	fn bls_verify_multiple(
+		&self,
+		pubkeys: &[ValidatorId],
+		messages: &[H256],
+		signature: &Signature,
+		domain: u64
+	) -> bool;
+
+	// == Helpers ==
+	/// Hash function.
+	fn hash<A: AsRef<[u8]>, I: IntoIterator<Item=A>>(
+		&self, inputs: I
+	) -> H256 {
+		let mut digest = Self::Digest::new();
+		for input in inputs {
+			digest.input(input);
+		}
+		H256::from_slice(digest.result().as_slice())
+	}
+	/// Convert slot into epoch.
+	fn slot_to_epoch(&self, slot: Slot) -> Epoch {
+		slot / self.slots_per_epoch()
+	}
+	/// Get start slot for an epoch.
+	fn epoch_start_slot(&self, epoch: Epoch) -> Slot {
+		epoch.saturating_mul(self.slots_per_epoch())
+	}
+	/// Verify merkle branch.
+	fn verify_merkle_branch(
+		&self, leaf: H256, proof: &[H256], depth: u64, index: u64, root: H256,
+	) -> bool {
+		let mut value = leaf;
+		for i in 0..depth {
+			if index / 2u64.pow(i as u32) % 2 != 0 {
+				value = self.hash(&[&proof[i as usize][..], &value[..]]);
+			} else {
+				value = self.hash(&[&value[..], &proof[i as usize][..]]);
+			}
+		}
+		value == root
+	}
+	/// Shuffled index.
+	fn shuffled_index(
+		&self, mut index: Uint, index_count: Uint, seed: H256
+	) -> Option<ValidatorIndex> {
+		if !(index < index_count && index_count <= 2u64.pow(40)) {
+			return None
+		}
+
+		// Swap or not
+		// (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
+		// See the 'generalized domain' algorithm on page 3
+
+		for round in 0..self.shuffle_round_count() {
+			let pivot = to_uint(
+				&self.hash(&[
+					&seed[..],
+					&round.to_le_bytes()[..1]
+				])[..8]
+			) % index_count;
+			let flip = (pivot - index) % index_count;
+			let position = max(index, flip);
+			let source = self.hash(&[
+				&seed[..],
+				&round.to_le_bytes()[..1],
+				&(position / 256).to_le_bytes()[..4]
+			]);
+			let byte = source[((position % 256) / 8) as usize];
+			let bit = (byte >> (position % 8)) % 2;
+			index = if bit != 0 { flip } else { index };
+		}
+
+		Some(index)
+	}
+	/// Delayed activation exit epoch.
+	fn delayed_activation_exit_epoch(&self, epoch: Epoch) -> Epoch {
+		epoch + 1 + self.activation_exit_delay()
+	}
 }
