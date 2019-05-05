@@ -22,11 +22,11 @@ use crate::utils::{to_bytes, compare_hash};
 use crate::{Config, Executive, Error};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
-	fn total_active_balance(&self) -> Gwei {
+	pub(crate) fn total_active_balance(&self) -> Gwei {
 		self.total_balance(&self.active_validator_indices(self.current_epoch()))
 	}
 
-	fn matching_source_attestations(&self, epoch: Epoch) -> Result<Vec<PendingAttestation>, Error> {
+	pub(crate) fn matching_source_attestations(&self, epoch: Epoch) -> Result<Vec<PendingAttestation>, Error> {
 		if epoch == self.current_epoch() {
 			Ok(self.state.current_epoch_attestations.clone())
 		} else if epoch == self.previous_epoch() {
@@ -36,14 +36,14 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 	}
 
-	fn matching_target_attestations(&self, epoch: Epoch) -> Result<Vec<PendingAttestation>, Error> {
+	pub(crate) fn matching_target_attestations(&self, epoch: Epoch) -> Result<Vec<PendingAttestation>, Error> {
 		let block_root = self.block_root(epoch)?;
 		Ok(self.matching_source_attestations(epoch)?.into_iter()
 		   .filter(|a| a.data.target_root == block_root)
 		   .collect())
 	}
 
-	fn matching_head_attestations(&self, epoch: Epoch) -> Result<Vec<PendingAttestation>, Error> {
+	pub(crate) fn matching_head_attestations(&self, epoch: Epoch) -> Result<Vec<PendingAttestation>, Error> {
 		self.matching_source_attestations(epoch)?.into_iter()
 			.map(|a| {
 				Ok((a.data.beacon_block_root == self.block_root_at_slot(
@@ -59,7 +59,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			})
 	}
 
-	fn unslashed_attesting_indices(
+	pub(crate) fn unslashed_attesting_indices(
 		&self, attestations: &[PendingAttestation]
 	) -> Result<Vec<ValidatorIndex>, Error> {
 		let mut ret = Vec::new();
@@ -77,13 +77,13 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(ret)
 	}
 
-	fn attesting_balance(
+	pub(crate) fn attesting_balance(
 		&self, attestations: &[PendingAttestation]
 	) -> Result<Gwei, Error> {
 		Ok(self.total_balance(&self.unslashed_attesting_indices(attestations)?))
 	}
 
-	fn crosslink_from_attestation_data(&self, data: AttestationData) -> Crosslink {
+	pub(crate) fn crosslink_from_attestation_data(&self, data: AttestationData) -> Crosslink {
 		Crosslink {
 			epoch: min(
 				data.target_epoch,
@@ -95,7 +95,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 	}
 
-	fn winning_crosslink_and_attesting_indices(
+	pub(crate) fn winning_crosslink_and_attesting_indices(
 		&self, epoch: Epoch, shard: Shard
 	) -> Result<(Crosslink, Vec<ValidatorIndex>), Error> {
 		let shard_attestations = self.matching_source_attestations(epoch)?.into_iter()

@@ -15,3 +15,4 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 mod helpers;
+mod finalization;
