@@ -14,7 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-mod cache;
-mod per_epoch;
-mod per_slot;
-mod per_block;
+mod proposer_slashing;
+mod attester_slashing;

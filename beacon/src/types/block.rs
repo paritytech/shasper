@@ -52,6 +52,20 @@ pub struct BeaconBlockBody {
 	pub transfers: Vec<Transfer>,
 }
 
+/// Sealed or unsealed block.
+pub trait Block {
+	/// Slot of the block.
+	fn slot(&self) -> u64;
+	/// Previous block root.
+	fn previous_block_root(&self) -> &H256;
+	/// State root.
+	fn state_root(&self) -> &H256;
+	/// Body.
+	fn body(&self) -> &BeaconBlockBody;
+	/// Signature of the block. None for unsealed block.
+	fn signature(&self) -> Option<&Signature>;
+}
+
 #[derive(Ssz, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
@@ -70,4 +84,37 @@ pub struct BeaconBlock {
 	#[ssz(truncate)]
 	/// Signature.
 	pub signature: Signature,
+}
+
+impl Block for BeaconBlock {
+	fn slot(&self) -> u64 { self.slot }
+	fn previous_block_root(&self) -> &H256 { &self.previous_block_root }
+	fn state_root(&self) -> &H256 { &self.state_root }
+	fn body(&self) -> &BeaconBlockBody { &self.body }
+	fn signature(&self) -> Option<&Signature> { Some(&self.signature) }
+}
+
+#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
+#[ssz(no_decode)]
+/// Unsealed Beacon block.
+pub struct UnsealedBeaconBlock {
+	/// Slot of the block.
+	pub slot: Uint,
+	/// Previous block root.
+	pub previous_block_root: H256,
+	/// State root.
+	pub state_root: H256,
+	/// Body.
+	pub body: BeaconBlockBody,
+}
+
+impl Block for UnsealedBeaconBlock {
+	fn slot(&self) -> u64 { self.slot }
+	fn previous_block_root(&self) -> &H256 { &self.previous_block_root }
+	fn state_root(&self) -> &H256 { &self.state_root }
+	fn body(&self) -> &BeaconBlockBody { &self.body }
+	fn signature(&self) -> Option<&Signature> { None }
 }

@@ -44,6 +44,8 @@ pub enum Error {
 	ValidatorAttestationNotFound,
 	/// Block slot is invalid.
 	BlockSlotInvalid,
+	/// Block proposer has been slashed.
+	BlockProposerSlashed,
 	/// Block previous root is invalid.
 	BlockPreviousRootInvalid,
 	/// Block signature is invalid.
