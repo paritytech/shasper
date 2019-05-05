@@ -42,6 +42,8 @@ pub enum Error {
 	ValidatorNotWithdrawable,
 	/// Validator's attestation not found.
 	ValidatorAttestationNotFound,
+	/// Block state root is invalid.
+	BlockStateRootInvalid,
 	/// Block slot is invalid.
 	BlockSlotInvalid,
 	/// Block proposer has been slashed.
