@@ -15,6 +15,9 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 mod helpers;
-mod finalization;
+mod justification;
 mod crosslink;
 mod reward;
+mod registry;
+mod slashing;
+mod finalize;

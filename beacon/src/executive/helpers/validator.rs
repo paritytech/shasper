@@ -24,7 +24,7 @@ use crate::utils::to_bytes;
 use crate::{Config, Executive, Error};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
-	fn initiate_validator_exit(&mut self, index: ValidatorIndex) {
+	pub(crate) fn initiate_validator_exit(&mut self, index: ValidatorIndex) {
 		if self.state.validator_registry[index as usize].exit_epoch !=
 			self.config.far_future_epoch()
 		{
@@ -53,7 +53,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			self.config.min_validator_withdrawability_delay();
 	}
 
-	fn slash_validator(
+	pub(crate) fn slash_validator(
 		&mut self,
 		slashed_index: ValidatorIndex,
 		whistleblower_index: Option<ValidatorIndex>
