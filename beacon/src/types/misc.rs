@@ -218,8 +218,8 @@ pub struct PendingAttestation {
 	pub aggregation_bitfield: BitField,
 	/// Attestation data
 	pub data: AttestationData,
-	/// Inclusion slot
-	pub inclusion_slot: Uint,
+	/// Inclusion delay
+	pub inclusion_delay: Uint,
 	/// Proposer index
 	pub proposer_index: Uint,
 }
