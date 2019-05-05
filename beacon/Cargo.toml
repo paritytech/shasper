@@ -16,6 +16,7 @@ ssz = { version = "0.1.1", path = "../utils/ssz", default-features = false }
 ssz-derive = { version = "0.1.1", path = "../utils/ssz-derive" }
 fixed-hash = { version = "0.3.0", default-features = false }
 parity-codec = { version = "3.2", default-features = false, optional = true, features = ["derive"] }
+sha2 = "0.8"
 digest = "0.8"
 generic-array = "0.12"
 
