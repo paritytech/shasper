@@ -21,6 +21,8 @@ use crate::types::{Attestation, AttestationData, IndexedAttestation, Attestation
 use crate::utils::to_bytes;
 use crate::{Config, Executive, Error};
 
+mod validator;
+
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	fn current_epoch(&self) -> Epoch {
 		self.config.slot_to_epoch(self.state.slot)
