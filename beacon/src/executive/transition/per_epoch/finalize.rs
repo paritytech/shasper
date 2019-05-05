@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use core::cmp::{min, max, Ordering};
+use core::cmp::min;
 use ssz::Digestible;
-use crate::primitives::{Uint, Epoch, Slot, ValidatorIndex, Gwei, Shard, H256, BitField};
-use crate::types::{Attestation, AttestationData, IndexedAttestation, AttestationDataAndCustodyBit, PendingAttestation, Crosslink, HistoricalBatch};
-use crate::utils::{to_bytes, compare_hash, integer_squareroot};
-use crate::{Config, Executive, Error};
+use crate::primitives::H256;
+use crate::types::HistoricalBatch;
+use crate::{Config, Executive};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Process final updates

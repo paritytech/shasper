@@ -17,7 +17,6 @@
 use ssz::Digestible;
 use crate::primitives::H256;
 use crate::types::Block;
-use crate::utils::to_bytes;
 use crate::{Config, Executive, Error};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {

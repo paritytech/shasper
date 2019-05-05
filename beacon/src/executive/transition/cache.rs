@@ -14,12 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use core::cmp::{min, max};
 use ssz::Digestible;
-use crate::primitives::{Uint, Epoch, Slot, ValidatorIndex, Gwei, Shard, H256, BitField};
-use crate::types::{Attestation, AttestationData, IndexedAttestation, AttestationDataAndCustodyBit};
-use crate::utils::to_bytes;
-use crate::{Config, Executive, Error};
+use crate::primitives::H256;
+use crate::{Config, Executive};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// State caching.

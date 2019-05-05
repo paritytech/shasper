@@ -16,11 +16,8 @@
 
 //! Routines for updating validator status.
 
-use core::cmp::{min, max};
-use ssz::Digestible;
-use crate::primitives::{Uint, Epoch, Slot, ValidatorIndex, Gwei, Shard, H256, BitField};
-use crate::types::{Attestation, AttestationData, IndexedAttestation, AttestationDataAndCustodyBit};
-use crate::utils::to_bytes;
+use core::cmp::max;
+use crate::primitives::ValidatorIndex;
 use crate::{Config, Executive, Error};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
