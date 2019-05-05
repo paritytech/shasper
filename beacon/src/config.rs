@@ -21,6 +21,7 @@ use crate::utils::to_uint;
 
 /// Constants used in beacon block.
 pub trait Config {
+	/// Digest hash function.
 	type Digest: Digest;
 
 	// === Misc ===

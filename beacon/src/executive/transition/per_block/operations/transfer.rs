@@ -17,7 +17,7 @@
 use core::cmp::{min, max};
 use ssz::Digestible;
 use crate::primitives::{Uint, Epoch, Slot, ValidatorIndex, Gwei, Shard, H256, BitField};
-use crate::types::{Attestation, AttestationData, IndexedAttestation, AttestationDataAndCustodyBit, Block, BeaconBlockHeader, ProposerSlashing, AttesterSlashing, Transfer};
+use crate::types::{Attestation, AttestationData, IndexedAttestation, AttestationDataAndCustodyBit, BeaconBlockHeader, ProposerSlashing, AttesterSlashing, Transfer};
 use crate::utils::to_bytes;
 use crate::{Config, Executive, Error};
 

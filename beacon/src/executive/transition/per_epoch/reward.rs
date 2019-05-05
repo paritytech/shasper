@@ -126,7 +126,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			let shard = (self.epoch_start_shard(epoch)? + offset) %
 				self.config.shard_count();
 			let crosslink_committee = self.crosslink_committee(epoch, shard)?;
-			let (winning_crosslink, attesting_indices) =
+			let (_winning_crosslink, attesting_indices) =
 				self.winning_crosslink_and_attesting_indices(epoch, shard)?;
 			let attesting_balance = self.total_balance(&attesting_indices);
 			let committee_balance = self.total_balance(&crosslink_committee);

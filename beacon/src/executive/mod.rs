@@ -16,6 +16,9 @@
 
 mod helpers;
 mod transition;
+mod genesis;
+
+pub use self::genesis::*;
 
 use crate::types::BeaconState;
 use crate::Config;
