@@ -240,7 +240,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		u64::from_le_bytes(bytes)
 	}
 
-	pub(crate) fn covert_to_indexed(&self, attestation: Attestation) -> Result<IndexedAttestation, Error> {
+	pub(crate) fn convert_to_indexed(&self, attestation: Attestation) -> Result<IndexedAttestation, Error> {
 		let attesting_indices = self.attesting_indices(
 			&attestation.data, &attestation.aggregation_bitfield
 		)?;

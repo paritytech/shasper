@@ -48,9 +48,9 @@ pub struct ProposerSlashing {
 /// Block attester slashing.
 pub struct AttesterSlashing {
 	/// First slashable attestation
-	pub attestation_a: IndexedAttestation,
+	pub attestation_1: IndexedAttestation,
 	/// Second slashable attestation
-	pub attestation_b: IndexedAttestation,
+	pub attestation_2: IndexedAttestation,
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq, Default)]
