@@ -23,7 +23,7 @@ fn main() {
 	let coll = serde_yaml::from_reader::<_, Collection<DepositTest>>(BufReader::new(file)).expect("Parse test cases failed");
 	let config = match matches.value_of("config") {
 		Some("small") | None => NoVerificationConfig::small(),
-		Some("full") => unimplemented!(),
+		Some("full") => NoVerificationConfig::full(),
 		_ => panic!("Unknown config"),
 	};
 

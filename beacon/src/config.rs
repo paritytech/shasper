@@ -463,4 +463,63 @@ impl NoVerificationConfig {
 			domain_transfer: 5,
 		}
 	}
+
+	/// Full config with 1024 shards.
+	pub fn full() -> Self {
+		Self {
+			shard_count: 1024,
+			target_committee_size: 128,
+			max_indices_per_attestation: 4096,
+			min_per_epoch_churn_limit: 4,
+			churn_limit_quotient: 65536,
+			base_rewards_per_epoch: 5,
+			shuffle_round_count: 90,
+
+			deposit_contract_tree_depth: 32,
+
+			min_deposit_amount: 1000000000,
+			max_effective_balance: 32000000000,
+			ejection_balance: 16000000000,
+			effective_balance_increment: 1000000000,
+
+			genesis_slot: 0,
+			genesis_epoch: 0,
+			bls_withdrawal_prefix_byte: 0,
+
+			min_attestation_inclusion_delay: 4,
+			slots_per_epoch: 64,
+			min_seed_lookahead: 1,
+			activation_exit_delay: 4,
+			slots_per_eth1_voting_period: 1024,
+			slots_per_historical_root: 8192,
+			min_validator_withdrawability_delay: 256,
+			persistent_committee_period: 2048,
+			max_crosslink_epochs: 64,
+			min_epochs_to_inactivity_penalty: 4,
+
+			latest_randao_mixes_length: 8192,
+			latest_active_index_roots_length: 8192,
+			latest_slashed_exit_length: 8192,
+
+			base_reward_quotient: 32,
+			whistleblowing_reward_quotient: 512,
+			proposer_reward_quotient: 8,
+			inactivity_penalty_quotient: 33554432,
+			min_slashing_penalty_quotient: 32,
+
+			max_proposer_slashings: 16,
+			max_attester_slashings: 1,
+			max_attestations: 128,
+			max_deposits: 16,
+			max_voluntary_exits: 16,
+			max_transfers: 0,
+
+			domain_beacon_proposer: 0,
+			domain_randao: 1,
+			domain_attestation: 2,
+			domain_deposit: 3,
+			domain_voluntary_exit: 4,
+			domain_transfer: 5,
+		}
+	}
 }
