@@ -70,9 +70,9 @@ mod tests {
 	use beacon::NoVerificationConfig;
 
 	#[test]
-	fn sanity_check_small_config_32_vals() {
+	fn deposit_small() {
 		let config = NoVerificationConfig::small();
-		let coll = serde_yaml::from_str(&include_str!("../res/eth2.0-tests/state/sanity-check_small-config_32-vals.yaml")).unwrap();
-		run_collection(coll, &config, None);
+		let coll = serde_yaml::from_str(&include_str!("../res/spectests/operations/deposits/deposit_minimal.yaml")).unwrap();
+		run_collection::<DepositTest, _>(coll, &config);
 	}
 }
