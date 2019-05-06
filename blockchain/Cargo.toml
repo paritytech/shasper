@@ -9,3 +9,4 @@ edition = "2018"
 beacon = { path = "../beacon" }
 blockchain = "0.5"
 ssz = { path = "../utils/ssz" }
+sha2 = "0.8"
