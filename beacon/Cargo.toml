@@ -16,7 +16,7 @@ ssz = { version = "0.1.1", path = "../utils/ssz", default-features = false }
 ssz-derive = { version = "0.1.1", path = "../utils/ssz-derive" }
 fixed-hash = { version = "0.3.0", default-features = false }
 parity-codec = { version = "3.2", default-features = false, optional = true, features = ["derive"] }
-sha2 = "0.8"
+sha2 = { version = "0.8", default-features = false }
 digest = "0.8"
 generic-array = "0.12"
 
@@ -42,5 +42,6 @@ std = [
 	"ssz/std",
 	"hash-db/std",
 	"primitive-types/std",
+	"sha2/std",
 	"fixed-hash/std",
 ]
