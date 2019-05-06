@@ -21,7 +21,9 @@ mod genesis;
 pub use self::genesis::*;
 
 use core::cmp::min;
-use crate::types::{BeaconState, BeaconBlock};
+use ssz::Digestible;
+use crate::primitives::{H768, H256};
+use crate::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockBody, ProposerSlashing, AttesterSlashing, Deposit, Attestation, Transfer, VoluntaryExit, Eth1Data};
 use crate::{Config, Error};
 
 /// Beacon state executive.
@@ -103,6 +105,143 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 	}
 
 	executive.verify_block_state_root(block)?;
+
+	Ok(())
+}
+
+/// Beacon block inherent.
+pub struct Inherent {
+	/// New slot.
+	pub slot: u64,
+	/// New RANDAO reveal.
+	pub randao_reveal: H768,
+	/// New eth1 data.
+	pub eth1_data: Eth1Data,
+}
+
+/// Beacon block transaction.
+pub enum Transaction {
+	/// Proposer slashing.
+	ProposerSlashing(ProposerSlashing),
+	/// Attester slashing.
+	AttesterSlashing(AttesterSlashing),
+	/// Attestation.
+	Attestation(Attestation),
+	/// Deposit.
+	Deposit(Deposit),
+	/// Voluntary exit.
+	VoluntaryExit(VoluntaryExit),
+	/// Transfer.
+	Transfer(Transfer),
+}
+
+/// Initialize a block, and apply inherents.
+pub fn initialize_block<C: Config>(parent_block: &BeaconBlock, state: &mut BeaconState, inherent: Inherent, config: &C) -> Result<UnsealedBeaconBlock, Error> {
+	let body = BeaconBlockBody {
+		randao_reveal: inherent.randao_reveal,
+		eth1_data: inherent.eth1_data,
+		..Default::default()
+	};
+	let block = UnsealedBeaconBlock {
+		slot: inherent.slot,
+		previous_block_root: H256::from_slice(
+			Digestible::<C::Digest>::hash(parent_block).as_slice()
+		),
+		state_root: parent_block.state_root,
+		body,
+	};
+
+	let mut executive = Executive { state, config };
+
+	while executive.state.slot < block.slot {
+		executive.cache_state();
+
+		if (executive.state.slot + 1) % config.slots_per_epoch() == 0 {
+			executive.process_justification_and_finalization()?;
+			executive.process_crosslinks()?;
+			executive.process_rewards_and_penalties()?;
+			executive.process_registry_updates()?;
+			executive.process_slashings();
+			executive.process_final_updates();
+		}
+
+		executive.advance_slot();
+	}
+
+	assert!(executive.state.slot == block.slot);
+	executive.process_randao(&block)?;
+	executive.process_eth1_data(&block);
+
+	Ok(block)
+}
+
+/// Apply a transaction to the block.
+pub fn apply_transaction<C: Config>(block: &mut UnsealedBeaconBlock, state: &mut BeaconState, extrinsic: Transaction, config: &C) -> Result<(), Error> {
+	let mut executive = Executive { state, config };
+
+	match extrinsic {
+		Transaction::ProposerSlashing(slashing) => {
+			if block.body.proposer_slashings.len() >= config.max_proposer_slashings() as usize {
+				return Err(Error::TooManyProposerSlashings)
+			}
+			executive.process_proposer_slashing(slashing.clone())?;
+			block.body.proposer_slashings.push(slashing);
+		},
+		Transaction::AttesterSlashing(slashing) => {
+			if block.body.attester_slashings.len() >= config.max_attester_slashings() as usize {
+				return Err(Error::TooManyAttesterSlashings)
+			}
+			executive.process_attester_slashing(slashing.clone())?;
+			block.body.attester_slashings.push(slashing);
+		},
+		Transaction::Attestation(attestation) => {
+			if block.body.attestations.len() >= config.max_attestations() as usize {
+				return Err(Error::TooManyAttestations)
+			}
+			executive.process_attestation(attestation.clone())?;
+			block.body.attestations.push(attestation);
+		},
+		Transaction::Deposit(deposit) => {
+			if block.body.deposits.len() >= config.max_deposits() as usize {
+				return Err(Error::TooManyDeposits)
+			}
+			executive.process_deposit(deposit.clone())?;
+			block.body.deposits.push(deposit);
+		},
+		Transaction::VoluntaryExit(voluntary_exit) => {
+			if block.body.voluntary_exits.len() >= config.max_voluntary_exits() as usize {
+				return Err(Error::TooManyVoluntaryExits)
+			}
+			executive.process_voluntary_exit(voluntary_exit.clone())?;
+			block.body.voluntary_exits.push(voluntary_exit);
+		},
+		Transaction::Transfer(transfer) => {
+			if block.body.transfers.len() >= config.max_transfers() as usize {
+				return Err(Error::TooManyTransfers)
+			}
+			executive.process_transfer(transfer.clone())?;
+			block.body.transfers.push(transfer);
+		},
+	}
+	Ok(())
+}
+
+/// Finalize an unsealed block.
+pub fn finalize_block<C: Config>(block: &mut UnsealedBeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
+	let mut executive = Executive { state, config };
+
+	if block.body.deposits.len() != min(
+		config.max_deposits(),
+		executive.state.latest_eth1_data.deposit_count - executive.state.deposit_index
+	) as usize {
+		return Err(Error::TooManyDeposits)
+	}
+
+	executive.process_block_header(block)?;
+
+	block.state_root = H256::from_slice(
+		Digestible::<C::Digest>::hash(executive.state).as_slice()
+	);
 
 	Ok(())
 }
