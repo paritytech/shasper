@@ -102,5 +102,7 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 		executive.process_transfer(transfer.clone())?;
 	}
 
+	executive.verify_block_state_root(block)?;
+
 	Ok(())
 }
