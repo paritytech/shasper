@@ -37,7 +37,7 @@ mod attestation;
 
 pub use crypto;
 pub use keccak_hasher::KeccakHasher;
-pub use beacon::{H768, Signature, H384, ValidatorId, BitField, H32, Version};
+pub use beacon::primitives::{H768, Signature, H384, ValidatorId, BitField, H32, Version};
 pub use attestation::{UnsignedAttestation, UncheckedAttestation, CheckedAttestation, AttestationContext};
 
 pub use primitive_types::H256;

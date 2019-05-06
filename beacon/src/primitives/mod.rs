@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+//! Primitives
+
 mod authority_id;
 mod bitfield;
 mod signature;
@@ -24,3 +26,16 @@ pub use bitfield::BitField;
 pub use signature::{H768, Signature};
 pub use version::{H32, Version};
 pub use primitive_types::H256;
+
+/// Alias to u64.
+pub type Uint = u64;
+/// A slot number.
+pub type Slot = Uint;
+/// An epoch number.
+pub type Epoch = Uint;
+/// A shard number.
+pub type Shard = Uint;
+/// A validator registry index.
+pub type ValidatorIndex = Uint;
+/// An amount in Gwei.
+pub type Gwei = Uint;

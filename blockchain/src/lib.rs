@@ -1,6 +1,8 @@
-use beacon::{H256, KeccakHasher, BeaconState, BeaconBlock, Error as BeaconError, NoVerificationConfig, Inherent, Transaction, UnsealedBeaconBlock};
+use beacon::primitives::H256;
+use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock};
+use beacon::{Error as BeaconError, NoVerificationConfig, Inherent, Transaction};
 use blockchain::traits::{Block as BlockT, BlockExecutor, BuilderExecutor};
-use ssz::Hashable;
+use ssz::Digestible;
 
 #[derive(Eq, PartialEq, Clone)]
 pub struct Block(BeaconBlock);
@@ -9,7 +11,9 @@ impl BlockT for Block {
 	type Identifier = H256;
 
 	fn id(&self) -> H256 {
-		Hashable::<KeccakHasher>::hash(&self.0)
+		H256::from_slice(
+			Digestible::<sha2::Sha256>::hash(&self.0).as_slice()
+		)
 	}
 
 	fn parent_id(&self) -> Option<H256> {

@@ -21,9 +21,7 @@ use impl_serde::serialize as bytes;
 #[cfg(feature = "serde")]
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 
-// TODO: Validate bitfield trailing bits in encoding/decoding.
-
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Variable length bitfield.
@@ -78,8 +76,8 @@ impl<D: digest::Digest> ssz::Digestible<D> for BitField {
 }
 
 impl BitField {
-	/// Whether bit as given index is `1`.
-	pub fn has_voted(&self, index: usize) -> bool {
+	/// Get bit at index.
+	pub fn get_bit(&self, index: usize) -> bool {
 		(self.0[index / 8] >> (index % 8)) == 1
 	}
 
@@ -90,7 +88,7 @@ impl BitField {
 		}
 
 		for i in size..(self.0.len() * 8) {
-			if self.has_voted(i) {
+			if self.get_bit(i) == true {
 				return false
 			}
 		}
