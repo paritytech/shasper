@@ -1,0 +1,3 @@
+[submodule "yamltests/res/spectests"]
+	path = yamltests/res/spectests
+	url = https://github.com/ethereum/eth2.0-spec-tests
