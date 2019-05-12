@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use blockchain::traits::{Backend, Operation, Block, ChainQuery, Auxiliary};
+use blockchain::traits::{Backend, Operation, Block, ChainQuery, Auxiliary, BlockExecutor, ImportBlock, AsExternalities};
 use blockchain::backend::{MemoryLikeBackend, SharedBackend};
 
 pub trait AncestorQuery: ChainQuery {
@@ -181,5 +181,62 @@ impl<Ba: AncestorQuery> ArchiveGhost<Ba> {
 			head = best;
 			head_depth += 1;
 		}
+	}
+}
+
+pub struct ArchiveGhostImporter<E: BlockExecutor, Ba: Backend<Block=E::Block>> where
+	Ba::Auxiliary: Auxiliary<E::Block>
+{
+	ghost: ArchiveGhost<Ba>,
+	executor: E,
+}
+
+impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ArchiveGhostImporter<E, Ba> where
+	Ba: AncestorQuery,
+	Ba::Auxiliary: Auxiliary<E::Block>
+{
+	pub fn new(executor: E, backend: SharedBackend<Ba>) -> Self {
+		Self {
+			executor,
+			ghost: ArchiveGhost::new(backend),
+		}
+	}
+}
+
+impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ImportBlock for ArchiveGhostImporter<E, Ba> where
+	Ba: AncestorQuery,
+	Ba::Auxiliary: Auxiliary<E::Block>,
+	Ba::State: AsExternalities<E::Externalities>,
+{
+	type Block = Ba::Block;
+	type Error = blockchain::chain::Error;
+
+	fn import_block(&mut self, block: Ba::Block) -> Result<(), Self::Error> {
+		// FIXME: Swap with ghost.head
+
+		let mut importer = self.ghost.backend.begin_import(&self.executor);
+		let new_hash = block.id();
+		let (current_best_depth, new_depth) = {
+			let backend = importer.backend().read();
+			let current_best_hash = backend.head();
+			let current_best_depth = backend.depth_at(&current_best_hash)
+				.expect("Best block depth hash cannot fail");
+			let new_parent_depth = block.parent_id()
+				.map(|parent_hash| {
+					backend.depth_at(&parent_hash).unwrap()
+				})
+				.unwrap_or(0);
+			(current_best_depth, new_parent_depth + 1)
+		};
+
+		importer.import_block(block)?;
+		if new_depth > current_best_depth {
+			importer.set_head(new_hash);
+		}
+		importer.commit().map_err(|e| {
+			blockchain::chain::Error::Backend(Box::new(e))
+		})?;
+
+		Ok(())
 	}
 }

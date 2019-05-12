@@ -6,7 +6,10 @@ description = "Blockchain interface for Shasper beacon chain."
 edition = "2018"
 
 [dependencies]
+clap = "2.32"
 beacon = { path = "../beacon" }
+parity-codec = { version = "3.0", features = ["derive"] }
 blockchain = "0.5"
+blockchain-network-simple = "0.1"
 ssz = { path = "../utils/ssz" }
 sha2 = "0.8"

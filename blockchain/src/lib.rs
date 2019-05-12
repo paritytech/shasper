@@ -1,11 +1,12 @@
 use beacon::primitives::H256;
 use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock};
 use beacon::{Error as BeaconError, NoVerificationConfig, Inherent, Transaction};
-use blockchain::traits::{Block as BlockT, BlockExecutor, BuilderExecutor};
+use blockchain::traits::{Block as BlockT, BlockExecutor, BuilderExecutor, AsExternalities};
+use parity_codec::{Encode, Decode};
 use ssz::Digestible;
 
-#[derive(Eq, PartialEq, Clone)]
-pub struct Block(BeaconBlock);
+#[derive(Eq, PartialEq, Clone, Debug, Encode, Decode)]
+pub struct Block(pub BeaconBlock);
 
 impl BlockT for Block {
 	type Identifier = H256;
@@ -29,13 +30,32 @@ pub trait StateExternalities {
 	fn state(&mut self) -> &mut BeaconState;
 }
 
+#[derive(Clone)]
 pub struct State {
 	state: BeaconState,
+}
+
+impl From<BeaconState> for State {
+	fn from(state: BeaconState) -> Self {
+		Self { state }
+	}
+}
+
+impl Into<BeaconState> for State {
+	fn into(self) -> BeaconState {
+		self.state
+	}
 }
 
 impl StateExternalities for State {
 	fn state(&mut self) -> &mut BeaconState {
 		&mut self.state
+	}
+}
+
+impl AsExternalities<dyn StateExternalities> for State {
+	fn as_externalities(&mut self) -> &mut (dyn StateExternalities + 'static) {
+		self
 	}
 }
 
