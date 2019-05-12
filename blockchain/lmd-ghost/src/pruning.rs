@@ -181,7 +181,7 @@ impl<B: Block> PruningGhost<B> {
 mod tests {
 	use super::*;
 	use blockchain::traits::{Operation, ImportOperation};
-	use blockchain::backend::MemoryBackend;
+	use blockchain::backend::{MemoryBackend, KeyValueMemoryState, MemoryLikeBackend};
 
 	#[derive(Clone, Debug)]
 	struct DummyBlock {
@@ -224,7 +224,7 @@ mod tests {
 	#[test]
 	fn test_ghost() {
 		let genesis = DummyBlock { id: 0, parent_id: None };
-		let mut backend = MemoryBackend::<DummyBlock, ()>::with_genesis(genesis, Default::default());
+		let mut backend = MemoryBackend::<DummyBlock, (), KeyValueMemoryState>::new_with_genesis(genesis, Default::default());
 		let mut ghost = PruningGhost::<DummyBlock>::new();
 
 		backend.commit(Operation {
