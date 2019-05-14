@@ -7,7 +7,7 @@ pub trait AncestorQuery: ChainQuery {
 		&self,
 		id: &<Self::Block as Block>::Identifier,
 		depth: usize
-	) -> Result<Option<<Self::Block as Block>::Identifier>, Self::Error>;
+	) -> Result<<Self::Block as Block>::Identifier, Self::Error>;
 }
 
 pub struct NoCacheAncestorBackend<Ba: Backend>(Ba);
@@ -102,12 +102,12 @@ impl<Ba: ChainQuery> AncestorQuery for NoCacheAncestorBackend<Ba> {
 		&self,
 		id: &<Self::Block as Block>::Identifier,
 		depth: usize
-	) -> Result<Option<<Self::Block as Block>::Identifier>, Self::Error> {
-		let mut current = Some(id.clone());
-		while current.is_some() &&
-			self.depth_at(current.as_ref().expect("Checked current is some"))? > depth
-		{
-			current = self.block_at(current.as_ref().expect("Checked current is some"))?.parent_id();
+	) -> Result<<Self::Block as Block>::Identifier, Self::Error> {
+		let mut current = id.clone();
+		while self.depth_at(&current)? > depth {
+			current = self.block_at(&current)?.parent_id()
+				.expect("When parent id is None, depth is 0;
+                         no value can be greater than 0; while is false; qed");
 		}
 		Ok(current)
 	}
@@ -151,7 +151,7 @@ impl<Ba: AncestorQuery> ArchiveGhost<Ba> {
 	) -> Result<usize, Ba::Error> {
 		let mut total = 0;
 		for (target, votes) in &self.latest_scores {
-			if self.backend.read().ancestor_at(target, block_depth)? == Some(*block) {
+			if self.backend.read().ancestor_at(target, block_depth)? == *block {
 				total += votes;
 			}
 		}
