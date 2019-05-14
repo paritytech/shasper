@@ -207,6 +207,7 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ImportBlock for ArchiveGhost
 	Ba: AncestorQuery,
 	Ba::Auxiliary: Auxiliary<E::Block>,
 	Ba::State: AsExternalities<E::Externalities>,
+	blockchain::chain::Error: From<Ba::Error> + From<E::Error>,
 {
 	type Block = Ba::Block;
 	type Error = blockchain::chain::Error;
@@ -233,9 +234,7 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ImportBlock for ArchiveGhost
 		if new_depth > current_best_depth {
 			importer.set_head(new_hash);
 		}
-		importer.commit().map_err(|e| {
-			blockchain::chain::Error::Backend(Box::new(e))
-		})?;
+		importer.commit()?;
 
 		Ok(())
 	}
