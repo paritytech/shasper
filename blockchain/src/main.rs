@@ -1,8 +1,9 @@
 use beacon::{genesis, NoVerificationConfig};
 use beacon::types::Eth1Data;
 use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
-use blockchain_network_simple::{BestDepthImporter, BestDepthStatusProducer};
+use blockchain_network_simple::BestDepthStatusProducer;
 use shasper_blockchain::{Block, Executor, State};
+use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
 use clap::{App, Arg};
 
 fn main() {
@@ -20,12 +21,12 @@ fn main() {
 	).unwrap();
 	let genesis_block = Block(genesis_beacon_block);
 	let backend = SharedBackend::new(
-		MemoryBackend::<Block, (), State>::new_with_genesis(
+		NoCacheAncestorBackend::<MemoryBackend<Block, (), State>>::new_with_genesis(
 			genesis_block.clone(),
 			genesis_state.into(),
 		)
 	);
-	let importer = BestDepthImporter::new(Executor, backend.clone());
+	let importer = ArchiveGhostImporter::new(Executor, backend.clone());
 	let status = BestDepthStatusProducer::new(backend.clone());
 	let port = matches.value_of("port").unwrap_or("37365");
 
