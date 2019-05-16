@@ -180,6 +180,10 @@ pub trait Config {
 	fn verify_merkle_branch(
 		&self, leaf: H256, proof: &[H256], depth: u64, index: u64, root: H256,
 	) -> bool {
+		if proof.len() as u64 != depth {
+			return false
+		}
+
 		let mut value = leaf;
 		for i in 0..depth {
 			if index / 2u64.pow(i as u32) % 2 != 0 {
