@@ -2,6 +2,7 @@ use beacon::primitives::H256;
 use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock};
 use beacon::{Error as BeaconError, NoVerificationConfig, Inherent, Transaction};
 use blockchain::traits::{Block as BlockT, BlockExecutor, BuilderExecutor, AsExternalities};
+use lmd_ghost::JustifiableExecutor;
 use parity_codec::{Encode, Decode};
 use ssz::Digestible;
 
@@ -61,7 +62,6 @@ impl AsExternalities<dyn StateExternalities> for State {
 
 #[derive(Debug)]
 pub enum Error {
-	Backend(Box<std::error::Error>),
 	Beacon(BeaconError),
 }
 
@@ -72,6 +72,18 @@ impl std::fmt::Display for Error {
 }
 
 impl std::error::Error for Error { }
+
+impl From<BeaconError> for Error {
+	fn from(error: BeaconError) -> Error {
+		Error::Beacon(error)
+	}
+}
+
+impl From<Error> for blockchain::chain::Error {
+	fn from(error: Error) -> blockchain::chain::Error {
+		blockchain::chain::Error::Executor(Box::new(error))
+	}
+}
 
 pub struct Executor;
 
@@ -92,11 +104,40 @@ impl BlockExecutor for Executor {
 	}
 }
 
+impl JustifiableExecutor for Executor {
+	type ValidatorIndex = u64;
+
+	fn justified_active_validators(
+		&self,
+		state: &mut Self::Externalities,
+	) -> Result<Vec<Self::ValidatorIndex>, Self::Error> {
+		let config = NoVerificationConfig::full();
+
+		Ok(beacon::justified_active_validators(state.state(), &config))
+	}
+
+	fn justified_block_id(
+		&self,
+		state: &mut Self::Externalities,
+	) -> Result<<Self::Block as BlockT>::Identifier, Self::Error> {
+		let config = NoVerificationConfig::full();
+
+		Ok(beacon::justified_root(state.state(), &config))
+	}
+
+	fn votes(
+		&self,
+		block: &Self::Block,
+		state: &mut Self::Externalities,
+	) -> Result<Vec<(Self::ValidatorIndex, <Self::Block as BlockT>::Identifier)>, Self::Error> {
+		let config = NoVerificationConfig::full();
+
+		Ok(beacon::block_vote_targets(&block.0, state.state(), &config)?)
+	}
+}
+
 impl BuilderExecutor for Executor {
-	type Error = Error;
-	type Block = Block;
 	type BuildBlock = UnsealedBeaconBlock;
-	type Externalities = dyn StateExternalities + 'static;
 	type Inherent = Inherent;
 	type Extrinsic = Transaction;
 

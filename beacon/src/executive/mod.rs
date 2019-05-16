@@ -109,6 +109,48 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 	Ok(())
 }
 
+/// Get justified active validators from current state.
+// FIXME: change `&mut` to `&`.
+pub fn justified_active_validators<C: Config>(state: &mut BeaconState, config: &C) -> Vec<u64> {
+	let executive = Executive {
+		state, config
+	};
+	let current_justified_epoch = executive.state.current_justified_epoch;
+
+	executive.active_validator_indices(current_justified_epoch)
+}
+
+/// Get current justified block root.
+// FIXME: change `&mut` to `&`.
+pub fn justified_root<C: Config>(state: &mut BeaconState, _config: &C) -> H256 {
+	state.current_justified_root
+}
+
+/// Get block attestation vote targets.
+// FIXME: change `&mut` to `&`.
+pub fn block_vote_targets<C: Config>(
+	block: &BeaconBlock,
+	state: &mut BeaconState,
+	config: &C
+) -> Result<Vec<(u64, H256)>, Error> {
+	let executive = Executive {
+		state, config
+	};
+
+	let mut ret = Vec::new();
+	for attestation in block.body.attestations.clone() {
+		let indexed = executive.convert_to_indexed(attestation)?;
+
+		for v in indexed.custody_bit_0_indices.into_iter()
+			.chain(indexed.custody_bit_1_indices.into_iter())
+		{
+			ret.push((v, indexed.data.target_root));
+		}
+	}
+
+	Ok(ret)
+}
+
 /// Beacon block inherent.
 pub struct Inherent {
 	/// New slot.
