@@ -26,7 +26,8 @@ fn main() {
 			genesis_state.into(),
 		)
 	);
-	let importer = ArchiveGhostImporter::new(Executor, backend.clone());
+	let executor = Executor::new(config);
+	let importer = ArchiveGhostImporter::new(executor, backend.clone());
 	let status = BestDepthStatusProducer::new(backend.clone());
 	let port = matches.value_of("port").unwrap_or("37365");
 

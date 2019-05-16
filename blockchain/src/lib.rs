@@ -1,6 +1,6 @@
 use beacon::primitives::H256;
 use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock};
-use beacon::{Error as BeaconError, NoVerificationConfig, Inherent, Transaction};
+use beacon::{Error as BeaconError, Config, Inherent, Transaction};
 use blockchain::traits::{Block as BlockT, BlockExecutor, BuilderExecutor, AsExternalities};
 use lmd_ghost::JustifiableExecutor;
 use parity_codec::{Encode, Decode};
@@ -85,9 +85,18 @@ impl From<Error> for blockchain::chain::Error {
 	}
 }
 
-pub struct Executor;
+#[derive(Clone)]
+pub struct Executor<C: Config> {
+	config: C,
+}
 
-impl BlockExecutor for Executor {
+impl<C: Config> Executor<C> {
+	pub fn new(config: C) -> Self {
+		Self { config }
+	}
+}
+
+impl<C: Config> BlockExecutor for Executor<C> {
 	type Error = Error;
 	type Block = Block;
 	type Externalities = dyn StateExternalities + 'static;
@@ -97,32 +106,25 @@ impl BlockExecutor for Executor {
 		block: &Block,
 		state: &mut Self::Externalities,
 	) -> Result<(), Error> {
-		let config = NoVerificationConfig::full();
-
-		beacon::execute_block(&block.0, state.state(), &config)
-			.map_err(|e| Error::Beacon(e))
+		Ok(beacon::execute_block(&block.0, state.state(), &self.config)?)
 	}
 }
 
-impl JustifiableExecutor for Executor {
+impl<C: Config> JustifiableExecutor for Executor<C> {
 	type ValidatorIndex = u64;
 
 	fn justified_active_validators(
 		&self,
 		state: &mut Self::Externalities,
 	) -> Result<Vec<Self::ValidatorIndex>, Self::Error> {
-		let config = NoVerificationConfig::full();
-
-		Ok(beacon::justified_active_validators(state.state(), &config))
+		Ok(beacon::justified_active_validators(state.state(), &self.config))
 	}
 
 	fn justified_block_id(
 		&self,
 		state: &mut Self::Externalities,
 	) -> Result<<Self::Block as BlockT>::Identifier, Self::Error> {
-		let config = NoVerificationConfig::full();
-
-		Ok(beacon::justified_root(state.state(), &config))
+		Ok(beacon::justified_root(state.state(), &self.config))
 	}
 
 	fn votes(
@@ -130,13 +132,11 @@ impl JustifiableExecutor for Executor {
 		block: &Self::Block,
 		state: &mut Self::Externalities,
 	) -> Result<Vec<(Self::ValidatorIndex, <Self::Block as BlockT>::Identifier)>, Self::Error> {
-		let config = NoVerificationConfig::full();
-
-		Ok(beacon::block_vote_targets(&block.0, state.state(), &config)?)
+		Ok(beacon::block_vote_targets(&block.0, state.state(), &self.config)?)
 	}
 }
 
-impl BuilderExecutor for Executor {
+impl<C: Config> BuilderExecutor for Executor<C> {
 	type BuildBlock = UnsealedBeaconBlock;
 	type Inherent = Inherent;
 	type Extrinsic = Transaction;
@@ -147,10 +147,7 @@ impl BuilderExecutor for Executor {
 		state: &mut Self::Externalities,
 		inherent: Inherent,
 	) -> Result<UnsealedBeaconBlock, Self::Error> {
-		let config = NoVerificationConfig::full();
-
-		beacon::initialize_block(&parent_block.0, state.state(), inherent, &config)
-			.map_err(|e| Error::Beacon(e))
+		Ok(beacon::initialize_block(&parent_block.0, state.state(), inherent, &self.config)?)
 	}
 
 	fn apply_extrinsic(
@@ -159,10 +156,7 @@ impl BuilderExecutor for Executor {
 		extrinsic: Transaction,
 		state: &mut Self::Externalities,
 	) -> Result<(), Self::Error> {
-		let config = NoVerificationConfig::full();
-
-		beacon::apply_transaction(block, state.state(), extrinsic, &config)
-			.map_err(|e| Error::Beacon(e))
+		Ok(beacon::apply_transaction(block, state.state(), extrinsic, &self.config)?)
 	}
 
 	fn finalize_block(
@@ -170,9 +164,6 @@ impl BuilderExecutor for Executor {
 		block: &mut UnsealedBeaconBlock,
 		state: &mut Self::Externalities,
 	) -> Result<(), Self::Error> {
-		let config = NoVerificationConfig::full();
-
-		beacon::finalize_block(block, state.state(), &config)
-			.map_err(|e| Error::Beacon(e))
+		Ok(beacon::finalize_block(block, state.state(), &self.config)?)
 	}
 }
