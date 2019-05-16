@@ -1,6 +1,9 @@
 use std::collections::HashMap;
+use core::hash::Hash;
+use core::mem;
 use blockchain::traits::{Backend, Operation, Block, ChainQuery, Auxiliary, BlockExecutor, ImportBlock, AsExternalities};
 use blockchain::backend::{MemoryLikeBackend, SharedBackend};
+use crate::{LmdGhostExternalities, VotedBlock};
 
 pub trait AncestorQuery: ChainQuery {
 	fn ancestor_at(
@@ -113,35 +116,53 @@ impl<Ba: ChainQuery> AncestorQuery for NoCacheAncestorBackend<Ba> {
 	}
 }
 
-pub struct ArchiveGhost<Ba: Backend> {
+pub struct ArchiveGhost<Ba: Backend, VI: Eq + Hash> {
 	backend: SharedBackend<Ba>,
-	latest_scores: HashMap<<Ba::Block as Block>::Identifier, usize>,
+	votes: HashMap<VI, <Ba::Block as Block>::Identifier>,
+	overlayed_votes: HashMap<VI, <Ba::Block as Block>::Identifier>,
 }
 
-impl<Ba: AncestorQuery> ArchiveGhost<Ba> {
+impl<Ba: AncestorQuery, VI: Eq + Hash> ArchiveGhost<Ba, VI> {
 	pub fn new(backend: SharedBackend<Ba>) -> Self {
 		Self {
 			backend,
-			latest_scores: Default::default(),
+			votes: Default::default(),
+			overlayed_votes: Default::default(),
 		}
 	}
 
-	pub fn apply_scores(
+	pub fn update_overlay(
 		&mut self,
-		scores: &[(<Ba::Block as Block>::Identifier, isize)]
+		validator_id: VI,
+		target_root: <Ba::Block as Block>::Identifier
 	) {
-		for (target, change) in scores {
-			self.latest_scores.entry(*target)
-				.and_modify(|v| {
-					if *change > 0 {
-						*v += *change as usize;
-					} else {
-						*v -= (-*change) as usize;
-					}
-				})
-				.or_insert(*change as usize);
+		self.overlayed_votes.insert(validator_id, target_root);
+	}
+
+	pub fn commit_overlay(
+		&mut self
+	) {
+		let mut overlayed_votes = HashMap::new();
+		mem::swap(&mut overlayed_votes, &mut self.overlayed_votes);
+
+		for (k, v) in overlayed_votes {
+			self.votes.insert(k, v);
 		}
-		self.latest_scores.retain(|_, score| *score > 0);
+	}
+
+	pub fn reset_overlay(
+		&mut self
+	) {
+		self.overlayed_votes = HashMap::new();
+	}
+
+	pub fn update_active(
+		&mut self,
+		active_validators: &[VI]
+	) {
+		self.votes.retain(|v, _| {
+			active_validators.contains(v)
+		});
 	}
 
 	pub fn vote_count(
@@ -150,9 +171,16 @@ impl<Ba: AncestorQuery> ArchiveGhost<Ba> {
 		block_depth: usize
 	) -> Result<usize, Ba::Error> {
 		let mut total = 0;
-		for (target, votes) in &self.latest_scores {
+		for (_, target) in &self.overlayed_votes {
 			if self.backend.read().ancestor_at(target, block_depth)? == *block {
-				total += votes;
+				total += 1;
+			}
+		}
+		for (v, target) in &self.votes {
+			if !self.overlayed_votes.keys().any(|k| k == v) &&
+				self.backend.read().ancestor_at(target, block_depth)? == *block
+			{
+				total += 1;
 			}
 		}
 		Ok(total)
@@ -185,14 +213,16 @@ impl<Ba: AncestorQuery> ArchiveGhost<Ba> {
 }
 
 pub struct ArchiveGhostImporter<E: BlockExecutor, Ba: Backend<Block=E::Block>> where
+	Ba::Block: VotedBlock,
 	Ba::Auxiliary: Auxiliary<E::Block>
 {
-	ghost: ArchiveGhost<Ba>,
+	ghost: ArchiveGhost<Ba, <Ba::Block as VotedBlock>::ValidatorIdentifier>,
 	executor: E,
 }
 
 impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ArchiveGhostImporter<E, Ba> where
 	Ba: AncestorQuery,
+	Ba::Block: VotedBlock,
 	Ba::Auxiliary: Auxiliary<E::Block>
 {
 	pub fn new(executor: E, backend: SharedBackend<Ba>) -> Self {
@@ -205,36 +235,47 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ArchiveGhostImporter<E, Ba> 
 
 impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ImportBlock for ArchiveGhostImporter<E, Ba> where
 	Ba: AncestorQuery,
+	E::Block: VotedBlock,
 	Ba::Auxiliary: Auxiliary<E::Block>,
 	Ba::State: AsExternalities<E::Externalities>,
+	E::Externalities: LmdGhostExternalities<<Ba::Block as Block>::Identifier, <Ba::Block as VotedBlock>::ValidatorIdentifier>,
 	blockchain::chain::Error: From<Ba::Error> + From<E::Error>,
 {
 	type Block = Ba::Block;
 	type Error = blockchain::chain::Error;
 
 	fn import_block(&mut self, block: Ba::Block) -> Result<(), Self::Error> {
-		// FIXME: Swap with ghost.head
+		let (justified_active_validators, justified_block_id) = {
+			let mut importer = self.ghost.backend.begin_import(&self.executor);
+			let mut operation = importer.execute_block(block.clone())?;
+			let justified_active_validators = operation.state.as_externalities().justified_active_validators();
+			let justified_block_id = operation.state.as_externalities().justified_block_id();
 
-		let mut importer = self.ghost.backend.begin_import(&self.executor);
-		let new_hash = block.id();
-		let (current_best_depth, new_depth) = {
-			let backend = importer.backend().read();
-			let current_best_hash = backend.head();
-			let current_best_depth = backend.depth_at(&current_best_hash)
-				.expect("Best block depth hash cannot fail");
-			let new_parent_depth = block.parent_id()
-				.map(|parent_hash| {
-					backend.depth_at(&parent_hash).unwrap()
-				})
-				.unwrap_or(0);
-			(current_best_depth, new_parent_depth + 1)
+			importer.import_raw(operation);
+			importer.commit()?;
+
+			(justified_active_validators, justified_block_id)
 		};
 
-		importer.import_block(block)?;
-		if new_depth > current_best_depth {
-			importer.set_head(new_hash);
+		for (k, v) in block.votes() {
+			self.ghost.update_overlay(k, v);
 		}
-		importer.commit()?;
+		self.ghost.update_active(&justified_active_validators);
+		let new_head = match self.ghost.head(&justified_block_id) {
+			Ok(value) => value,
+			Err(e) => {
+				self.ghost.reset_overlay();
+				return Err(e.into())
+			},
+		};
+
+		let mut importer = self.ghost.backend.begin_import(&self.executor);
+		importer.set_head(new_head);
+
+		match importer.commit() {
+			Ok(()) => { self.ghost.commit_overlay(); },
+			Err(_) => { self.ghost.reset_overlay(); },
+		}
 
 		Ok(())
 	}
