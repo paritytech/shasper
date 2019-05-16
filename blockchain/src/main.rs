@@ -1,12 +1,16 @@
-use beacon::{genesis, Config, NoVerificationConfig};
-use beacon::primitives::H256;
+use beacon::{genesis, Config, NoVerificationConfig, Inherent};
+use beacon::primitives::{H256, Signature, ValidatorId};
 use beacon::types::{Eth1Data, Deposit, DepositData};
 use ssz::Digestible;
 use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
+use blockchain::chain::BlockBuilder;
+use blockchain::traits::ChainQuery;
 use blockchain_network_simple::BestDepthStatusProducer;
 use shasper_blockchain::{Block, Executor, State};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
 use clap::{App, Arg};
+use std::thread;
+use core::time::Duration;
 
 fn deposit_tree<C: Config>(deposits: &[DepositData], config: &C) -> Vec<Vec<H256>> {
 	let mut zerohashes = vec![H256::default()];
@@ -31,8 +35,8 @@ fn deposit_tree<C: Config>(deposits: &[DepositData], config: &C) -> Vec<Vec<H256
 		let mut new_values = Vec::new();
 		for i in 0..(values.len() / 2) {
 			new_values.push(config.hash(&[
-				values[i].as_ref(),
-				values[i + 1].as_ref()
+				values[i * 2].as_ref(),
+				values[i * 2 + 1].as_ref()
 			]));
 		}
 		values = new_values;
@@ -57,7 +61,7 @@ fn deposit_proof<C: Config>(tree: &Vec<Vec<H256>>, item_index: usize, config: &C
 
 	let mut proof = Vec::new();
 	for i in 0..(config.deposit_contract_tree_depth() as usize) {
-		let subindex = (item_index / (0b1 << i)) ^ 1;
+		let subindex = (item_index / 2usize.pow(i as u32)) ^ 1;
 		if subindex < tree[i].len() {
 			proof.push(tree[i][subindex]);
 		} else {
@@ -74,15 +78,22 @@ fn main() {
 			 .long("port")
 			 .takes_value(true)
 			 .help("Port to listen on"))
+		.arg(Arg::with_name("author")
+			 .long("author")
+			 .help("Whether to author blocks"))
 		.get_matches();
 
 	let config = NoVerificationConfig::small();
-	let deposit_datas = vec![DepositData {
-		pubkey: Default::default(),
-		withdrawal_credentials: Default::default(),
-		amount: 100000000000000,
-		signature: Default::default(),
-	}];
+	let mut deposit_datas = Vec::new();
+	for i in 0..32 {
+		deposit_datas.push(DepositData {
+			pubkey: ValidatorId::from_low_u64_le(i as u64),
+			withdrawal_credentials: H256::from_low_u64_le(i as u64),
+			amount: 32000000000,
+			signature: Signature::from_low_u64_le(i as u64),
+		});
+	}
+
 	let deposit_tree = deposit_tree(&deposit_datas, &config);
 	let deposits = deposit_datas.clone().into_iter()
 		.enumerate()
@@ -109,10 +120,38 @@ fn main() {
 			genesis_state.into(),
 		)
 	);
-	let executor = Executor::new(config);
+	let executor = Executor::new(config.clone());
 	let importer = ArchiveGhostImporter::new(executor, backend.clone());
 	let status = BestDepthStatusProducer::new(backend.clone());
 	let port = matches.value_of("port").unwrap_or("37365");
+	let author = matches.is_present("author");
+
+	if author {
+		let backend_build = backend.clone();
+		thread::spawn(move || {
+			builder_thread(backend_build, config);
+		});
+	}
 
 	blockchain_network_simple::libp2p::start_network_simple_sync(port, backend, importer, status);
+}
+
+fn builder_thread<C: Config>(
+	backend: SharedBackend<NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>,
+	config: C,
+) {
+	let executor = Executor::new(config);
+
+	loop {
+		let head = backend.read().head();
+		let head_block = backend.read().block_at(&head).unwrap();
+		let builder = BlockBuilder::new(&backend, &executor, &head, Inherent {
+			slot: head_block.0.slot + 1,
+			randao_reveal: Default::default(),
+			eth1_data: head_block.0.body.eth1_data.clone(),
+		}).unwrap();
+		let (unsealed_block, state) = builder.finalize().unwrap();
+
+		thread::sleep(Duration::new(10, 0));
+	}
 }
