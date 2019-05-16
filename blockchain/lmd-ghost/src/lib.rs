@@ -1,16 +1,23 @@
 pub mod archive;
 pub mod pruning;
 
-use blockchain::traits::Block;
+use blockchain::traits::{Block, BlockExecutor};
 use core::hash::Hash;
 
-pub trait LmdGhostExternalities<BI, VI> {
-	fn justified_active_validators(&self) -> Vec<VI>;
-	fn justified_block_id(&self) -> BI;
-}
+pub trait JustifiableExecutor: BlockExecutor {
+	type ValidatorIndex: Eq + Hash;
 
-pub trait VotedBlock: Block {
-	type ValidatorIdentifier: Eq + Hash;
-
-	fn votes(&self) -> Vec<(Self::ValidatorIdentifier, Self::Identifier)>;
+	fn justified_active_validators(
+		&self,
+		state: &mut Self::Externalities, // FIXME: replace `&mut` with `&`.
+	) -> Result<Vec<Self::ValidatorIndex>, Self::Error>;
+	fn justified_block_id(
+		&self,
+		state: &mut Self::Externalities, // FIXME: replace `&mut` with `&`.
+	) -> Result<<Self::Block as Block>::Identifier, Self::Error>;
+	fn votes(
+		&self,
+		block: &Self::Block,
+		state: &mut Self::Externalities, // FIXME: replace `&mut` with `&`.
+	) -> Result<Vec<(Self::ValidatorIndex, <Self::Block as Block>::Identifier)>, Self::Error>;
 }
