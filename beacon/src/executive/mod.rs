@@ -184,11 +184,9 @@ pub fn initialize_block<C: Config>(parent_block: &BeaconBlock, state: &mut Beaco
 		eth1_data: inherent.eth1_data,
 		..Default::default()
 	};
-	let block = UnsealedBeaconBlock {
+	let mut block = UnsealedBeaconBlock {
 		slot: inherent.slot,
-		previous_block_root: H256::from_slice(
-			Digestible::<C::Digest>::hash(parent_block).as_slice()
-		),
+		previous_block_root: H256::default(),
 		state_root: parent_block.state_root,
 		body,
 	};
@@ -197,6 +195,10 @@ pub fn initialize_block<C: Config>(parent_block: &BeaconBlock, state: &mut Beaco
 
 	while executive.state.slot < block.slot {
 		executive.cache_state();
+
+		block.previous_block_root = H256::from_slice(
+			Digestible::<C::Digest>::truncated_hash(&executive.state.latest_block_header).as_slice()
+		);
 
 		if (executive.state.slot + 1) % config.slots_per_epoch() == 0 {
 			executive.process_justification_and_finalization()?;
