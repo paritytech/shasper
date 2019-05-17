@@ -4,7 +4,7 @@ use beacon::types::{Eth1Data, Deposit, DepositData};
 use ssz::Digestible;
 use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
 use blockchain::chain::BlockBuilder;
-use blockchain::traits::{ChainQuery, ImportOperation, Block as BlockT};
+use blockchain::traits::{ChainQuery, ImportOperation, Block as BlockT, AsExternalities};
 use blockchain_network_simple::BestDepthStatusProducer;
 use shasper_blockchain::{Block, Executor, State};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
@@ -154,7 +154,14 @@ fn builder_thread<C: Config>(
 			randao_reveal: Default::default(),
 			eth1_data: eth1_data.clone(),
 		}).unwrap();
-		let (unsealed_block, state) = builder.finalize().unwrap();
+		let (unsealed_block, mut state) = builder.finalize().unwrap();
+
+		let proposer_index = executor.proposer_index(state.as_externalities()).unwrap();
+		let proposer_pubkey = executor
+			.validator_pubkey(proposer_index, state.as_externalities())
+			.unwrap();
+		println!("Current proposer {} ({})", proposer_index, proposer_pubkey);
+
 		let block = Block(unsealed_block.fake_seal());
 
 		// Import the built block.

@@ -1,4 +1,4 @@
-use beacon::primitives::H256;
+use beacon::primitives::{H256, ValidatorId};
 use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockHeader};
 use beacon::{Error as BeaconError, Config, Inherent, Transaction};
 use blockchain::traits::{Block as BlockT, BlockExecutor, BuilderExecutor, AsExternalities};
@@ -107,6 +107,21 @@ pub struct Executor<C: Config> {
 impl<C: Config> Executor<C> {
 	pub fn new(config: C) -> Self {
 		Self { config }
+	}
+
+	pub fn proposer_index(
+		&self,
+		state: &mut <Self as BlockExecutor>::Externalities, // FIXME: replace `&mut` with `&`.
+	) -> Result<u64, Error> {
+		Ok(beacon::beacon_proposer_index(state.state(), &self.config)?)
+	}
+
+	pub fn validator_pubkey(
+		&self,
+		index: u64,
+		state: &mut <Self as BlockExecutor>::Externalities, // FIXME: replace `&mut` with `&`.
+	) -> Option<ValidatorId> {
+		beacon::validator_pubkey(index, state.state(), &self.config)
 	}
 }
 

@@ -22,7 +22,7 @@ pub use self::genesis::*;
 
 use core::cmp::min;
 use ssz::Digestible;
-use crate::primitives::{H768, H256};
+use crate::primitives::{H768, H256, ValidatorId};
 use crate::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockBody, ProposerSlashing, AttesterSlashing, Deposit, Attestation, Transfer, VoluntaryExit, Eth1Data};
 use crate::{Config, Error};
 
@@ -111,6 +111,27 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 	executive.verify_block_state_root(block)?;
 
 	Ok(())
+}
+
+/// Get current beacon proposer.
+// FIXME: change `&mut` to `&`.
+pub fn beacon_proposer_index<C: Config>(state: &mut BeaconState, config: &C) -> Result<u64, Error> {
+	let executive = Executive {
+		state, config
+	};
+
+	executive.beacon_proposer_index()
+}
+
+/// Get validator public key.
+// FIXME: change `&mut` to `&`.
+pub fn validator_pubkey<C: Config>(index: u64, state: &mut BeaconState, _config: &C) -> Option<ValidatorId> {
+	if index as usize >= state.validator_registry.len() {
+		return None
+	}
+
+	let validator = &state.validator_registry[index as usize];
+	Some(validator.pubkey.clone())
 }
 
 /// Get justified active validators from current state.
