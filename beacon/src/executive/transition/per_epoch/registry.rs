@@ -15,6 +15,7 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{Config, Executive, Error};
+use core::cmp::min;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Process registry updates
@@ -50,7 +51,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			self.state.validator_registry[*index as usize].activation_eligibility_epoch
 		});
 
-		for index in &activation_queue[..self.churn_limit() as usize] {
+		for index in &activation_queue[..min(activation_queue.len(), self.churn_limit() as usize)] {
 			let current_epoch = self.current_epoch();
 			let validator = &mut self.state.validator_registry[*index as usize];
 			if validator.activation_epoch == self.config.far_future_epoch() {

@@ -1,5 +1,5 @@
 use beacon::primitives::H256;
-use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock};
+use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockHeader};
 use beacon::{Error as BeaconError, Config, Inherent, Transaction};
 use blockchain::traits::{Block as BlockT, BlockExecutor, BuilderExecutor, AsExternalities};
 use lmd_ghost::JustifiableExecutor;
@@ -13,8 +13,22 @@ impl BlockT for Block {
 	type Identifier = H256;
 
 	fn id(&self) -> H256 {
+		let header = BeaconBlockHeader {
+			slot: self.0.slot,
+			previous_block_root: self.0.previous_block_root,
+			state_root: self.0.state_root,
+			block_body_root: if self.0.previous_block_root == H256::default() {
+				H256::default()
+			} else {
+				H256::from_slice(
+					Digestible::<sha2::Sha256>::hash(&self.0.body).as_slice()
+				)
+			},
+			..Default::default()
+		};
+
 		H256::from_slice(
-			Digestible::<sha2::Sha256>::hash(&self.0).as_slice()
+			Digestible::<sha2::Sha256>::truncated_hash(&header).as_slice()
 		)
 	}
 

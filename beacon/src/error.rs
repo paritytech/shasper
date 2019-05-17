@@ -122,4 +122,6 @@ pub enum Error {
 	TooManyVoluntaryExits,
 	/// Too many transfers in a block.
 	TooManyTransfers,
+	/// Invalid eth1 data.
+	InvalidEth1Data,
 }

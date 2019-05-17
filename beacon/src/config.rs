@@ -213,7 +213,8 @@ pub trait Config {
 					&round.to_le_bytes()[..1]
 				])[..8]
 			) % index_count;
-			let flip = (pivot - index) % index_count;
+			let flip = ((((pivot as i128 - index as i128) % index_count as i128) + index_count as i128)
+				as u64) % index_count;
 			let position = max(index, flip);
 			let source = self.hash(&[
 				&seed[..],
