@@ -4,7 +4,7 @@ use beacon::types::{Eth1Data, Deposit, DepositData};
 use ssz::Digestible;
 use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
 use blockchain::chain::BlockBuilder;
-use blockchain::traits::ChainQuery;
+use blockchain::traits::{ChainQuery, ImportOperation, Block as BlockT};
 use blockchain_network_simple::BestDepthStatusProducer;
 use shasper_blockchain::{Block, Executor, State};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
@@ -144,6 +144,8 @@ fn builder_thread<C: Config>(
 
 	loop {
 		let head = backend.read().head();
+		println!("Building on top of {}", head);
+
 		let head_block = backend.read().block_at(&head).unwrap();
 		let builder = BlockBuilder::new(&backend, &executor, &head, Inherent {
 			slot: head_block.0.slot + 1,
@@ -151,7 +153,16 @@ fn builder_thread<C: Config>(
 			eth1_data: head_block.0.body.eth1_data.clone(),
 		}).unwrap();
 		let (unsealed_block, state) = builder.finalize().unwrap();
+		let block = Block(unsealed_block.fake_seal());
 
-		thread::sleep(Duration::new(10, 0));
+		// Import the built block.
+		let mut build_importer = backend.begin_import(&executor);
+		let new_block_hash = block.id();
+		let op = ImportOperation { block, state };
+		build_importer.import_raw(op);
+		build_importer.set_head(new_block_hash);
+		build_importer.commit().unwrap();
+
+		thread::sleep(Duration::new(5, 0));
 	}
 }

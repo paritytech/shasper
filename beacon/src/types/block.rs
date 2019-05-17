@@ -118,3 +118,16 @@ impl Block for UnsealedBeaconBlock {
 	fn body(&self) -> &BeaconBlockBody { &self.body }
 	fn signature(&self) -> Option<&Signature> { None }
 }
+
+impl UnsealedBeaconBlock {
+	/// Fake sealing a beacon block, with empty signature.
+	pub fn fake_seal(self) -> BeaconBlock {
+		BeaconBlock {
+			slot: self.slot,
+			previous_block_root: self.previous_block_root,
+			state_root: self.state_root,
+			body: self.body,
+			signature: Default::default(),
+		}
+	}
+}
