@@ -80,6 +80,10 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 		executive.process_attestation(attestation.clone())?;
 	}
 
+	if executive.state.latest_eth1_data.deposit_count < executive.state.deposit_index {
+		return Err(Error::InvalidEth1Data)
+	}
+
 	if block.body.deposits.len() != min(
 		config.max_deposits(),
 		executive.state.latest_eth1_data.deposit_count - executive.state.deposit_index
@@ -273,6 +277,10 @@ pub fn apply_transaction<C: Config>(block: &mut UnsealedBeaconBlock, state: &mut
 /// Finalize an unsealed block.
 pub fn finalize_block<C: Config>(block: &mut UnsealedBeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
 	let mut executive = Executive { state, config };
+
+	if executive.state.latest_eth1_data.deposit_count < executive.state.deposit_index {
+		return Err(Error::InvalidEth1Data)
+	}
 
 	if block.body.deposits.len() != min(
 		config.max_deposits(),

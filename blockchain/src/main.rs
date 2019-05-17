@@ -106,12 +106,13 @@ fn main() {
 		})
 		.collect::<Vec<_>>();
 	let deposit_root = deposit_root(&deposit_tree);
+	let eth1_data = Eth1Data {
+		deposit_root,
+		deposit_count: deposits.len() as u64,
+		block_hash: Default::default(),
+	};
 	let (genesis_beacon_block, genesis_state) = genesis(
-		&deposits, 0, Eth1Data {
-			deposit_root,
-			deposit_count: deposits.len() as u64,
-			block_hash: Default::default(),
-		}, &config
+		&deposits, 0, eth1_data.clone(), &config
 	).unwrap();
 	let genesis_block = Block(genesis_beacon_block);
 	let backend = SharedBackend::new(
@@ -129,7 +130,7 @@ fn main() {
 	if author {
 		let backend_build = backend.clone();
 		thread::spawn(move || {
-			builder_thread(backend_build, config);
+			builder_thread(backend_build, eth1_data, config);
 		});
 	}
 
@@ -138,6 +139,7 @@ fn main() {
 
 fn builder_thread<C: Config>(
 	backend: SharedBackend<NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>,
+	eth1_data: Eth1Data,
 	config: C,
 ) {
 	let executor = Executor::new(config);
@@ -150,7 +152,7 @@ fn builder_thread<C: Config>(
 		let builder = BlockBuilder::new(&backend, &executor, &head, Inherent {
 			slot: head_block.0.slot + 1,
 			randao_reveal: Default::default(),
-			eth1_data: head_block.0.body.eth1_data.clone(),
+			eth1_data: eth1_data.clone(),
 		}).unwrap();
 		let (unsealed_block, state) = builder.finalize().unwrap();
 		let block = Block(unsealed_block.fake_seal());
