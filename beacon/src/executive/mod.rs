@@ -22,8 +22,9 @@ pub use self::genesis::*;
 
 use core::cmp::min;
 use ssz::Digestible;
-use crate::primitives::{H768, H256};
+use crate::primitives::{H768, H256, ValidatorId};
 use crate::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockBody, ProposerSlashing, AttesterSlashing, Deposit, Attestation, Transfer, VoluntaryExit, Eth1Data};
+use crate::utils;
 use crate::{Config, Error};
 
 /// Beacon state executive.
@@ -113,6 +114,27 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 	Ok(())
 }
 
+/// Get current beacon proposer.
+// FIXME: change `&mut` to `&`.
+pub fn beacon_proposer_index<C: Config>(state: &mut BeaconState, config: &C) -> Result<u64, Error> {
+	let executive = Executive {
+		state, config
+	};
+
+	executive.beacon_proposer_index()
+}
+
+/// Get validator public key.
+// FIXME: change `&mut` to `&`.
+pub fn validator_pubkey<C: Config>(index: u64, state: &mut BeaconState, _config: &C) -> Option<ValidatorId> {
+	if index as usize >= state.validator_registry.len() {
+		return None
+	}
+
+	let validator = &state.validator_registry[index as usize];
+	Some(validator.pubkey.clone())
+}
+
 /// Get justified active validators from current state.
 // FIXME: change `&mut` to `&`.
 pub fn justified_active_validators<C: Config>(state: &mut BeaconState, config: &C) -> Vec<u64> {
@@ -122,6 +144,31 @@ pub fn justified_active_validators<C: Config>(state: &mut BeaconState, config: &
 	let current_justified_epoch = executive.state.current_justified_epoch;
 
 	executive.active_validator_indices(current_justified_epoch)
+}
+
+/// Get current epoch of state.
+// FIXME: change `&mut` to `&`.
+pub fn current_epoch<C: Config>(state: &mut BeaconState, config: &C) -> u64 {
+	let executive = Executive {
+		state, config
+	};
+
+	executive.current_epoch()
+}
+
+/// Get current domain of state.
+// FIXME: change `&mut` to `&`.
+pub fn domain<C: Config>(state: &mut BeaconState, domain_type: u64, message_epoch: Option<u64>, config: &C) -> u64 {
+	let executive = Executive {
+		state, config
+	};
+
+	executive.domain(domain_type, message_epoch)
+}
+
+/// Get genesis domain.
+pub fn genesis_domain(domain_type: u64) -> u64 {
+	utils::raw_domain(domain_type, Default::default())
 }
 
 /// Get current justified block root.
@@ -157,8 +204,6 @@ pub fn block_vote_targets<C: Config>(
 
 /// Beacon block inherent.
 pub struct Inherent {
-	/// New slot.
-	pub slot: u64,
 	/// New RANDAO reveal.
 	pub randao_reveal: H768,
 	/// New eth1 data.
@@ -182,27 +227,11 @@ pub enum Transaction {
 }
 
 /// Initialize a block, and apply inherents.
-pub fn initialize_block<C: Config>(parent_block: &BeaconBlock, state: &mut BeaconState, inherent: Inherent, config: &C) -> Result<UnsealedBeaconBlock, Error> {
-	let body = BeaconBlockBody {
-		randao_reveal: inherent.randao_reveal,
-		eth1_data: inherent.eth1_data,
-		..Default::default()
-	};
-	let mut block = UnsealedBeaconBlock {
-		slot: inherent.slot,
-		previous_block_root: H256::default(),
-		state_root: parent_block.state_root,
-		body,
-	};
-
+pub fn initialize_block<C: Config>(state: &mut BeaconState, target_slot: u64, config: &C) -> Result<(), Error> {
 	let mut executive = Executive { state, config };
 
-	while executive.state.slot < block.slot {
+	while executive.state.slot < target_slot {
 		executive.cache_state();
-
-		block.previous_block_root = H256::from_slice(
-			Digestible::<C::Digest>::truncated_hash(&executive.state.latest_block_header).as_slice()
-		);
 
 		if (executive.state.slot + 1) % config.slots_per_epoch() == 0 {
 			executive.process_justification_and_finalization()?;
@@ -216,7 +245,32 @@ pub fn initialize_block<C: Config>(parent_block: &BeaconBlock, state: &mut Beaco
 		executive.advance_slot();
 	}
 
-	assert!(executive.state.slot == block.slot);
+	assert_eq!(executive.state.slot, target_slot);
+
+	Ok(())
+}
+
+/// Apply inherent to a block.
+pub fn apply_inherent<C: Config>(parent_block: &BeaconBlock, state: &mut BeaconState, inherent: Inherent, config: &C) -> Result<UnsealedBeaconBlock, Error> {
+	let body = BeaconBlockBody {
+		randao_reveal: inherent.randao_reveal,
+		eth1_data: inherent.eth1_data,
+		..Default::default()
+	};
+
+	let mut executive = Executive { state, config };
+
+	let mut block = UnsealedBeaconBlock {
+		slot: executive.state.slot,
+		previous_block_root: H256::default(),
+		state_root: parent_block.state_root,
+		body,
+	};
+
+	block.previous_block_root = H256::from_slice(
+		Digestible::<C::Digest>::truncated_hash(&executive.state.latest_block_header).as_slice()
+	);
+
 	executive.process_randao(&block)?;
 	executive.process_eth1_data(&block);
 

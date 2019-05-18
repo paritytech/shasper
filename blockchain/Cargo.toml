@@ -14,3 +14,5 @@ blockchain = "0.5"
 blockchain-network-simple = "0.1"
 ssz = { path = "../utils/ssz" }
 sha2 = "0.8"
+bls-aggregates = { git = "https://github.com/sigp/signature-schemes" }
+rand = "0.6"

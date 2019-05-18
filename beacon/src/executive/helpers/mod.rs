@@ -18,7 +18,7 @@ use core::cmp::{min, max};
 use ssz::Digestible;
 use crate::primitives::{Uint, Epoch, Slot, ValidatorIndex, Gwei, Shard, H256, BitField};
 use crate::types::{Attestation, AttestationData, IndexedAttestation, AttestationDataAndCustodyBit};
-use crate::utils::to_bytes;
+use crate::utils::{self, to_bytes};
 use crate::{Config, Executive, Error};
 
 mod validator;
@@ -233,11 +233,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			self.state.fork.current_version
 		};
 
-		let mut bytes = [0u8; 8];
-		(&mut bytes[0..4]).copy_from_slice(fork_version.as_ref());
-		(&mut bytes[4..8]).copy_from_slice(&domain_type.to_le_bytes()[0..4]);
-
-		u64::from_le_bytes(bytes)
+		utils::raw_domain(domain_type, fork_version)
 	}
 
 	pub(crate) fn convert_to_indexed(&self, attestation: Attestation) -> Result<IndexedAttestation, Error> {

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::primitives::H256;
+use crate::primitives::{H256, Version};
 
 pub fn fixed_vec<T: Default>(len: u64) -> Vec<T> {
 	let mut ret = Vec::new();
@@ -54,4 +54,12 @@ pub fn compare_hash(a: &H256, b: &H256) -> core::cmp::Ordering {
 		}
 	}
 	core::cmp::Ordering::Equal
+}
+
+pub fn raw_domain(domain_type: u64, fork_version: Version) -> u64 {
+	let mut bytes = [0u8; 8];
+	(&mut bytes[0..4]).copy_from_slice(fork_version.as_ref());
+	(&mut bytes[4..8]).copy_from_slice(&domain_type.to_le_bytes()[0..4]);
+
+	u64::from_le_bytes(bytes)
 }

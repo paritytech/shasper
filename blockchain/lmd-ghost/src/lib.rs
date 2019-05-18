@@ -14,7 +14,7 @@ pub trait JustifiableExecutor: BlockExecutor {
 	fn justified_block_id(
 		&self,
 		state: &mut Self::Externalities, // FIXME: replace `&mut` with `&`.
-	) -> Result<<Self::Block as Block>::Identifier, Self::Error>;
+	) -> Result<Option<<Self::Block as Block>::Identifier>, Self::Error>;
 	fn votes(
 		&self,
 		block: &Self::Block,

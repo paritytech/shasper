@@ -248,7 +248,10 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ImportBlock for ArchiveGhost
 			let mut importer = self.ghost.backend.begin_import(&self.executor);
 			let mut operation = importer.execute_block(block.clone())?;
 			let justified_active_validators = self.executor.justified_active_validators(operation.state.as_externalities())?;
-			let justified_block_id = self.executor.justified_block_id(operation.state.as_externalities())?;
+			let justified_block_id = match self.executor.justified_block_id(operation.state.as_externalities())? {
+				Some(value) => value,
+				None => self.ghost.backend.read().genesis(),
+			};
 			let votes = self.executor.votes(&block, operation.state.as_externalities())?;
 
 			importer.import_raw(operation);

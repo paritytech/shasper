@@ -1,16 +1,18 @@
-use beacon::{genesis, Config, NoVerificationConfig, Inherent};
+use beacon::{genesis, Config, ParameteredConfig, Inherent};
 use beacon::primitives::{H256, Signature, ValidatorId};
 use beacon::types::{Eth1Data, Deposit, DepositData};
 use ssz::Digestible;
 use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
-use blockchain::chain::BlockBuilder;
-use blockchain::traits::{ChainQuery, ImportOperation, Block as BlockT};
+use blockchain::chain::SharedImportBlock;
+use blockchain::traits::{ChainQuery, AsExternalities, ImportBlock};
 use blockchain_network_simple::BestDepthStatusProducer;
-use shasper_blockchain::{Block, Executor, State};
+use shasper_blockchain::{Block, Executor, State, AMCLVerification};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
 use clap::{App, Arg};
 use std::thread;
+use std::collections::HashMap;
 use core::time::Duration;
+use bls_aggregates as bls;
 
 fn deposit_tree<C: Config>(deposits: &[DepositData], config: &C) -> Vec<Vec<H256>> {
 	let mut zerohashes = vec![H256::default()];
@@ -83,15 +85,26 @@ fn main() {
 			 .help("Whether to author blocks"))
 		.get_matches();
 
-	let config = NoVerificationConfig::small();
+	let config = ParameteredConfig::<AMCLVerification>::small();
+	let mut keys: HashMap<ValidatorId, bls::SecretKey> = HashMap::new();
 	let mut deposit_datas = Vec::new();
 	for i in 0..32 {
-		deposit_datas.push(DepositData {
-			pubkey: ValidatorId::from_low_u64_le(i as u64),
+		let seckey = bls::SecretKey::random(&mut rand::thread_rng());
+		let pubkey = ValidatorId::from_slice(&bls::PublicKey::from_secret_key(&seckey).as_bytes()[..]);
+		let mut data = DepositData {
+			pubkey: pubkey.clone(),
 			withdrawal_credentials: H256::from_low_u64_le(i as u64),
 			amount: 32000000000,
-			signature: Signature::from_low_u64_le(i as u64),
-		});
+			signature: Default::default(),
+		};
+		let signature = Signature::from_slice(&bls::Signature::new(
+			Digestible::<sha2::Sha256>::truncated_hash(&data).as_slice(),
+			beacon::genesis_domain(config.domain_deposit()),
+			&seckey
+		).as_bytes()[..]);
+		data.signature = signature;
+		deposit_datas.push(data);
+		keys.insert(pubkey, seckey);
 	}
 
 	let deposit_tree = deposit_tree(&deposit_datas, &config);
@@ -122,49 +135,98 @@ fn main() {
 		)
 	);
 	let executor = Executor::new(config.clone());
-	let importer = ArchiveGhostImporter::new(executor, backend.clone());
+	let importer = SharedImportBlock::new(
+		ArchiveGhostImporter::new(executor, backend.clone())
+	);
 	let status = BestDepthStatusProducer::new(backend.clone());
 	let port = matches.value_of("port").unwrap_or("37365");
 	let author = matches.is_present("author");
 
 	if author {
 		let backend_build = backend.clone();
+		let importer_build = importer.clone();
 		thread::spawn(move || {
-			builder_thread(backend_build, eth1_data, config);
+			builder_thread(backend_build, importer_build, eth1_data, keys, config);
 		});
 	}
 
 	blockchain_network_simple::libp2p::start_network_simple_sync(port, backend, importer, status);
 }
 
-fn builder_thread<C: Config>(
+fn builder_thread<C: Config + Clone>(
 	backend: SharedBackend<NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>,
+	mut importer: SharedImportBlock<ArchiveGhostImporter<Executor<C>, NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>>,
 	eth1_data: Eth1Data,
+	keys: HashMap<ValidatorId, bls::SecretKey>,
 	config: C,
 ) {
-	let executor = Executor::new(config);
+	let executor = Executor::new(config.clone());
 
 	loop {
+		thread::sleep(Duration::new(1, 0));
+
 		let head = backend.read().head();
 		println!("Building on top of {}", head);
 
-		let head_block = backend.read().block_at(&head).unwrap();
-		let builder = BlockBuilder::new(&backend, &executor, &head, Inherent {
-			slot: head_block.0.slot + 1,
-			randao_reveal: Default::default(),
-			eth1_data: eth1_data.clone(),
-		}).unwrap();
-		let (unsealed_block, state) = builder.finalize().unwrap();
-		let block = Block(unsealed_block.fake_seal());
+		let block = {
+			let head_block = backend.read().block_at(&head).unwrap();
+			let head_state = backend.read().state_at(&head).unwrap();
 
-		// Import the built block.
-		let mut build_importer = backend.begin_import(&executor);
-		let new_block_hash = block.id();
-		let op = ImportOperation { block, state };
-		build_importer.import_raw(op);
-		build_importer.set_head(new_block_hash);
-		build_importer.commit().unwrap();
+			let mut state = head_state;
+			executor.initialize_block(
+				state.as_externalities(), head_block.0.slot + 1
+			).unwrap();
+			let proposer_index = executor.proposer_index(state.as_externalities()).unwrap();
+			let proposer_pubkey = executor
+				.validator_pubkey(proposer_index, state.as_externalities())
+				.unwrap();
+			let current_epoch = executor.current_epoch(state.as_externalities()).unwrap();
+			let randao_domain = executor.domain(
+				state.as_externalities(),
+				config.domain_randao(),
+				None
+			).unwrap();
+			let proposer_domain = executor.domain(
+				state.as_externalities(),
+				config.domain_beacon_proposer(),
+				None
+			).unwrap();
+			println!("Current proposer {} ({}) on epoch {}", proposer_index, proposer_pubkey, current_epoch);
 
-		thread::sleep(Duration::new(5, 0));
+			let seckey = match keys.get(&proposer_pubkey) {
+				Some(value) => value.clone(),
+				None => {
+					println!("No secret key, skip building block.");
+					continue;
+				},
+			};
+			let randao_reveal = Signature::from_slice(&bls::Signature::new(
+				Digestible::<C::Digest>::hash(&current_epoch).as_slice(),
+				randao_domain,
+				&seckey
+			).as_bytes()[..]);
+
+			let mut unsealed_block = executor.apply_inherent(
+				&head_block, state.as_externalities(),
+				Inherent {
+					randao_reveal,
+					eth1_data: eth1_data.clone(),
+				}
+			).unwrap();
+			executor.finalize_block(
+				&mut unsealed_block, state.as_externalities()
+			).unwrap();
+
+			let mut block = unsealed_block.fake_seal();
+			let signature = Signature::from_slice(&bls::Signature::new(
+				Digestible::<C::Digest>::truncated_hash(&block).as_slice(),
+				proposer_domain,
+				&seckey
+			).as_bytes()[..]);
+			block.signature = signature;
+			Block(block)
+		};
+
+		importer.import_block(block).unwrap();
 	}
 }
