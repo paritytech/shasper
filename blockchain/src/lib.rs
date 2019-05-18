@@ -152,8 +152,13 @@ impl<C: Config> JustifiableExecutor for Executor<C> {
 	fn justified_block_id(
 		&self,
 		state: &mut Self::Externalities,
-	) -> Result<<Self::Block as BlockT>::Identifier, Self::Error> {
-		Ok(beacon::justified_root(state.state(), &self.config))
+	) -> Result<Option<<Self::Block as BlockT>::Identifier>, Self::Error> {
+		let justified_root = beacon::justified_root(state.state(), &self.config);
+		if justified_root == H256::default() {
+			Ok(None)
+		} else {
+			Ok(Some(justified_root))
+		}
 	}
 
 	fn votes(

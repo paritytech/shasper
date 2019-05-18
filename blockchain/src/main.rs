@@ -3,8 +3,8 @@ use beacon::primitives::{H256, Signature, ValidatorId};
 use beacon::types::{Eth1Data, Deposit, DepositData};
 use ssz::Digestible;
 use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
-use blockchain::chain::BlockBuilder;
-use blockchain::traits::{ChainQuery, ImportOperation, Block as BlockT, AsExternalities};
+use blockchain::chain::{BlockBuilder, SharedImportBlock};
+use blockchain::traits::{ChainQuery, ImportOperation, Block as BlockT, AsExternalities, ImportBlock};
 use blockchain_network_simple::BestDepthStatusProducer;
 use shasper_blockchain::{Block, Executor, State};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
@@ -122,15 +122,18 @@ fn main() {
 		)
 	);
 	let executor = Executor::new(config.clone());
-	let importer = ArchiveGhostImporter::new(executor, backend.clone());
+	let importer = SharedImportBlock::new(
+		ArchiveGhostImporter::new(executor, backend.clone())
+	);
 	let status = BestDepthStatusProducer::new(backend.clone());
 	let port = matches.value_of("port").unwrap_or("37365");
 	let author = matches.is_present("author");
 
 	if author {
 		let backend_build = backend.clone();
+		let importer_build = importer.clone();
 		thread::spawn(move || {
-			builder_thread(backend_build, eth1_data, config);
+			builder_thread(backend_build, importer_build, eth1_data, config);
 		});
 	}
 
@@ -139,6 +142,7 @@ fn main() {
 
 fn builder_thread<C: Config>(
 	backend: SharedBackend<NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>,
+	mut importer: SharedImportBlock<ArchiveGhostImporter<Executor<NoVerificationConfig>, NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>>,
 	eth1_data: Eth1Data,
 	config: C,
 ) {
@@ -148,30 +152,25 @@ fn builder_thread<C: Config>(
 		let head = backend.read().head();
 		println!("Building on top of {}", head);
 
-		let head_block = backend.read().block_at(&head).unwrap();
-		let builder = BlockBuilder::new(&backend, &executor, &head, Inherent {
-			slot: head_block.0.slot + 1,
-			randao_reveal: Default::default(),
-			eth1_data: eth1_data.clone(),
-		}).unwrap();
-		let (unsealed_block, mut state) = builder.finalize().unwrap();
+		let block = {
+			let head_block = backend.read().block_at(&head).unwrap();
+			let builder = BlockBuilder::new(&backend, &executor, &head, Inherent {
+				slot: head_block.0.slot + 1,
+				randao_reveal: Default::default(),
+				eth1_data: eth1_data.clone(),
+			}).unwrap();
+			let (unsealed_block, mut state) = builder.finalize().unwrap();
 
-		let proposer_index = executor.proposer_index(state.as_externalities()).unwrap();
-		let proposer_pubkey = executor
-			.validator_pubkey(proposer_index, state.as_externalities())
-			.unwrap();
-		println!("Current proposer {} ({})", proposer_index, proposer_pubkey);
+			let proposer_index = executor.proposer_index(state.as_externalities()).unwrap();
+			let proposer_pubkey = executor
+				.validator_pubkey(proposer_index, state.as_externalities())
+				.unwrap();
+			println!("Current proposer {} ({})", proposer_index, proposer_pubkey);
 
-		let block = Block(unsealed_block.fake_seal());
+			Block(unsealed_block.fake_seal())
+		};
 
-		// Import the built block.
-		let mut build_importer = backend.begin_import(&executor);
-		let new_block_hash = block.id();
-		let op = ImportOperation { block, state };
-		build_importer.import_raw(op);
-		build_importer.set_head(new_block_hash);
-		build_importer.commit().unwrap();
-
+		importer.import_block(block).unwrap();
 		thread::sleep(Duration::new(5, 0));
 	}
 }
