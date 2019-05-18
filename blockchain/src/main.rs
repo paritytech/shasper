@@ -4,7 +4,7 @@ use beacon::types::{Eth1Data, Deposit, DepositData};
 use ssz::Digestible;
 use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
 use blockchain::chain::{BlockBuilder, SharedImportBlock};
-use blockchain::traits::{ChainQuery, ImportOperation, Block as BlockT, AsExternalities, ImportBlock};
+use blockchain::traits::{ChainQuery, AsExternalities, ImportBlock};
 use blockchain_network_simple::BestDepthStatusProducer;
 use shasper_blockchain::{Block, Executor, State};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
