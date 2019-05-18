@@ -1,4 +1,4 @@
-use beacon::{genesis, Config, NoVerificationConfig, ParameteredConfig, Inherent};
+use beacon::{genesis, Config, ParameteredConfig, Inherent};
 use beacon::primitives::{H256, Signature, ValidatorId};
 use beacon::types::{Eth1Data, Deposit, DepositData};
 use ssz::Digestible;
@@ -86,7 +86,6 @@ fn main() {
 		.get_matches();
 
 	let config = ParameteredConfig::<AMCLVerification>::small();
-	// let config = NoVerificationConfig::small();
 	let mut keys: HashMap<ValidatorId, bls::SecretKey> = HashMap::new();
 	let mut deposit_datas = Vec::new();
 	for i in 0..32 {
