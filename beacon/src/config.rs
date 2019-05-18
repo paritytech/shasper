@@ -375,7 +375,7 @@ pub struct ParameteredConfig<BLS: BLSVerification> {
 	/// Transfer domain.
 	pub domain_transfer: Uint,
 
-	#[serde(skip)]
+	#[cfg_attr(feature = "serde", serde(skip))]
 	_marker: PhantomData<BLS>,
 }
 
