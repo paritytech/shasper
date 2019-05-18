@@ -3,7 +3,7 @@ use beacon::primitives::{H256, Signature, ValidatorId};
 use beacon::types::{Eth1Data, Deposit, DepositData};
 use ssz::Digestible;
 use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
-use blockchain::chain::{BlockBuilder, SharedImportBlock};
+use blockchain::chain::SharedImportBlock;
 use blockchain::traits::{ChainQuery, AsExternalities, ImportBlock};
 use blockchain_network_simple::BestDepthStatusProducer;
 use shasper_blockchain::{Block, Executor, State};
@@ -154,18 +154,28 @@ fn builder_thread<C: Config>(
 
 		let block = {
 			let head_block = backend.read().block_at(&head).unwrap();
-			let builder = BlockBuilder::new(&backend, &executor, &head, Inherent {
-				slot: head_block.0.slot + 1,
-				randao_reveal: Default::default(),
-				eth1_data: eth1_data.clone(),
-			}).unwrap();
-			let (unsealed_block, mut state) = builder.finalize().unwrap();
+			let head_state = backend.read().state_at(&head).unwrap();
 
+			let mut state = head_state;
+			executor.initialize_block(
+				state.as_externalities(), head_block.0.slot + 1
+			).unwrap();
 			let proposer_index = executor.proposer_index(state.as_externalities()).unwrap();
 			let proposer_pubkey = executor
 				.validator_pubkey(proposer_index, state.as_externalities())
 				.unwrap();
 			println!("Current proposer {} ({})", proposer_index, proposer_pubkey);
+
+			let mut unsealed_block = executor.apply_inherent(
+				&head_block, state.as_externalities(),
+				Inherent {
+					randao_reveal: Default::default(),
+					eth1_data: eth1_data.clone(),
+				}
+			).unwrap();
+			executor.finalize_block(
+				&mut unsealed_block, state.as_externalities()
+			).unwrap();
 
 			Block(unsealed_block.fake_seal())
 		};

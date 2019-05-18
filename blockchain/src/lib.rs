@@ -1,7 +1,7 @@
 use beacon::primitives::{H256, ValidatorId};
 use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockHeader};
 use beacon::{Error as BeaconError, Config, Inherent, Transaction};
-use blockchain::traits::{Block as BlockT, BlockExecutor, BuilderExecutor, AsExternalities};
+use blockchain::traits::{Block as BlockT, BlockExecutor, AsExternalities};
 use lmd_ghost::JustifiableExecutor;
 use parity_codec::{Encode, Decode};
 use ssz::Digestible;
@@ -123,6 +123,40 @@ impl<C: Config> Executor<C> {
 	) -> Option<ValidatorId> {
 		beacon::validator_pubkey(index, state.state(), &self.config)
 	}
+
+	pub fn initialize_block(
+		&self,
+		state: &mut <Self as BlockExecutor>::Externalities,
+		target_slot: u64,
+	) -> Result<(), Error> {
+		Ok(beacon::initialize_block(state.state(), target_slot, &self.config)?)
+	}
+
+	pub fn apply_inherent(
+		&self,
+		parent_block: &Block,
+		state: &mut <Self as BlockExecutor>::Externalities,
+		inherent: Inherent,
+	) -> Result<UnsealedBeaconBlock, Error> {
+		Ok(beacon::apply_inherent(&parent_block.0, state.state(), inherent, &self.config)?)
+	}
+
+	pub fn apply_extrinsic(
+		&self,
+		block: &mut UnsealedBeaconBlock,
+		extrinsic: Transaction,
+		state: &mut <Self as BlockExecutor>::Externalities,
+	) -> Result<(), Error> {
+		Ok(beacon::apply_transaction(block, state.state(), extrinsic, &self.config)?)
+	}
+
+	pub fn finalize_block(
+		&self,
+		block: &mut UnsealedBeaconBlock,
+		state: &mut <Self as BlockExecutor>::Externalities,
+	) -> Result<(), Error> {
+		Ok(beacon::finalize_block(block, state.state(), &self.config)?)
+	}
 }
 
 impl<C: Config> BlockExecutor for Executor<C> {
@@ -167,37 +201,5 @@ impl<C: Config> JustifiableExecutor for Executor<C> {
 		state: &mut Self::Externalities,
 	) -> Result<Vec<(Self::ValidatorIndex, <Self::Block as BlockT>::Identifier)>, Self::Error> {
 		Ok(beacon::block_vote_targets(&block.0, state.state(), &self.config)?)
-	}
-}
-
-impl<C: Config> BuilderExecutor for Executor<C> {
-	type BuildBlock = UnsealedBeaconBlock;
-	type Inherent = Inherent;
-	type Extrinsic = Transaction;
-
-	fn initialize_block(
-		&self,
-		parent_block: &Block,
-		state: &mut Self::Externalities,
-		inherent: Inherent,
-	) -> Result<UnsealedBeaconBlock, Self::Error> {
-		Ok(beacon::initialize_block(&parent_block.0, state.state(), inherent, &self.config)?)
-	}
-
-	fn apply_extrinsic(
-		&self,
-		block: &mut UnsealedBeaconBlock,
-		extrinsic: Transaction,
-		state: &mut Self::Externalities,
-	) -> Result<(), Self::Error> {
-		Ok(beacon::apply_transaction(block, state.state(), extrinsic, &self.config)?)
-	}
-
-	fn finalize_block(
-		&self,
-		block: &mut UnsealedBeaconBlock,
-		state: &mut Self::Externalities,
-	) -> Result<(), Self::Error> {
-		Ok(beacon::finalize_block(block, state.state(), &self.config)?)
 	}
 }
