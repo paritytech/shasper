@@ -1,10 +1,11 @@
-use beacon::primitives::{H256, ValidatorId};
+use beacon::primitives::{H256, ValidatorId, Signature};
 use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockHeader};
-use beacon::{Error as BeaconError, Config, Inherent, Transaction};
+use beacon::{Error as BeaconError, Config, Inherent, Transaction, BLSVerification};
 use blockchain::traits::{Block as BlockT, BlockExecutor, AsExternalities};
 use lmd_ghost::JustifiableExecutor;
 use parity_codec::{Encode, Decode};
 use ssz::Digestible;
+use bls_aggregates as bls;
 
 #[derive(Eq, PartialEq, Clone, Debug, Encode, Decode)]
 pub struct Block(pub BeaconBlock);
@@ -74,6 +75,56 @@ impl AsExternalities<dyn StateExternalities> for State {
 	}
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct AMCLVerification;
+
+impl BLSVerification for AMCLVerification {
+	fn verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool {
+		let pubkey = match bls::PublicKey::from_bytes(&pubkey[..]) {
+			Ok(value) => value,
+			Err(_) => return false,
+		};
+		let signature = match bls::Signature::from_bytes(&signature[..]) {
+			Ok(value) => value,
+			Err(_) => return false,
+		};
+		signature.verify(&message[..], domain, &pubkey)
+	}
+	fn aggregate_pubkeys(pubkeys: &[ValidatorId]) -> ValidatorId {
+		let mut aggregated = bls::AggregatePublicKey::new();
+		for pubkey in pubkeys {
+			let pubkey = match bls::PublicKey::from_bytes(&pubkey[..]) {
+				Ok(value) => value,
+				Err(_) => return ValidatorId::default(),
+			};
+			aggregated.add(&pubkey);
+		}
+		ValidatorId::from_slice(&aggregated.as_bytes()[..])
+	}
+	fn verify_multiple(pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool {
+		let mut bls_messages = Vec::new();
+		for message in messages {
+			bls_messages.append(&mut (&message[..]).to_vec());
+		}
+
+		let bls_signature = match bls::AggregateSignature::from_bytes(&signature[..]) {
+			Ok(value) => value,
+			Err(_) => return false,
+		};
+
+		let mut bls_pubkeys = Vec::new();
+		for pubkey in pubkeys {
+			bls_pubkeys.push(match bls::AggregatePublicKey::from_bytes(&pubkey[..]) {
+				Ok(value) => value,
+				Err(_) => return false,
+			});
+		}
+
+		bls_signature.verify_multiple(
+			&bls_messages, domain, &bls_pubkeys.iter().collect::<Vec<_>>())
+	}
+}
+
 #[derive(Debug)]
 pub enum Error {
 	Beacon(BeaconError),
@@ -122,6 +173,22 @@ impl<C: Config> Executor<C> {
 		state: &mut <Self as BlockExecutor>::Externalities, // FIXME: replace `&mut` with `&`.
 	) -> Option<ValidatorId> {
 		beacon::validator_pubkey(index, state.state(), &self.config)
+	}
+
+	pub fn current_epoch(
+		&self,
+		state: &mut <Self as BlockExecutor>::Externalities, // FIXME: replace `&mut` with `&`.
+	) -> Result<u64, Error> {
+		Ok(beacon::current_epoch(state.state(), &self.config))
+	}
+
+	pub fn domain(
+		&self,
+		state: &mut <Self as BlockExecutor>::Externalities, // FIXME: replace `&mut` with `&`.
+		domain_type: u64,
+		message_epoch: Option<u64>
+	) -> Result<u64, Error> {
+		Ok(beacon::domain(state.state(), domain_type, message_epoch, &self.config))
 	}
 
 	pub fn initialize_block(

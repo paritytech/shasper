@@ -18,9 +18,37 @@
 use serde_derive::{Serialize, Deserialize};
 
 use core::cmp::max;
+use core::marker::PhantomData;
 use digest::Digest;
 use crate::primitives::{H256, Uint, Epoch, Slot, ValidatorIndex, Signature, ValidatorId};
 use crate::utils::to_uint;
+
+/// BLS operations
+pub trait BLSVerification {
+	/// Verify BLS signature.
+	fn verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool;
+	/// Aggregate BLS public keys.
+	fn aggregate_pubkeys(pubkeys: &[ValidatorId]) -> ValidatorId;
+	/// Verify multiple BLS signatures.
+	fn verify_multiple(pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool;
+}
+
+/// Run bls without any verification.
+#[derive(Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct BLSNoVerification;
+
+impl BLSVerification for BLSNoVerification {
+	fn verify(_pubkey: &ValidatorId, _message: &H256, _signature: &Signature, _domain: u64) -> bool {
+		true
+	}
+	fn aggregate_pubkeys(_pubkeys: &[ValidatorId]) -> ValidatorId {
+		ValidatorId::default()
+	}
+	fn verify_multiple(_pubkeys: &[ValidatorId], _messages: &[H256], _signature: &Signature, _domain: u64) -> bool {
+		true
+	}
+}
 
 /// Constants used in beacon block.
 pub trait Config {
@@ -238,7 +266,7 @@ pub trait Config {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Config that does not verify BLS signature.
-pub struct NoVerificationConfig {
+pub struct ParameteredConfig<BLS: BLSVerification> {
 	// === Misc ===
 	/// Shard count.
 	pub shard_count: Uint,
@@ -346,9 +374,12 @@ pub struct NoVerificationConfig {
 	pub domain_voluntary_exit: Uint,
 	/// Transfer domain.
 	pub domain_transfer: Uint,
+
+	#[serde(skip)]
+	_marker: PhantomData<BLS>,
 }
 
-impl Config for NoVerificationConfig {
+impl<BLS: BLSVerification> Config for ParameteredConfig<BLS> {
 	type Digest = sha2::Sha256;
 
 	fn shard_count(&self) -> Uint { self.shard_count }
@@ -398,18 +429,18 @@ impl Config for NoVerificationConfig {
 	fn proposer_reward_quotient(&self) -> Uint { self.proposer_reward_quotient }
 	fn min_slashing_penalty_quotient(&self) -> Uint { self.min_slashing_penalty_quotient }
 
-	fn bls_verify(&self, _pubkey: &ValidatorId, _message: &H256, _signature: &Signature, _domain: u64) -> bool {
-		true
+	fn bls_verify(&self, pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool {
+		BLS::verify(pubkey, message, signature, domain)
 	}
-	fn bls_aggregate_pubkeys(&self, _pubkeys: &[ValidatorId]) -> ValidatorId {
-		ValidatorId::default()
+	fn bls_aggregate_pubkeys(&self, pubkeys: &[ValidatorId]) -> ValidatorId {
+		BLS::aggregate_pubkeys(pubkeys)
 	}
-	fn bls_verify_multiple(&self, _pubkeys: &[ValidatorId], _messages: &[H256], _signature: &Signature, _domain: u64) -> bool {
-		true
+	fn bls_verify_multiple(&self, pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool {
+		BLS::verify_multiple(pubkeys, messages, signature, domain)
 	}
 }
 
-impl NoVerificationConfig {
+impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 	/// Small config with 8 shards.
 	pub fn small() -> Self {
 		Self {
@@ -466,6 +497,8 @@ impl NoVerificationConfig {
 			domain_deposit: 3,
 			domain_voluntary_exit: 4,
 			domain_transfer: 5,
+
+			_marker: PhantomData,
 		}
 	}
 
@@ -525,6 +558,11 @@ impl NoVerificationConfig {
 			domain_deposit: 3,
 			domain_voluntary_exit: 4,
 			domain_transfer: 5,
+
+			_marker: PhantomData,
 		}
 	}
 }
+
+/// Parametered no verification config.
+pub type NoVerificationConfig = ParameteredConfig<BLSNoVerification>;
