@@ -173,8 +173,9 @@ fn builder_thread<C: Config + Clone>(
 			let head_state = backend.read().state_at(&head).unwrap();
 
 			let mut state = head_state;
+			let current_slot = head_block.0.slot + 1;
 			executor.initialize_block(
-				state.as_externalities(), head_block.0.slot + 1
+				state.as_externalities(), current_slot,
 			).unwrap();
 			let proposer_index = executor.proposer_index(state.as_externalities()).unwrap();
 			let proposer_pubkey = executor
@@ -213,6 +214,29 @@ fn builder_thread<C: Config + Clone>(
 					eth1_data: eth1_data.clone(),
 				}
 			).unwrap();
+
+			for (validator_id, _) in &keys {
+				let validator_index = executor.validator_index(
+					validator_id,
+					state.as_externalities()
+				).unwrap();
+
+				if let Some(validator_index) = validator_index {
+					let committee_assignment = executor.committee_assignment(
+						state.as_externalities(),
+						current_epoch,
+						validator_index,
+					).unwrap();
+					if let Some(committee_assignment) = committee_assignment {
+						if committee_assignment.slot == current_slot {
+							println!(
+								"Found validator {} attesting slot {} with shard {}",
+								validator_id, current_slot, committee_assignment.shard);
+						}
+					}
+				}
+			}
+
 			executor.finalize_block(
 				&mut unsealed_block, state.as_externalities()
 			).unwrap();

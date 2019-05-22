@@ -175,6 +175,14 @@ impl<C: Config> Executor<C> {
 		beacon::validator_pubkey(index, state.state(), &self.config)
 	}
 
+	pub fn validator_index(
+		&self,
+		pubkey: &ValidatorId,
+		state: &mut <Self as BlockExecutor>::Externalities, // FIXME: replace `&mut` with `&`.
+	) -> Result<Option<u64>, Error> {
+		Ok(beacon::validator_index(pubkey, state.state(), &self.config))
+	}
+
 	pub fn current_epoch(
 		&self,
 		state: &mut <Self as BlockExecutor>::Externalities, // FIXME: replace `&mut` with `&`.
@@ -197,6 +205,15 @@ impl<C: Config> Executor<C> {
 		target_slot: u64,
 	) -> Result<(), Error> {
 		Ok(beacon::initialize_block(state.state(), target_slot, &self.config)?)
+	}
+
+	pub fn committee_assignment(
+		&self,
+		state: &mut <Self as BlockExecutor>::Externalities,
+		epoch: u64,
+		validator_id: u64,
+	) -> Result<Option<beacon::CommitteeAssignment>, Error> {
+		Ok(beacon::committee_assignment(epoch, validator_id, state.state(), &self.config)?)
 	}
 
 	pub fn apply_inherent(

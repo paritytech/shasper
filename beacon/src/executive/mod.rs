@@ -17,8 +17,10 @@
 mod helpers;
 mod transition;
 mod genesis;
+mod assignment;
 
 pub use self::genesis::*;
+pub use self::assignment::*;
 
 use core::cmp::min;
 use ssz::Digestible;
@@ -135,6 +137,14 @@ pub fn validator_pubkey<C: Config>(index: u64, state: &mut BeaconState, _config:
 	Some(validator.pubkey.clone())
 }
 
+/// Get validator index from public key.
+// FIXME: change `&mut` to `&`.
+pub fn validator_index<C: Config>(pubkey: &ValidatorId, state: &mut BeaconState, _config: &C) -> Option<u64> {
+	let validator_pubkeys = state.validator_registry.iter()
+		.map(|v| v.pubkey.clone()).collect::<Vec<_>>();
+	validator_pubkeys.iter().position(|v| v == pubkey).map(|v| v as u64)
+}
+
 /// Get justified active validators from current state.
 // FIXME: change `&mut` to `&`.
 pub fn justified_active_validators<C: Config>(state: &mut BeaconState, config: &C) -> Vec<u64> {
@@ -144,6 +154,21 @@ pub fn justified_active_validators<C: Config>(state: &mut BeaconState, config: &
 	let current_justified_epoch = executive.state.current_justified_epoch;
 
 	executive.active_validator_indices(current_justified_epoch)
+}
+
+/// Get committee assignemtn for validator.
+// FIXME: change `&mut` to `&`.
+pub fn committee_assignment<C: Config>(
+	epoch: u64,
+	validator_index: u64,
+	state: &mut BeaconState,
+	config: &C
+) -> Result<Option<CommitteeAssignment>, Error> {
+	let executive = Executive {
+		state, config
+	};
+
+	executive.committee_assignment(epoch, validator_index)
 }
 
 /// Get current epoch of state.
