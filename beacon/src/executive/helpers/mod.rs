@@ -109,7 +109,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		   offset / (committee_count / self.config.slots_per_epoch()))
 	}
 
-	pub(crate) fn block_root_at_slot(&self, slot: Slot) -> Result<H256, Error> {
+	/// Get the block root at slot.
+	pub fn block_root_at_slot(&self, slot: Slot) -> Result<H256, Error> {
 		if !(slot < self.state.slot &&
 			 self.state.slot <= slot + self.config.slots_per_historical_root())
 		{
@@ -121,7 +122,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		])
 	}
 
-	pub(crate) fn block_root(&self, epoch: Epoch) -> Result<H256, Error> {
+	/// Get the block root at epoch start slot.
+	pub fn block_root(&self, epoch: Epoch) -> Result<H256, Error> {
 		self.block_root_at_slot(self.config.epoch_start_slot(epoch))
 	}
 
