@@ -24,11 +24,13 @@ use crate::{Config, Executive, Error};
 mod validator;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
-	pub(crate) fn current_epoch(&self) -> Epoch {
+	/// Get the current state epoch.
+	pub fn current_epoch(&self) -> Epoch {
 		self.config.slot_to_epoch(self.state.slot)
 	}
 
-	pub(crate) fn previous_epoch(&self) -> Epoch {
+	/// Get the previous state epoch.
+	pub fn previous_epoch(&self) -> Epoch {
 		let current_epoch = self.current_epoch();
 		if current_epoch > self.config.genesis_epoch() {
 			current_epoch.saturating_sub(1)
@@ -147,7 +149,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		])
 	}
 
-	pub(crate) fn beacon_proposer_index(&self) -> Result<ValidatorIndex, Error> {
+	/// Find the current beacon block proposer index.
+	pub fn beacon_proposer_index(&self) -> Result<ValidatorIndex, Error> {
 		let epoch = self.current_epoch();
 		let committees_per_slot =
 			self.epoch_committee_count(epoch) / self.config.slots_per_epoch();
@@ -225,7 +228,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		})
 	}
 
-	pub(crate) fn domain(&self, domain_type: Uint, message_epoch: Option<Uint>) -> Uint {
+	/// Find domain integer of type and epoch.
+	pub fn domain(&self, domain_type: Uint, message_epoch: Option<Uint>) -> Uint {
 		let epoch = message_epoch.unwrap_or(self.current_epoch());
 		let fork_version = if epoch < self.state.fork.epoch {
 			self.state.fork.previous_version

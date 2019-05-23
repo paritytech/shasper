@@ -173,62 +173,47 @@ fn builder_thread<C: Config + Clone>(
 			let head_state = backend.read().state_at(&head).unwrap();
 
 			let mut state = head_state;
+			let externalities = state.as_externalities();
 			let current_slot = head_block.0.slot + 1;
-			executor.initialize_block(
-				state.as_externalities(), current_slot,
-			).unwrap();
-			let current_epoch = executor.current_epoch(state.as_externalities()).unwrap();
+			executor.initialize_block(externalities, current_slot).unwrap();
+			let current_epoch = executor.executive(externalities).current_epoch();
 
-			let randao_domain = executor.domain(
-				state.as_externalities(),
-				config.domain_randao(),
-				None
-			).unwrap();
-			let proposer_domain = executor.domain(
-				state.as_externalities(),
-				config.domain_beacon_proposer(),
-				None
-			).unwrap();
+			let randao_domain = executor.executive(externalities)
+				.domain(config.domain_randao(), None);
+			let proposer_domain = executor.executive(externalities)
+				.domain(config.domain_beacon_proposer(), None);
 
 			for (validator_id, _) in &keys {
-				let validator_index = executor.validator_index(
-					validator_id,
-					state.as_externalities()
-				).unwrap();
+				let validator_index = externalities.state().validator_index(validator_id);
 
 				if let Some(validator_index) = validator_index {
-					let committee_assignment = executor.committee_assignment(
-						state.as_externalities(),
-						current_epoch,
-						validator_index,
-					).unwrap();
+					let committee_assignment = executor.executive(externalities)
+						.committee_assignment(current_epoch, validator_index).unwrap();
 					if let Some(committee_assignment) = committee_assignment {
 						if committee_assignment.slot == current_slot {
 							println!(
 								"Found validator {} attesting slot {} with shard {}",
 								validator_id, current_slot, committee_assignment.shard);
 
-							let epoch_start_slot = config.epoch_start_slot(current_epoch);
-							let epoch_boundary_block =
+							// let epoch_start_slot = config.epoch_start_slot(current_epoch);
+							// let epoch_boundary_block =
 
-							let data = AttestationData {
-								beacon_block_root: H256::from_slice(
-									Digestible::<C::Digest>::truncated_hash(&head_block).as_slice(),
-								),
-								source_epoch: state.state().current_justified_epoch,
-								source_root: state.state().current_justified_root,
-								target_epoch: current_epoch,
-								target_root:
-							};
+							// let data = AttestationData {
+							// 	beacon_block_root: H256::from_slice(
+							// 		Digestible::<C::Digest>::truncated_hash(&head_block).as_slice(),
+							// 	),
+							// 	source_epoch: state.state().current_justified_epoch,
+							// 	source_root: state.state().current_justified_root,
+							// 	target_epoch: current_epoch,
+							// 	target_root:
+							// };
 						}
 					}
 				}
 			}
 
-			let proposer_index = executor.proposer_index(state.as_externalities()).unwrap();
-			let proposer_pubkey = executor
-				.validator_pubkey(proposer_index, state.as_externalities())
-				.unwrap();
+			let proposer_index = executor.executive(externalities).beacon_proposer_index().unwrap();
+			let proposer_pubkey = externalities.state().validator_pubkey(proposer_index).unwrap();
 			println!("Current proposer {} ({}) on epoch {}", proposer_index, proposer_pubkey, current_epoch);
 
 			let seckey = match keys.get(&proposer_pubkey) {

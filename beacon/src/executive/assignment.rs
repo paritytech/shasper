@@ -27,7 +27,8 @@ pub struct CommitteeAssignment {
 }
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
-	pub(crate) fn committee_assignment(
+	/// Find committee assignment at slot.
+	pub fn committee_assignment(
 		&self,
 		epoch: u64,
 		validator_index: u64
