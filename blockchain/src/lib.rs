@@ -1,6 +1,6 @@
 use beacon::primitives::{H256, ValidatorId, Signature};
 use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockHeader};
-use beacon::{Error as BeaconError, Config, Inherent, Transaction, BLSVerification};
+use beacon::{Error as BeaconError, Executive, Config, Inherent, Transaction, BLSVerification};
 use blockchain::traits::{Block as BlockT, BlockExecutor, AsExternalities};
 use lmd_ghost::JustifiableExecutor;
 use parity_codec::{Encode, Decode};
@@ -160,35 +160,14 @@ impl<C: Config> Executor<C> {
 		Self { config }
 	}
 
-	pub fn proposer_index(
-		&self,
-		state: &mut <Self as BlockExecutor>::Externalities, // FIXME: replace `&mut` with `&`.
-	) -> Result<u64, Error> {
-		Ok(beacon::beacon_proposer_index(state.state(), &self.config)?)
-	}
-
-	pub fn validator_pubkey(
-		&self,
-		index: u64,
-		state: &mut <Self as BlockExecutor>::Externalities, // FIXME: replace `&mut` with `&`.
-	) -> Option<ValidatorId> {
-		beacon::validator_pubkey(index, state.state(), &self.config)
-	}
-
-	pub fn current_epoch(
-		&self,
-		state: &mut <Self as BlockExecutor>::Externalities, // FIXME: replace `&mut` with `&`.
-	) -> Result<u64, Error> {
-		Ok(beacon::current_epoch(state.state(), &self.config))
-	}
-
-	pub fn domain(
-		&self,
-		state: &mut <Self as BlockExecutor>::Externalities, // FIXME: replace `&mut` with `&`.
-		domain_type: u64,
-		message_epoch: Option<u64>
-	) -> Result<u64, Error> {
-		Ok(beacon::domain(state.state(), domain_type, message_epoch, &self.config))
+	pub fn executive<'state, 'config>(
+		&'config self,
+		state: &'state mut <Self as BlockExecutor>::Externalities,
+	) -> Executive<'state, 'config, C> {
+		Executive {
+			state: state.state(),
+			config: &self.config,
+		}
 	}
 
 	pub fn initialize_block(
@@ -211,8 +190,8 @@ impl<C: Config> Executor<C> {
 	pub fn apply_extrinsic(
 		&self,
 		block: &mut UnsealedBeaconBlock,
-		extrinsic: Transaction,
 		state: &mut <Self as BlockExecutor>::Externalities,
+		extrinsic: Transaction,
 	) -> Result<(), Error> {
 		Ok(beacon::apply_transaction(block, state.state(), extrinsic, &self.config)?)
 	}
@@ -247,14 +226,14 @@ impl<C: Config> JustifiableExecutor for Executor<C> {
 		&self,
 		state: &mut Self::Externalities,
 	) -> Result<Vec<Self::ValidatorIndex>, Self::Error> {
-		Ok(beacon::justified_active_validators(state.state(), &self.config))
+		Ok(self.executive(state).justified_active_validators())
 	}
 
 	fn justified_block_id(
 		&self,
 		state: &mut Self::Externalities,
 	) -> Result<Option<<Self::Block as BlockT>::Identifier>, Self::Error> {
-		let justified_root = beacon::justified_root(state.state(), &self.config);
+		let justified_root = state.state().current_justified_root;
 		if justified_root == H256::default() {
 			Ok(None)
 		} else {
@@ -267,6 +246,6 @@ impl<C: Config> JustifiableExecutor for Executor<C> {
 		block: &Self::Block,
 		state: &mut Self::Externalities,
 	) -> Result<Vec<(Self::ValidatorIndex, <Self::Block as BlockT>::Identifier)>, Self::Error> {
-		Ok(beacon::block_vote_targets(&block.0, state.state(), &self.config)?)
+		Ok(self.executive(state).block_vote_targets(&block.0)?)
 	}
 }

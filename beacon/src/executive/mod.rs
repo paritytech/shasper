@@ -17,12 +17,15 @@
 mod helpers;
 mod transition;
 mod genesis;
+mod assignment;
+mod choice;
 
 pub use self::genesis::*;
+pub use self::assignment::*;
 
 use core::cmp::min;
 use ssz::Digestible;
-use crate::primitives::{H768, H256, ValidatorId};
+use crate::primitives::{H768, H256};
 use crate::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockBody, ProposerSlashing, AttesterSlashing, Deposit, Attestation, Transfer, VoluntaryExit, Eth1Data};
 use crate::utils;
 use crate::{Config, Error};
@@ -114,92 +117,9 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 	Ok(())
 }
 
-/// Get current beacon proposer.
-// FIXME: change `&mut` to `&`.
-pub fn beacon_proposer_index<C: Config>(state: &mut BeaconState, config: &C) -> Result<u64, Error> {
-	let executive = Executive {
-		state, config
-	};
-
-	executive.beacon_proposer_index()
-}
-
-/// Get validator public key.
-// FIXME: change `&mut` to `&`.
-pub fn validator_pubkey<C: Config>(index: u64, state: &mut BeaconState, _config: &C) -> Option<ValidatorId> {
-	if index as usize >= state.validator_registry.len() {
-		return None
-	}
-
-	let validator = &state.validator_registry[index as usize];
-	Some(validator.pubkey.clone())
-}
-
-/// Get justified active validators from current state.
-// FIXME: change `&mut` to `&`.
-pub fn justified_active_validators<C: Config>(state: &mut BeaconState, config: &C) -> Vec<u64> {
-	let executive = Executive {
-		state, config
-	};
-	let current_justified_epoch = executive.state.current_justified_epoch;
-
-	executive.active_validator_indices(current_justified_epoch)
-}
-
-/// Get current epoch of state.
-// FIXME: change `&mut` to `&`.
-pub fn current_epoch<C: Config>(state: &mut BeaconState, config: &C) -> u64 {
-	let executive = Executive {
-		state, config
-	};
-
-	executive.current_epoch()
-}
-
-/// Get current domain of state.
-// FIXME: change `&mut` to `&`.
-pub fn domain<C: Config>(state: &mut BeaconState, domain_type: u64, message_epoch: Option<u64>, config: &C) -> u64 {
-	let executive = Executive {
-		state, config
-	};
-
-	executive.domain(domain_type, message_epoch)
-}
-
 /// Get genesis domain.
 pub fn genesis_domain(domain_type: u64) -> u64 {
 	utils::raw_domain(domain_type, Default::default())
-}
-
-/// Get current justified block root.
-// FIXME: change `&mut` to `&`.
-pub fn justified_root<C: Config>(state: &mut BeaconState, _config: &C) -> H256 {
-	state.current_justified_root
-}
-
-/// Get block attestation vote targets.
-// FIXME: change `&mut` to `&`.
-pub fn block_vote_targets<C: Config>(
-	block: &BeaconBlock,
-	state: &mut BeaconState,
-	config: &C
-) -> Result<Vec<(u64, H256)>, Error> {
-	let executive = Executive {
-		state, config
-	};
-
-	let mut ret = Vec::new();
-	for attestation in block.body.attestations.clone() {
-		let indexed = executive.convert_to_indexed(attestation)?;
-
-		for v in indexed.custody_bit_0_indices.into_iter()
-			.chain(indexed.custody_bit_1_indices.into_iter())
-		{
-			ret.push((v, indexed.data.target_root));
-		}
-	}
-
-	Ok(ret)
 }
 
 /// Beacon block inherent.

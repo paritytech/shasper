@@ -76,9 +76,26 @@ impl<D: digest::Digest> ssz::Digestible<D> for BitField {
 }
 
 impl BitField {
+	/// New with given length.
+	pub fn new(length: usize) -> Self {
+		let vec_len = (length + 7) / 8;
+		let mut vec = Vec::new();
+		vec.resize(vec_len, 0);
+		Self(vec)
+	}
+
 	/// Get bit at index.
 	pub fn get_bit(&self, index: usize) -> bool {
 		(self.0[index / 8] >> (index % 8)) == 1
+	}
+
+	/// Set bit at index.
+	pub fn set_bit(&mut self, index: usize, bit: bool) {
+		if bit == true {
+			self.0[index / 8] = self.0[index / 8] | (1 << (index % 8));
+		} else {
+			self.0[index / 8] = self.0[index / 8] & (!(1 << (index % 8)));
+		}
 	}
 
 	/// Verify that the bitfield is of given size.
@@ -94,5 +111,31 @@ impl BitField {
 		}
 
 		true
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_set_bit() {
+		let mut bitfield = BitField::new(22);
+		assert_eq!(bitfield.get_bit(18), false);
+		assert_eq!(bitfield.get_bit(19), false);
+		assert_eq!(bitfield.get_bit(20), false);
+		assert_eq!(bitfield.get_bit(21), false);
+
+		bitfield.set_bit(19, true);
+		assert_eq!(bitfield.get_bit(18), false);
+		assert_eq!(bitfield.get_bit(19), true);
+		assert_eq!(bitfield.get_bit(20), false);
+		assert_eq!(bitfield.get_bit(21), false);
+
+		bitfield.set_bit(19, false);
+		assert_eq!(bitfield.get_bit(18), false);
+		assert_eq!(bitfield.get_bit(19), false);
+		assert_eq!(bitfield.get_bit(20), false);
+		assert_eq!(bitfield.get_bit(21), false);
 	}
 }

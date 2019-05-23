@@ -22,7 +22,7 @@ use serde_derive::{Serialize, Deserialize};
 #[cfg(feature = "parity-codec")]
 use codec::{Encode, Decode};
 
-use crate::primitives::{Uint, H256};
+use crate::primitives::{Uint, H256, ValidatorId};
 use crate::types::{Fork, Validator, BeaconBlockHeader, Eth1Data, Crosslink, PendingAttestation};
 use crate::utils::fixed_vec;
 use crate::Config;
@@ -140,5 +140,22 @@ impl BeaconState {
 			eth1_data_votes: Default::default(),
 			deposit_index: Default::default(),
 		}
+	}
+
+	/// Get validator public key.
+	pub fn validator_pubkey(&self, index: u64) -> Option<ValidatorId> {
+		if index as usize >= self.validator_registry.len() {
+			return None
+		}
+
+		let validator = &self.validator_registry[index as usize];
+		Some(validator.pubkey.clone())
+	}
+
+	/// Get validator index from public key.
+	pub fn validator_index(&self, pubkey: &ValidatorId) -> Option<u64> {
+		let validator_pubkeys = self.validator_registry.iter()
+			.map(|v| v.pubkey.clone()).collect::<Vec<_>>();
+		validator_pubkeys.iter().position(|v| v == pubkey).map(|v| v as u64)
 	}
 }

@@ -1,12 +1,12 @@
-use beacon::{genesis, Config, ParameteredConfig, Inherent};
-use beacon::primitives::{H256, Signature, ValidatorId};
-use beacon::types::{Eth1Data, Deposit, DepositData};
+use beacon::{genesis, Config, ParameteredConfig, Inherent, Transaction};
+use beacon::primitives::{H256, Signature, ValidatorId, BitField};
+use beacon::types::{Eth1Data, Deposit, DepositData, AttestationData, AttestationDataAndCustodyBit, Attestation};
 use ssz::Digestible;
 use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
 use blockchain::chain::SharedImportBlock;
-use blockchain::traits::{ChainQuery, AsExternalities, ImportBlock};
+use blockchain::traits::{ChainQuery, AsExternalities, ImportBlock, Block as BlockT};
 use blockchain_network_simple::BestDepthStatusProducer;
-use shasper_blockchain::{Block, Executor, State, AMCLVerification};
+use shasper_blockchain::{Block, Executor, State, AMCLVerification, StateExternalities};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
 use clap::{App, Arg};
 use std::thread;
@@ -161,6 +161,7 @@ fn builder_thread<C: Config + Clone>(
 	config: C,
 ) {
 	let executor = Executor::new(config.clone());
+	let mut attestations = Vec::new();
 
 	loop {
 		thread::sleep(Duration::new(1, 0));
@@ -170,27 +171,94 @@ fn builder_thread<C: Config + Clone>(
 
 		let block = {
 			let head_block = backend.read().block_at(&head).unwrap();
-			let head_state = backend.read().state_at(&head).unwrap();
+			let mut head_state = backend.read().state_at(&head).unwrap();
+			println!("Justified epoch {}, finalized epoch {}",
+					 { head_state.state().current_justified_epoch },
+					 { head_state.state().finalized_epoch });
 
-			let mut state = head_state;
-			executor.initialize_block(
-				state.as_externalities(), head_block.0.slot + 1
-			).unwrap();
-			let proposer_index = executor.proposer_index(state.as_externalities()).unwrap();
-			let proposer_pubkey = executor
-				.validator_pubkey(proposer_index, state.as_externalities())
-				.unwrap();
-			let current_epoch = executor.current_epoch(state.as_externalities()).unwrap();
-			let randao_domain = executor.domain(
-				state.as_externalities(),
-				config.domain_randao(),
-				None
-			).unwrap();
-			let proposer_domain = executor.domain(
-				state.as_externalities(),
-				config.domain_beacon_proposer(),
-				None
-			).unwrap();
+			let mut state = backend.read().state_at(&head).unwrap();
+			let externalities = state.as_externalities();
+			let current_slot = head_block.0.slot + 1;
+			executor.initialize_block(externalities, current_slot).unwrap();
+			let current_epoch = executor.executive(externalities).current_epoch();
+
+			let randao_domain = executor.executive(externalities)
+				.domain(config.domain_randao(), None);
+			let proposer_domain = executor.executive(externalities)
+				.domain(config.domain_beacon_proposer(), None);
+			let attestation_domain = executor.executive(externalities)
+				.domain(config.domain_attestation(), None);
+
+			for (validator_id, validator_seckey) in &keys {
+				let validator_index = externalities.state().validator_index(validator_id);
+
+				if let Some(validator_index) = validator_index {
+					let committee_assignment = executor.executive(externalities)
+						.committee_assignment(current_epoch, validator_index).unwrap();
+					if let Some(committee_assignment) = committee_assignment {
+						if committee_assignment.slot == current_slot {
+							println!(
+								"Found validator {} attesting slot {} with shard {}",
+								validator_id, current_slot, committee_assignment.shard);
+							let shard = committee_assignment.shard;
+							let committee = committee_assignment.validators;
+
+							let target_epoch = current_epoch;
+							let target_slot = config.epoch_start_slot(target_epoch);
+							let target_root = if target_slot == current_slot {
+								head
+							} else {
+								executor.executive(externalities)
+									.block_root(target_epoch).unwrap()
+							};
+							let source_epoch = externalities.state().current_justified_epoch;
+							let source_root = externalities.state().current_justified_root;
+							println!(
+								"Casper source {} ({}) to target {} ({})",
+								source_epoch, source_root, target_epoch, target_root,
+							);
+
+							let parent_crosslink = head_state.state()
+								.current_crosslinks[shard as usize].clone();
+
+							let data = AttestationData {
+								beacon_block_root: head_block.id(),
+
+								source_epoch, source_root, target_epoch, target_root,
+
+								shard,
+								previous_crosslink_root: H256::from_slice(
+									Digestible::<C::Digest>::hash(&parent_crosslink).as_slice(),
+								),
+								crosslink_data_root: H256::default(),
+							};
+							let signature = Signature::from_slice(&bls::Signature::new(
+								Digestible::<C::Digest>::hash(&AttestationDataAndCustodyBit {
+									data: data.clone(),
+									custody_bit: false,
+								}).as_slice(),
+								attestation_domain,
+								&validator_seckey,
+							).as_bytes()[..]);
+
+							let index_into_committee = committee.iter()
+								.position(|v| *v == validator_index).unwrap();
+							let mut aggregation_bitfield = BitField::new(committee.len());
+							aggregation_bitfield.set_bit(index_into_committee, true);
+							let custody_bitfield = BitField::new(committee.len());
+
+							let attestation = Attestation {
+								aggregation_bitfield, data, custody_bitfield, signature
+							};
+
+							attestations.push(attestation);
+						}
+					}
+				}
+			}
+
+			let proposer_index = executor.executive(externalities).beacon_proposer_index().unwrap();
+			let proposer_pubkey = externalities.state().validator_pubkey(proposer_index).unwrap();
 			println!("Current proposer {} ({}) on epoch {}", proposer_index, proposer_pubkey, current_epoch);
 
 			let seckey = match keys.get(&proposer_pubkey) {
@@ -213,6 +281,22 @@ fn builder_thread<C: Config + Clone>(
 					eth1_data: eth1_data.clone(),
 				}
 			).unwrap();
+
+			let mut collected_attestations = Vec::new();
+			for attestation in attestations.clone() {
+				match executor.apply_extrinsic(
+					&mut unsealed_block, state.as_externalities(),
+					Transaction::Attestation(attestation.clone())
+				) {
+					Ok(()) => {
+						collected_attestations.push(attestation);
+					},
+					Err(_) => (),
+				}
+			}
+			println!("Pushed {} attestations", collected_attestations.len());
+			attestations.retain(|a| !collected_attestations.contains(a));
+
 			executor.finalize_block(
 				&mut unsealed_block, state.as_externalities()
 			).unwrap();
