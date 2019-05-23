@@ -17,11 +17,11 @@
 use ssz::Digestible;
 use crate::primitives::H256;
 use crate::types::Block;
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveRef, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveRef<'state, 'config, C> {
 	/// Verify block state root.
-	pub fn verify_block_state_root<B: Block>(&mut self, block: &B) -> Result<(), Error> {
+	pub fn verify_block_state_root<B: Block>(&self, block: &B) -> Result<(), Error> {
 		if !(block.state_root() == &H256::from_slice(
 			Digestible::<C::Digest>::hash(self.state).as_slice()
 		)) {

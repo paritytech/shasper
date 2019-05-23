@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{Config, Executive};
+use crate::{Config, ExecutiveMut};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Advance slot
 	pub fn advance_slot(&mut self) {
 		self.state.slot += 1;

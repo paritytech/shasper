@@ -15,9 +15,9 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use core::cmp::{min, max};
-use crate::{Config, Executive};
+use crate::{Config, ExecutiveMut};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Process slashings
 	pub fn process_slashings(&mut self) {
 		let current_epoch = self.current_epoch();

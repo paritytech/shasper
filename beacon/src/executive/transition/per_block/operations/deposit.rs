@@ -18,9 +18,9 @@ use core::cmp::min;
 use ssz::Digestible;
 use crate::primitives::H256;
 use crate::types::{Deposit, Validator};
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveMut, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Push a new `Deposit` to the state.
 	pub fn process_deposit(&mut self, deposit: Deposit) -> Result<(), Error> {
 		if !self.config.verify_merkle_branch(

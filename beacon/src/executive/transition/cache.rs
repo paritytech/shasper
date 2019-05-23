@@ -16,9 +16,9 @@
 
 use ssz::Digestible;
 use crate::primitives::H256;
-use crate::{Config, Executive};
+use crate::{Config, ExecutiveMut};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// State caching.
 	///
 	/// Run at every slot > GENESIS_SLOT.

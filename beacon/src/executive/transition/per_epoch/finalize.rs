@@ -18,9 +18,9 @@ use core::cmp::min;
 use ssz::Digestible;
 use crate::primitives::H256;
 use crate::types::HistoricalBatch;
-use crate::{Config, Executive};
+use crate::{Config, ExecutiveMut};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Process final updates
 	pub fn process_final_updates(&mut self) {
 		let current_epoch = self.current_epoch();

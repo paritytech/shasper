@@ -21,23 +21,43 @@ mod genesis;
 pub use self::genesis::*;
 
 use core::cmp::min;
+use core::ops::Deref;
 use ssz::Digestible;
 use crate::primitives::{H768, H256, ValidatorId};
 use crate::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockBody, ProposerSlashing, AttesterSlashing, Deposit, Attestation, Transfer, VoluntaryExit, Eth1Data};
 use crate::utils;
 use crate::{Config, Error};
 
+/// Beacon state reference executive.
+pub struct ExecutiveRef<'state, 'config, C: Config> {
+	/// Beacon state.
+	pub state: &'state BeaconState,
+	/// Beacon config.
+	pub config: &'config C,
+}
+
 /// Beacon state executive.
-pub struct Executive<'state, 'config, C: Config> {
+pub struct ExecutiveMut<'state, 'config, C: Config> {
 	/// Beacon state.
 	pub state: &'state mut BeaconState,
 	/// Beacon config.
 	pub config: &'config C,
 }
 
+impl<'state, 'config, C: Config> Deref for ExecutiveMut<'state, 'config, C> {
+	type Target = ExecutiveRef<'state, 'config, C>;
+
+	fn deref(&self) -> &Self::Target {
+		&ExecutiveRef {
+			state: self.state,
+			config: self.config,
+		}
+	}
+}
+
 /// Given a block, execute based on a parent state.
 pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
-	let mut executive = Executive {
+	let mut executive = ExecutiveMut {
 		state, config
 	};
 
@@ -114,77 +134,18 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 	Ok(())
 }
 
-/// Get current beacon proposer.
-// FIXME: change `&mut` to `&`.
-pub fn beacon_proposer_index<C: Config>(state: &mut BeaconState, config: &C) -> Result<u64, Error> {
-	let executive = Executive {
-		state, config
-	};
-
-	executive.beacon_proposer_index()
-}
-
-/// Get validator public key.
-// FIXME: change `&mut` to `&`.
-pub fn validator_pubkey<C: Config>(index: u64, state: &mut BeaconState, _config: &C) -> Option<ValidatorId> {
-	if index as usize >= state.validator_registry.len() {
-		return None
-	}
-
-	let validator = &state.validator_registry[index as usize];
-	Some(validator.pubkey.clone())
-}
-
-/// Get justified active validators from current state.
-// FIXME: change `&mut` to `&`.
-pub fn justified_active_validators<C: Config>(state: &mut BeaconState, config: &C) -> Vec<u64> {
-	let executive = Executive {
-		state, config
-	};
-	let current_justified_epoch = executive.state.current_justified_epoch;
-
-	executive.active_validator_indices(current_justified_epoch)
-}
-
-/// Get current epoch of state.
-// FIXME: change `&mut` to `&`.
-pub fn current_epoch<C: Config>(state: &mut BeaconState, config: &C) -> u64 {
-	let executive = Executive {
-		state, config
-	};
-
-	executive.current_epoch()
-}
-
-/// Get current domain of state.
-// FIXME: change `&mut` to `&`.
-pub fn domain<C: Config>(state: &mut BeaconState, domain_type: u64, message_epoch: Option<u64>, config: &C) -> u64 {
-	let executive = Executive {
-		state, config
-	};
-
-	executive.domain(domain_type, message_epoch)
-}
-
 /// Get genesis domain.
 pub fn genesis_domain(domain_type: u64) -> u64 {
 	utils::raw_domain(domain_type, Default::default())
 }
 
-/// Get current justified block root.
-// FIXME: change `&mut` to `&`.
-pub fn justified_root<C: Config>(state: &mut BeaconState, _config: &C) -> H256 {
-	state.current_justified_root
-}
-
 /// Get block attestation vote targets.
-// FIXME: change `&mut` to `&`.
 pub fn block_vote_targets<C: Config>(
 	block: &BeaconBlock,
-	state: &mut BeaconState,
+	state: &BeaconState,
 	config: &C
 ) -> Result<Vec<(u64, H256)>, Error> {
-	let executive = Executive {
+	let executive = ExecutiveRef {
 		state, config
 	};
 
@@ -228,7 +189,7 @@ pub enum Transaction {
 
 /// Initialize a block, and apply inherents.
 pub fn initialize_block<C: Config>(state: &mut BeaconState, target_slot: u64, config: &C) -> Result<(), Error> {
-	let mut executive = Executive { state, config };
+	let mut executive = ExecutiveMut { state, config };
 
 	while executive.state.slot < target_slot {
 		executive.cache_state();
@@ -258,7 +219,7 @@ pub fn apply_inherent<C: Config>(parent_block: &BeaconBlock, state: &mut BeaconS
 		..Default::default()
 	};
 
-	let mut executive = Executive { state, config };
+	let mut executive = ExecutiveMut { state, config };
 
 	let mut block = UnsealedBeaconBlock {
 		slot: executive.state.slot,
@@ -279,7 +240,7 @@ pub fn apply_inherent<C: Config>(parent_block: &BeaconBlock, state: &mut BeaconS
 
 /// Apply a transaction to the block.
 pub fn apply_transaction<C: Config>(block: &mut UnsealedBeaconBlock, state: &mut BeaconState, extrinsic: Transaction, config: &C) -> Result<(), Error> {
-	let mut executive = Executive { state, config };
+	let mut executive = ExecutiveMut { state, config };
 
 	match extrinsic {
 		Transaction::ProposerSlashing(slashing) => {
@@ -330,7 +291,7 @@ pub fn apply_transaction<C: Config>(block: &mut UnsealedBeaconBlock, state: &mut
 
 /// Finalize an unsealed block.
 pub fn finalize_block<C: Config>(block: &mut UnsealedBeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
-	let mut executive = Executive { state, config };
+	let mut executive = ExecutiveMut { state, config };
 
 	if executive.state.latest_eth1_data.deposit_count < executive.state.deposit_index {
 		return Err(Error::InvalidEth1Data)

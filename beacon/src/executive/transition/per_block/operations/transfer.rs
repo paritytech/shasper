@@ -17,9 +17,9 @@
 use ssz::Digestible;
 use crate::primitives::H256;
 use crate::types::Transfer;
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveMut, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Push a new `Transfer` to the state.
 	pub fn process_transfer(&mut self, transfer: Transfer) -> Result<(), Error> {
 		// Verify the amount and fee are not individually too big

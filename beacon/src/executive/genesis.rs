@@ -17,7 +17,7 @@
 use ssz::Digestible;
 use crate::primitives::{H256, Uint};
 use crate::types::{Deposit, Eth1Data, BeaconState, BeaconBlock};
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveMut, Error};
 
 /// Generate genesis state and genesis block from given deposits, timestamp and eth1 data.
 pub fn genesis<C: Config>(
@@ -52,7 +52,7 @@ pub fn genesis_beacon_state<C: Config>(
 	};
 
 	{
-		let mut executive = Executive {
+		let mut executive = ExecutiveMut {
 			state: &mut state,
 			config,
 		};

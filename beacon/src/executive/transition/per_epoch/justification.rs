@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveMut, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Update casper justification and finalization.
 	pub fn process_justification_and_finalization(&mut self) -> Result<(), Error> {
 		if self.current_epoch() <= self.config.genesis_epoch() + 1 {

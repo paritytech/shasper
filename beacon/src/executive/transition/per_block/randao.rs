@@ -17,9 +17,9 @@
 use ssz::Digestible;
 use crate::primitives::H256;
 use crate::types::Block;
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveMut, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Process randao information given in a block.
 	pub fn process_randao<B: Block>(&mut self, block: &B) -> Result<(), Error> {
 		let proposer = &self.state.validator_registry[

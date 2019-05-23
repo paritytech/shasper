@@ -19,11 +19,11 @@ use ssz::Digestible;
 use crate::primitives::{Uint, Epoch, Slot, ValidatorIndex, Gwei, Shard, H256, BitField};
 use crate::types::{Attestation, AttestationData, IndexedAttestation, AttestationDataAndCustodyBit};
 use crate::utils::{self, to_bytes};
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveRef, Error};
 
 mod validator;
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveRef<'state, 'config, C> {
 	pub(crate) fn current_epoch(&self) -> Epoch {
 		self.config.slot_to_epoch(self.state.slot)
 	}

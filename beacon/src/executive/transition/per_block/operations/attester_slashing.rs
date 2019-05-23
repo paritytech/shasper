@@ -15,9 +15,9 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::types::AttesterSlashing;
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveMut, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Push a new `AttesterSlashing` to the state.
 	pub fn process_attester_slashing(&mut self, attester_slashing: AttesterSlashing) -> Result<(), Error> {
 		let attestation_1 = attester_slashing.attestation_1;

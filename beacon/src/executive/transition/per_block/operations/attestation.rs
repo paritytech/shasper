@@ -17,9 +17,9 @@
 use ssz::Digestible;
 use crate::primitives::H256;
 use crate::types::{Attestation, PendingAttestation};
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveMut, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Push a new `Attestation` to the state.
 	pub fn process_attestation(&mut self, attestation: Attestation) -> Result<(), Error> {
 		let attestation_slot = self.attestation_slot(&attestation.data)?;

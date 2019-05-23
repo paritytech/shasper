@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveMut, Error};
 use core::cmp::min;
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Process registry updates
 	pub fn process_registry_updates(&mut self) -> Result<(), Error> {
 		for index in 0..self.state.validator_registry.len() {

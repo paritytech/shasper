@@ -18,9 +18,9 @@
 
 use core::cmp::max;
 use crate::primitives::ValidatorIndex;
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveMut, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	pub(crate) fn initiate_validator_exit(&mut self, index: ValidatorIndex) {
 		if self.state.validator_registry[index as usize].exit_epoch !=
 			self.config.far_future_epoch()

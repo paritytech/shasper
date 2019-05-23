@@ -19,9 +19,9 @@ use ssz::Digestible;
 use crate::primitives::{Epoch, ValidatorIndex, Gwei, Shard, H256};
 use crate::types::{AttestationData, PendingAttestation, Crosslink};
 use crate::utils::compare_hash;
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveRef, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveRef<'state, 'config, C> {
 	pub(crate) fn total_active_balance(&self) -> Gwei {
 		self.total_balance(&self.active_validator_indices(self.current_epoch()))
 	}

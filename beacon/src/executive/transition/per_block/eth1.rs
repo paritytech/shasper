@@ -15,9 +15,9 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::types::Block;
-use crate::{Config, Executive};
+use crate::{Config, ExecutiveMut};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Process eth1 data vote given in a block.
 	pub fn process_eth1_data<B: Block>(&mut self, block: &B) {
 		self.state.eth1_data_votes.push(block.body().eth1_data.clone());

@@ -17,9 +17,9 @@
 use ssz::Digestible;
 use crate::primitives::H256;
 use crate::types::{Block, BeaconBlockHeader};
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveMut, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	/// Process a block header.
 	pub fn process_block_header<B: Block + Digestible<C::Digest>>(&mut self, block: &B) -> Result<(), Error> {
 		if block.slot() != self.state.slot {

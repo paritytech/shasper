@@ -16,9 +16,9 @@
 
 use crate::primitives::{ValidatorIndex, Gwei};
 use crate::utils::integer_squareroot;
-use crate::{Config, Executive, Error};
+use crate::{Config, ExecutiveMut, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<'state, 'config, C: Config> ExecutiveMut<'state, 'config, C> {
 	fn base_reward(&self, index: ValidatorIndex) -> Gwei {
 		let adjusted_quotient = integer_squareroot(self.total_active_balance()) /
 			self.config.base_reward_quotient();
