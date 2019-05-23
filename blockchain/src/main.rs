@@ -177,11 +177,8 @@ fn builder_thread<C: Config + Clone>(
 			executor.initialize_block(
 				state.as_externalities(), current_slot,
 			).unwrap();
-			let proposer_index = executor.proposer_index(state.as_externalities()).unwrap();
-			let proposer_pubkey = executor
-				.validator_pubkey(proposer_index, state.as_externalities())
-				.unwrap();
 			let current_epoch = executor.current_epoch(state.as_externalities()).unwrap();
+
 			let randao_domain = executor.domain(
 				state.as_externalities(),
 				config.domain_randao(),
@@ -192,6 +189,46 @@ fn builder_thread<C: Config + Clone>(
 				config.domain_beacon_proposer(),
 				None
 			).unwrap();
+
+			for (validator_id, _) in &keys {
+				let validator_index = executor.validator_index(
+					validator_id,
+					state.as_externalities()
+				).unwrap();
+
+				if let Some(validator_index) = validator_index {
+					let committee_assignment = executor.committee_assignment(
+						state.as_externalities(),
+						current_epoch,
+						validator_index,
+					).unwrap();
+					if let Some(committee_assignment) = committee_assignment {
+						if committee_assignment.slot == current_slot {
+							println!(
+								"Found validator {} attesting slot {} with shard {}",
+								validator_id, current_slot, committee_assignment.shard);
+
+							let epoch_start_slot = config.epoch_start_slot(current_epoch);
+							let epoch_boundary_block =
+
+							let data = AttestationData {
+								beacon_block_root: H256::from_slice(
+									Digestible::<C::Digest>::truncated_hash(&head_block).as_slice(),
+								),
+								source_epoch: state.state().current_justified_epoch,
+								source_root: state.state().current_justified_root,
+								target_epoch: current_epoch,
+								target_root:
+							};
+						}
+					}
+				}
+			}
+
+			let proposer_index = executor.proposer_index(state.as_externalities()).unwrap();
+			let proposer_pubkey = executor
+				.validator_pubkey(proposer_index, state.as_externalities())
+				.unwrap();
 			println!("Current proposer {} ({}) on epoch {}", proposer_index, proposer_pubkey, current_epoch);
 
 			let seckey = match keys.get(&proposer_pubkey) {
@@ -214,28 +251,6 @@ fn builder_thread<C: Config + Clone>(
 					eth1_data: eth1_data.clone(),
 				}
 			).unwrap();
-
-			for (validator_id, _) in &keys {
-				let validator_index = executor.validator_index(
-					validator_id,
-					state.as_externalities()
-				).unwrap();
-
-				if let Some(validator_index) = validator_index {
-					let committee_assignment = executor.committee_assignment(
-						state.as_externalities(),
-						current_epoch,
-						validator_index,
-					).unwrap();
-					if let Some(committee_assignment) = committee_assignment {
-						if committee_assignment.slot == current_slot {
-							println!(
-								"Found validator {} attesting slot {} with shard {}",
-								validator_id, current_slot, committee_assignment.shard);
-						}
-					}
-				}
-			}
 
 			executor.finalize_block(
 				&mut unsealed_block, state.as_externalities()
