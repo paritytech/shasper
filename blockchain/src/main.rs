@@ -1,4 +1,4 @@
-use beacon::{genesis, Config, ParameteredConfig, Inherent};
+use beacon::{genesis, Config, ParameteredConfig, Inherent, Transaction};
 use beacon::primitives::{H256, Signature, ValidatorId, BitField};
 use beacon::types::{Eth1Data, Deposit, DepositData, AttestationData, AttestationDataAndCustodyBit, Attestation};
 use ssz::Digestible;
@@ -161,6 +161,7 @@ fn builder_thread<C: Config + Clone>(
 	config: C,
 ) {
 	let executor = Executor::new(config.clone());
+	let mut attestations = Vec::new();
 
 	loop {
 		thread::sleep(Duration::new(1, 0));
@@ -171,6 +172,9 @@ fn builder_thread<C: Config + Clone>(
 		let block = {
 			let head_block = backend.read().block_at(&head).unwrap();
 			let mut head_state = backend.read().state_at(&head).unwrap();
+			println!("Justified epoch {}, finalized epoch {}",
+					 { head_state.state().current_justified_epoch },
+					 { head_state.state().finalized_epoch });
 
 			let mut state = backend.read().state_at(&head).unwrap();
 			let externalities = state.as_externalities();
@@ -247,9 +251,7 @@ fn builder_thread<C: Config + Clone>(
 								aggregation_bitfield, data, custody_bitfield, signature
 							};
 
-							println!(
-								"Created attestation: {:?}", attestation
-							);
+							attestations.push(attestation);
 						}
 					}
 				}
@@ -279,6 +281,21 @@ fn builder_thread<C: Config + Clone>(
 					eth1_data: eth1_data.clone(),
 				}
 			).unwrap();
+
+			let mut collected_attestations = Vec::new();
+			for attestation in attestations.clone() {
+				match executor.apply_extrinsic(
+					&mut unsealed_block, state.as_externalities(),
+					Transaction::Attestation(attestation.clone())
+				) {
+					Ok(()) => {
+						collected_attestations.push(attestation);
+					},
+					Err(_) => (),
+				}
+			}
+			println!("Pushed {} attestations", collected_attestations.len());
+			attestations.retain(|a| !collected_attestations.contains(a));
 
 			executor.finalize_block(
 				&mut unsealed_block, state.as_externalities()

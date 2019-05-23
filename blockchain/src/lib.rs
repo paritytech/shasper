@@ -190,8 +190,8 @@ impl<C: Config> Executor<C> {
 	pub fn apply_extrinsic(
 		&self,
 		block: &mut UnsealedBeaconBlock,
-		extrinsic: Transaction,
 		state: &mut <Self as BlockExecutor>::Externalities,
+		extrinsic: Transaction,
 	) -> Result<(), Error> {
 		Ok(beacon::apply_transaction(block, state.state(), extrinsic, &self.config)?)
 	}
