@@ -1,12 +1,12 @@
 use beacon::{genesis, Config, ParameteredConfig, Inherent};
-use beacon::primitives::{H256, Signature, ValidatorId};
-use beacon::types::{Eth1Data, Deposit, DepositData};
+use beacon::primitives::{H256, Signature, ValidatorId, BitField};
+use beacon::types::{Eth1Data, Deposit, DepositData, AttestationData, AttestationDataAndCustodyBit, Attestation};
 use ssz::Digestible;
 use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
 use blockchain::chain::SharedImportBlock;
-use blockchain::traits::{ChainQuery, AsExternalities, ImportBlock};
+use blockchain::traits::{ChainQuery, AsExternalities, ImportBlock, Block as BlockT};
 use blockchain_network_simple::BestDepthStatusProducer;
-use shasper_blockchain::{Block, Executor, State, AMCLVerification};
+use shasper_blockchain::{Block, Executor, State, AMCLVerification, StateExternalities};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
 use clap::{App, Arg};
 use std::thread;
@@ -170,9 +170,9 @@ fn builder_thread<C: Config + Clone>(
 
 		let block = {
 			let head_block = backend.read().block_at(&head).unwrap();
-			let head_state = backend.read().state_at(&head).unwrap();
+			let mut head_state = backend.read().state_at(&head).unwrap();
 
-			let mut state = head_state;
+			let mut state = backend.read().state_at(&head).unwrap();
 			let externalities = state.as_externalities();
 			let current_slot = head_block.0.slot + 1;
 			executor.initialize_block(externalities, current_slot).unwrap();
@@ -182,8 +182,10 @@ fn builder_thread<C: Config + Clone>(
 				.domain(config.domain_randao(), None);
 			let proposer_domain = executor.executive(externalities)
 				.domain(config.domain_beacon_proposer(), None);
+			let attestation_domain = executor.executive(externalities)
+				.domain(config.domain_attestation(), None);
 
-			for (validator_id, _) in &keys {
+			for (validator_id, validator_seckey) in &keys {
 				let validator_index = externalities.state().validator_index(validator_id);
 
 				if let Some(validator_index) = validator_index {
@@ -194,19 +196,60 @@ fn builder_thread<C: Config + Clone>(
 							println!(
 								"Found validator {} attesting slot {} with shard {}",
 								validator_id, current_slot, committee_assignment.shard);
+							let shard = committee_assignment.shard;
+							let committee = committee_assignment.validators;
 
-							// let epoch_start_slot = config.epoch_start_slot(current_epoch);
-							// let epoch_boundary_block =
+							let target_epoch = current_epoch;
+							let target_slot = config.epoch_start_slot(target_epoch);
+							let target_root = if target_slot == current_slot {
+								head
+							} else {
+								executor.executive(externalities)
+									.block_root(target_epoch).unwrap()
+							};
+							let source_epoch = externalities.state().current_justified_epoch;
+							let source_root = externalities.state().current_justified_root;
+							println!(
+								"Casper source {} ({}) to target {} ({})",
+								source_epoch, source_root, target_epoch, target_root,
+							);
 
-							// let data = AttestationData {
-							// 	beacon_block_root: H256::from_slice(
-							// 		Digestible::<C::Digest>::truncated_hash(&head_block).as_slice(),
-							// 	),
-							// 	source_epoch: state.state().current_justified_epoch,
-							// 	source_root: state.state().current_justified_root,
-							// 	target_epoch: current_epoch,
-							// 	target_root:
-							// };
+							let parent_crosslink = head_state.state()
+								.current_crosslinks[shard as usize].clone();
+
+							let data = AttestationData {
+								beacon_block_root: head_block.id(),
+
+								source_epoch, source_root, target_epoch, target_root,
+
+								shard,
+								previous_crosslink_root: H256::from_slice(
+									Digestible::<C::Digest>::hash(&parent_crosslink).as_slice(),
+								),
+								crosslink_data_root: H256::default(),
+							};
+							let signature = Signature::from_slice(&bls::Signature::new(
+								Digestible::<C::Digest>::hash(&AttestationDataAndCustodyBit {
+									data: data.clone(),
+									custody_bit: false,
+								}).as_slice(),
+								attestation_domain,
+								&validator_seckey,
+							).as_bytes()[..]);
+
+							let index_into_committee = committee.iter()
+								.position(|v| *v == validator_index).unwrap();
+							let mut aggregation_bitfield = BitField::new(committee.len());
+							aggregation_bitfield.set_bit(index_into_committee, true);
+							let custody_bitfield = BitField::new(committee.len());
+
+							let attestation = Attestation {
+								aggregation_bitfield, data, custody_bitfield, signature
+							};
+
+							println!(
+								"Created attestation: {:?}", attestation
+							);
 						}
 					}
 				}
