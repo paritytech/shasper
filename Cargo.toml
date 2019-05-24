@@ -2,11 +2,11 @@
 members = [
 	"beacon",
 	"yamltests",
+	"crypto",
 	"substrate",
 	"substrate/runtime",
 	"substrate/primitives",
 	"substrate/consensus",
-	"substrate/crypto",
 	"blockchain",
 	"blockchain/lmd-ghost",
 	"utils/ssz",

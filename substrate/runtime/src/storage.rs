@@ -14,15 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-#![cfg_attr(not(feature = "std"), no_std)]
+use primitives::{
+	BlockNumber, Hash, Balance, ValidatorId, CheckedAttestation, AttestationContext,
+	KeccakHasher,
+};
+use runtime_support::storage_items;
+use runtime_support::storage::{StorageValue, StorageMap};
+use runtime_support::storage::unhashed::{self, StorageVec};
+use casper::{randao, committee};
+use crate::state::ValidatorRecord;
+use crate::{UncheckedExtrinsic, utils};
 
-pub mod bls {
-	use bls_crate;
-
-	pub type Public = bls_crate::PublicKey;
-	pub type Secret = bls_crate::SecretKey;
-	pub type Pair = bls_crate::Keypair;
-	pub type Signature = bls_crate::Signature;
-	pub type AggregatePublic = bls_crate::AggregatePublicKey;
-	pub type AggregateSignature = bls_crate::AggregateSignature;
+storage_items! {
+	pub State: b"sys:state" => BeaconState;
+	pub Config: b"sys:config" => ParameteredConfig::<AMCLVerification>;
 }

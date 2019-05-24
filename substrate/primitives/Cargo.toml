@@ -5,7 +5,7 @@ authors = ["Parity Team <admin@parity.io>"]
 edition = "2018"
 
 [dependencies]
-crypto = { package = "shasper-crypto", path = "../crypto", default-features = false }
+crypto = { package = "shasper-crypto", path = "../../crypto", default-features = false }
 beacon = { path = "../../beacon", default-features = false, features = ["with-codec"] }
 
 [features]

@@ -10,6 +10,7 @@ clap = "2.32"
 lmd-ghost = { path = "lmd-ghost" }
 beacon = { path = "../beacon" }
 parity-codec = { version = "3.0", features = ["derive"] }
+crypto = { package = "shasper-crypto", path = "../crypto" }
 blockchain = "0.6"
 blockchain-network-simple = "0.2"
 ssz = { path = "../utils/ssz" }

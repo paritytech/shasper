@@ -3099,6 +3099,7 @@ dependencies = [
  "parity-codec 3.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shasper-crypto 0.1.0",
  "ssz 0.1.2",
 ]
 
@@ -3152,6 +3153,7 @@ dependencies = [
 name = "shasper-crypto"
 version = "0.1.0"
 dependencies = [
+ "beacon 0.1.2",
  "bls-aggregates 0.6.1 (git+https://github.com/sigp/signature-schemes)",
 ]
 

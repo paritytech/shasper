@@ -15,7 +15,7 @@ runtime-primitives = { package = "sr-primitives", git = "https://github.com/pari
 runtime-version = { package = "sr-version", git = "https://github.com/paritytech/substrate" }
 runtime-io = { package = "sr-io", git = "https://github.com/paritytech/substrate" }
 consensus-primitives = { package = "shasper-consensus-primitives", path = "primitives" }
-crypto = { package = "shasper-crypto", path = "../crypto" }
+crypto = { package = "shasper-crypto", path = "../../crypto" }
 runtime = { package = "shasper-runtime", path = "../runtime" }
 futures = "0.1.17"
 tokio = "0.1.7"

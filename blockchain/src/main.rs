@@ -6,13 +6,13 @@ use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
 use blockchain::chain::SharedImporter;
 use blockchain::traits::{ChainQuery, AsExternalities, BlockImporter, Block as BlockT};
 use blockchain_network_simple::BestDepthStatusProducer;
-use shasper_blockchain::{Block, Executor, State, AMCLVerification, StateExternalities};
+use shasper_blockchain::{Block, Executor, State, StateExternalities};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
 use clap::{App, Arg};
 use std::thread;
 use std::collections::HashMap;
 use core::time::Duration;
-use bls_aggregates as bls;
+use crypto::bls;
 
 fn deposit_tree<C: Config>(deposits: &[DepositData], config: &C) -> Vec<Vec<H256>> {
 	let mut zerohashes = vec![H256::default()];
@@ -85,12 +85,12 @@ fn main() {
 			 .help("Whether to author blocks"))
 		.get_matches();
 
-	let config = ParameteredConfig::<AMCLVerification>::small();
-	let mut keys: HashMap<ValidatorId, bls::SecretKey> = HashMap::new();
+	let config = ParameteredConfig::<bls::Verification>::small();
+	let mut keys: HashMap<ValidatorId, bls::Secret> = HashMap::new();
 	let mut deposit_datas = Vec::new();
 	for i in 0..32 {
-		let seckey = bls::SecretKey::random(&mut rand::thread_rng());
-		let pubkey = ValidatorId::from_slice(&bls::PublicKey::from_secret_key(&seckey).as_bytes()[..]);
+		let seckey = bls::Secret::random(&mut rand::thread_rng());
+		let pubkey = ValidatorId::from_slice(&bls::Public::from_secret_key(&seckey).as_bytes()[..]);
 		let mut data = DepositData {
 			pubkey: pubkey.clone(),
 			withdrawal_credentials: H256::from_low_u64_le(i as u64),
@@ -157,7 +157,7 @@ fn builder_thread<C: Config + Clone>(
 	backend: SharedBackend<NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>,
 	mut importer: SharedImporter<ArchiveGhostImporter<Executor<C>, NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>>,
 	eth1_data: Eth1Data,
-	keys: HashMap<ValidatorId, bls::SecretKey>,
+	keys: HashMap<ValidatorId, bls::Secret>,
 	config: C,
 ) {
 	let executor = Executor::new(config.clone());

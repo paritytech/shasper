@@ -25,21 +25,24 @@ extern crate parity_codec as codec;
 extern crate parity_codec_derive as codec_derive;
 extern crate substrate_client as client;
 
+mod digest;
+mod extrinsic;
+
+// A few exports that help ease life for downstream crates.
+pub use digest::DigestItem;
+pub use extrinsic::UncheckedExtrinsic;
+#[cfg(any(feature = "std", test))]
+pub use runtime_primitives::BuildStorage;
+// #[cfg(feature = "std")]
+// pub use genesis::GenesisConfig;
+pub use apis::{VERSION, RuntimeApi};
+#[cfg(feature = "std")]
+pub use apis::dispatch;
+
 use primitives::BlockNumber;
 use runtime_primitives::{generic, traits::{GetNodeBlockType, GetRuntimeBlockType, BlakeTwo256}};
 #[cfg(feature = "std")]
 use runtime_version::NativeVersion;
-
-// A few exports that help ease life for downstream crates.
-#[cfg(any(feature = "std", test))]
-pub use runtime_primitives::BuildStorage;
-#[cfg(feature = "std")]
-pub use genesis::GenesisConfig;
-pub use extrinsic::UncheckedExtrinsic;
-pub use digest::DigestItem;
-pub use apis::{VERSION, RuntimeApi};
-#[cfg(feature = "std")]
-pub use apis::dispatch;
 
 /// The version infromation used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -122,6 +125,7 @@ mod apis {
 			}
 
 			fn authorities() -> Vec<ValidatorId> {
+				let state = storage::State::get();
 				let store = Store;
 
 				let current_slot = storage::Number::get();
