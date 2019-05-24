@@ -22,7 +22,7 @@ installed. Other dependencies required including `pkgconfig`, `libudev`,
 
 ## `substrate` client
 
-The `substrate` client uses Aura consensus and complete Serenity `beacon` v0.6
+The `substrate` client uses Aura consensus and Serenity `beacon` v0.6
 runtime. The client also inherents the complete networking stack from
 Substrate. Currently, the client can only validate blocks and cannot be a
 validator.
@@ -49,10 +49,10 @@ cargo run --release -- --dev -k Alice
 
 ## `blockchain` client
 
-The `blockchain` client uses spec archive LMD-GHOST consensus and complete
-Serenity `beacon` v0.6 runtime. The client implements a basic in-memory backend
-and networking stack based on `libp2p`. It also contains basic validator logic
-and can participate in beacon chain proposing and attestation.
+The `blockchain` client uses spec archive LMD-GHOST consensus and Serenity
+`beacon` v0.6 runtime. The client implements a basic in-memory backend and
+networking stack based on `libp2p`. It also contains basic validator logic and
+can participate in beacon chain proposing and attestation.
 
 To build the `blockchain` client:
 
