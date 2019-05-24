@@ -1,18 +1,17 @@
 [workspace]
 members = [
-	"runtime",
-	"primitives",
-	"consensus",
-	"crypto",
-	"casper",
 	"beacon",
+	"yamltests",
+	"substrate",
+	"substrate/runtime",
+	"substrate/primitives",
+	"substrate/consensus",
+	"substrate/crypto",
 	"blockchain",
 	"blockchain/lmd-ghost",
-	"yamltests",
 	"utils/ssz",
 	"utils/ssz-derive",
 	"utils/ssz-merkle",
-	"utils/keccak-hasher",
 ]
 exclude = [
 	"runtime/wasm",

@@ -38,11 +38,6 @@ crypto = { package = "shasper-crypto", path = "crypto" }
 structopt = "0.2.13"
 basic-authorship = { package = "substrate-basic-authorship", git = "https://github.com/paritytech/substrate" }
 inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate" }
-casper = { path = "casper" }
 
 [build-dependencies]
 vergen = "2"
-
-[profile.release]
-# Substrate runtime requires unwinding.
-panic = "unwind"

@@ -29,4 +29,3 @@ transaction-pool = { package = "substrate-transaction-pool", git = "https://gith
 basic-authorship = { package = "substrate-basic-authorship", git = "https://github.com/paritytech/substrate" }
 aura-slots = { package = "substrate-consensus-aura-slots", git = "https://github.com/paritytech/substrate" }
 inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate" }
-casper = { path = "../casper" }

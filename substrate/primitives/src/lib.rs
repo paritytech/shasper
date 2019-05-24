@@ -30,23 +30,14 @@ pub(crate) mod prelude {
 #[prelude_import]
 use crate::prelude::*;
 
-extern crate parity_codec as codec;
-extern crate parity_codec_derive as codec_derive;
-
-mod attestation;
-
 pub use crypto;
-pub use keccak_hasher::KeccakHasher;
-pub use beacon::primitives::{H768, Signature, H384, ValidatorId, BitField, H32, Version};
-pub use attestation::{UnsignedAttestation, UncheckedAttestation, CheckedAttestation, AttestationContext};
-
-pub use primitive_types::H256;
+pub use beacon::primitives::{H768, Signature, H384, H256, ValidatorId, BitField, H32, Version};
 
 /// Shasper validator public key.
 pub type AuthorityId = ValidatorId;
 
 /// A hash of some data used by the chain.
-pub type Hash = primitive_types::H256;
+pub type Hash = H256;
 
 /// Index of a block number in the chain.
 pub type BlockNumber = u64;
