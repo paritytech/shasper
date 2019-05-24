@@ -3,8 +3,8 @@ use beacon::primitives::{H256, Signature, ValidatorId, BitField};
 use beacon::types::{Eth1Data, Deposit, DepositData, AttestationData, AttestationDataAndCustodyBit, Attestation};
 use ssz::Digestible;
 use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
-use blockchain::chain::SharedImportBlock;
-use blockchain::traits::{ChainQuery, AsExternalities, ImportBlock, Block as BlockT};
+use blockchain::chain::SharedImporter;
+use blockchain::traits::{ChainQuery, AsExternalities, BlockImporter, Block as BlockT};
 use blockchain_network_simple::BestDepthStatusProducer;
 use shasper_blockchain::{Block, Executor, State, AMCLVerification, StateExternalities};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
@@ -135,7 +135,7 @@ fn main() {
 		)
 	);
 	let executor = Executor::new(config.clone());
-	let importer = SharedImportBlock::new(
+	let importer = SharedImporter::new(
 		ArchiveGhostImporter::new(executor, backend.clone())
 	);
 	let status = BestDepthStatusProducer::new(backend.clone());
@@ -155,7 +155,7 @@ fn main() {
 
 fn builder_thread<C: Config + Clone>(
 	backend: SharedBackend<NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>,
-	mut importer: SharedImportBlock<ArchiveGhostImporter<Executor<C>, NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>>,
+	mut importer: SharedImporter<ArchiveGhostImporter<Executor<C>, NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>>,
 	eth1_data: Eth1Data,
 	keys: HashMap<ValidatorId, bls::SecretKey>,
 	config: C,
