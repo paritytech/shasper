@@ -62,7 +62,7 @@ cd ./blockchain && cargo run --release -- --author
 
 ## FAQ
 
-**I remember the `substrate` client has LMD-GHOST consensus with proposing and
+**I remember the `substrate` client had LMD-GHOST consensus with proposing and
 attestation logic, why isn't it there now?**
 
 The previous LMD-GHOST consensus logic and block proposer was no longer suitable
