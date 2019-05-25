@@ -1,5 +1,4 @@
 pub mod archive;
-pub mod pruning;
 
 use blockchain::traits::{Block, BlockExecutor};
 use core::hash::Hash;
