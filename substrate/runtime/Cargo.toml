@@ -25,13 +25,13 @@ hex-literal = { version = "0.1.0", optional = true }
 serde = { version = "1.0", optional = true, default-features = false }
 serde_derive = { version = "1.0", optional = true }
 keyring = { package = "substrate-keyring", git = "https://github.com/paritytech/substrate", optional = true }
-keccak-hasher = { path = "../utils/keccak-hasher", default-features = false }
-ssz = { path = "../utils/ssz", default-features = false }
-ssz-derive = { path = "../utils/ssz-derive" }
+keccak-hasher = { path = "../../utils/keccak-hasher", default-features = false }
+ssz = { path = "../../utils/ssz", default-features = false }
+ssz-derive = { path = "../../utils/ssz-derive" }
 byteorder = { version = "1.2", default-features = false }
 hash-db = { version = "0.11", default-features = false }
-crypto = { package = "shasper-crypto", path = "../crypto", default-features = false }
-shuffling = { path = "../utils/shuffling", default-features = false }
+crypto = { package = "shasper-crypto", path = "../../crypto", default-features = false }
+shuffling = { path = "../../utils/shuffling", default-features = false }
 casper = { path = "../casper", default-features = false }
 
 [features]

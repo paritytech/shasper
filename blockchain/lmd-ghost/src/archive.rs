@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use core::hash::Hash;
 use core::mem;
-use blockchain::traits::{Backend, Operation, Block, ChainQuery, Auxiliary, BlockExecutor, ImportBlock, AsExternalities};
+use blockchain::traits::{Backend, Operation, Block, ChainQuery, Auxiliary, BlockExecutor, BlockImporter, RawImporter, AsExternalities, ImportOperation};
 use blockchain::backend::{MemoryLikeBackend, SharedBackend};
 use crate::JustifiableExecutor;
 
@@ -233,7 +233,7 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ArchiveGhostImporter<E, Ba> 
 	}
 }
 
-impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ImportBlock for ArchiveGhostImporter<E, Ba> where
+impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> BlockImporter for ArchiveGhostImporter<E, Ba> where
 	E: JustifiableExecutor,
 	Ba: AncestorQuery,
 	Ba::Auxiliary: Auxiliary<E::Block>,
@@ -244,17 +244,39 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ImportBlock for ArchiveGhost
 	type Error = blockchain::chain::Error;
 
 	fn import_block(&mut self, block: Ba::Block) -> Result<(), Self::Error> {
+		let raw = self.ghost.backend.execute_block(&self.executor, block)?;
+
+		self.import_raw(raw)
+	}
+}
+
+impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> RawImporter for ArchiveGhostImporter<E, Ba> where
+	E: JustifiableExecutor,
+	Ba: AncestorQuery,
+	Ba::Auxiliary: Auxiliary<E::Block>,
+	Ba::State: AsExternalities<E::Externalities>,
+	blockchain::chain::Error: From<Ba::Error> + From<E::Error>,
+{
+	type Block = Ba::Block;
+	type State = Ba::State;
+	type Error = blockchain::chain::Error;
+
+	fn import_raw(
+		&mut self,
+		mut raw: ImportOperation<Ba::Block, Ba::State>
+	) -> Result<(), Self::Error> {
 		let (justified_active_validators, justified_block_id, votes) = {
-			let mut importer = self.ghost.backend.begin_import(&self.executor);
-			let mut operation = importer.execute_block(block.clone())?;
-			let justified_active_validators = self.executor.justified_active_validators(operation.state.as_externalities())?;
-			let justified_block_id = match self.executor.justified_block_id(operation.state.as_externalities())? {
+			let externalities = raw.state.as_externalities();
+			let justified_active_validators =
+				self.executor.justified_active_validators(externalities)?;
+			let justified_block_id = match self.executor.justified_block_id(externalities)? {
 				Some(value) => value,
 				None => self.ghost.backend.read().genesis(),
 			};
-			let votes = self.executor.votes(&block, operation.state.as_externalities())?;
+			let votes = self.executor.votes(&raw. block, externalities)?;
 
-			importer.import_raw(operation);
+			let mut importer = self.ghost.backend.begin_import(&self.executor);
+			importer.import_raw(raw);
 			importer.commit()?;
 
 			(justified_active_validators, justified_block_id, votes)
