@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{Slot, UncheckedAttestation, H256};
-use runtime_primitives::traits::{Extrinsic as ExtrinsicT};
-
+use runtime_primitives::traits::{Extrinsic as ExtrinsicT, BlindCheckable};
+use beacon::types::BeaconBlock;
 use codec_derive::{Encode, Decode};
 #[cfg(feature = "std")]
 use serde_derive::{Serialize, Deserialize};
@@ -24,15 +23,25 @@ use serde_derive::{Serialize, Deserialize};
 #[derive(Decode, Encode, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 /// Shasper extrinsic.
-pub enum UncheckedExtrinsic {
+pub enum Extrinsic {
 	/// Actual beacon block to be feed in.
 	BeaconBlock(BeaconBlock),
 }
 
-impl ExtrinsicT for UncheckedExtrinsic {
+impl BlindCheckable for Extrinsic {
+	type Checked = Self;
+
+	fn check(self) -> Result<Self, &'static str> {
+		match self {
+			Extrinsic::BeaconBlock(block) => Ok(Extrinsic::BeaconBlock(block)),
+		}
+	}
+}
+
+impl ExtrinsicT for Extrinsic {
 	fn is_signed(&self) -> Option<bool> {
 		match self {
-			UncheckedExtrinsic::BeaconBlock(_) => Some(true),
+			Extrinsic::BeaconBlock(_) => Some(true),
 		}
 	}
 }

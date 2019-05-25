@@ -14,18 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use primitives::{
-	BlockNumber, Hash, Balance, ValidatorId, CheckedAttestation, AttestationContext,
-	KeccakHasher,
-};
 use runtime_support::storage_items;
-use runtime_support::storage::{StorageValue, StorageMap};
-use runtime_support::storage::unhashed::{self, StorageVec};
-use casper::{randao, committee};
-use crate::state::ValidatorRecord;
-use crate::{UncheckedExtrinsic, utils};
+use runtime_support::storage::unhashed;
+use crypto::bls;
+use beacon::ParameteredConfig;
+use beacon::types::BeaconState;
+use crate::{BlockNumber, Hash, Extrinsic};
 
 storage_items! {
 	pub State: b"sys:state" => BeaconState;
-	pub Config: b"sys:config" => ParameteredConfig::<AMCLVerification>;
+	pub Config: b"sys:config" => ParameteredConfig<bls::Verification>;
+	pub Authority: b"sys:authority" => default super::AuthorityId;
+
+	pub Number: b"sys:num" => default BlockNumber;
+	pub ParentHash: b"sys:parenthash" => default Hash;
+	pub Digest: b"sys:digest" => default super::Digest;
+}
+
+#[allow(dead_code)]
+pub struct Extrinsics;
+impl unhashed::StorageVec for Extrinsics {
+	type Item = Option<Extrinsic>;
+	const PREFIX: &'static [u8] = b"sys:extrinsics";
 }

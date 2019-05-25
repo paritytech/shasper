@@ -39,7 +39,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 	}
 
-	pub(crate) fn active_validator_indices(&self, epoch: Uint) -> Vec<ValidatorIndex> {
+	/// Get active validator indices at epoch.
+	pub fn active_validator_indices(&self, epoch: Uint) -> Vec<ValidatorIndex> {
 		self.state.validator_registry
 			.iter()
 			.enumerate()

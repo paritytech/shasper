@@ -7,8 +7,7 @@ edition = "2018"
 [dependencies]
 parity-codec = { version = "3.2", default-features = false, features = ["derive"] }
 parity-codec-derive = "3.0"
-primitives = { package = "shasper-primitives", path = "../primitives", default-features = false }
-substrate-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
+primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate", default-features = false }
 substrate-client = { git = "https://github.com/paritytech/substrate", default-features = false }
 inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate", default-features = false }
 rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate", default-features = false }
@@ -16,8 +15,8 @@ runtime-io = { package = "sr-io", git = "https://github.com/paritytech/substrate
 runtime-support = { package = "srml-support", git = "https://github.com/paritytech/substrate", default-features = false }
 runtime-primitives = { package = "sr-primitives", git = "https://github.com/paritytech/substrate", default-features = false }
 runtime-version = { package = "sr-version", git = "https://github.com/paritytech/substrate", default-features = false }
-consensus-primitives = { package = "shasper-consensus-primitives", path = "../consensus/primitives", default-features = false }
 aura-primitives = { package = "substrate-consensus-aura-primitives", git = "https://github.com/paritytech/substrate", default-features = false }
+consensus-authorities = { package = "substrate-consensus-authorities", git = "https://github.com/paritytech/substrate", default-features = false }
 rustc-hex = { version = "1.0", optional = true }
 hex-literal = { version = "0.1.0", optional = true }
 serde = { version = "1.0", optional = true, default-features = false }
@@ -28,6 +27,7 @@ ssz-derive = { path = "../../utils/ssz-derive" }
 byteorder = { version = "1.2", default-features = false }
 hash-db = { version = "0.11", default-features = false }
 crypto = { package = "shasper-crypto", path = "../../crypto", default-features = false }
+beacon = { path = "../../beacon", default-features = false, features = ["with-codec"] }
 
 [features]
 default = ["std"]
@@ -37,13 +37,11 @@ std = [
 	"parity-codec/std",
 	"primitives/std",
 	"substrate-client/std",
-	"substrate-primitives/std",
 	"rstd/std",
 	"runtime-io/std",
 	"runtime-support/std",
 	"runtime-primitives/std",
 	"runtime-version/std",
-	"consensus-primitives/std",
 	"keyring",
 	"serde_derive",
 	"serde",
@@ -53,4 +51,8 @@ std = [
 	"hash-db/std",
 	"crypto/std",
 	"aura-primitives/std",
+	"consensus-authorities/std",
+	"beacon/std",
+	"beacon/std-with-codec",
+	"beacon/with-serde",
 ]

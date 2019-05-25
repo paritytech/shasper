@@ -16,6 +16,8 @@
 
 #[cfg(feature = "serde")]
 use serde_derive::{Serialize, Deserialize};
+#[cfg(feature = "parity-codec")]
+use codec::{Encode, Decode};
 
 use core::cmp::max;
 use core::marker::PhantomData;
@@ -264,6 +266,7 @@ pub trait Config {
 
 #[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Config that does not verify BLS signature.
 pub struct ParameteredConfig<BLS: BLSVerification> {
@@ -303,7 +306,7 @@ pub struct ParameteredConfig<BLS: BLSVerification> {
 	/// Genesis epoch.
 	pub genesis_epoch: Uint,
 	/// BLS withdrawal prefix byte.
-	pub bls_withdrawal_prefix_byte: u8,
+	pub bls_withdrawal_prefix_byte: [u8; 1],
 
 	// == Time parameters ==
 	/// Minimum attestation inclusion delay.
@@ -389,7 +392,7 @@ impl<BLS: BLSVerification> Config for ParameteredConfig<BLS> {
 	fn min_deposit_amount(&self) -> Uint { self.min_deposit_amount }
 	fn ejection_balance(&self) -> Uint { self.ejection_balance }
 	fn genesis_slot(&self) -> Slot { self.genesis_slot }
-	fn bls_withdrawal_prefix_byte(&self) -> u8 { self.bls_withdrawal_prefix_byte }
+	fn bls_withdrawal_prefix_byte(&self) -> u8 { self.bls_withdrawal_prefix_byte[0] }
 	fn min_attestation_inclusion_delay(&self) -> Slot { self.min_attestation_inclusion_delay }
 	fn slots_per_epoch(&self) -> Slot { self.slots_per_epoch }
 	fn min_seed_lookahead(&self) -> Uint { self.min_seed_lookahead }
@@ -461,7 +464,7 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 
 			genesis_slot: 0,
 			genesis_epoch: 0,
-			bls_withdrawal_prefix_byte: 0,
+			bls_withdrawal_prefix_byte: [0],
 
 			min_attestation_inclusion_delay: 2,
 			slots_per_epoch: 8,
@@ -522,7 +525,7 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 
 			genesis_slot: 0,
 			genesis_epoch: 0,
-			bls_withdrawal_prefix_byte: 0,
+			bls_withdrawal_prefix_byte: [0],
 
 			min_attestation_inclusion_delay: 4,
 			slots_per_epoch: 64,

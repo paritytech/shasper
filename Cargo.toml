@@ -5,8 +5,6 @@ members = [
 	"crypto",
 	"substrate",
 	"substrate/runtime",
-	"substrate/primitives",
-	"substrate/consensus",
 	"blockchain",
 	"blockchain/lmd-ghost",
 	"utils/ssz",
