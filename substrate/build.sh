@@ -14,7 +14,7 @@ pushd . >/dev/null
 
 cd $ROOT
 
-for SRC in runtime/wasm
+for SRC in substrate/runtime/wasm
 do
   echo "${bold}Building webassembly binary in $SRC...${normal}"
   cd "$PROJECT_ROOT/$SRC"
