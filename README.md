@@ -65,7 +65,8 @@ cd ./blockchain && cargo run --release -- --author
 
 ## FAQ
 
-**Why common caching strategies for `beacon` are not yet implemented?**
+**Why common caching strategies for `beacon` and LMD-GHOST are not yet
+implemented?**
 
 Internally we made the decision that we will strictly follow the beacon chain
 specification for now, and implement optimizations after the specification is
