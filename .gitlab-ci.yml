@@ -9,21 +9,23 @@ variables:
   GIT_SUBMODULE_STRATEGY:          recursive
   CARGO_HOME:                      "/ci-cache/${CI_PROJECT_NAME}/cargo/${CI_JOB_NAME}"
   SCCACHE_DIR:                     "/ci-cache/${CI_PROJECT_NAME}/sccache"
-  SCCACHE_CACHE_SIZE:              50G
   CI_SERVER_NAME:                  "GitLab CI"
   RUST_TOOLCHAIN:                  "stable"
 
-before_script:
-  - sccache -s
-  - ./scripts/init.sh
-  - ./scripts/build.sh
-
+.compiler_info:                    &compiler_info
+  before_script:
+    - rustup show
+    - cargo --version
+    - sccache -s
 
 #### stage:                        test
 
 test-rust-stable:
   stage:                           test
+  <<:                              *compiler_info
   script:
+    - ./scripts/init.sh
+    - ./scripts/build.sh
     - time cargo test --all --release --locked
     - sccache -s
   only:
@@ -41,7 +43,10 @@ test-rust-stable:
 
 build-linux:
   stage:                           build
+  <<:                              *compiler_info
   script:
+    - ./scripts/init.sh
+    - ./scripts/build.sh
     - time cargo build --release
     - sccache -s
   tags:
