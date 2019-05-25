@@ -16,8 +16,21 @@
 
 //! The Substrate Shasper runtime. This can be compiled with `#[no_std]`, ready for Wasm.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(not(feature = "std"), feature(alloc))]
+#![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(alloc_prelude), feature(prelude_import))]
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+pub(crate) mod prelude {
+	pub use core::prelude::v1::*;
+	pub use alloc::prelude::v1::*;
+}
+
+#[cfg(not(feature = "std"))]
+#[allow(unused)]
+#[prelude_import]
+use crate::prelude::*;
 
 extern crate parity_codec as codec;
 extern crate parity_codec_derive as codec_derive;
@@ -47,8 +60,9 @@ use client::{
 	block_builder::api as block_builder_api,
 	runtime_api as client_api,
 };
+use runtime_version::RuntimeVersion;
 #[cfg(feature = "std")]
-use runtime_version::{RuntimeVersion, NativeVersion};
+use runtime_version::NativeVersion;
 
 /// Shasper runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -114,7 +128,7 @@ impl_runtime_apis! {
 					let mut state = storage::State::get().expect("State has been initialized");
 					let config = storage::Config::get().expect("Config has been initialized");
 
-					beacon::execute_block(block, &mut state, &config)
+					beacon::execute_block(block, &mut state, &config).ok()
 						.expect("Executing block failed");
 					storage::State::put(state);
 				}
@@ -141,7 +155,7 @@ impl_runtime_apis! {
 					let mut state = storage::State::get().expect("State has been initialized");
 					let config = storage::Config::get().expect("Config has been initialized");
 
-					beacon::execute_block(&block, &mut state, &config)
+					beacon::execute_block(&block, &mut state, &config).ok()
 						.expect("Executing block failed");
 					storage::State::put(state);
 				}
@@ -171,7 +185,7 @@ impl_runtime_apis! {
 		}
 
 		fn inherent_extrinsics(_data: InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
-			vec![]
+			Vec::new()
 		}
 
 		fn check_inherents(_block: Block, _data: InherentData) -> CheckInherentsResult {
@@ -198,7 +212,9 @@ impl_runtime_apis! {
 	impl consensus_authorities::AuthoritiesApi<Block> for Runtime {
 		fn authorities() -> Vec<AuthorityId> {
 			let authority = storage::Authority::get();
-			vec![authority]
+			let mut ret = Vec::new();
+			ret.push(authority);
+			ret
 		}
 	}
 
