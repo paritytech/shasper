@@ -31,6 +31,8 @@ pub trait BLSVerification {
 	fn verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool;
 	/// Aggregate BLS public keys.
 	fn aggregate_pubkeys(pubkeys: &[ValidatorId]) -> ValidatorId;
+	/// Aggregate BLS signatures.
+	fn aggregate_signatures(signatures: &[Signature]) -> Signature;
 	/// Verify multiple BLS signatures.
 	fn verify_multiple(pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool;
 }
@@ -46,6 +48,9 @@ impl BLSVerification for BLSNoVerification {
 	}
 	fn aggregate_pubkeys(_pubkeys: &[ValidatorId]) -> ValidatorId {
 		ValidatorId::default()
+	}
+	fn aggregate_signatures(_signatures: &[Signature]) -> Signature {
+		Signature::default()
 	}
 	fn verify_multiple(_pubkeys: &[ValidatorId], _messages: &[H256], _signature: &Signature, _domain: u64) -> bool {
 		true
@@ -178,6 +183,8 @@ pub trait Config {
 	) -> bool;
 	/// Aggregate BLS public keys.
 	fn bls_aggregate_pubkeys(&self, pubkeys: &[ValidatorId]) -> ValidatorId;
+	/// Aggregate BLS signatures.
+	fn aggregate_signatures(signatures: &[Signature]) -> Signature;
 	/// Verify multiple BLS signatures.
 	fn bls_verify_multiple(
 		&self,
@@ -437,6 +444,9 @@ impl<BLS: BLSVerification> Config for ParameteredConfig<BLS> {
 	}
 	fn bls_aggregate_pubkeys(&self, pubkeys: &[ValidatorId]) -> ValidatorId {
 		BLS::aggregate_pubkeys(pubkeys)
+	}
+	fn aggregate_signatures(signatures: &[Signature]) -> Signature {
+		BLS::aggregate_signatures(signatures)
 	}
 	fn bls_verify_multiple(&self, pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool {
 		BLS::verify_multiple(pubkeys, messages, signature, domain)

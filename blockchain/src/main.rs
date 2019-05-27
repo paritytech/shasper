@@ -6,7 +6,7 @@ use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
 use blockchain::chain::SharedImporter;
 use blockchain::traits::{ChainQuery, AsExternalities, BlockImporter, Block as BlockT};
 use blockchain_network_simple::BestDepthStatusProducer;
-use shasper_blockchain::{Block, Executor, State, StateExternalities};
+use shasper_blockchain::{Block, Executor, State, Error, StateExternalities, AttestationPool};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
 use clap::{App, Arg};
 use std::thread;
@@ -161,7 +161,7 @@ fn builder_thread<C: Config + Clone>(
 	config: C,
 ) {
 	let executor = Executor::new(config.clone());
-	let mut attestations = Vec::new();
+	let mut attestations = AttestationPool::new(&config);
 
 	loop {
 		thread::sleep(Duration::new(1, 0));
@@ -283,19 +283,24 @@ fn builder_thread<C: Config + Clone>(
 			).unwrap();
 
 			let mut collected_attestations = Vec::new();
-			for attestation in attestations.clone() {
+			for (hash, attestation) in attestations.iter() {
 				match executor.apply_extrinsic(
 					&mut unsealed_block, state.as_externalities(),
 					Transaction::Attestation(attestation.clone())
 				) {
 					Ok(()) => {
-						collected_attestations.push(attestation);
+						collected_attestations.push(*hash);
 					},
-					Err(_) => (),
+					Err(Error::Beacon(ref err)) if err == &beacon::Error::AttestationSubmittedTooQuickly => {},
+					Err(err) => {
+						println!("Warning: error when submitting an attestation: {}", err);
+					},
 				}
 			}
 			println!("Pushed {} attestations", collected_attestations.len());
-			attestations.retain(|a| !collected_attestations.contains(a));
+			for hash in collected_attestations {
+				attestations.pop(&hash);
+			}
 
 			executor.finalize_block(
 				&mut unsealed_block, state.as_externalities()
