@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+use core::ops::{BitOr, BitOrAssign, BitAnd, BitAndAssign};
+use core::cmp::min;
 #[cfg(feature = "parity-codec")]
 use codec::{Encode, Decode};
 #[cfg(feature = "serde")]
@@ -75,6 +77,40 @@ impl<D: digest::Digest> ssz::Digestible<D> for BitField {
 	}
 }
 
+impl BitOr for BitField {
+	type Output = Self;
+
+	fn bitor(mut self, rhs: Self) -> Self {
+		self.bitor_assign(rhs);
+		self
+	}
+}
+
+impl BitOrAssign for BitField {
+	fn bitor_assign(&mut self, rhs: Self) {
+		for i in 0..min(self.0.len(), rhs.0.len()) {
+			self.0[i] |= rhs.0[i];
+		}
+	}
+}
+
+impl BitAnd for BitField {
+	type Output = Self;
+
+	fn bitand(mut self, rhs: Self) -> Self {
+		self.bitand_assign(rhs);
+		self
+	}
+}
+
+impl BitAndAssign for BitField {
+	fn bitand_assign(&mut self, rhs: Self) {
+		for i in 0..min(self.0.len(), rhs.0.len()) {
+			self.0[i] &= rhs.0[i];
+		}
+	}
+}
+
 impl BitField {
 	/// New with given length.
 	pub fn new(length: usize) -> Self {
@@ -86,7 +122,7 @@ impl BitField {
 
 	/// Get bit at index.
 	pub fn get_bit(&self, index: usize) -> bool {
-		(self.0[index / 8] >> (index % 8)) == 1
+		(self.0[index / 8] >> (index % 8)) % 2 == 1
 	}
 
 	/// Set bit at index.

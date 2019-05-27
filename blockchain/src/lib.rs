@@ -1,3 +1,7 @@
+mod pool;
+
+pub use pool::AttestationPool;
+
 use beacon::primitives::H256;
 use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockHeader};
 use beacon::{Error as BeaconError, Executive, Config, Inherent, Transaction};

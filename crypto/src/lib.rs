@@ -51,11 +51,11 @@ pub mod bls {
 
 		impl BLSVerification for Verification {
 			fn verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool {
-				let pubkey = match bls::Public::from_bytes(&pubkey[..]) {
+				let pubkey = match bls::AggregatePublic::from_bytes(&pubkey[..]) {
 					Ok(value) => value,
 					Err(_) => return false,
 				};
-				let signature = match bls::Signature::from_bytes(&signature[..]) {
+				let signature = match bls::AggregateSignature::from_bytes(&signature[..]) {
 					Ok(value) => value,
 					Err(_) => return false,
 				};
@@ -71,6 +71,17 @@ pub mod bls {
 					aggregated.add(&pubkey);
 				}
 				ValidatorId::from_slice(&aggregated.as_bytes()[..])
+			}
+			fn aggregate_signatures(signatures: &[Signature]) -> Signature {
+				let mut aggregated = bls::AggregateSignature::new();
+				for signature in signatures {
+					let signature = match bls::Signature::from_bytes(&signature[..]) {
+						Ok(value) => value,
+						Err(_) => return Signature::default(),
+					};
+					aggregated.add(&signature);
+				}
+				Signature::from_slice(&aggregated.as_bytes()[..])
 			}
 			fn verify_multiple(pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool {
 				let mut bls_messages = Vec::new();
