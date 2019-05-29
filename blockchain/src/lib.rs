@@ -1,4 +1,5 @@
 mod pool;
+pub mod rocksdb;
 
 pub use pool::AttestationPool;
 
