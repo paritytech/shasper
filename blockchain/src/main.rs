@@ -3,13 +3,15 @@ use beacon::primitives::{H256, Signature, ValidatorId, BitField};
 use beacon::types::{Eth1Data, Deposit, DepositData, AttestationData, AttestationDataAndCustodyBit, Attestation};
 use ssz::Digestible;
 use blockchain::backend::{RwLockBackend, MemoryBackend, MemoryLikeBackend};
-use blockchain::import::MutexImporter;
-use blockchain::traits::{ChainQuery, AsExternalities, BlockImporter, Block as BlockT};
+use blockchain::import::{SharedBlockImporter, MutexImporter};
+use blockchain::traits::{ChainQuery, AsExternalities, Backend, Auxiliary, Block as BlockT};
 use blockchain_network_simple::BestDepthStatusProducer;
 use shasper_blockchain::{Block, Executor, State, Error, StateExternalities, AttestationPool};
+use shasper_blockchain::rocksdb::{RocksBackend, RocksLikeBackend};
 use lmd_ghost::archive::{NoCacheAncestorBackend, ArchiveGhostImporter};
 use clap::{App, Arg};
 use std::thread;
+use std::path::Path;
 use std::collections::HashMap;
 use core::time::Duration;
 use crypto::bls;
@@ -80,6 +82,11 @@ fn main() {
 			 .long("port")
 			 .takes_value(true)
 			 .help("Port to listen on"))
+		.arg(Arg::with_name("data")
+			 .short("d")
+			 .long("data")
+			 .takes_value(true)
+			 .help("Use rocksdb instead of in-memory database"))
 		.arg(Arg::with_name("author")
 			 .long("author")
 			 .help("Whether to author blocks"))
@@ -128,40 +135,80 @@ fn main() {
 		&deposits, 0, eth1_data.clone(), &config
 	).unwrap();
 	let genesis_block = Block(genesis_beacon_block);
-	let backend = NoCacheAncestorBackend::new(
-		RwLockBackend::new(
-			MemoryBackend::new_with_genesis(
-				genesis_block.clone(),
-				genesis_state.into(),
+
+	if let Some(path) = matches.value_of("data") {
+		println!("Using RocksDB backend");
+		let backend = NoCacheAncestorBackend::new(
+			if Path::new(path).exists() {
+				RocksBackend::<_, (), State>::from_existing(
+					path
+				)
+			} else {
+				RocksBackend::<_, (), State>::new_with_genesis(
+					path,
+					genesis_block.clone(),
+					genesis_state.into(),
+				)
+			}
+		);
+		let executor = Executor::new(config.clone());
+		let importer = MutexImporter::new(
+			ArchiveGhostImporter::new(executor, backend.clone())
+		);
+		let status = BestDepthStatusProducer::new(backend.clone());
+		let port = matches.value_of("port").unwrap_or("37365");
+		let author = matches.is_present("author");
+
+		if author {
+			let backend_build = backend.clone();
+			let importer_build = importer.clone();
+			thread::spawn(move || {
+				builder_thread(backend_build, importer_build, eth1_data, keys, config);
+			});
+		}
+
+		blockchain_network_simple::libp2p::start_network_simple_sync(port, backend, importer, status);
+	} else {
+		println!("Using in-memory backend");
+		let backend = NoCacheAncestorBackend::new(
+			RwLockBackend::new(
+				MemoryBackend::<_, (), State>::new_with_genesis(
+					genesis_block.clone(),
+					genesis_state.into(),
+				)
 			)
-		)
-	);
-	let executor = Executor::new(config.clone());
-	let importer = MutexImporter::new(
-		ArchiveGhostImporter::new(executor, backend.clone())
-	);
-	let status = BestDepthStatusProducer::new(backend.clone());
-	let port = matches.value_of("port").unwrap_or("37365");
-	let author = matches.is_present("author");
+		);
+		let executor = Executor::new(config.clone());
+		let importer = MutexImporter::new(
+			ArchiveGhostImporter::new(executor, backend.clone())
+		);
+		let status = BestDepthStatusProducer::new(backend.clone());
+		let port = matches.value_of("port").unwrap_or("37365");
+		let author = matches.is_present("author");
 
-	if author {
-		let backend_build = backend.clone();
-		let importer_build = importer.clone();
-		thread::spawn(move || {
-			builder_thread(backend_build, importer_build, eth1_data, keys, config);
-		});
+		if author {
+			let backend_build = backend.clone();
+			let importer_build = importer.clone();
+			thread::spawn(move || {
+				builder_thread(backend_build, importer_build, eth1_data, keys, config);
+			});
+		}
+
+		blockchain_network_simple::libp2p::start_network_simple_sync(port, backend, importer, status);
 	}
-
-	blockchain_network_simple::libp2p::start_network_simple_sync(port, backend, importer, status);
 }
 
-fn builder_thread<C: Config + Clone>(
-	backend: NoCacheAncestorBackend<RwLockBackend<MemoryBackend<Block, (), State>>>,
-	mut importer: MutexImporter<ArchiveGhostImporter<Executor<C>, NoCacheAncestorBackend<RwLockBackend<MemoryBackend<Block, (), State>>>>>,
+fn builder_thread<C: Config + Clone, B, I>(
+	backend: B,
+	importer: I,
 	eth1_data: Eth1Data,
 	keys: HashMap<ValidatorId, bls::Secret>,
 	config: C,
-) {
+) where
+	B: ChainQuery + Backend<Block=Block, State=State>,
+	B::Auxiliary: Auxiliary<Block>,
+	I: SharedBlockImporter<Block=Block>
+{
 	let executor = Executor::new(config.clone());
 	let mut attestations = AttestationPool::new(&config);
 

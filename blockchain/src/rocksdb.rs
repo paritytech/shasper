@@ -42,6 +42,22 @@ impl fmt::Display for Error {
 
 impl stderror::Error for Error { }
 
+impl From<Error> for blockchain::backend::DirectError {
+	fn from(error: Error) -> Self {
+		match error {
+			Error::NotExist => blockchain::backend::DirectError::NotExist,
+		}
+	}
+}
+
+impl From<Error> for blockchain::import::Error {
+	fn from(error: Error) -> Self {
+		match error {
+			Error::NotExist => blockchain::import::Error::Backend(Box::new(error)),
+		}
+	}
+}
+
 pub struct RocksDatabase<B: Block, A: Auxiliary<B>, S> {
 	db: Arc<DB>,
 	_marker: PhantomData<(B, A, S)>,

@@ -50,7 +50,7 @@ pub trait StateExternalities {
 	fn state(&mut self) -> &mut BeaconState;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Encode, Decode)]
 pub struct State {
 	state: BeaconState,
 }
