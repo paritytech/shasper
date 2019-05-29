@@ -2,8 +2,8 @@ use beacon::{genesis, Config, ParameteredConfig, Inherent, Transaction};
 use beacon::primitives::{H256, Signature, ValidatorId, BitField};
 use beacon::types::{Eth1Data, Deposit, DepositData, AttestationData, AttestationDataAndCustodyBit, Attestation};
 use ssz::Digestible;
-use blockchain::backend::{SharedBackend, MemoryBackend, MemoryLikeBackend};
-use blockchain::chain::SharedImporter;
+use blockchain::backend::{RwLockBackend, MemoryBackend, MemoryLikeBackend};
+use blockchain::import::MutexImporter;
 use blockchain::traits::{ChainQuery, AsExternalities, BlockImporter, Block as BlockT};
 use blockchain_network_simple::BestDepthStatusProducer;
 use shasper_blockchain::{Block, Executor, State, Error, StateExternalities, AttestationPool};
@@ -128,14 +128,16 @@ fn main() {
 		&deposits, 0, eth1_data.clone(), &config
 	).unwrap();
 	let genesis_block = Block(genesis_beacon_block);
-	let backend = SharedBackend::new(
-		NoCacheAncestorBackend::<MemoryBackend<Block, (), State>>::new_with_genesis(
-			genesis_block.clone(),
-			genesis_state.into(),
+	let backend = NoCacheAncestorBackend::new(
+		RwLockBackend::new(
+			MemoryBackend::new_with_genesis(
+				genesis_block.clone(),
+				genesis_state.into(),
+			)
 		)
 	);
 	let executor = Executor::new(config.clone());
-	let importer = SharedImporter::new(
+	let importer = MutexImporter::new(
 		ArchiveGhostImporter::new(executor, backend.clone())
 	);
 	let status = BestDepthStatusProducer::new(backend.clone());
@@ -154,8 +156,8 @@ fn main() {
 }
 
 fn builder_thread<C: Config + Clone>(
-	backend: SharedBackend<NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>,
-	mut importer: SharedImporter<ArchiveGhostImporter<Executor<C>, NoCacheAncestorBackend<MemoryBackend<Block, (), State>>>>,
+	backend: NoCacheAncestorBackend<RwLockBackend<MemoryBackend<Block, (), State>>>,
+	mut importer: MutexImporter<ArchiveGhostImporter<Executor<C>, NoCacheAncestorBackend<RwLockBackend<MemoryBackend<Block, (), State>>>>>,
 	eth1_data: Eth1Data,
 	keys: HashMap<ValidatorId, bls::Secret>,
 	config: C,
@@ -166,17 +168,17 @@ fn builder_thread<C: Config + Clone>(
 	loop {
 		thread::sleep(Duration::new(1, 0));
 
-		let head = backend.read().head();
+		let head = backend.head();
 		println!("Building on top of {}", head);
 
 		let block = {
-			let head_block = backend.read().block_at(&head).unwrap();
-			let mut head_state = backend.read().state_at(&head).unwrap();
+			let head_block = backend.block_at(&head).unwrap();
+			let mut head_state = backend.state_at(&head).unwrap();
 			println!("Justified epoch {}, finalized epoch {}",
 					 { head_state.state().current_justified_epoch },
 					 { head_state.state().finalized_epoch });
 
-			let mut state = backend.read().state_at(&head).unwrap();
+			let mut state = backend.state_at(&head).unwrap();
 			let externalities = state.as_externalities();
 			let current_slot = head_block.0.slot + 1;
 			executor.initialize_block(externalities, current_slot).unwrap();

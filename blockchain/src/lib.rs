@@ -97,9 +97,9 @@ impl From<BeaconError> for Error {
 	}
 }
 
-impl From<Error> for blockchain::chain::Error {
-	fn from(error: Error) -> blockchain::chain::Error {
-		blockchain::chain::Error::Executor(Box::new(error))
+impl From<Error> for blockchain::import::Error {
+	fn from(error: Error) -> blockchain::import::Error {
+		blockchain::import::Error::Executor(Box::new(error))
 	}
 }
 

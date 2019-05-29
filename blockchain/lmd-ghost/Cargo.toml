@@ -6,4 +6,4 @@ description = "Cached LMD Ghost implementation"
 edition = "2018"
 
 [dependencies]
-blockchain = "0.6"
+blockchain = "0.7"
