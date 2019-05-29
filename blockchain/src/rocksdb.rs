@@ -3,7 +3,7 @@ use std::path::Path;
 use std::{fmt, error as stderror};
 use std::sync::Arc;
 use blockchain::traits::{Block, Auxiliary, Backend, ChainQuery};
-use blockchain::backend::SharedDatabase;
+use blockchain::backend::{SharedDatabase, SharedDirectBackend};
 use parity_codec::{Encode, Decode};
 use rocksdb::{DB, Options, WriteOptions};
 
@@ -13,6 +13,21 @@ const COLUMN_AUXILIARIES: &str = "auxiliaries";
 const COLUMN_INFO: &str = "info";
 const KEY_HEAD: &str = "head";
 const KEY_GENESIS: &str = "genesis";
+
+pub trait RocksLikeBackend: Backend {
+	fn new_with_genesis<P: AsRef<Path>>(path: P, block: Self::Block, state: Self::State) -> Self;
+	fn from_existing<P: AsRef<Path>>(path: P) -> Self;
+}
+
+impl<DB: RocksLikeBackend + SharedDatabase> RocksLikeBackend for SharedDirectBackend<DB> {
+	fn new_with_genesis<P: AsRef<Path>>(path: P, block: Self::Block, state: Self::State) -> Self {
+		SharedDirectBackend::new(DB::new_with_genesis(path, block, state))
+	}
+
+	fn from_existing<P: AsRef<Path>>(path: P) -> Self {
+		SharedDirectBackend::new(DB::from_existing(path))
+	}
+}
 
 #[derive(Debug)]
 pub enum Error {
@@ -34,7 +49,11 @@ pub struct RocksDatabase<B: Block, A: Auxiliary<B>, S> {
 
 impl<B: Block, A: Auxiliary<B>, S> RocksDatabase<B, A, S> {
 	pub fn open<P: AsRef<Path>>(path: P) -> Self {
-		let db = DB::open_cf(&Options::default(), path, &[
+		let mut db_opts = Options::default();
+		db_opts.create_missing_column_families(true);
+		db_opts.create_if_missing(true);
+
+		let db = DB::open_cf(&db_opts, path, &[
 			COLUMN_BLOCKS, COLUMN_CANON_DEPTH_MAPPINGS, COLUMN_AUXILIARIES, COLUMN_INFO,
 		]).unwrap();
 
@@ -269,3 +288,40 @@ impl<B: Block, A: Auxiliary<B>, S> ChainQuery for RocksDatabase<B, A, S> where
 		Ok(data.ok_or(Error::NotExist)?.state)
 	}
 }
+
+impl<B: Block, A: Auxiliary<B>, S> RocksLikeBackend for RocksDatabase<B, A, S> where
+	B::Identifier: Encode + Decode,
+	B: Encode + Decode,
+	A: Encode + Decode,
+	A::Key: Encode + Decode,
+	S: Encode + Decode,
+{
+	fn new_with_genesis<P: AsRef<Path>>(path: P, block: Self::Block, state: Self::State) -> Self {
+		assert!(block.parent_id().is_none(), "with_genesis must be provided with a genesis block");
+
+		let db = Self::open(path);
+		let genesis_id = block.id();
+
+		db.insert_block(
+			genesis_id,
+			block,
+			state,
+			0,
+			Vec::new(),
+			true
+		);
+		db.insert_canon_depth_mapping(0, genesis_id);
+
+		let cf = db.db.cf_handle(COLUMN_INFO).unwrap();
+		db.db.put_cf_opt(cf, KEY_GENESIS.encode(), genesis_id.encode(), &WriteOptions::default()).unwrap();
+		db.set_head(genesis_id);
+
+		db
+	}
+
+	fn from_existing<P: AsRef<Path>>(path: P) -> Self {
+		Self::open(path)
+	}
+}
+
+pub type RocksBackend<B, A, S> = SharedDirectBackend<RocksDatabase<B, A, S>>;
