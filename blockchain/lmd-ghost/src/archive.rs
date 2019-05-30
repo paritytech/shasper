@@ -3,7 +3,6 @@ use std::sync::MutexGuard;
 use core::hash::Hash;
 use core::mem;
 use blockchain::traits::{Backend, Operation, Block, ChainQuery, Auxiliary, BlockExecutor, BlockImporter, RawImporter, AsExternalities, ImportOperation};
-use blockchain::import::ImportAction;
 use blockchain::backend::{MemoryLikeBackend, Committable, SharedCommittable};
 use crate::JustifiableExecutor;
 
@@ -46,25 +45,11 @@ impl<Ba: SharedCommittable> Clone for NoCacheAncestorBackend<Ba> {
 }
 
 impl<Ba: SharedCommittable + ChainQuery> SharedCommittable for NoCacheAncestorBackend<Ba> {
-	fn begin_action<'a, 'executor, E: BlockExecutor<Block=Self::Block>>(
-		&'a self,
-		executor: &'executor E
-	) -> ImportAction<'a, 'executor, E, Self> where
-		blockchain::import::Error: From<E::Error> + From<Self::Error>,
-		Self::State: AsExternalities<E::Externalities>
-	{
-		let action = self.0.begin_action(executor);
-		action.swap(self)
-	}
-
-	fn commit_action<'a, 'executor, E: BlockExecutor<Block=Self::Block>>(
-		&'a self,
-		action: ImportAction<'a, 'executor, E, Self>
-	) -> Result<(), Self::Error> where
-		Self::State: AsExternalities<E::Externalities>
-	{
-		let action = action.swap(&self.0);
-		self.0.commit_action(action)
+	fn commit(
+		&self,
+		operation: Operation<Self::Block, Self::State, Self::Auxiliary>,
+	) -> Result<(), Self::Error> {
+		self.0.commit(operation)
 	}
 
 	fn lock_import<'a>(&'a self) -> MutexGuard<'a, ()> {
