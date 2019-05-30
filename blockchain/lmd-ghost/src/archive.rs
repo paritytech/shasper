@@ -1,8 +1,10 @@
 use std::collections::HashMap;
+use std::sync::MutexGuard;
 use core::hash::Hash;
 use core::mem;
 use blockchain::traits::{Backend, Operation, Block, ChainQuery, Auxiliary, BlockExecutor, BlockImporter, RawImporter, AsExternalities, ImportOperation};
-use blockchain::backend::{MemoryLikeBackend, SharedBackend};
+use blockchain::import::ImportAction;
+use blockchain::backend::{MemoryLikeBackend, Committable, SharedCommittable};
 use crate::JustifiableExecutor;
 
 pub trait AncestorQuery: ChainQuery {
@@ -15,17 +17,58 @@ pub trait AncestorQuery: ChainQuery {
 
 pub struct NoCacheAncestorBackend<Ba: Backend>(Ba);
 
+impl<Ba: Backend> NoCacheAncestorBackend<Ba> {
+	pub fn new(backend: Ba) -> Self {
+		Self(backend)
+	}
+}
+
 impl<Ba: Backend> Backend for NoCacheAncestorBackend<Ba> {
 	type Block = Ba::Block;
 	type State = Ba::State;
 	type Auxiliary = Ba::Auxiliary;
 	type Error = Ba::Error;
+}
 
+impl<Ba: Committable> Committable for NoCacheAncestorBackend<Ba> {
 	fn commit(
 		&mut self,
 		operation: Operation<Self::Block, Self::State, Self::Auxiliary>,
 	) -> Result<(), Self::Error> {
 		self.0.commit(operation)
+	}
+}
+
+impl<Ba: SharedCommittable> Clone for NoCacheAncestorBackend<Ba> {
+	fn clone(&self) -> Self {
+		Self(self.0.clone())
+	}
+}
+
+impl<Ba: SharedCommittable + ChainQuery> SharedCommittable for NoCacheAncestorBackend<Ba> {
+	fn begin_action<'a, 'executor, E: BlockExecutor<Block=Self::Block>>(
+		&'a self,
+		executor: &'executor E
+	) -> ImportAction<'a, 'executor, E, Self> where
+		blockchain::import::Error: From<E::Error> + From<Self::Error>,
+		Self::State: AsExternalities<E::Externalities>
+	{
+		let action = self.0.begin_action(executor);
+		action.swap(self)
+	}
+
+	fn commit_action<'a, 'executor, E: BlockExecutor<Block=Self::Block>>(
+		&'a self,
+		action: ImportAction<'a, 'executor, E, Self>
+	) -> Result<(), Self::Error> where
+		Self::State: AsExternalities<E::Externalities>
+	{
+		let action = action.swap(&self.0);
+		self.0.commit_action(action)
+	}
+
+	fn lock_import<'a>(&'a self) -> MutexGuard<'a, ()> {
+		self.0.lock_import()
 	}
 }
 
@@ -117,13 +160,13 @@ impl<Ba: ChainQuery> AncestorQuery for NoCacheAncestorBackend<Ba> {
 }
 
 pub struct ArchiveGhost<Ba: Backend, VI: Eq + Hash> {
-	backend: SharedBackend<Ba>,
+	backend: Ba,
 	votes: HashMap<VI, <Ba::Block as Block>::Identifier>,
 	overlayed_votes: HashMap<VI, <Ba::Block as Block>::Identifier>,
 }
 
-impl<Ba: AncestorQuery, VI: Eq + Hash> ArchiveGhost<Ba, VI> {
-	pub fn new(backend: SharedBackend<Ba>) -> Self {
+impl<Ba: AncestorQuery + SharedCommittable, VI: Eq + Hash> ArchiveGhost<Ba, VI> {
+	pub fn new(backend: Ba) -> Self {
 		Self {
 			backend,
 			votes: Default::default(),
@@ -172,13 +215,13 @@ impl<Ba: AncestorQuery, VI: Eq + Hash> ArchiveGhost<Ba, VI> {
 	) -> Result<usize, Ba::Error> {
 		let mut total = 0;
 		for (_, target) in &self.overlayed_votes {
-			if self.backend.read().ancestor_at(target, block_depth)? == *block {
+			if self.backend.ancestor_at(target, block_depth)? == *block {
 				total += 1;
 			}
 		}
 		for (v, target) in &self.votes {
 			if !self.overlayed_votes.keys().any(|k| k == v) &&
-				self.backend.read().ancestor_at(target, block_depth)? == *block
+				self.backend.ancestor_at(target, block_depth)? == *block
 			{
 				total += 1;
 			}
@@ -191,9 +234,9 @@ impl<Ba: AncestorQuery, VI: Eq + Hash> ArchiveGhost<Ba, VI> {
 		justified: &<Ba::Block as Block>::Identifier,
 	) -> Result<<Ba::Block as Block>::Identifier, Ba::Error> {
 		let mut head = *justified;
-		let mut head_depth = self.backend.read().depth_at(justified)?;
+		let mut head_depth = self.backend.depth_at(justified)?;
 		loop {
-			let children = self.backend.read().children_at(&head)?;
+			let children = self.backend.children_at(&head)?;
 			if children.len() == 0 {
 				return Ok(head)
 			}
@@ -220,12 +263,12 @@ pub struct ArchiveGhostImporter<E: BlockExecutor, Ba: Backend<Block=E::Block>> w
 	executor: E,
 }
 
-impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ArchiveGhostImporter<E, Ba> where
+impl<E: BlockExecutor, Ba: SharedCommittable + Backend<Block=E::Block>> ArchiveGhostImporter<E, Ba> where
 	E: JustifiableExecutor,
 	Ba: AncestorQuery,
 	Ba::Auxiliary: Auxiliary<E::Block>
 {
-	pub fn new(executor: E, backend: SharedBackend<Ba>) -> Self {
+	pub fn new(executor: E, backend: Ba) -> Self {
 		Self {
 			executor,
 			ghost: ArchiveGhost::new(backend),
@@ -235,31 +278,34 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> ArchiveGhostImporter<E, Ba> 
 
 impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> BlockImporter for ArchiveGhostImporter<E, Ba> where
 	E: JustifiableExecutor,
-	Ba: AncestorQuery,
+	Ba: SharedCommittable + AncestorQuery,
 	Ba::Auxiliary: Auxiliary<E::Block>,
 	Ba::State: AsExternalities<E::Externalities>,
-	blockchain::chain::Error: From<Ba::Error> + From<E::Error>,
+	blockchain::import::Error: From<Ba::Error> + From<E::Error>,
 {
 	type Block = Ba::Block;
-	type Error = blockchain::chain::Error;
+	type Error = blockchain::import::Error;
 
 	fn import_block(&mut self, block: Ba::Block) -> Result<(), Self::Error> {
-		let raw = self.ghost.backend.execute_block(&self.executor, block)?;
+		let mut state = self.ghost.backend.state_at(
+			&block.parent_id().ok_or(blockchain::import::Error::IsGenesis)?
+		)?;
+		self.executor.execute_block(&block, state.as_externalities())?;
 
-		self.import_raw(raw)
+		self.import_raw(ImportOperation { block, state })
 	}
 }
 
 impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> RawImporter for ArchiveGhostImporter<E, Ba> where
 	E: JustifiableExecutor,
-	Ba: AncestorQuery,
+	Ba: SharedCommittable + AncestorQuery,
 	Ba::Auxiliary: Auxiliary<E::Block>,
 	Ba::State: AsExternalities<E::Externalities>,
-	blockchain::chain::Error: From<Ba::Error> + From<E::Error>,
+	blockchain::import::Error: From<Ba::Error> + From<E::Error>,
 {
 	type Block = Ba::Block;
 	type State = Ba::State;
-	type Error = blockchain::chain::Error;
+	type Error = blockchain::import::Error;
 
 	fn import_raw(
 		&mut self,
@@ -271,11 +317,11 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> RawImporter for ArchiveGhost
 				self.executor.justified_active_validators(externalities)?;
 			let justified_block_id = match self.executor.justified_block_id(externalities)? {
 				Some(value) => value,
-				None => self.ghost.backend.read().genesis(),
+				None => self.ghost.backend.genesis(),
 			};
 			let votes = self.executor.votes(&raw. block, externalities)?;
 
-			let mut importer = self.ghost.backend.begin_import(&self.executor);
+			let mut importer = self.ghost.backend.begin_action(&self.executor);
 			importer.import_raw(raw);
 			importer.commit()?;
 
@@ -294,7 +340,7 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> RawImporter for ArchiveGhost
 			},
 		};
 
-		let mut importer = self.ghost.backend.begin_import(&self.executor);
+		let mut importer = self.ghost.backend.begin_action(&self.executor);
 		importer.set_head(new_head);
 
 		match importer.commit() {
