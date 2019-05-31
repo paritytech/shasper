@@ -1,12 +1,13 @@
 use std::collections::HashMap;
-use std::sync::MutexGuard;
 use core::hash::Hash;
 use core::mem;
-use blockchain::traits::{Backend, Operation, Block, ChainQuery, Auxiliary, BlockExecutor, BlockImporter, RawImporter, AsExternalities, ImportOperation};
-use blockchain::backend::{MemoryLikeBackend, Committable, SharedCommittable};
+use core::ops::Deref;
+use blockchain::traits::{Block, Auxiliary, BlockExecutor, AsExternalities};
+use blockchain::import::{BlockImporter, RawImporter, ImportAction};
+use blockchain::backend::{Store, SharedCommittable, ImportOperation, ChainQuery, Locked, Operation};
 use crate::JustifiableExecutor;
 
-pub trait AncestorQuery: ChainQuery {
+pub trait AncestorQuery: Store {
 	fn ancestor_at(
 		&self,
 		id: &<Self::Block as Block>::Identifier,
@@ -14,129 +15,30 @@ pub trait AncestorQuery: ChainQuery {
 	) -> Result<<Self::Block as Block>::Identifier, Self::Error>;
 }
 
-pub struct NoCacheAncestorBackend<Ba: Backend>(Ba);
+pub struct NoCacheAncestorQuery<'a, Ba: Store>(&'a Ba);
 
-impl<Ba: Backend> NoCacheAncestorBackend<Ba> {
-	pub fn new(backend: Ba) -> Self {
+impl<'a, Ba: Store> NoCacheAncestorQuery<'a, Ba> {
+	pub fn new(backend: &'a Ba) -> Self {
 		Self(backend)
 	}
 }
 
-impl<Ba: Backend> Backend for NoCacheAncestorBackend<Ba> {
+impl<'a, Ba: Store> Store for NoCacheAncestorQuery<'a, Ba> {
 	type Block = Ba::Block;
 	type State = Ba::State;
 	type Auxiliary = Ba::Auxiliary;
 	type Error = Ba::Error;
 }
 
-impl<Ba: Committable> Committable for NoCacheAncestorBackend<Ba> {
-	fn commit(
-		&mut self,
-		operation: Operation<Self::Block, Self::State, Self::Auxiliary>,
-	) -> Result<(), Self::Error> {
-		self.0.commit(operation)
-	}
-}
-
-impl<Ba: SharedCommittable> Clone for NoCacheAncestorBackend<Ba> {
-	fn clone(&self) -> Self {
-		Self(self.0.clone())
-	}
-}
-
-impl<Ba: SharedCommittable + ChainQuery> SharedCommittable for NoCacheAncestorBackend<Ba> {
-	fn commit(
-		&self,
-		operation: Operation<Self::Block, Self::State, Self::Auxiliary>,
-	) -> Result<(), Self::Error> {
-		self.0.commit(operation)
-	}
-
-	fn lock_import<'a>(&'a self) -> MutexGuard<'a, ()> {
-		self.0.lock_import()
-	}
-}
-
-impl<Ba: ChainQuery> ChainQuery for NoCacheAncestorBackend<Ba> {
-	fn genesis(&self) -> <Self::Block as Block>::Identifier {
-		self.0.genesis()
-	}
-	fn head(&self) -> <Self::Block as Block>::Identifier {
-		self.0.head()
-	}
-
-	fn contains(
-		&self,
-		hash: &<Self::Block as Block>::Identifier,
-	) -> Result<bool, Self::Error> {
-		self.0.contains(hash)
-	}
-
-	fn is_canon(
-		&self,
-		hash: &<Self::Block as Block>::Identifier,
-	) -> Result<bool, Self::Error> {
-		self.0.is_canon(hash)
-	}
-
-	fn lookup_canon_depth(
-		&self,
-		depth: usize,
-	) -> Result<Option<<Self::Block as Block>::Identifier>, Self::Error> {
-		self.0.lookup_canon_depth(depth)
-	}
-
-	fn auxiliary(
-		&self,
-		key: &<Self::Auxiliary as Auxiliary<Self::Block>>::Key,
-	) -> Result<Option<Self::Auxiliary>, Self::Error> {
-		self.0.auxiliary(key)
-	}
-
-	fn depth_at(
-		&self,
-		hash: &<Self::Block as Block>::Identifier,
-	) -> Result<usize, Self::Error> {
-		self.0.depth_at(hash)
-	}
-
-	fn children_at(
-		&self,
-		hash: &<Self::Block as Block>::Identifier,
-	) -> Result<Vec<<Self::Block as Block>::Identifier>, Self::Error> {
-		self.0.children_at(hash)
-	}
-
-	fn state_at(
-		&self,
-		hash: &<Self::Block as Block>::Identifier,
-	) -> Result<Self::State, Self::Error> {
-		self.0.state_at(hash)
-	}
-
-	fn block_at(
-		&self,
-		hash: &<Self::Block as Block>::Identifier,
-	) -> Result<Self::Block, Self::Error> {
-		self.0.block_at(hash)
-	}
-}
-
-impl<Ba: MemoryLikeBackend> MemoryLikeBackend for NoCacheAncestorBackend<Ba> {
-	fn new_with_genesis(block: Ba::Block, genesis_state: Ba::State) -> Self {
-		Self(Ba::new_with_genesis(block, genesis_state))
-	}
-}
-
-impl<Ba: ChainQuery> AncestorQuery for NoCacheAncestorBackend<Ba> {
+impl<'a, Ba: ChainQuery> AncestorQuery for NoCacheAncestorQuery<'a, Ba> {
 	fn ancestor_at(
 		&self,
 		id: &<Self::Block as Block>::Identifier,
 		depth: usize
 	) -> Result<<Self::Block as Block>::Identifier, Self::Error> {
 		let mut current = id.clone();
-		while self.depth_at(&current)? > depth {
-			current = self.block_at(&current)?.parent_id()
+		while self.0.depth_at(&current)? > depth {
+			current = self.0.block_at(&current)?.parent_id()
 				.expect("When parent id is None, depth is 0;
                          no value can be greater than 0; while is false; qed");
 		}
@@ -144,14 +46,14 @@ impl<Ba: ChainQuery> AncestorQuery for NoCacheAncestorBackend<Ba> {
 	}
 }
 
-pub struct ArchiveGhost<Ba: Backend, VI: Eq + Hash> {
-	backend: Ba,
+pub struct ArchiveGhost<Ba: Store, VI: Eq + Hash> {
+	backend: Locked<Ba>,
 	votes: HashMap<VI, <Ba::Block as Block>::Identifier>,
 	overlayed_votes: HashMap<VI, <Ba::Block as Block>::Identifier>,
 }
 
-impl<Ba: AncestorQuery + SharedCommittable, VI: Eq + Hash> ArchiveGhost<Ba, VI> {
-	pub fn new(backend: Ba) -> Self {
+impl<Ba: AncestorQuery + ChainQuery + SharedCommittable, VI: Eq + Hash> ArchiveGhost<Ba, VI> {
+	pub fn new(backend: Locked<Ba>) -> Self {
 		Self {
 			backend,
 			votes: Default::default(),
@@ -240,7 +142,7 @@ impl<Ba: AncestorQuery + SharedCommittable, VI: Eq + Hash> ArchiveGhost<Ba, VI> 
 	}
 }
 
-pub struct ArchiveGhostImporter<E: BlockExecutor, Ba: Backend<Block=E::Block>> where
+pub struct ArchiveGhostImporter<E: BlockExecutor, Ba: Store<Block=E::Block>> where
 	E: JustifiableExecutor,
 	Ba::Auxiliary: Auxiliary<E::Block>
 {
@@ -248,12 +150,12 @@ pub struct ArchiveGhostImporter<E: BlockExecutor, Ba: Backend<Block=E::Block>> w
 	executor: E,
 }
 
-impl<E: BlockExecutor, Ba: SharedCommittable + Backend<Block=E::Block>> ArchiveGhostImporter<E, Ba> where
+impl<E: BlockExecutor, Ba: SharedCommittable + Store<Block=E::Block>> ArchiveGhostImporter<E, Ba> where
 	E: JustifiableExecutor,
-	Ba: AncestorQuery,
+	Ba: AncestorQuery + ChainQuery,
 	Ba::Auxiliary: Auxiliary<E::Block>
 {
-	pub fn new(executor: E, backend: Ba) -> Self {
+	pub fn new(executor: E, backend: Locked<Ba>) -> Self {
 		Self {
 			executor,
 			ghost: ArchiveGhost::new(backend),
@@ -261,9 +163,10 @@ impl<E: BlockExecutor, Ba: SharedCommittable + Backend<Block=E::Block>> ArchiveG
 	}
 }
 
-impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> BlockImporter for ArchiveGhostImporter<E, Ba> where
+impl<E: BlockExecutor, Ba: Store<Block=E::Block>> BlockImporter for ArchiveGhostImporter<E, Ba> where
 	E: JustifiableExecutor,
-	Ba: SharedCommittable + AncestorQuery,
+	Ba: ChainQuery + AncestorQuery,
+	Ba: SharedCommittable<Operation=Operation<E::Block, <Ba as Store>::State, <Ba as Store>::Auxiliary>>,
 	Ba::Auxiliary: Auxiliary<E::Block>,
 	Ba::State: AsExternalities<E::Externalities>,
 	blockchain::import::Error: From<Ba::Error> + From<E::Error>,
@@ -281,15 +184,15 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> BlockImporter for ArchiveGho
 	}
 }
 
-impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> RawImporter for ArchiveGhostImporter<E, Ba> where
+impl<E: BlockExecutor, Ba: Store<Block=E::Block>> RawImporter for ArchiveGhostImporter<E, Ba> where
 	E: JustifiableExecutor,
-	Ba: SharedCommittable + AncestorQuery,
+	Ba: AncestorQuery + ChainQuery,
+	Ba: SharedCommittable<Operation=Operation<E::Block, <Ba as Store>::State, <Ba as Store>::Auxiliary>>,
 	Ba::Auxiliary: Auxiliary<E::Block>,
 	Ba::State: AsExternalities<E::Externalities>,
 	blockchain::import::Error: From<Ba::Error> + From<E::Error>,
 {
-	type Block = Ba::Block;
-	type State = Ba::State;
+	type Operation = ImportOperation<Ba::Block, Ba::State>;
 	type Error = blockchain::import::Error;
 
 	fn import_raw(
@@ -306,7 +209,9 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> RawImporter for ArchiveGhost
 			};
 			let votes = self.executor.votes(&raw. block, externalities)?;
 
-			let mut importer = self.ghost.backend.begin_action(&self.executor);
+			let mut importer = ImportAction::new(
+				&self.executor, self.ghost.backend.deref(), self.ghost.backend.lock_import()
+			);
 			importer.import_raw(raw);
 			importer.commit()?;
 
@@ -325,7 +230,9 @@ impl<E: BlockExecutor, Ba: Backend<Block=E::Block>> RawImporter for ArchiveGhost
 			},
 		};
 
-		let mut importer = self.ghost.backend.begin_action(&self.executor);
+		let mut importer = ImportAction::new(
+			&self.executor, self.ghost.backend.deref(), self.ghost.backend.lock_import()
+		);
 		importer.set_head(new_head);
 
 		match importer.commit() {

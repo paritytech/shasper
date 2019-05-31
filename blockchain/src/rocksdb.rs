@@ -2,8 +2,8 @@ use core::marker::PhantomData;
 use std::path::Path;
 use std::{fmt, error as stderror};
 use std::sync::Arc;
-use blockchain::traits::{Block, Auxiliary, Backend, ChainQuery};
-use blockchain::backend::{SharedDatabase, SharedDirectBackend};
+use blockchain::traits::{Block, Auxiliary};
+use blockchain::backend::{Store, ChainQuery, OperationError, SharedCommittable, ChainSettlement, Operation};
 use parity_codec::{Encode, Decode};
 use rocksdb::{DB, Options, WriteOptions};
 
@@ -14,24 +14,25 @@ const COLUMN_INFO: &str = "info";
 const KEY_HEAD: &str = "head";
 const KEY_GENESIS: &str = "genesis";
 
-pub trait RocksLikeBackend: Backend {
-	fn new_with_genesis<P: AsRef<Path>>(path: P, block: Self::Block, state: Self::State) -> Self;
-	fn from_existing<P: AsRef<Path>>(path: P) -> Self;
-}
-
-impl<DB: RocksLikeBackend + SharedDatabase> RocksLikeBackend for SharedDirectBackend<DB> {
-	fn new_with_genesis<P: AsRef<Path>>(path: P, block: Self::Block, state: Self::State) -> Self {
-		SharedDirectBackend::new(DB::new_with_genesis(path, block, state))
-	}
-
-	fn from_existing<P: AsRef<Path>>(path: P) -> Self {
-		SharedDirectBackend::new(DB::from_existing(path))
-	}
-}
-
 #[derive(Debug)]
+/// Memory errors
 pub enum Error {
+	/// Invalid Operation
+	InvalidOperation,
+	/// Trying to import a block that is genesis
+	IsGenesis,
+	/// Query does not exist
 	NotExist,
+}
+
+impl OperationError for Error {
+	fn invalid_operation() -> Self {
+		Error::InvalidOperation
+	}
+
+	fn block_is_genesis() -> Self {
+		Error::IsGenesis
+	}
 }
 
 impl fmt::Display for Error {
@@ -42,28 +43,23 @@ impl fmt::Display for Error {
 
 impl stderror::Error for Error { }
 
-impl From<Error> for blockchain::backend::DirectError {
-	fn from(error: Error) -> Self {
-		match error {
-			Error::NotExist => blockchain::backend::DirectError::NotExist,
-		}
-	}
-}
-
 impl From<Error> for blockchain::import::Error {
 	fn from(error: Error) -> Self {
 		match error {
-			Error::NotExist => blockchain::import::Error::Backend(Box::new(error)),
+			Error::IsGenesis => blockchain::import::Error::IsGenesis,
+			error => blockchain::import::Error::Backend(Box::new(error)),
 		}
 	}
 }
 
-pub struct RocksDatabase<B: Block, A: Auxiliary<B>, S> {
+pub struct RocksBackend<B: Block, A: Auxiliary<B>, S> {
 	db: Arc<DB>,
 	_marker: PhantomData<(B, A, S)>,
 }
 
-impl<B: Block, A: Auxiliary<B>, S> RocksDatabase<B, A, S> {
+struct RocksSettlement<'a, B: Block, A: Auxiliary<B>, S>(&'a RocksBackend<B, A, S>);
+
+impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> {
 	pub fn open<P: AsRef<Path>>(path: P) -> Self {
 		let mut db_opts = Options::default();
 		db_opts.create_missing_column_families(true);
@@ -80,7 +76,7 @@ impl<B: Block, A: Auxiliary<B>, S> RocksDatabase<B, A, S> {
 	}
 }
 
-impl<B: Block, A: Auxiliary<B>, S> Clone for RocksDatabase<B, A, S> {
+impl<B: Block, A: Auxiliary<B>, S> Clone for RocksBackend<B, A, S> {
 	fn clone(&self) -> Self {
 		Self {
 			db: self.db.clone(),
@@ -89,7 +85,14 @@ impl<B: Block, A: Auxiliary<B>, S> Clone for RocksDatabase<B, A, S> {
 	}
 }
 
-impl<B: Block, A: Auxiliary<B>, S> Backend for RocksDatabase<B, A, S> {
+impl<B: Block, A: Auxiliary<B>, S> Store for RocksBackend<B, A, S> {
+	type Block = B;
+	type Auxiliary = A;
+	type State = S;
+	type Error = Error;
+}
+
+impl<'a, B: Block, A: Auxiliary<B>, S> Store for RocksSettlement<'a, B, A, S> {
 	type Block = B;
 	type Auxiliary = A;
 	type State = S;
@@ -100,12 +103,75 @@ impl<B: Block, A: Auxiliary<B>, S> Backend for RocksDatabase<B, A, S> {
 struct BlockData<B: Block, S> {
 	block: B,
 	state: S,
-	depth: usize,
+	depth: u64,
 	children: Vec<B::Identifier>,
 	is_canon: bool,
 }
 
-impl<B: Block, A: Auxiliary<B>, S> SharedDatabase for RocksDatabase<B, A, S> where
+impl<'a, B: Block, A: Auxiliary<B>, S> ChainQuery for RocksSettlement<'a, B, A, S> where
+	B::Identifier: Encode + Decode,
+	B: Encode + Decode,
+	A: Encode + Decode,
+	A::Key: Encode + Decode,
+	S: Encode + Decode,
+{
+	fn genesis(&self) -> <Self::Block as Block>::Identifier {
+		self.0.genesis()
+	}
+	fn head(&self) -> <Self::Block as Block>::Identifier {
+		self.0.head()
+	}
+	fn contains(
+		&self,
+		hash: &<Self::Block as Block>::Identifier,
+	) -> Result<bool, Self::Error> {
+		Ok(self.0.contains(hash)?)
+	}
+	fn is_canon(
+		&self,
+		hash: &<Self::Block as Block>::Identifier,
+	) -> Result<bool, Self::Error> {
+		Ok(self.0.is_canon(hash)?)
+	}
+	fn lookup_canon_depth(
+		&self,
+		depth: usize,
+	) -> Result<Option<<Self::Block as Block>::Identifier>, Self::Error> {
+		Ok(self.0.lookup_canon_depth(depth)?)
+	}
+	fn auxiliary(
+		&self,
+		key: &<Self::Auxiliary as Auxiliary<Self::Block>>::Key,
+	) -> Result<Option<Self::Auxiliary>, Self::Error> {
+		Ok(self.0.auxiliary(key)?)
+	}
+	fn depth_at(
+		&self,
+		hash: &<Self::Block as Block>::Identifier,
+	) -> Result<usize, Self::Error> {
+		Ok(self.0.depth_at(hash)?)
+	}
+	fn children_at(
+		&self,
+		hash: &<Self::Block as Block>::Identifier,
+	) -> Result<Vec<<Self::Block as Block>::Identifier>, Self::Error> {
+		Ok(self.0.children_at(hash)?)
+	}
+	fn state_at(
+		&self,
+		hash: &<Self::Block as Block>::Identifier,
+	) -> Result<Self::State, Self::Error> {
+		Ok(self.0.state_at(hash)?)
+	}
+	fn block_at(
+		&self,
+		hash: &<Self::Block as Block>::Identifier,
+	) -> Result<Self::Block, Self::Error> {
+		Ok(self.0.block_at(hash)?)
+	}
+}
+
+impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B, A, S> where
 	B::Identifier: Encode + Decode,
 	B: Encode + Decode,
 	A: Encode + Decode,
@@ -113,7 +179,7 @@ impl<B: Block, A: Auxiliary<B>, S> SharedDatabase for RocksDatabase<B, A, S> whe
 	S: Encode + Decode,
 {
 	fn insert_block(
-		&self,
+		&mut self,
 		id: <Self::Block as Block>::Identifier,
 		block: Self::Block,
 		state: Self::State,
@@ -121,79 +187,79 @@ impl<B: Block, A: Auxiliary<B>, S> SharedDatabase for RocksDatabase<B, A, S> whe
 		children: Vec<<Self::Block as Block>::Identifier>,
 		is_canon: bool
 	) {
-		let cf = self.db.cf_handle(COLUMN_BLOCKS).unwrap();
-		self.db.put_cf_opt(cf, id.encode(), BlockData {
-			block, state, depth, children, is_canon
+		let cf = self.0.db.cf_handle(COLUMN_BLOCKS).unwrap();
+		self.0.db.put_cf_opt(cf, id.encode(), BlockData {
+			block, state, depth: depth as u64, children, is_canon
 		}.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn push_child(
-		&self,
+		&mut self,
 		id: <Self::Block as Block>::Identifier,
 		child: <Self::Block as Block>::Identifier,
 	) {
-		let cf = self.db.cf_handle(COLUMN_BLOCKS).unwrap();
+		let cf = self.0.db.cf_handle(COLUMN_BLOCKS).unwrap();
 		let mut data = BlockData::<B, S>::decode(
-			&mut self.db.get_cf(cf, id.encode()).unwrap().unwrap().as_ref()
+			&mut self.0.db.get_cf(cf, id.encode()).unwrap().unwrap().as_ref()
 		).unwrap();
 		data.children.push(child);
-		self.db.put_cf_opt(cf, id.encode(), data.encode(), &WriteOptions::default()).unwrap();
+		self.0.db.put_cf_opt(cf, id.encode(), data.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn set_canon(
-		&self,
+		&mut self,
 		id: <Self::Block as Block>::Identifier,
 		is_canon: bool
 	) {
-		let cf = self.db.cf_handle(COLUMN_BLOCKS).unwrap();
+		let cf = self.0.db.cf_handle(COLUMN_BLOCKS).unwrap();
 		let mut data = BlockData::<B, S>::decode(
-			&mut self.db.get_cf(cf, id.encode()).unwrap().unwrap().as_ref()
+			&mut self.0.db.get_cf(cf, id.encode()).unwrap().unwrap().as_ref()
 		).unwrap();
 		data.is_canon = is_canon;
-		self.db.put_cf_opt(cf, id.encode(), data.encode(), &WriteOptions::default()).unwrap();
+		self.0.db.put_cf_opt(cf, id.encode(), data.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn insert_canon_depth_mapping(
-		&self,
+		&mut self,
 		depth: usize,
 		id: <Self::Block as Block>::Identifier,
 	) {
 		let depth = depth as u64;
 
-		let cf = self.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).unwrap();
-		self.db.put_cf_opt(cf, depth.encode(), id.encode(), &WriteOptions::default()).unwrap();
+		let cf = self.0.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).unwrap();
+		self.0.db.put_cf_opt(cf, depth.encode(), id.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn remove_canon_depth_mapping(
-		&self,
+		&mut self,
 		depth: &usize
 	) {
 		let depth = *depth as u64;
 
-		let cf = self.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).unwrap();
-		self.db.delete_cf_opt(cf, depth.encode(), &WriteOptions::default()).unwrap();
+		let cf = self.0.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).unwrap();
+		self.0.db.delete_cf_opt(cf, depth.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn insert_auxiliary(
-		&self,
+		&mut self,
 		key: <Self::Auxiliary as Auxiliary<Self::Block>>::Key,
 		value: Self::Auxiliary
 	) {
-		let cf = self.db.cf_handle(COLUMN_AUXILIARIES).unwrap();
-		self.db.put_cf_opt(cf, key.encode(), value.encode(), &WriteOptions::default()).unwrap();
+		let cf = self.0.db.cf_handle(COLUMN_AUXILIARIES).unwrap();
+		self.0.db.put_cf_opt(cf, key.encode(), value.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn remove_auxiliary(
-		&self,
+		&mut self,
 		key: &<Self::Auxiliary as Auxiliary<Self::Block>>::Key,
 	) {
-		let cf = self.db.cf_handle(COLUMN_AUXILIARIES).unwrap();
-		self.db.delete_cf_opt(cf, key.encode(), &WriteOptions::default()).unwrap();
+		let cf = self.0.db.cf_handle(COLUMN_AUXILIARIES).unwrap();
+		self.0.db.delete_cf_opt(cf, key.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn set_head(
-		&self,
+		&mut self,
 		head: <Self::Block as Block>::Identifier
 	) {
-		let cf = self.db.cf_handle(COLUMN_INFO).unwrap();
-		self.db.put_cf_opt(cf, KEY_HEAD.encode(), head.encode(), &WriteOptions::default()).unwrap();
+		let cf = self.0.db.cf_handle(COLUMN_INFO).unwrap();
+		self.0.db.put_cf_opt(cf, KEY_HEAD.encode(), head.encode(), &WriteOptions::default()).unwrap();
 	}
 }
 
-impl<B: Block, A: Auxiliary<B>, S> ChainQuery for RocksDatabase<B, A, S> where
+impl<B: Block, A: Auxiliary<B>, S> ChainQuery for RocksBackend<B, A, S> where
 	B::Identifier: Encode + Decode,
 	B: Encode + Decode,
 	A: Encode + Decode,
@@ -279,7 +345,7 @@ impl<B: Block, A: Auxiliary<B>, S> ChainQuery for RocksDatabase<B, A, S> where
 		let data = self.db.get_cf(cf, id.encode()).unwrap().map(
 			|v| BlockData::<B, S>::decode(&mut v.as_ref()).unwrap()
 		);
-		Ok(data.ok_or(Error::NotExist)?.depth)
+		Ok(data.ok_or(Error::NotExist)?.depth as usize)
 	}
 
 	fn block_at(
@@ -305,20 +371,37 @@ impl<B: Block, A: Auxiliary<B>, S> ChainQuery for RocksDatabase<B, A, S> where
 	}
 }
 
-impl<B: Block, A: Auxiliary<B>, S> RocksLikeBackend for RocksDatabase<B, A, S> where
+impl<B: Block, A: Auxiliary<B>, S> SharedCommittable for RocksBackend<B, A, S> where
 	B::Identifier: Encode + Decode,
 	B: Encode + Decode,
 	A: Encode + Decode,
 	A::Key: Encode + Decode,
 	S: Encode + Decode,
 {
-	fn new_with_genesis<P: AsRef<Path>>(path: P, block: Self::Block, state: Self::State) -> Self {
+	type Operation = Operation<Self::Block, Self::State, Self::Auxiliary>;
+
+	fn commit(
+		&self,
+		operation: Operation<Self::Block, Self::State, Self::Auxiliary>,
+	) -> Result<(), Self::Error> {
+		operation.settle(&mut RocksSettlement(self))
+	}
+}
+
+impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
+	B::Identifier: Encode + Decode,
+	B: Encode + Decode,
+	A: Encode + Decode,
+	A::Key: Encode + Decode,
+	S: Encode + Decode,
+{
+	pub fn new_with_genesis<P: AsRef<Path>>(path: P, block: B, state: S) -> Self {
 		assert!(block.parent_id().is_none(), "with_genesis must be provided with a genesis block");
 
 		let db = Self::open(path);
 		let genesis_id = block.id();
 
-		db.insert_block(
+		RocksSettlement(&db).insert_block(
 			genesis_id,
 			block,
 			state,
@@ -326,18 +409,16 @@ impl<B: Block, A: Auxiliary<B>, S> RocksLikeBackend for RocksDatabase<B, A, S> w
 			Vec::new(),
 			true
 		);
-		db.insert_canon_depth_mapping(0, genesis_id);
+		RocksSettlement(&db).insert_canon_depth_mapping(0, genesis_id);
 
 		let cf = db.db.cf_handle(COLUMN_INFO).unwrap();
 		db.db.put_cf_opt(cf, KEY_GENESIS.encode(), genesis_id.encode(), &WriteOptions::default()).unwrap();
-		db.set_head(genesis_id);
+		RocksSettlement(&db).set_head(genesis_id);
 
 		db
 	}
 
-	fn from_existing<P: AsRef<Path>>(path: P) -> Self {
+	pub fn from_existing<P: AsRef<Path>>(path: P) -> Self {
 		Self::open(path)
 	}
 }
-
-pub type RocksBackend<B, A, S> = SharedDirectBackend<RocksDatabase<B, A, S>>;

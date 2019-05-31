@@ -11,8 +11,8 @@ lmd-ghost = { path = "lmd-ghost" }
 beacon = { path = "../beacon" }
 parity-codec = { version = "3.0", features = ["derive"] }
 crypto = { package = "shasper-crypto", path = "../crypto" }
-blockchain = "0.7"
-blockchain-network-simple = "0.3"
+blockchain = "0.8"
+blockchain-network-simple = "0.4"
 ssz = { path = "../utils/ssz" }
 sha2 = "0.8"
 bls-aggregates = { git = "https://github.com/sigp/signature-schemes" }
