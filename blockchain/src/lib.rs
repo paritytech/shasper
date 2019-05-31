@@ -1,5 +1,6 @@
 mod pool;
 pub mod rocksdb;
+pub mod backend;
 
 pub use pool::AttestationPool;
 
