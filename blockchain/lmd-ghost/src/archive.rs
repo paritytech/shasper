@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use core::hash::Hash;
 use core::mem;
-use core::ops::Deref;
 use blockchain::traits::{Block, Auxiliary, BlockExecutor, AsExternalities};
 use blockchain::import::{BlockImporter, RawImporter, ImportAction};
-use blockchain::backend::{Store, SharedCommittable, ImportOperation, ChainQuery, Locked, Operation};
+use blockchain::backend::{Store, SharedCommittable, ImportOperation, ChainQuery, ImportLock, Operation};
 use crate::JustifiableExecutor;
 
 pub trait AncestorQuery: Store {
@@ -47,13 +46,13 @@ impl<'a, Ba: ChainQuery> AncestorQuery for NoCacheAncestorQuery<'a, Ba> {
 }
 
 pub struct ArchiveGhost<Ba: Store, VI: Eq + Hash> {
-	backend: Locked<Ba>,
+	backend: Ba,
 	votes: HashMap<VI, <Ba::Block as Block>::Identifier>,
 	overlayed_votes: HashMap<VI, <Ba::Block as Block>::Identifier>,
 }
 
-impl<Ba: AncestorQuery + ChainQuery + SharedCommittable, VI: Eq + Hash> ArchiveGhost<Ba, VI> {
-	pub fn new(backend: Locked<Ba>) -> Self {
+impl<Ba: AncestorQuery + ChainQuery, VI: Eq + Hash> ArchiveGhost<Ba, VI> {
+	pub fn new(backend: Ba) -> Self {
 		Self {
 			backend,
 			votes: Default::default(),
@@ -147,6 +146,7 @@ pub struct ArchiveGhostImporter<E: BlockExecutor, Ba: Store<Block=E::Block>> whe
 	Ba::Auxiliary: Auxiliary<E::Block>
 {
 	ghost: ArchiveGhost<Ba, E::ValidatorIndex>,
+	import_lock: ImportLock,
 	executor: E,
 }
 
@@ -155,9 +155,9 @@ impl<E: BlockExecutor, Ba: SharedCommittable + Store<Block=E::Block>> ArchiveGho
 	Ba: AncestorQuery + ChainQuery,
 	Ba::Auxiliary: Auxiliary<E::Block>
 {
-	pub fn new(executor: E, backend: Locked<Ba>) -> Self {
+	pub fn new(executor: E, backend: Ba, import_lock: ImportLock) -> Self {
 		Self {
-			executor,
+			executor, import_lock,
 			ghost: ArchiveGhost::new(backend),
 		}
 	}
@@ -210,7 +210,7 @@ impl<E: BlockExecutor, Ba: Store<Block=E::Block>> RawImporter for ArchiveGhostIm
 			let votes = self.executor.votes(&raw. block, externalities)?;
 
 			let mut importer = ImportAction::new(
-				&self.executor, self.ghost.backend.deref(), self.ghost.backend.lock_import()
+				&self.executor, &self.ghost.backend, self.import_lock.lock()
 			);
 			importer.import_raw(raw);
 			importer.commit()?;
@@ -231,7 +231,7 @@ impl<E: BlockExecutor, Ba: Store<Block=E::Block>> RawImporter for ArchiveGhostIm
 		};
 
 		let mut importer = ImportAction::new(
-			&self.executor, self.ghost.backend.deref(), self.ghost.backend.lock_import()
+			&self.executor, &self.ghost.backend, self.import_lock.lock()
 		);
 		importer.set_head(new_head);
 
