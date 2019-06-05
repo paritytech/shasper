@@ -37,6 +37,11 @@ use crate::prelude::*;
 #[cfg(feature = "parity-codec")]
 extern crate parity_codec as codec;
 
+/// Version of ethereum/eth2.0-specs.
+pub const VERSION = "v0.6.3";
+/// Commit of ethereum/eth2.0-specs.
+pub const COMMIT = "cb9301a9fece8864d97b6ff6b0bb3a662fa21484";
+
 mod config;
 mod utils;
 mod error;
