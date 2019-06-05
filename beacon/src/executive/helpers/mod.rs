@@ -188,6 +188,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	pub(crate) fn crosslink_committee(
 		&self, epoch: Epoch, shard: Shard
 	) -> Result<Vec<ValidatorIndex>, Error> {
+		// `compute_committee` is inlined here because it's only used once.
+
 		let indices = self.active_validator_indices(epoch);
 		let seed = self.generate_seed(epoch);
 		let index = (shard +

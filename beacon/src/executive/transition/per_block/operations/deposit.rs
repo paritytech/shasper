@@ -46,6 +46,9 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			.map(|v| v.pubkey.clone()).collect::<Vec<_>>();
 
 		if !validator_pubkeys.contains(&pubkey) {
+			// Verify the deposit signature (proof of possession). Invalid
+			// signatures are allowed by the deposit contract, and hence
+			// included on-chain, but must not be processed.
 			if !self.config.bls_verify(
 				&pubkey,
 				&H256::from_slice(

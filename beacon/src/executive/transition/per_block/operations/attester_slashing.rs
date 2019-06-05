@@ -47,6 +47,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 				full.push(index);
 			}
 		}
+		full.sort();
 
 		for index in full {
 			if self.state.validator_registry[index as usize]
