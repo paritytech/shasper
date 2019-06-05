@@ -22,7 +22,7 @@ installed. Other dependencies required including `pkgconfig`, `libudev`,
 
 ## `substrate` client
 
-The `substrate` client uses LMD-GHOST consensus and Capser state transition with
+The `substrate` client uses LMD-GHOST consensus and Casper state transition with
 attestations based on a relatively old specification. The client also inherents
 the complete networking stack from Substrate. Note that it is an issue that
 we're addressing that this currently diverges a lot from the actual Serenity
