@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 cargo run --release -- -r attestation res/spectests/tests/operations/attestation/attestation_minimal.yaml
 cargo run --release -- -r attester_slashing res/spectests/tests/operations/attester_slashing/attester_slashing_minimal.yaml
 cargo run --release -- -r block_header res/spectests/tests/operations/block_header/block_header_minimal.yaml
