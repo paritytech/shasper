@@ -34,6 +34,7 @@ fn main() {
 	};
 	match matches.value_of("RUNNER").expect("RUN parameter not found") {
 		"attestation" => run::<AttestationTest, _>(file, &config),
+		"attester_slashing" => run::<AttesterSlashingTest, _>(file, &config),
 		"deposit" => run::<DepositTest, _>(file, &config),
 		"crosslinks" => run::<CrosslinksTest, _>(file, &config),
 		"registry_updates" => run::<RegistryUpdatesTest, _>(file, &config),
