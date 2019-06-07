@@ -1,5 +1,5 @@
 use serde_derive::{Serialize, Deserialize};
-use beacon::types::{BeaconState, Deposit, Attestation, AttesterSlashing, ProposerSlashing, BeaconBlock};
+use beacon::types::{BeaconState, Deposit, Attestation, AttesterSlashing, ProposerSlashing, Transfer, BeaconBlock};
 use beacon::Config;
 use crate::{TestWithBLS, run_test_with};
 
@@ -99,6 +99,26 @@ impl TestWithBLS for ProposerSlashingTest {
 	fn run<C: Config>(&self, config: &C) {
 		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
 			executive.process_proposer_slashing(self.proposer_slashing.clone())
+		});
+	}
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct TransferTest {
+	pub bls_setting: Option<usize>,
+	pub description: String,
+	pub pre: BeaconState,
+	pub transfer: Transfer,
+	pub post: Option<BeaconState>,
+}
+
+impl TestWithBLS for TransferTest {
+	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
+
+	fn run<C: Config>(&self, config: &C) {
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
+			executive.process_transfer(self.transfer.clone())
 		});
 	}
 }
