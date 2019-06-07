@@ -1,8 +1,10 @@
 mod epoch_processing;
 mod operations;
+mod sanity;
 
 pub use epoch_processing::{CrosslinksTest, RegistryUpdatesTest};
 pub use operations::{AttestationTest, AttesterSlashingTest, BlockHeaderTest, DepositTest, ProposerSlashingTest, TransferTest};
+pub use sanity::{BlocksTest, SlotsTest};
 
 use serde_derive::{Serialize, Deserialize};
 use beacon::types::BeaconState;
@@ -46,18 +48,14 @@ pub trait Test {
 	fn run<C: Config>(&self, config: &C);
 }
 
-pub fn run_test_with<C: Config, F: FnOnce(&mut Executive<C>) -> Result<(), Error>>(
-	description: &str, pre: &BeaconState, post: Option<&BeaconState>, config: &C, f: F
+pub fn run_state_test_with<F: FnOnce(&mut BeaconState) -> Result<(), Error>>(
+	description: &str, pre: &BeaconState, post: Option<&BeaconState>, f: F
 ) {
 	print!("Running test: {} ...", description);
 
 	let mut state = pre.clone();
-	let mut executive = Executive {
-		state: &mut state,
-		config,
-	};
 
-	match f(&mut executive) {
+	match f(&mut state) {
 		Ok(()) => {
 			print!(" accepted");
 
@@ -74,6 +72,19 @@ pub fn run_test_with<C: Config, F: FnOnce(&mut Executive<C>) -> Result<(), Error
 	}
 
 	println!("");
+}
+
+pub fn run_test_with<C: Config, F: FnOnce(&mut Executive<C>) -> Result<(), Error>>(
+	description: &str, pre: &BeaconState, post: Option<&BeaconState>, config: &C, f: F
+) {
+	run_state_test_with(description, pre, post, |state| {
+		let mut executive = Executive {
+			state,
+			config,
+		};
+
+		f(&mut executive)
+	});
 }
 
 pub fn run_collection<T: Test, C: Config>(coll: Collection<T>, config: &C) {

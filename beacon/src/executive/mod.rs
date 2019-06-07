@@ -38,8 +38,8 @@ pub struct Executive<'state, 'config, C: Config> {
 	pub config: &'config C,
 }
 
-/// Given a block, execute based on a parent state.
-pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
+/// Execute a block without verifying the state root.
+pub fn execute_block_no_verify_state_root<C: Config>(block: &BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
 	let mut executive = Executive {
 		state, config
 	};
@@ -111,6 +111,17 @@ pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, co
 	for transfer in &block.body.transfers {
 		executive.process_transfer(transfer.clone())?;
 	}
+
+	Ok(())
+}
+
+/// Given a block, execute based on a parent state.
+pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
+	execute_block_no_verify_state_root(block, state, config)?;
+
+	let mut executive = Executive {
+		state, config
+	};
 
 	executive.verify_block_state_root(block)?;
 

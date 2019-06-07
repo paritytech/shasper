@@ -27,7 +27,7 @@ fn main() {
         .get_matches();
 
 	let file = File::open(matches.value_of("FILE").expect("FILE parameter not found")).expect("Open file failed");
-	let config = match matches.value_of("CONFIG") {
+	let mut config = match matches.value_of("CONFIG") {
 		Some("small") | None => NoVerificationConfig::small(),
 		Some("full") => NoVerificationConfig::full(),
 		_ => panic!("Unknown config"),
@@ -41,6 +41,11 @@ fn main() {
 		"transfer" => run::<TransferTest, _>(file, &config),
 		"crosslinks" => run::<CrosslinksTest, _>(file, &config),
 		"registry_updates" => run::<RegistryUpdatesTest, _>(file, &config),
+		"blocks" => {
+			config.max_transfers = 1; // Work-around a bug in test https://github.com/ethereum/eth2.0-specs/issues/1147
+			run::<BlocksTest, _>(file, &config);
+		},
+		"slots" => run::<SlotsTest, _>(file, &config),
 		_ => panic!("Unsupported runner"),
 	}
 }
