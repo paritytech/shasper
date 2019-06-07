@@ -18,3 +18,19 @@ impl Test for CrosslinksTest {
 		});
 	}
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct RegistryUpdatesTest {
+	pub description: String,
+	pub pre: BeaconState,
+	pub post: Option<BeaconState>,
+}
+
+impl Test for RegistryUpdatesTest {
+	fn run<C: Config>(&self, config: &C) {
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
+			executive.process_registry_updates()
+		});
+	}
+}

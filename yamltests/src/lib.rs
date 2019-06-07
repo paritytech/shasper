@@ -1,6 +1,6 @@
 mod epoch_processing;
 
-pub use epoch_processing::CrosslinksTest;
+pub use epoch_processing::{CrosslinksTest, RegistryUpdatesTest};
 
 use serde_derive::{Serialize, Deserialize};
 use beacon::types::{BeaconState, Deposit};

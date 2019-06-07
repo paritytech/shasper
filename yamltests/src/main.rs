@@ -4,7 +4,7 @@ use std::io::BufReader;
 use clap::{App, Arg};
 use beacon::{Config, NoVerificationConfig};
 use serde::de::DeserializeOwned;
-use yamltests::{Test, Collection, DepositTest, CrosslinksTest, run_collection};
+use yamltests::*;
 
 fn main() {
 	let matches = App::new("yamltests")
@@ -35,6 +35,7 @@ fn main() {
 	match matches.value_of("RUNNER").expect("RUN parameter not found") {
 		"deposit" => run::<DepositTest, _>(file, &config),
 		"crosslinks" => run::<CrosslinksTest, _>(file, &config),
+		"registry_updates" => run::<RegistryUpdatesTest, _>(file, &config),
 		_ => panic!("Unsupported runner"),
 	}
 }
