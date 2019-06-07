@@ -25,6 +25,12 @@ use digest::Digest;
 use crate::primitives::{H256, Uint, Epoch, Slot, ValidatorIndex, Signature, ValidatorId};
 use crate::utils::to_uint;
 
+/// Traits that allows creation from any other config.
+pub trait FromConfig {
+	/// Create self from another config.
+	fn from_config<C: Config>(config: &C) -> Self;
+}
+
 /// BLS operations
 pub trait BLSVerification {
 	/// Verify BLS signature.
@@ -450,6 +456,68 @@ impl<BLS: BLSVerification> Config for ParameteredConfig<BLS> {
 	}
 	fn bls_verify_multiple(&self, pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool {
 		BLS::verify_multiple(pubkeys, messages, signature, domain)
+	}
+}
+
+impl<BLS: BLSVerification> FromConfig for ParameteredConfig<BLS> {
+	fn from_config<C: Config>(config: &C) -> Self {
+		Self {
+			shard_count: config.shard_count(),
+			target_committee_size: config.target_committee_size(),
+			max_indices_per_attestation: config.max_indices_per_attestation(),
+			min_per_epoch_churn_limit: config.min_per_epoch_churn_limit(),
+			churn_limit_quotient: config.churn_limit_quotient(),
+			base_rewards_per_epoch: config.base_rewards_per_epoch(),
+			shuffle_round_count: config.shuffle_round_count(),
+
+			deposit_contract_tree_depth: config.deposit_contract_tree_depth(),
+
+			min_deposit_amount: config.min_deposit_amount(),
+			max_effective_balance: config.max_effective_balance(),
+			ejection_balance: config.ejection_balance(),
+			effective_balance_increment: config.effective_balance_increment(),
+
+			genesis_slot: config.genesis_slot(),
+			genesis_epoch: config.genesis_epoch(),
+			bls_withdrawal_prefix_byte: [config.bls_withdrawal_prefix_byte()],
+
+			min_attestation_inclusion_delay: config.min_attestation_inclusion_delay(),
+			slots_per_epoch: config.slots_per_epoch(),
+			min_seed_lookahead: config.min_seed_lookahead(),
+			activation_exit_delay: config.activation_exit_delay(),
+			slots_per_eth1_voting_period: config.slots_per_eth1_voting_period(),
+			slots_per_historical_root: config.slots_per_historical_root(),
+			min_validator_withdrawability_delay: config.min_validator_withdrawability_delay(),
+			persistent_committee_period: config.persistent_committee_period(),
+			max_crosslink_epochs: config.max_crosslink_epochs(),
+			min_epochs_to_inactivity_penalty: config.min_epochs_to_inactivity_penalty(),
+
+			latest_randao_mixes_length: config.latest_randao_mixes_length(),
+			latest_active_index_roots_length: config.latest_active_index_roots_length(),
+			latest_slashed_exit_length: config.latest_slashed_exit_length(),
+
+			base_reward_quotient: config.base_reward_quotient(),
+			whistleblowing_reward_quotient: config.whistleblowing_reward_quotient(),
+			proposer_reward_quotient: config.proposer_reward_quotient(),
+			inactivity_penalty_quotient: config.inactivity_penalty_quotient(),
+			min_slashing_penalty_quotient: config.min_slashing_penalty_quotient(),
+
+			max_proposer_slashings: config.max_proposer_slashings(),
+			max_attester_slashings: config.max_attester_slashings(),
+			max_attestations: config.max_attestations(),
+			max_deposits: config.max_deposits(),
+			max_voluntary_exits: config.max_voluntary_exits(),
+			max_transfers: config.max_transfers(),
+
+			domain_beacon_proposer: config.domain_beacon_proposer(),
+			domain_randao: config.domain_randao(),
+			domain_attestation: config.domain_attestation(),
+			domain_deposit: config.domain_deposit(),
+			domain_voluntary_exit: config.domain_voluntary_exit(),
+			domain_transfer: config.domain_transfer(),
+
+			_marker: PhantomData,
+		}
 	}
 }
 

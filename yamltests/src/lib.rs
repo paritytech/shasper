@@ -1,9 +1,11 @@
 mod epoch_processing;
+mod operations;
 
 pub use epoch_processing::{CrosslinksTest, RegistryUpdatesTest};
+pub use operations::{DepositTest};
 
 use serde_derive::{Serialize, Deserialize};
-use beacon::types::{BeaconState, Deposit};
+use beacon::types::BeaconState;
 use beacon::{Executive, Config, Error};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -19,25 +21,8 @@ pub struct Collection<T> {
 	pub test_cases: Vec<T>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct DepositTest {
-	pub description: String,
-	pub pre: BeaconState,
-	pub deposit: Deposit,
-	pub post: Option<BeaconState>,
-}
-
 pub trait Test {
 	fn run<C: Config>(&self, config: &C);
-}
-
-impl Test for DepositTest {
-	fn run<C: Config>(&self, config: &C) {
-		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
-			executive.process_deposit(self.deposit.clone())
-		});
-	}
 }
 
 pub fn run_test_with<C: Config, F: FnOnce(&mut Executive<C>) -> Result<(), Error>>(
