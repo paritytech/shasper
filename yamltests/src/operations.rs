@@ -1,5 +1,5 @@
 use serde_derive::{Serialize, Deserialize};
-use beacon::types::{BeaconState, Deposit, Attestation, AttesterSlashing};
+use beacon::types::{BeaconState, Deposit, Attestation, AttesterSlashing, BeaconBlock};
 use beacon::Config;
 use crate::{TestWithBLS, run_test_with};
 
@@ -39,6 +39,26 @@ impl TestWithBLS for AttesterSlashingTest {
 	fn run<C: Config>(&self, config: &C) {
 		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
 			executive.process_attester_slashing(self.attester_slashing.clone())
+		});
+	}
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct BlockHeaderTest {
+	pub bls_setting: Option<usize>,
+	pub description: String,
+	pub pre: BeaconState,
+	pub block: BeaconBlock,
+	pub post: Option<BeaconState>,
+}
+
+impl TestWithBLS for BlockHeaderTest {
+	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
+
+	fn run<C: Config>(&self, config: &C) {
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
+			executive.process_block_header(&self.block)
 		});
 	}
 }
