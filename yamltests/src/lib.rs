@@ -2,11 +2,12 @@ mod epoch_processing;
 mod operations;
 
 pub use epoch_processing::{CrosslinksTest, RegistryUpdatesTest};
-pub use operations::{DepositTest};
+pub use operations::{AttestationTest, DepositTest};
 
 use serde_derive::{Serialize, Deserialize};
 use beacon::types::BeaconState;
-use beacon::{Executive, Config, Error};
+use beacon::{Executive, ParameteredConfig, Config, FromConfig, Error};
+use crypto::bls;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -19,6 +20,26 @@ pub struct Collection<T> {
 	pub runner: String,
 	pub handler: String,
 	pub test_cases: Vec<T>,
+}
+
+pub trait TestWithBLS {
+	fn bls_setting(&self) -> Option<usize>;
+	fn run<C: Config>(&self, config: &C);
+}
+
+impl<T: TestWithBLS> Test for T {
+	fn run<C: Config>(&self, config: &C) {
+		match self.bls_setting() {
+			None | Some(0) | Some(2) => {
+				TestWithBLS::run(self, config);
+			},
+			Some(1) => {
+				let config = ParameteredConfig::<bls::Verification>::from_config(config);
+				TestWithBLS::run(self, &config);
+			},
+			_ => panic!("Invalid test format"),
+		}
+	}
 }
 
 pub trait Test {

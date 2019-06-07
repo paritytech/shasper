@@ -1,8 +1,27 @@
 use serde_derive::{Serialize, Deserialize};
-use beacon::types::{BeaconState, Deposit};
-use beacon::{Config, ParameteredConfig, FromConfig};
-use crypto::bls;
-use crate::{Test, run_test_with};
+use beacon::types::{BeaconState, Deposit, Attestation};
+use beacon::Config;
+use crate::{TestWithBLS, run_test_with};
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct AttestationTest {
+	pub bls_setting: Option<usize>,
+	pub description: String,
+	pub pre: BeaconState,
+	pub attestation: Attestation,
+	pub post: Option<BeaconState>,
+}
+
+impl TestWithBLS for AttestationTest {
+	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
+
+	fn run<C: Config>(&self, config: &C) {
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
+			executive.process_attestation(self.attestation.clone())
+		});
+	}
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -14,22 +33,12 @@ pub struct DepositTest {
 	pub post: Option<BeaconState>,
 }
 
-impl Test for DepositTest {
+impl TestWithBLS for DepositTest {
+	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
+
 	fn run<C: Config>(&self, config: &C) {
-		let bls_setting = self.bls_setting.unwrap_or(0);
-		match bls_setting {
-			0 | 2 => {
-				run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
-					executive.process_deposit(self.deposit.clone())
-				});
-			},
-			1 => {
-				let config = ParameteredConfig::<bls::Verification>::from_config(config);
-				run_test_with(&self.description, &self.pre, self.post.as_ref(), &config, |executive| {
-					executive.process_deposit(self.deposit.clone())
-				});
-			},
-			_ => panic!("Invalid test format"),
-		}
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
+			executive.process_deposit(self.deposit.clone())
+		});
 	}
 }
