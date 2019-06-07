@@ -37,6 +37,7 @@ fn main() {
 		"attester_slashing" => run::<AttesterSlashingTest, _>(file, &config),
 		"block_header" => run::<BlockHeaderTest, _>(file, &config),
 		"deposit" => run::<DepositTest, _>(file, &config),
+		"proposer_slashing" => run::<ProposerSlashingTest, _>(file, &config),
 		"crosslinks" => run::<CrosslinksTest, _>(file, &config),
 		"registry_updates" => run::<RegistryUpdatesTest, _>(file, &config),
 		_ => panic!("Unsupported runner"),

@@ -54,6 +54,8 @@ pub enum Error {
 	BlockSignatureInvalid,
 	/// Randao signature is invalid.
 	RandaoSignatureInvalid,
+	/// Proposer slashing contains invalid proposer index.
+	ProposerSlashingInvalidProposerIndex,
 	/// Proposer slashing contains invalid slot.
 	ProposerSlashingInvalidSlot,
 	/// Proposer slashing is on same header.

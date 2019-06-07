@@ -36,6 +36,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		{
+			if proposer_slashing.proposer_index as usize >= self.state.validator_registry.len() {
+				return Err(Error::ProposerSlashingInvalidProposerIndex)
+			}
+
 			let proposer = &self.state.validator_registry[
 				proposer_slashing.proposer_index as usize
 			];

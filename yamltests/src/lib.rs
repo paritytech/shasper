@@ -2,7 +2,7 @@ mod epoch_processing;
 mod operations;
 
 pub use epoch_processing::{CrosslinksTest, RegistryUpdatesTest};
-pub use operations::{AttestationTest, AttesterSlashingTest, BlockHeaderTest, DepositTest};
+pub use operations::{AttestationTest, AttesterSlashingTest, BlockHeaderTest, DepositTest, ProposerSlashingTest};
 
 use serde_derive::{Serialize, Deserialize};
 use beacon::types::BeaconState;
