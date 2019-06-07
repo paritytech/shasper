@@ -101,7 +101,7 @@ mod tests {
 	#[test]
 	fn deposit_small() {
 		let config = NoVerificationConfig::small();
-		let coll = serde_yaml::from_str(&include_str!("../res/spectests/tests/operations/deposits/deposit_minimal.yaml")).unwrap();
+		let coll = serde_yaml::from_str(&include_str!("../res/spectests/tests/operations/deposit/deposit_minimal.yaml")).unwrap();
 		run_collection::<DepositTest, _>(coll, &config);
 	}
 }
