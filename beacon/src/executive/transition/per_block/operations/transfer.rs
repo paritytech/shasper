@@ -39,7 +39,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			 .activation_eligibility_epoch == self.config.far_future_epoch() ||
 			 self.current_epoch() >=
 			 self.state.validator_registry[transfer.sender as usize].withdrawable_epoch ||
-			 transfer.amount + transfer.fee + self.config.max_effective_balance() <
+			 transfer.amount + transfer.fee + self.config.max_effective_balance() <=
 			 self.state.balances[transfer.sender as usize])
 		{
 			return Err(Error::TransferNoFund)
