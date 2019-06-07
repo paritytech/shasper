@@ -1,6 +1,10 @@
+mod epoch_processing;
+
+pub use epoch_processing::CrosslinksTest;
+
 use serde_derive::{Serialize, Deserialize};
 use beacon::types::{BeaconState, Deposit};
-use beacon::{Executive, Config};
+use beacon::{Executive, Config, Error};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -30,32 +34,40 @@ pub trait Test {
 
 impl Test for DepositTest {
 	fn run<C: Config>(&self, config: &C) {
-		print!("Running test: {} ...", self.description);
-
-		let mut state = self.pre.clone();
-		let mut executive = Executive {
-			state: &mut state,
-			config,
-		};
-
-		match executive.process_deposit(self.deposit.clone()) {
-			Ok(()) => {
-				print!(" accepted");
-
-				let post = self.post.clone().unwrap();
-				assert_eq!(state, post);
-				print!(" passed");
-			}
-			Err(e) => {
-				print!(" rejected({:?})", e);
-
-				assert!(self.post.is_none());
-				print!(" passed");
-			}
-		}
-
-		println!("");
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
+			executive.process_deposit(self.deposit.clone())
+		});
 	}
+}
+
+pub fn run_test_with<C: Config, F: FnOnce(&mut Executive<C>) -> Result<(), Error>>(
+	description: &str, pre: &BeaconState, post: Option<&BeaconState>, config: &C, f: F
+) {
+	print!("Running test: {} ...", description);
+
+	let mut state = pre.clone();
+	let mut executive = Executive {
+		state: &mut state,
+		config,
+	};
+
+	match f(&mut executive) {
+		Ok(()) => {
+			print!(" accepted");
+
+			let post = post.unwrap().clone();
+			assert_eq!(state, post);
+			print!(" passed");
+		}
+		Err(e) => {
+			print!(" rejected({:?})", e);
+
+			assert!(post.is_none());
+			print!(" passed");
+		}
+	}
+
+	println!("");
 }
 
 pub fn run_collection<T: Test, C: Config>(coll: Collection<T>, config: &C) {
