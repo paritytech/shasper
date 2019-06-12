@@ -60,7 +60,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		// The 2nd/3rd/4th most recent epochs are justified,
 		// the 2nd using the 4th as source
 		if (bitfield >> 1) % 8 == 0b111 &&
-			old_previous_justified_epoch == current_epoch - 3
+			old_previous_justified_epoch + 3 == current_epoch
 		{
 			self.state.finalized_epoch = old_previous_justified_epoch;
 			self.state.finalized_root = self.block_root(self.state.finalized_epoch)?;
@@ -68,7 +68,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		// The 2nd/3rd most recent epochs are justified,
 		// the 2nd using the 3rd as source
 		if (bitfield >> 1) % 4 == 0b011 &&
-			old_previous_justified_epoch == current_epoch - 2
+			old_previous_justified_epoch + 2 == current_epoch
 		{
 			self.state.finalized_epoch = old_previous_justified_epoch;
 			self.state.finalized_root = self.block_root(self.state.finalized_epoch)?;
@@ -76,7 +76,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		// The 1st/2nd/3rd most recent epochs are justified,
 		// the 1st using the 3rd as source
 		if (bitfield >> 0) % 8 == 0b111 &&
-			old_current_justified_epoch == current_epoch - 2
+			old_current_justified_epoch + 2 == current_epoch
 		{
 			self.state.finalized_epoch = old_current_justified_epoch;
 			self.state.finalized_root = self.block_root(self.state.finalized_epoch)?;
@@ -84,7 +84,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		// The 1st/2nd most recent epochs are justified,
 		// the 1st using the 2nd as source
 		if (bitfield >> 0) % 4 == 0b011 &&
-			old_current_justified_epoch == current_epoch - 1
+			old_current_justified_epoch + 1 == current_epoch
 		{
 			self.state.finalized_epoch = old_current_justified_epoch;
 			self.state.finalized_root = self.block_root(self.state.finalized_epoch)?;

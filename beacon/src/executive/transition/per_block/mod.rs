@@ -19,3 +19,15 @@ mod randao;
 mod eth1;
 mod operations;
 mod state_root;
+
+impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+	pub fn process_block<B: Block + Digestible<C::Digest>>(
+		&mut self,
+		block: &B
+	) -> Result<(), Error> {
+		self.process_block_header(block)?;
+		self.process_randao(block.body())?;
+		self.process_eth1_data(block.body())?;
+		self.process_operations(block.body())?;
+	}
+}

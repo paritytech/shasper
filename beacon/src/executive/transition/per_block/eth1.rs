@@ -19,14 +19,14 @@ use crate::{Config, Executive};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Process eth1 data vote given in a block.
-	pub fn process_eth1_data<B: Block>(&mut self, block: &B) {
-		self.state.eth1_data_votes.push(block.body().eth1_data.clone());
+	pub fn process_eth1_data(&mut self, block: &BeaconBlockBody) {
+		self.state.eth1_data_votes.push(body.eth1_data.clone());
 		if self.state.eth1_data_votes.iter()
-			.filter(|d| d == &&block.body().eth1_data)
+			.filter(|d| d == &&body.eth1_data)
 			.count() * 2 >
 			self.config.slots_per_eth1_voting_period() as usize
 		{
-			self.state.latest_eth1_data = block.body().eth1_data.clone();
+			self.state.latest_eth1_data = body.eth1_data.clone();
 		}
 	}
 }

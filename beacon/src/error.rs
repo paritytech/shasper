@@ -84,6 +84,8 @@ pub enum Error {
 	AttestationEmptyAggregation,
 	/// Attestation has empty custody.
 	AttestationEmptyCustody,
+	/// Attestation data is invalid.
+	AttestationInvalidData,
 	/// Attestation is on invalid shard.
 	AttestationInvalidShard,
 	/// Attestation has invalid custody.

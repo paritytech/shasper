@@ -76,7 +76,7 @@ pub struct BeaconBlock {
 	/// Slot of the block.
 	pub slot: Uint,
 	/// Previous block root.
-	pub previous_block_root: H256,
+	pub parent_root: H256,
 	/// State root.
 	pub state_root: H256,
 	/// Body.
@@ -88,7 +88,7 @@ pub struct BeaconBlock {
 
 impl Block for BeaconBlock {
 	fn slot(&self) -> u64 { self.slot }
-	fn previous_block_root(&self) -> &H256 { &self.previous_block_root }
+	fn parent_root(&self) -> &H256 { &self.parent_root }
 	fn state_root(&self) -> &H256 { &self.state_root }
 	fn body(&self) -> &BeaconBlockBody { &self.body }
 	fn signature(&self) -> Option<&Signature> { Some(&self.signature) }
@@ -104,7 +104,7 @@ pub struct UnsealedBeaconBlock {
 	/// Slot of the block.
 	pub slot: Uint,
 	/// Previous block root.
-	pub previous_block_root: H256,
+	pub parent_root: H256,
 	/// State root.
 	pub state_root: H256,
 	/// Body.
@@ -113,7 +113,7 @@ pub struct UnsealedBeaconBlock {
 
 impl Block for UnsealedBeaconBlock {
 	fn slot(&self) -> u64 { self.slot }
-	fn previous_block_root(&self) -> &H256 { &self.previous_block_root }
+	fn parent_root(&self) -> &H256 { &self.parent_root }
 	fn state_root(&self) -> &H256 { &self.state_root }
 	fn body(&self) -> &BeaconBlockBody { &self.body }
 	fn signature(&self) -> Option<&Signature> { None }
@@ -124,7 +124,7 @@ impl UnsealedBeaconBlock {
 	pub fn fake_seal(self) -> BeaconBlock {
 		BeaconBlock {
 			slot: self.slot,
-			previous_block_root: self.previous_block_root,
+			parent_root: self.parent_root,
 			state_root: self.state_root,
 			body: self.body,
 			signature: Default::default(),

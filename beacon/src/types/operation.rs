@@ -80,8 +80,6 @@ pub struct Deposit {
 	/// Branch in the deposit tree
 	#[ssz(use_fixed)]
 	pub proof: Vec<H256>,
-	/// Index in the deposit tree
-	pub index: Uint,
 	/// Data
 	pub data: DepositData,
 }
@@ -91,7 +89,6 @@ impl Deposit {
 	pub fn default_with_config<C: Config>(config: &C) -> Self {
 		Self {
 			proof: fixed_vec(config.deposit_contract_tree_depth()),
-			index: Default::default(),
 			data: Default::default(),
 		}
 	}

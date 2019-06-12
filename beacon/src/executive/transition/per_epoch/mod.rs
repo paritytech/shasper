@@ -21,3 +21,14 @@ mod reward;
 mod registry;
 mod slashing;
 mod finalize;
+
+impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+	pub fn process_epoch(&mut self) -> Result<()> {
+		self.process_justification_and_finalization()?;
+		self.process_crosslinks()?;
+		self.process_rewards_and_penalties()?;
+		self.process_registry_updates()?;
+		self.process_slashings()?;
+		self.process_final_updates()?;
+	}
+}

@@ -44,28 +44,55 @@ pub struct Fork {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
-/// Crosslink.
-pub struct Crosslink {
-	/// Epoch number
-	pub epoch: Uint,
-	/// Root of the previous crosslink
-	pub previous_crosslink_root: H256,
-	/// Root of the crosslinked shard data since the previous crosslink
-	pub crosslink_data_root: H256,
+/// Validator record.
+pub struct Validator {
+	/// BLS public key
+	pub pubkey: ValidatorId,
+	/// Withdrawal credentials
+	pub withdrawal_credentials: H256,
+	/// Epoch when became eligible for activation
+	pub activation_eligibility_epoch: Uint,
+	/// Epoch when validator activated
+	pub activation_epoch: Uint,
+	/// Epoch when validator exited
+	pub exit_epoch: Uint,
+	/// Epoch when validator is eligible to withdraw
+	pub withdrawable_epoch: Uint,
+	/// Was the validator slashed
+	pub slashed: bool,
+	/// Effective balance
+	pub effective_balance: Uint,
+}
+
+impl Validator {
+	/// Whether it is active validator.
+	pub fn is_active(&self, epoch: Uint) -> bool {
+		self.activation_epoch <= epoch && epoch < self.exit_epoch
+	}
+
+	/// Whether it is slashable.
+	pub fn is_slashable(&self, epoch: Uint) -> bool {
+		self.slashed == false &&
+			self.activation_epoch <= epoch && epoch < self.withdrawable_epoch
+	}
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
-/// Eth1 data.
-pub struct Eth1Data {
-	/// Root of the deposit tree
-	pub deposit_root: H256,
-	/// Total number of deposits
-	pub deposit_count: Uint,
-	/// Block hash
-	pub block_hash: H256,
+/// Crosslink.
+pub struct Crosslink {
+	/// Shard number
+	pub shard: Uint,
+	/// Crosslinking data from epoch start
+	pub start: Uint,
+	/// Crosslinking data to epoch end
+	pub end: Uint,
+	/// Root of the previous crosslink
+	pub parent_root: H256,
+	/// Root of the crosslinked shard data since the previous crosslink
+	pub data_root: H256,
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq, Default)]
@@ -89,12 +116,7 @@ pub struct AttestationData {
 	pub target_root: H256,
 
 	// == Crosslink vote ==
-	/// Shard number
-	pub shard: Uint,
-	/// Last crosslink
-	pub previous_crosslink_root: H256,
-	/// Data from the shard since the last attestation
-	pub crosslink_data_root: H256,
+	pub crosslink: Crosslink,
 }
 
 impl AttestationData {
@@ -139,79 +161,6 @@ pub struct IndexedAttestation {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
-/// Deposit data.
-pub struct DepositData {
-	/// BLS pubkey
-	pub pubkey: ValidatorId,
-	/// Withdrawal credentials
-	pub withdrawal_credentials: H256,
-	/// Amount in Gwei
-	pub amount: Uint,
-	#[ssz(truncate)]
-	/// Container self-signature
-	pub signature: Signature,
-}
-
-#[derive(Ssz, Clone, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
-/// Beacon block header.
-pub struct BeaconBlockHeader {
-	/// Slot of the block.
-    pub slot: Uint,
-	/// Previous block root.
-    pub previous_block_root: H256,
-	/// State root.
-    pub state_root: H256,
-	/// Block body root.
-    pub block_body_root: H256,
-	#[ssz(truncate)]
-	/// Signature.
-    pub signature: Signature,
-}
-
-#[derive(Ssz, Clone, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
-/// Validator record.
-pub struct Validator {
-	/// BLS public key
-	pub pubkey: ValidatorId,
-	/// Withdrawal credentials
-	pub withdrawal_credentials: H256,
-	/// Epoch when became eligible for activation
-	pub activation_eligibility_epoch: Uint,
-	/// Epoch when validator activated
-	pub activation_epoch: Uint,
-	/// Epoch when validator exited
-	pub exit_epoch: Uint,
-	/// Epoch when validator is eligible to withdraw
-	pub withdrawable_epoch: Uint,
-	/// Was the validator slashed
-	pub slashed: bool,
-	/// Effective balance
-	pub effective_balance: Uint,
-}
-
-impl Validator {
-	/// Whether it is active validator.
-	pub fn is_active(&self, epoch: Uint) -> bool {
-		self.activation_epoch <= epoch && epoch < self.exit_epoch
-	}
-
-	/// Whether it is slashable.
-	pub fn is_slashable(&self, epoch: Uint) -> bool {
-		self.slashed == false &&
-			self.activation_epoch <= epoch && epoch < self.withdrawable_epoch
-	}
-}
-
-#[derive(Ssz, Clone, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Pending attestation.
 pub struct PendingAttestation {
 	/// Attester aggregation bitfield
@@ -222,6 +171,20 @@ pub struct PendingAttestation {
 	pub inclusion_delay: Uint,
 	/// Proposer index
 	pub proposer_index: Uint,
+}
+
+#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
+/// Eth1 data.
+pub struct Eth1Data {
+	/// Root of the deposit tree
+	pub deposit_root: H256,
+	/// Total number of deposits
+	pub deposit_count: Uint,
+	/// Block hash
+	pub block_hash: H256,
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq)]
@@ -247,4 +210,40 @@ impl HistoricalBatch {
 			state_roots: fixed_vec(config.slots_per_historical_root()),
 		}
 	}
+}
+
+#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
+/// Deposit data.
+pub struct DepositData {
+	/// BLS pubkey
+	pub pubkey: ValidatorId,
+	/// Withdrawal credentials
+	pub withdrawal_credentials: H256,
+	/// Amount in Gwei
+	pub amount: Uint,
+	#[ssz(truncate)]
+	/// Container self-signature
+	pub signature: Signature,
+}
+
+#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
+/// Beacon block header.
+pub struct BeaconBlockHeader {
+	/// Slot of the block.
+    pub slot: Uint,
+	/// Previous block root.
+    pub parent_root: H256,
+	/// State root.
+    pub state_root: H256,
+	/// Block body root.
+    pub body_root: H256,
+	#[ssz(truncate)]
+	/// Signature.
+    pub signature: Signature,
 }

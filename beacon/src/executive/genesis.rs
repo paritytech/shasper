@@ -40,7 +40,7 @@ pub fn genesis<C: Config>(
 
 /// Generate genesis state from given deposits, timestamp, and eth1 data.
 pub fn genesis_beacon_state<C: Config>(
-	genesis_validator_deposits: &[Deposit],
+	deposits: &[Deposit],
 	genesis_time: Uint,
 	genesis_eth1_data: Eth1Data,
 	config: &C,
@@ -48,6 +48,14 @@ pub fn genesis_beacon_state<C: Config>(
 	let mut state = BeaconState {
 		genesis_time,
 		latest_eth1_data: genesis_eth1_data,
+		latest_block_header: BeaconBlockHeader {
+			block_root: H256::from_slice(
+				Digestible::<C::Digest>::hash(
+					&BeaconBlockBody::default()
+				)
+			),
+			..Default::default()
+		},
 		..BeaconState::default_with_config(config)
 	};
 
@@ -56,7 +64,7 @@ pub fn genesis_beacon_state<C: Config>(
 			state: &mut state,
 			config,
 		};
-		for deposit in genesis_validator_deposits {
+		for deposit in deposits {
 			executive.process_deposit(deposit.clone())?;
 		}
 
@@ -67,6 +75,7 @@ pub fn genesis_beacon_state<C: Config>(
 			}
 		}
 
+		// Populate latest_active_index_roots
 		let genesis_active_index_root = H256::from_slice(
 			Digestible::<C::Digest>::hash(
 				&executive.active_validator_indices(config.genesis_epoch())

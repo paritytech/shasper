@@ -37,7 +37,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 				return Err(Error::VoluntaryExitNotYetValid)
 			}
 
-			if self.current_epoch() - validator.activation_epoch < self.config.persistent_committee_period() {
+			if self.current_epoch() < validator.activation_epoch + self.config.persistent_committee_period() {
 				return Err(Error::VoluntaryExitNotLongEnough)
 			}
 

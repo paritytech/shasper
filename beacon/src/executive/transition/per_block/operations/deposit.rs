@@ -29,7 +29,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			),
 			&deposit.proof,
 			self.config.deposit_contract_tree_depth(),
-			deposit.index,
+			self.state.deposit_index,
 			self.state.latest_eth1_data.deposit_root,
 		) {
 			return Err(Error::DepositMerkleInvalid)

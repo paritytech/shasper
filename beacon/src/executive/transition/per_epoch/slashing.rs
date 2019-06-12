@@ -21,10 +21,9 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Process slashings
 	pub fn process_slashings(&mut self) {
 		let current_epoch = self.current_epoch();
-		let active_validator_indices = self.active_validator_indices(current_epoch);
-		let total_balance = self.total_balance(&active_validator_indices);
+		let total_balance = self.total_active_balance();
 
-		// Compute `total_penalties`
+		// Compute slashed balances in the current epoch
 		let total_at_start = self.state.latest_slashed_balances[
 			((current_epoch + 1) % self.config.latest_slashed_exit_length()) as usize
 		];

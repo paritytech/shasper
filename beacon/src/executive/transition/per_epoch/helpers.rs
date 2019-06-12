@@ -47,7 +47,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		self.matching_source_attestations(epoch)?.into_iter()
 			.map(|a| {
 				Ok((a.data.beacon_block_root == self.block_root_at_slot(
-					self.attestation_slot(&a.data)?
+					self.attestation_data_slot(&a.data)?
 				)?, a))
 			})
 			.collect::<Result<Vec<_>, _>>()
@@ -83,27 +83,14 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(self.total_balance(&self.unslashed_attesting_indices(attestations)?))
 	}
 
-	pub(crate) fn crosslink_from_attestation_data(&self, data: AttestationData) -> Crosslink {
-		Crosslink {
-			epoch: min(
-				data.target_epoch,
-				self.state.current_crosslinks[data.shard as usize].epoch +
-					self.config.max_crosslink_epochs()
-			),
-			previous_crosslink_root: data.previous_crosslink_root,
-			crosslink_data_root: data.crosslink_data_root,
-		}
-	}
-
 	pub(crate) fn winning_crosslink_and_attesting_indices(
 		&self, epoch: Epoch, shard: Shard
 	) -> Result<(Crosslink, Vec<ValidatorIndex>), Error> {
-		let shard_attestations = self.matching_source_attestations(epoch)?.into_iter()
+		let attestations = self.matching_source_attestations(epoch)?.into_iter()
 			.filter(|a| a.data.shard == shard)
 			.collect::<Vec<_>>();
-		let shard_crosslinks = shard_attestations.clone().into_iter()
-			.map(|a| self.crosslink_from_attestation_data(a.data));
-		let candidate_crosslinks = shard_crosslinks
+		let crosslinks = attestations.clone().into_iter()
+			.map(|a| a.data.crosslink)
 			.filter(|c| {
 				let current_root = H256::from_slice(
 					Digestible::<C::Digest>::hash(
@@ -114,7 +101,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 					Digestible::<C::Digest>::hash(c).as_slice()
 				);
 
-				current_root == root || current_root == c.previous_crosslink_root
+				current_root == root || current_root == c.parent_root
 			})
 			.collect::<Vec<_>>();
 
@@ -123,28 +110,30 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		let attestations_for = |crosslink: &Crosslink| {
-			shard_attestations.clone().into_iter()
-				.filter(|a| {
-					&self.crosslink_from_attestation_data(a.data.clone()) == crosslink
-				})
+			attestations.clone().into_iter()
+				.filter(|a| a.crosslink == crosslink)
 				.collect::<Vec<_>>()
 		};
-		let winning_crosslink = candidate_crosslinks.iter()
-			.fold(Ok(candidate_crosslinks[0].clone()), |a, b| {
-				let a = a?;
-				let cmp1 = self.attesting_balance(&attestations_for(&a))?
-					.cmp(&self.attesting_balance(&attestations_for(b))?);
-				let cmp2 = compare_hash(&a.crosslink_data_root, &b.crosslink_data_root);
+		let winning_crosslink = if candidate_crosslinks.len() == 0 {
+			Crosslink::default()
+		} else {
+			candidate_crosslinks
+				.iter()
+				.fold(Ok(candidate_crosslinks[0].clone()), |a, b| {
+					let a = a?;
+					let cmp1 = self.attesting_balance(&attestations_for(&a))?
+						.cmp(&self.attesting_balance(&attestations_for(b))?);
+					let cmp2 = compare_hash(&a.data_root, &b.data_root);
 
-				Ok(match (cmp1, cmp2) {
-					(Ordering::Greater, _) | (Ordering::Equal, Ordering::Greater) => a,
-					_ => b.clone(),
-				})
-			})?;
+					Ok(match (cmp1, cmp2) {
+						(Ordering::Greater, _) |
+						(Ordering::Equal, Ordering::Greater) => a,
+						_ => b.clone(),
+					})
+				})?;
+		};
+		let winning_attestations = attestations_for(winning_crosslink);
 
-		let winning_indices = self.unslashed_attesting_indices(
-			&attestations_for(&winning_crosslink)
-		)?;
-		Ok((winning_crosslink, winning_indices))
+		Ok((winning_crosslink, self.unslashed_attesting_indices(winning_attestations)))
 	}
 }

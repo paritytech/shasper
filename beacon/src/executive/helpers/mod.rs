@@ -32,10 +32,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Get the previous state epoch.
 	pub fn previous_epoch(&self) -> Epoch {
 		let current_epoch = self.current_epoch();
-		if current_epoch > self.config.genesis_epoch() {
-			current_epoch.saturating_sub(1)
+		if current_epoch == self.config.genesis_epoch() {
+			self.config.genesis_epoch()
 		} else {
-			current_epoch
+			current_epoch - 1
 		}
 	}
 
@@ -99,9 +99,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(shard)
 	}
 
-	pub(crate) fn attestation_slot(&self, attestation: &AttestationData) -> Result<Slot, Error> {
-		let epoch = attestation.target_epoch;
-		let committee_count = self.epoch_committee_count(epoch);
+	pub(crate) fn attestation_data_slot(&self, attestation: &AttestationData) -> Result<Slot, Error> {
+		let committee_count = self.epoch_committee_count(
+			attestation.target_epoch
+		);
 		let offset = (attestation.shard + self.config.shard_count() -
 					  self.epoch_start_shard(epoch)?) %
 			self.config.shard_count();
@@ -212,7 +213,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		&self, attestation_data: &AttestationData, bitfield: &BitField,
 	) -> Result<Vec<ValidatorIndex>, Error> {
 		let committee = self.crosslink_committee(
-			attestation_data.target_epoch, attestation_data.shard
+			attestation_data.target_epoch, attestation_data.crosslink.shard
 		)?;
 		if !bitfield.verify(committee.len()) {
 			return Err(Error::AttestationBitFieldInvalid);
@@ -228,9 +229,12 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	}
 
 	pub(crate) fn total_balance(&self, indices: &[ValidatorIndex]) -> Gwei {
-		indices.iter().fold(0, |sum, index| {
-			sum + self.state.validator_registry[*index as usize].effective_balance
-		})
+		max(
+			indices.iter().fold(0, |sum, index| {
+				sum + self.state.validator_registry[*index as usize].effective_balance
+			}),
+			1
+		)
 	}
 
 	/// Find domain integer of type and epoch.
@@ -242,7 +246,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			self.state.fork.current_version
 		};
 
-		utils::raw_domain(domain_type, fork_version)
+		utils::bls_domain(domain_type, fork_version)
 	}
 
 	pub(crate) fn convert_to_indexed(&self, attestation: Attestation) -> Result<IndexedAttestation, Error> {
@@ -264,45 +268,45 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		})
 	}
 
-	pub(crate) fn verify_indexed_attestation(&self, indexed_attestation: &IndexedAttestation) -> Result<bool, Error> {
-		let custody_bit_0_indices = &indexed_attestation.custody_bit_0_indices;
-		let custody_bit_1_indices = &indexed_attestation.custody_bit_1_indices;
+	pub(crate) fn validate_indexed_attestation(&self, indexed_attestation: &IndexedAttestation) -> Result<(), Error> {
+		let bit_0_indices = &indexed_attestation.custody_bit_0_indices;
+		let bit_1_indices = &indexed_attestation.custody_bit_1_indices;
+
+		if bit_1_indices.len() > 0 {
+			return Err(Error::AttestationInvalidData)
+		}
+
+		let total_len =
+			(bit_0_indices.len() + bit_1_indices.len()) as u64;
+		if !(total_len <= self.config.max_indices_per_attestation()) {
+			return Err(Error::AttestationInvalidData)
+		}
 
 		// Ensure no duplicate indices across custody bits
-		for index in custody_bit_0_indices {
-			if custody_bit_1_indices.contains(index) {
+		for index in bit_0_indices {
+			if bit_1_indices.contains(index) {
 				return Err(Error::DuplicateIndexes)
 			}
 		}
 
-		if custody_bit_1_indices.len() > 0 {
-			return Ok(false)
+		if !bit_0_indices.windows(2).all(|w| w[0] <= w[1]) {
+			return Err(Error::DuplicateIndexes)
 		}
 
-		let total_len =
-			(custody_bit_0_indices.len() + custody_bit_1_indices.len()) as u64;
-		if !(1 <= total_len && total_len <= self.config.max_indices_per_attestation()) {
-			return Ok(false)
-		}
-
-		if !custody_bit_0_indices.windows(2).all(|w| w[0] <= w[1]) {
-			return Ok(false)
-		}
-
-		if !custody_bit_1_indices.windows(2).all(|w| w[0] <= w[1]) {
-			return Ok(false)
+		if !bit_1_indices.windows(2).all(|w| w[0] <= w[1]) {
+			return Err(Error::DuplicateIndexes)
 		}
 
 		Ok(self.config.bls_verify_multiple(
 			&[
 				self.config.bls_aggregate_pubkeys(
-					&custody_bit_0_indices
+					&bit_0_indices
 						.iter()
 						.map(|i| self.state.validator_registry[*i as usize].pubkey)
 						.collect::<Vec<_>>()[..]
 				),
 				self.config.bls_aggregate_pubkeys(
-					&custody_bit_1_indices
+					&bit_1_indices
 						.iter()
 						.map(|i| self.state.validator_registry[*i as usize].pubkey)
 						.collect::<Vec<_>>()[..]
@@ -330,6 +334,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		))
 	}
 
+	/// Return the churn limit based on the active validator count.
 	pub(crate) fn churn_limit(&self) -> Uint {
 		max(
 			self.config.min_per_epoch_churn_limit(),
