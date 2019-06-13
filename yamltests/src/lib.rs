@@ -3,7 +3,7 @@ mod operations;
 mod sanity;
 
 pub use epoch_processing::{CrosslinksTest, RegistryUpdatesTest};
-pub use operations::{AttestationTest, AttesterSlashingTest, BlockHeaderTest, DepositTest, ProposerSlashingTest, TransferTest};
+pub use operations::{AttestationTest, AttesterSlashingTest, BlockHeaderTest, DepositTest, ProposerSlashingTest, TransferTest, VoluntaryExitTest};
 pub use sanity::{BlocksTest, SlotsTest};
 
 use serde_derive::{Serialize, Deserialize};

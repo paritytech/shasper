@@ -8,6 +8,7 @@ cargo run --release -- -r block_header res/spectests/tests/operations/block_head
 cargo run --release -- -r deposit res/spectests/tests/operations/deposit/deposit_minimal.yaml
 cargo run --release -- -r proposer_slashing res/spectests/tests/operations/proposer_slashing/proposer_slashing_minimal.yaml
 cargo run --release -- -r transfer res/spectests/tests/operations/transfer/transfer_minimal.yaml
+cargo run --release -- -r voluntary_exit res/spectests/tests/operations/voluntary_exit/voluntary_exit_minimal.yaml
 
 cargo run --release -- -r crosslinks res/spectests/tests/epoch_processing/crosslinks/crosslinks_minimal.yaml
 cargo run --release -- -r registry_updates res/spectests/tests/epoch_processing/registry_updates/registry_updates_minimal.yaml

@@ -23,6 +23,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Push a new `VoluntaryExit` to the state.
 	pub fn process_voluntary_exit(&mut self, exit: VoluntaryExit) -> Result<(), Error> {
 		{
+			if exit.validator_index >= self.state.validator_registry.len() as u64 {
+				return Err(Error::VoluntaryExitInvalidSignature)
+			}
+
 			let validator = &self.state.validator_registry[exit.validator_index as usize];
 
 			if !validator.is_active(self.current_epoch()) {

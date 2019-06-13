@@ -39,6 +39,7 @@ fn main() {
 		"deposit" => run::<DepositTest, _>(file, &config),
 		"proposer_slashing" => run::<ProposerSlashingTest, _>(file, &config),
 		"transfer" => run::<TransferTest, _>(file, &config),
+		"voluntary_exit" => run::<VoluntaryExitTest, _>(file, &config),
 		"crosslinks" => run::<CrosslinksTest, _>(file, &config),
 		"registry_updates" => run::<RegistryUpdatesTest, _>(file, &config),
 		"blocks" => {
