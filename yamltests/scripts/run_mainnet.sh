@@ -12,5 +12,5 @@ cargo run --release -- --config full -r transfer res/spectests/tests/operations/
 cargo run --release -- --config full -r crosslinks res/spectests/tests/epoch_processing/crosslinks/crosslinks_mainnet.yaml
 cargo run --release -- --config full -r registry_updates res/spectests/tests/epoch_processing/registry_updates/registry_updates_mainnet.yaml
 
-cargo run --release -- --config full -r blocks res/spectests/tests/sanity/blocks/blocksanity_s_mainnet.yaml
-cargo run --release -- --config full -r slots res/spectests/tests/sanity/slots/slotsanity_s_mainnet.yaml
+cargo run --release -- --config full -r blocks res/spectests/tests/sanity/blocks/sanity_blocks_mainnet.yaml
+cargo run --release -- --config full -r slots res/spectests/tests/sanity/slots/sanity_slots_mainnet.yaml

@@ -38,18 +38,21 @@ pub struct Executive<'state, 'config, C: Config> {
 	pub config: &'config C,
 }
 
-/// Execute a block without verifying the state root.
-pub fn execute_block_no_verify_state_root<C: Config>(block: &BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
-	let mut executive = Executive { state, config };
-	executive.state_transition(block, false)?;
-
-	Ok(())
+/// Execution strategy.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum Strategy {
+	/// The normal execution strategy
+	Full,
+	/// Execution without verifying the state root
+	IgnoreStateRoot,
+	/// Execution without verifying the state root, and without randao
+	IgnoreRandaoAndStateRoot,
 }
 
 /// Given a block, execute based on a parent state.
 pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
 	let mut executive = Executive { state, config };
-	executive.state_transition(block, true)?;
+	executive.state_transition(block, Strategy::Full)?;
 
 	Ok(())
 }

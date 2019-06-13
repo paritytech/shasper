@@ -20,17 +20,21 @@ mod eth1;
 mod operations;
 
 use ssz::Digestible;
-use crate::{Config, Error, Executive};
+use crate::{Config, Error, Executive, Strategy};
 use crate::types::Block;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Process a block, assuming we are at given slot.
 	pub fn process_block<B: Block + Digestible<C::Digest>>(
 		&mut self,
-		block: &B
+		block: &B,
+		strategy: Strategy,
 	) -> Result<(), Error> {
 		self.process_block_header(block)?;
-		self.process_randao(block.body())?;
+		match strategy {
+			Strategy::IgnoreRandaoAndStateRoot => (),
+			_ => self.process_randao(block.body())?,
+		}
 		self.process_eth1_data(block.body());
 		self.process_operations(block.body())?;
 

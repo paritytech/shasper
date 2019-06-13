@@ -18,7 +18,7 @@ mod per_epoch;
 mod per_block;
 
 use ssz::Digestible;
-use crate::{Error, Config, Executive};
+use crate::{Error, Config, Executive, Strategy};
 use crate::types::Block;
 use crate::primitives::{H256, Uint};
 
@@ -27,16 +27,19 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	pub fn state_transition<B: Block + Digestible<C::Digest>>(
 		&mut self,
 		block: &B,
-		validate_state_root: bool
+		strategy: Strategy,
 	) -> Result<(), Error> {
 		self.process_slots(block.slot())?;
-		self.process_block(block)?;
+		self.process_block(block, strategy)?;
 
-		if validate_state_root {
-			if !(block.state_root() == &H256::from_slice(
-				Digestible::<C::Digest>::hash(self.state).as_slice()
-			)) {
-				return Err(Error::BlockStateRootInvalid)
+		match strategy {
+			Strategy::IgnoreStateRoot | Strategy::IgnoreRandaoAndStateRoot => (),
+			_ => {
+				if !(block.state_root() == &H256::from_slice(
+					Digestible::<C::Digest>::hash(self.state).as_slice()
+				)) {
+					return Err(Error::BlockStateRootInvalid)
+				}
 			}
 		}
 
