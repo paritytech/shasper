@@ -26,6 +26,7 @@ use crate::{Error, Executive, Config};
 use crate::types::BeaconBlockBody;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+	/// Process block operations.
 	pub fn process_operations(
 		&mut self,
 		body: &BeaconBlockBody

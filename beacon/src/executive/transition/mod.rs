@@ -23,6 +23,7 @@ use crate::types::Block;
 use crate::primitives::{H256, Uint};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+	/// Execute state transition.
 	pub fn state_transition<B: Block + Digestible<C::Digest>>(
 		&mut self,
 		block: &B,
@@ -42,6 +43,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		Ok(())
 	}
 
+	/// Process slots, process epoch if at epoch boundary.
 	pub fn process_slots(&mut self, slot: Uint) -> Result<(), Error> {
 		if self.state.slot > slot {
 			return Err(Error::SlotOutOfRange)

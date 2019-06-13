@@ -115,7 +115,7 @@ pub struct AttestationData {
 	/// Root of the ancestor at the epoch boundary
 	pub target_root: H256,
 
-	// == Crosslink vote ==
+	/// Crosslink vote
 	pub crosslink: Crosslink,
 }
 

@@ -25,6 +25,7 @@ mod finalize;
 use crate::{Config, Executive, Error};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+	/// Process an epoch.
 	pub fn process_epoch(&mut self) -> Result<(), Error> {
 		self.process_justification_and_finalization()?;
 		self.process_crosslinks()?;
