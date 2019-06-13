@@ -47,15 +47,14 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::AttestationIncorrectJustifiedEpochOrBlockRoot)
 		}
 
-		let (ffg_data, parent_crosslink) = if data.target_epoch == self.current_epoch() {
+		let (ffg_data, parent_crosslink, push_current) = if data.target_epoch == self.current_epoch() {
 			let ffg_data = (self.state.current_justified_epoch,
 							self.state.current_justified_root,
 							self.current_epoch());
 			let parent_crosslink = self.state.current_crosslinks[
 				data.crosslink.shard as usize
 			].clone();
-			self.state.current_epoch_attestations.push(pending_attestation);
-			(ffg_data, parent_crosslink)
+			(ffg_data, parent_crosslink, true)
 		} else {
 			let ffg_data = (self.state.previous_justified_epoch,
 							self.state.previous_justified_root,
@@ -63,8 +62,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			let parent_crosslink = self.state.previous_crosslinks[
 				data.crosslink.shard as usize
 			].clone();
-			self.state.previous_epoch_attestations.push(pending_attestation);
-			(ffg_data, parent_crosslink)
+			(ffg_data, parent_crosslink, false)
 		};
 
 		if ffg_data != (data.source_epoch, data.source_root, data.target_epoch) {
@@ -93,6 +91,12 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		self.validate_indexed_attestation(&self.convert_to_indexed(attestation.clone())?)?;
+
+		if push_current {
+			self.state.current_epoch_attestations.push(pending_attestation);
+		} else {
+			self.state.previous_epoch_attestations.push(pending_attestation);
+		}
 
 		Ok(())
 	}
