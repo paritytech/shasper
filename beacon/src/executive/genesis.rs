@@ -16,7 +16,7 @@
 
 use ssz::Digestible;
 use crate::primitives::{H256, Uint};
-use crate::types::{Deposit, Eth1Data, BeaconState, BeaconBlock};
+use crate::types::{Deposit, Eth1Data, BeaconState, BeaconBlock, BeaconBlockHeader, BeaconBlockBody};
 use crate::{Config, Executive, Error};
 
 /// Generate genesis state and genesis block from given deposits, timestamp and eth1 data.
@@ -49,10 +49,10 @@ pub fn genesis_beacon_state<C: Config>(
 		genesis_time,
 		latest_eth1_data: genesis_eth1_data,
 		latest_block_header: BeaconBlockHeader {
-			block_root: H256::from_slice(
+			body_root: H256::from_slice(
 				Digestible::<C::Digest>::hash(
 					&BeaconBlockBody::default()
-				)
+				).as_slice()
 			),
 			..Default::default()
 		},

@@ -57,7 +57,7 @@ pub trait Block {
 	/// Slot of the block.
 	fn slot(&self) -> u64;
 	/// Previous block root.
-	fn previous_block_root(&self) -> &H256;
+	fn parent_root(&self) -> &H256;
 	/// State root.
 	fn state_root(&self) -> &H256;
 	/// Body.

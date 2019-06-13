@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+use core::cmp::min;
 use ssz::Digestible;
 use crate::primitives::H256;
 use crate::types::{Attestation, PendingAttestation};
@@ -35,7 +36,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		let pending_attestation = PendingAttestation {
 			data: data.clone(),
-			aggregation_bitfield: attestation.aggregation_bitfield,
+			aggregation_bitfield: attestation.aggregation_bitfield.clone(),
 			inclusion_delay: self.state.slot - attestation_slot,
 			proposer_index: self.beacon_proposer_index()?,
 		};
@@ -50,14 +51,18 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			let ffg_data = (self.state.current_justified_epoch,
 							self.state.current_justified_root,
 							self.current_epoch());
-			let parent_crosslink = self.state.current_crosslinks[data.crosslink.shard];
+			let parent_crosslink = self.state.current_crosslinks[
+				data.crosslink.shard as usize
+			].clone();
 			self.state.current_epoch_attestations.push(pending_attestation);
 			(ffg_data, parent_crosslink)
 		} else {
 			let ffg_data = (self.state.previous_justified_epoch,
 							self.state.previous_justified_root,
 							self.previous_epoch());
-			let parent_crosslink = self.state.previous_crosslinks[data.crosslink.shard];
+			let parent_crosslink = self.state.previous_crosslinks[
+				data.crosslink.shard as usize
+			].clone();
 			self.state.previous_epoch_attestations.push(pending_attestation);
 			(ffg_data, parent_crosslink)
 		};
@@ -77,17 +82,17 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::AttestationIncorrectCrosslinkData)
 		}
 
-		if data.crosslink.parent_root != H256::from_slice(Digestible::<C::Digest>>::hash(
-			parent_crosslink
-		)) {
+		if data.crosslink.parent_root != H256::from_slice(Digestible::<C::Digest>::hash(
+			&parent_crosslink
+		).as_slice()) {
 			return Err(Error::AttestationIncorrectCrosslinkData)
 		}
 
-		if data.crosslink.data_root != H256::defulat() {
+		if data.crosslink.data_root != H256::default() {
 			return Err(Error::AttestationIncorrectCrosslinkData)
 		}
 
-		self.validate_index_attestation(self.convert_to_indexed(attestation.clone()))?;
+		self.validate_indexed_attestation(&self.convert_to_indexed(attestation.clone())?)?;
 
 		Ok(())
 	}

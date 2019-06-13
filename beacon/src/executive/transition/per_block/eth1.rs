@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::types::Block;
 use crate::{Config, Executive};
+use crate::types::BeaconBlockBody;
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Process eth1 data vote given in a block.
-	pub fn process_eth1_data(&mut self, block: &BeaconBlockBody) {
+	pub fn process_eth1_data(&mut self, body: &BeaconBlockBody) {
 		self.state.eth1_data_votes.push(body.eth1_data.clone());
 		if self.state.eth1_data_votes.iter()
 			.filter(|d| d == &&body.eth1_data)

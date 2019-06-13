@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use core::cmp::{min, Ordering};
+use core::cmp::Ordering;
 use ssz::Digestible;
 use crate::primitives::{Epoch, ValidatorIndex, Gwei, Shard, H256};
-use crate::types::{AttestationData, PendingAttestation, Crosslink};
+use crate::types::{PendingAttestation, Crosslink};
 use crate::utils::compare_hash;
 use crate::{Config, Executive, Error};
 
@@ -87,7 +87,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		&self, epoch: Epoch, shard: Shard
 	) -> Result<(Crosslink, Vec<ValidatorIndex>), Error> {
 		let attestations = self.matching_source_attestations(epoch)?.into_iter()
-			.filter(|a| a.data.shard == shard)
+			.filter(|a| a.data.crosslink.shard == shard)
 			.collect::<Vec<_>>();
 		let crosslinks = attestations.clone().into_iter()
 			.map(|a| a.data.crosslink)
@@ -105,21 +105,17 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			})
 			.collect::<Vec<_>>();
 
-		if candidate_crosslinks.len() == 0 {
-			return Ok((Crosslink::default(), Vec::new()))
-		}
-
 		let attestations_for = |crosslink: &Crosslink| {
 			attestations.clone().into_iter()
-				.filter(|a| a.crosslink == crosslink)
+				.filter(|a| &a.data.crosslink == crosslink)
 				.collect::<Vec<_>>()
 		};
-		let winning_crosslink = if candidate_crosslinks.len() == 0 {
+		let winning_crosslink = if crosslinks.len() == 0 {
 			Crosslink::default()
 		} else {
-			candidate_crosslinks
+			crosslinks
 				.iter()
-				.fold(Ok(candidate_crosslinks[0].clone()), |a, b| {
+				.fold(Ok(crosslinks[0].clone()), |a, b| {
 					let a = a?;
 					let cmp1 = self.attesting_balance(&attestations_for(&a))?
 						.cmp(&self.attesting_balance(&attestations_for(b))?);
@@ -130,10 +126,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 						(Ordering::Equal, Ordering::Greater) => a,
 						_ => b.clone(),
 					})
-				})?;
+				})?
 		};
-		let winning_attestations = attestations_for(winning_crosslink);
+		let winning_attestations = attestations_for(&winning_crosslink);
 
-		Ok((winning_crosslink, self.unslashed_attesting_indices(winning_attestations)))
+		Ok((winning_crosslink, self.unslashed_attesting_indices(&winning_attestations)?))
 	}
 }

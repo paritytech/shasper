@@ -28,6 +28,8 @@ pub enum Error {
 	DepositWithdrawalCredentialsMismatch,
 	/// Duplicate indexes.
 	DuplicateIndexes,
+	/// Duplicate transfer.
+	DuplicateTransfer,
 	/// Index is out of range.
 	IndexOutOfRange,
 	/// Epoch is out of range.

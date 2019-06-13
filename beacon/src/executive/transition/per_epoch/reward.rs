@@ -59,7 +59,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		{
 			let unslashed_attesting_indices =
 				self.unslashed_attesting_indices(attestations)?;
-			let attesting_balance = self.total_balance(unslashed_attesting_indices)?;
+			let attesting_balance = self.total_balance(&unslashed_attesting_indices);
 			for index in &eligible_validator_indices {
 				if unslashed_attesting_indices.contains(index) {
 					rewards[*index as usize] += self.base_reward(*index) *

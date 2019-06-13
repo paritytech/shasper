@@ -103,11 +103,11 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		let committee_count = self.epoch_committee_count(
 			attestation.target_epoch
 		);
-		let offset = (attestation.shard + self.config.shard_count() -
-					  self.epoch_start_shard(epoch)?) %
+		let offset = (attestation.crosslink.shard + self.config.shard_count() -
+					  self.epoch_start_shard(attestation.target_epoch)?) %
 			self.config.shard_count();
 
-		Ok(self.config.epoch_start_slot(epoch) +
+		Ok(self.config.epoch_start_slot(attestation.target_epoch) +
 		   offset / (committee_count / self.config.slots_per_epoch()))
 	}
 
@@ -297,7 +297,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::DuplicateIndexes)
 		}
 
-		Ok(self.config.bls_verify_multiple(
+		if !self.config.bls_verify_multiple(
 			&[
 				self.config.bls_aggregate_pubkeys(
 					&bit_0_indices
@@ -331,7 +331,11 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 				self.config.domain_attestation(),
 				Some(indexed_attestation.data.target_epoch)
 			)
-		))
+		) {
+			return Err(Error::AttestationInvalidSignature)
+		}
+
+		Ok(())
 	}
 
 	/// Return the churn limit based on the active validator count.

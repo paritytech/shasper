@@ -14,10 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-mod cache;
 mod per_epoch;
-mod per_slot;
 mod per_block;
+
+use ssz::Digestible;
+use crate::{Error, Config, Executive};
+use crate::types::Block;
+use crate::primitives::{H256, Uint};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	pub fn state_transition<B: Block + Digestible<C::Digest>>(
@@ -41,16 +44,18 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 	pub fn process_slots(&mut self, slot: Uint) -> Result<(), Error> {
 		if self.state.slot > slot {
-			return Err(Error::InvalidSlot)
+			return Err(Error::SlotOutOfRange)
 		}
 
 		while self.state.slot < slot {
-			self.process_slot()?;
+			self.process_slot();
 			if (self.state.slot + 1) % self.config.slots_per_epoch() == 0 {
 				self.process_epoch()?;
 			}
 			self.state.slot += 1;
 		}
+
+		Ok(())
 	}
 
 	/// Advance slot

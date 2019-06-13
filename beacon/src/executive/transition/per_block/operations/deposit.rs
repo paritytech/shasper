@@ -35,9 +35,6 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::DepositMerkleInvalid)
 		}
 
-		if deposit.index != self.state.deposit_index {
-			return Err(Error::DepositIndexMismatch)
-		}
 		self.state.deposit_index += 1;
 
 		let pubkey = deposit.data.pubkey.clone();

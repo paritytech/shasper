@@ -86,9 +86,9 @@ pub struct Crosslink {
 	/// Shard number
 	pub shard: Uint,
 	/// Crosslinking data from epoch start
-	pub start: Uint,
+	pub start_epoch: Uint,
 	/// Crosslinking data to epoch end
-	pub end: Uint,
+	pub end_epoch: Uint,
 	/// Root of the previous crosslink
 	pub parent_root: H256,
 	/// Root of the crosslinked shard data since the previous crosslink
