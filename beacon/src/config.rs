@@ -126,7 +126,7 @@ pub trait Config {
 	/// Persistent committee period.
 	fn persistent_committee_period(&self) -> Uint;
 	/// Maximum crosslink epochs.
-	fn max_crosslink_epochs(&self) -> Uint;
+	fn max_epochs_per_crosslink(&self) -> Uint;
 	/// Minimum epochs to inactivity penalty.
 	fn min_epochs_to_inactivity_penalty(&self) -> Uint;
 
@@ -140,7 +140,7 @@ pub trait Config {
 
 	// == Reward and penalty quotients ==
 	/// Base reward quotient.
-	fn base_reward_quotient(&self) -> Uint;
+	fn base_reward_factor(&self) -> Uint;
 	/// Whistleblowing reward quotient.
 	fn whistleblowing_reward_quotient(&self) -> Uint;
 	/// Proposer reward quotient.
@@ -256,8 +256,7 @@ pub trait Config {
 					&round.to_le_bytes()[..1]
 				])[..8]
 			) % index_count;
-			let flip = ((((pivot as i128 - index as i128) % index_count as i128) + index_count as i128)
-				as u64) % index_count;
+			let flip = (pivot + index_count - index) % index_count;
 			let position = max(index, flip);
 			let source = self.hash(&[
 				&seed[..],
@@ -339,7 +338,7 @@ pub struct ParameteredConfig<BLS: BLSVerification> {
 	/// Persistent committee period.
 	pub persistent_committee_period: Uint,
 	/// Maximum crosslink epochs.
-	pub max_crosslink_epochs: Uint,
+	pub max_epochs_per_crosslink: Uint,
 	/// Minimum epochs to inactivity penalty.
 	pub min_epochs_to_inactivity_penalty: Uint,
 
@@ -353,7 +352,7 @@ pub struct ParameteredConfig<BLS: BLSVerification> {
 
 	// == Reward and penalty quotients ==
 	/// Base reward quotient.
-	pub base_reward_quotient: Uint,
+	pub base_reward_factor: Uint,
 	/// Whistleblowing reward quotient.
 	pub whistleblowing_reward_quotient: Uint,
 	/// Proposer reward quotient.
@@ -416,7 +415,7 @@ impl<BLS: BLSVerification> Config for ParameteredConfig<BLS> {
 	fn latest_randao_mixes_length(&self) -> Uint { self.latest_randao_mixes_length }
 	fn latest_active_index_roots_length(&self) -> Uint { self.latest_active_index_roots_length }
 	fn latest_slashed_exit_length(&self) -> Uint { self.latest_slashed_exit_length }
-	fn base_reward_quotient(&self) -> Uint { self.base_reward_quotient }
+	fn base_reward_factor(&self) -> Uint { self.base_reward_factor }
 	fn inactivity_penalty_quotient(&self) -> Uint { self.inactivity_penalty_quotient }
 	fn max_proposer_slashings(&self) -> Uint { self.max_proposer_slashings }
 	fn max_attester_slashings(&self) -> Uint { self.max_attester_slashings }
@@ -439,7 +438,7 @@ impl<BLS: BLSVerification> Config for ParameteredConfig<BLS> {
 	fn effective_balance_increment(&self) -> Uint { self.effective_balance_increment }
 	fn genesis_epoch(&self) -> Uint { self.genesis_epoch }
 	fn slots_per_eth1_voting_period(&self) -> Uint { self.slots_per_eth1_voting_period }
-	fn max_crosslink_epochs(&self) -> Uint { self.max_crosslink_epochs }
+	fn max_epochs_per_crosslink(&self) -> Uint { self.max_epochs_per_crosslink }
 	fn min_epochs_to_inactivity_penalty(&self) -> Uint { self.min_epochs_to_inactivity_penalty }
 	fn whistleblowing_reward_quotient(&self) -> Uint { self.whistleblowing_reward_quotient }
 	fn proposer_reward_quotient(&self) -> Uint { self.proposer_reward_quotient }
@@ -489,14 +488,14 @@ impl<BLS: BLSVerification> FromConfig for ParameteredConfig<BLS> {
 			slots_per_historical_root: config.slots_per_historical_root(),
 			min_validator_withdrawability_delay: config.min_validator_withdrawability_delay(),
 			persistent_committee_period: config.persistent_committee_period(),
-			max_crosslink_epochs: config.max_crosslink_epochs(),
+			max_epochs_per_crosslink: config.max_epochs_per_crosslink(),
 			min_epochs_to_inactivity_penalty: config.min_epochs_to_inactivity_penalty(),
 
 			latest_randao_mixes_length: config.latest_randao_mixes_length(),
 			latest_active_index_roots_length: config.latest_active_index_roots_length(),
 			latest_slashed_exit_length: config.latest_slashed_exit_length(),
 
-			base_reward_quotient: config.base_reward_quotient(),
+			base_reward_factor: config.base_reward_factor(),
 			whistleblowing_reward_quotient: config.whistleblowing_reward_quotient(),
 			proposer_reward_quotient: config.proposer_reward_quotient(),
 			inactivity_penalty_quotient: config.inactivity_penalty_quotient(),
@@ -552,14 +551,14 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 			slots_per_historical_root: 64,
 			min_validator_withdrawability_delay: 256,
 			persistent_committee_period: 2048,
-			max_crosslink_epochs: 64,
+			max_epochs_per_crosslink: 64,
 			min_epochs_to_inactivity_penalty: 4,
 
 			latest_randao_mixes_length: 64,
 			latest_active_index_roots_length: 64,
 			latest_slashed_exit_length: 64,
 
-			base_reward_quotient: 32,
+			base_reward_factor: 32,
 			whistleblowing_reward_quotient: 512,
 			proposer_reward_quotient: 8,
 			inactivity_penalty_quotient: 33554432,
@@ -613,14 +612,14 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 			slots_per_historical_root: 8192,
 			min_validator_withdrawability_delay: 256,
 			persistent_committee_period: 2048,
-			max_crosslink_epochs: 64,
+			max_epochs_per_crosslink: 64,
 			min_epochs_to_inactivity_penalty: 4,
 
 			latest_randao_mixes_length: 8192,
 			latest_active_index_roots_length: 8192,
 			latest_slashed_exit_length: 8192,
 
-			base_reward_quotient: 32,
+			base_reward_factor: 32,
 			whistleblowing_reward_quotient: 512,
 			proposer_reward_quotient: 8,
 			inactivity_penalty_quotient: 33554432,

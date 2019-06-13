@@ -26,7 +26,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::BlockSlotInvalid)
 		}
 
-		if block.previous_block_root() != &H256::from_slice(
+		if block.parent_root() != &H256::from_slice(
 			Digestible::<C::Digest>::truncated_hash(
 				&self.state.latest_block_header
 			).as_slice())
@@ -36,8 +36,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		self.state.latest_block_header = BeaconBlockHeader {
 			slot: block.slot(),
-			previous_block_root: *block.previous_block_root(),
-			block_body_root: H256::from_slice(
+			parent_root: *block.parent_root(),
+			body_root: H256::from_slice(
 				Digestible::<C::Digest>::hash(block.body()).as_slice()
 			),
 			..Default::default()

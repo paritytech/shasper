@@ -29,15 +29,12 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			),
 			&deposit.proof,
 			self.config.deposit_contract_tree_depth(),
-			deposit.index,
+			self.state.deposit_index,
 			self.state.latest_eth1_data.deposit_root,
 		) {
 			return Err(Error::DepositMerkleInvalid)
 		}
 
-		if deposit.index != self.state.deposit_index {
-			return Err(Error::DepositIndexMismatch)
-		}
 		self.state.deposit_index += 1;
 
 		let pubkey = deposit.data.pubkey.clone();

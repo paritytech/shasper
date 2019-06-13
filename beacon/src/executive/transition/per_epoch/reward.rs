@@ -20,13 +20,13 @@ use crate::{Config, Executive, Error};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	fn base_reward(&self, index: ValidatorIndex) -> Gwei {
-		let adjusted_quotient = integer_squareroot(self.total_active_balance()) /
-			self.config.base_reward_quotient();
-		if adjusted_quotient == 0 {
-			return 0
-		}
-		self.state.validator_registry[index as usize].effective_balance /
-			adjusted_quotient /
+		let total_balance = self.total_active_balance();
+
+		let effective_balance =
+			self.state.validator_registry[index as usize].effective_balance;
+
+		effective_balance * self.config.base_reward_factor() /
+			integer_squareroot(total_balance) /
 			self.config.base_rewards_per_epoch()
 	}
 
@@ -59,7 +59,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		{
 			let unslashed_attesting_indices =
 				self.unslashed_attesting_indices(attestations)?;
-			let attesting_balance = self.attesting_balance(attestations)?;
+			let attesting_balance = self.total_balance(&unslashed_attesting_indices);
 			for index in &eligible_validator_indices {
 				if unslashed_attesting_indices.contains(index) {
 					rewards[*index as usize] += self.base_reward(*index) *

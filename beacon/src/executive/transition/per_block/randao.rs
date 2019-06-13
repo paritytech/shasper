@@ -16,12 +16,12 @@
 
 use ssz::Digestible;
 use crate::primitives::H256;
-use crate::types::Block;
+use crate::types::BeaconBlockBody;
 use crate::{Config, Executive, Error};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Process randao information given in a block.
-	pub fn process_randao<B: Block>(&mut self, block: &B) -> Result<(), Error> {
+	pub fn process_randao(&mut self, body: &BeaconBlockBody) -> Result<(), Error> {
 		let proposer = &self.state.validator_registry[
 			self.beacon_proposer_index()? as usize
 		];
@@ -31,7 +31,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			&H256::from_slice(
 				Digestible::<C::Digest>::hash(&self.current_epoch()).as_slice()
 			),
-			&block.body().randao_reveal,
+			&body.randao_reveal,
 			self.domain(self.config.domain_randao(), None)
 		) {
 			return Err(Error::RandaoSignatureInvalid)
@@ -41,7 +41,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		self.state.latest_randao_mixes[
 			(current_epoch % self.config.latest_randao_mixes_length()) as usize
 		] = self.randao_mix(current_epoch) ^
-			self.config.hash(&[&block.body().randao_reveal[..]]);
+			self.config.hash(&[&body.randao_reveal[..]]);
 
 		Ok(())
 	}

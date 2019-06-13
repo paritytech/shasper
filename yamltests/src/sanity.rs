@@ -1,6 +1,6 @@
 use serde_derive::{Serialize, Deserialize};
 use beacon::types::{BeaconState, BeaconBlock};
-use beacon::{self, Config};
+use beacon::{self, Config, Executive, Strategy};
 use crate::{TestWithBLS, run_state_test_with};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -19,7 +19,9 @@ impl TestWithBLS for BlocksTest {
 	fn run<C: Config>(&self, config: &C) {
 		run_state_test_with(&self.description, &self.pre, self.post.as_ref(), |state| {
 			for block in self.blocks.clone() {
-				beacon::execute_block_no_verify_state_root(&block, state, config)?
+				let mut executive = Executive { state, config };
+
+				executive.state_transition(&block, Strategy::IgnoreRandaoAndStateRoot)?
 			}
 
 			Ok(())

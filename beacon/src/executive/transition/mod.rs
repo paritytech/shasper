@@ -14,7 +14,75 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-mod cache;
 mod per_epoch;
-mod per_slot;
 mod per_block;
+
+use ssz::Digestible;
+use crate::{Error, Config, Executive, Strategy};
+use crate::types::Block;
+use crate::primitives::{H256, Uint};
+
+impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+	/// Execute state transition.
+	pub fn state_transition<B: Block + Digestible<C::Digest>>(
+		&mut self,
+		block: &B,
+		strategy: Strategy,
+	) -> Result<(), Error> {
+		self.process_slots(block.slot())?;
+		self.process_block(block, strategy)?;
+
+		match strategy {
+			Strategy::IgnoreStateRoot | Strategy::IgnoreRandaoAndStateRoot => (),
+			_ => {
+				if !(block.state_root() == &H256::from_slice(
+					Digestible::<C::Digest>::hash(self.state).as_slice()
+				)) {
+					return Err(Error::BlockStateRootInvalid)
+				}
+			}
+		}
+
+		Ok(())
+	}
+
+	/// Process slots, process epoch if at epoch boundary.
+	pub fn process_slots(&mut self, slot: Uint) -> Result<(), Error> {
+		if self.state.slot > slot {
+			return Err(Error::SlotOutOfRange)
+		}
+
+		while self.state.slot < slot {
+			self.process_slot();
+			if (self.state.slot + 1) % self.config.slots_per_epoch() == 0 {
+				self.process_epoch()?;
+			}
+			self.state.slot += 1;
+		}
+
+		Ok(())
+	}
+
+	/// Advance slot
+	pub fn process_slot(&mut self) {
+		let previous_state_root = H256::from_slice(
+			Digestible::<C::Digest>::hash(self.state).as_slice()
+		);
+		self.state.latest_state_roots[
+			(self.state.slot % self.config.slots_per_historical_root()) as usize
+		] = previous_state_root;
+
+		if self.state.latest_block_header.state_root == H256::default() {
+			self.state.latest_block_header.state_root = previous_state_root;
+		}
+
+		let previous_block_root = H256::from_slice(
+			Digestible::<C::Digest>::truncated_hash(
+				&self.state.latest_block_header
+			).as_slice()
+		);
+		self.state.latest_block_roots[
+			(self.state.slot % self.config.slots_per_historical_root()) as usize
+		] = previous_block_root;
+	}
+}

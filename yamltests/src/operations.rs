@@ -1,5 +1,5 @@
 use serde_derive::{Serialize, Deserialize};
-use beacon::types::{BeaconState, Deposit, Attestation, AttesterSlashing, ProposerSlashing, Transfer, BeaconBlock};
+use beacon::types::{BeaconState, Deposit, Attestation, AttesterSlashing, ProposerSlashing, Transfer, VoluntaryExit, BeaconBlock};
 use beacon::Config;
 use crate::{TestWithBLS, run_test_with};
 
@@ -119,6 +119,26 @@ impl TestWithBLS for TransferTest {
 	fn run<C: Config>(&self, config: &C) {
 		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
 			executive.process_transfer(self.transfer.clone())
+		});
+	}
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct VoluntaryExitTest {
+	pub bls_setting: Option<usize>,
+	pub description: String,
+	pub pre: BeaconState,
+	pub voluntary_exit: VoluntaryExit,
+	pub post: Option<BeaconState>,
+}
+
+impl TestWithBLS for VoluntaryExitTest {
+	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
+
+	fn run<C: Config>(&self, config: &C) {
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
+			executive.process_voluntary_exit(self.voluntary_exit.clone())
 		});
 	}
 }

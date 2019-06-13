@@ -27,13 +27,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::AttesterSlashingNotSlashable)
 		}
 
-		if !self.verify_indexed_attestation(&attestation_1)? {
-			return Err(Error::AttesterSlashingInvalid)
-		}
-
-		if !self.verify_indexed_attestation(&attestation_2)? {
-			return Err(Error::AttesterSlashingInvalid)
-		}
+		self.validate_indexed_attestation(&attestation_1)?;
+		self.validate_indexed_attestation(&attestation_2)?;
 
 		let mut slashed_any = false;
 		let attesting_indices_1 = attestation_1.custody_bit_0_indices.clone().into_iter()

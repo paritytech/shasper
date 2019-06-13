@@ -26,7 +26,7 @@ pub use self::assignment::*;
 use core::cmp::min;
 use ssz::Digestible;
 use crate::primitives::{H768, H256};
-use crate::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockBody, ProposerSlashing, AttesterSlashing, Deposit, Attestation, Transfer, VoluntaryExit, Eth1Data};
+use crate::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockBody, ProposerSlashing, AttesterSlashing, Deposit, Attestation, Transfer, VoluntaryExit, Eth1Data, Block};
 use crate::utils;
 use crate::{Config, Error};
 
@@ -38,99 +38,28 @@ pub struct Executive<'state, 'config, C: Config> {
 	pub config: &'config C,
 }
 
-/// Execute a block without verifying the state root.
-pub fn execute_block_no_verify_state_root<C: Config>(block: &BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
-	let mut executive = Executive {
-		state, config
-	};
-
-	while executive.state.slot < block.slot {
-		executive.cache_state();
-
-		if (executive.state.slot + 1) % config.slots_per_epoch() == 0 {
-			executive.process_justification_and_finalization()?;
-			executive.process_crosslinks()?;
-			executive.process_rewards_and_penalties()?;
-			executive.process_registry_updates()?;
-			executive.process_slashings();
-			executive.process_final_updates();
-		}
-
-		executive.advance_slot();
-	}
-
-	executive.process_block_header(block)?;
-	executive.process_randao(block)?;
-	executive.process_eth1_data(block);
-
-	if block.body.proposer_slashings.len() > config.max_proposer_slashings() as usize {
-		return Err(Error::TooManyProposerSlashings)
-	}
-	for slashing in &block.body.proposer_slashings {
-		executive.process_proposer_slashing(slashing.clone())?;
-	}
-
-	if block.body.attester_slashings.len() > config.max_attester_slashings() as usize {
-		return Err(Error::TooManyAttesterSlashings)
-	}
-	for slashing in &block.body.attester_slashings {
-		executive.process_attester_slashing(slashing.clone())?;
-	}
-
-	if block.body.attestations.len() > config.max_attestations() as usize {
-		return Err(Error::TooManyAttestations)
-	}
-	for attestation in &block.body.attestations {
-		executive.process_attestation(attestation.clone())?;
-	}
-
-	if executive.state.latest_eth1_data.deposit_count < executive.state.deposit_index {
-		return Err(Error::InvalidEth1Data)
-	}
-
-	if block.body.deposits.len() != min(
-		config.max_deposits(),
-		executive.state.latest_eth1_data.deposit_count - executive.state.deposit_index
-	) as usize {
-		return Err(Error::TooManyDeposits)
-	}
-	for deposit in &block.body.deposits {
-		executive.process_deposit(deposit.clone())?;
-	}
-
-	if block.body.voluntary_exits.len() > config.max_voluntary_exits() as usize {
-		return Err(Error::TooManyVoluntaryExits)
-	}
-	for voluntary_exit in &block.body.voluntary_exits {
-		executive.process_voluntary_exit(voluntary_exit.clone())?;
-	}
-
-	if block.body.transfers.len() > config.max_transfers() as usize{
-		return Err(Error::TooManyTransfers)
-	}
-	for transfer in &block.body.transfers {
-		executive.process_transfer(transfer.clone())?;
-	}
-
-	Ok(())
+/// Execution strategy.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum Strategy {
+	/// The normal execution strategy
+	Full,
+	/// Execution without verifying the state root
+	IgnoreStateRoot,
+	/// Execution without verifying the state root, and without randao
+	IgnoreRandaoAndStateRoot,
 }
 
 /// Given a block, execute based on a parent state.
 pub fn execute_block<C: Config>(block: &BeaconBlock, state: &mut BeaconState, config: &C) -> Result<(), Error> {
-	execute_block_no_verify_state_root(block, state, config)?;
-
-	let mut executive = Executive {
-		state, config
-	};
-
-	executive.verify_block_state_root(block)?;
+	let mut executive = Executive { state, config };
+	executive.state_transition(block, Strategy::Full)?;
 
 	Ok(())
 }
 
 /// Get genesis domain.
 pub fn genesis_domain(domain_type: u64) -> u64 {
-	utils::raw_domain(domain_type, Default::default())
+	utils::bls_domain(domain_type, Default::default())
 }
 
 /// Beacon block inherent.
@@ -160,23 +89,7 @@ pub enum Transaction {
 /// Initialize a block, and apply inherents.
 pub fn initialize_block<C: Config>(state: &mut BeaconState, target_slot: u64, config: &C) -> Result<(), Error> {
 	let mut executive = Executive { state, config };
-
-	while executive.state.slot < target_slot {
-		executive.cache_state();
-
-		if (executive.state.slot + 1) % config.slots_per_epoch() == 0 {
-			executive.process_justification_and_finalization()?;
-			executive.process_crosslinks()?;
-			executive.process_rewards_and_penalties()?;
-			executive.process_registry_updates()?;
-			executive.process_slashings();
-			executive.process_final_updates();
-		}
-
-		executive.advance_slot();
-	}
-
-	assert_eq!(executive.state.slot, target_slot);
+	executive.process_slots(target_slot)?;
 
 	Ok(())
 }
@@ -193,17 +106,17 @@ pub fn apply_inherent<C: Config>(parent_block: &BeaconBlock, state: &mut BeaconS
 
 	let mut block = UnsealedBeaconBlock {
 		slot: executive.state.slot,
-		previous_block_root: H256::default(),
+		parent_root: H256::default(),
 		state_root: parent_block.state_root,
 		body,
 	};
 
-	block.previous_block_root = H256::from_slice(
+	block.parent_root = H256::from_slice(
 		Digestible::<C::Digest>::truncated_hash(&executive.state.latest_block_header).as_slice()
 	);
 
-	executive.process_randao(&block)?;
-	executive.process_eth1_data(&block);
+	executive.process_randao(block.body())?;
+	executive.process_eth1_data(block.body());
 
 	Ok(block)
 }

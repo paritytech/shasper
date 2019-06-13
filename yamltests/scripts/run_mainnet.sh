@@ -8,9 +8,10 @@ cargo run --release -- --config full -r block_header res/spectests/tests/operati
 cargo run --release -- --config full -r deposit res/spectests/tests/operations/deposit/deposit_mainnet.yaml
 cargo run --release -- --config full -r proposer_slashing res/spectests/tests/operations/proposer_slashing/proposer_slashing_mainnet.yaml
 cargo run --release -- --config full -r transfer res/spectests/tests/operations/transfer/transfer_mainnet.yaml
+cargo run --release -- --config full -r voluntary_exit res/spectests/tests/operations/voluntary_exit/voluntary_exit_mainnet.yaml
 
 cargo run --release -- --config full -r crosslinks res/spectests/tests/epoch_processing/crosslinks/crosslinks_mainnet.yaml
 cargo run --release -- --config full -r registry_updates res/spectests/tests/epoch_processing/registry_updates/registry_updates_mainnet.yaml
 
-cargo run --release -- --config full -r blocks res/spectests/tests/sanity/blocks/blocksanity_s_mainnet.yaml
-cargo run --release -- --config full -r slots res/spectests/tests/sanity/slots/slotsanity_s_mainnet.yaml
+cargo run --release -- --config full -r blocks res/spectests/tests/sanity/blocks/sanity_blocks_mainnet.yaml
+cargo run --release -- --config full -r slots res/spectests/tests/sanity/slots/sanity_slots_mainnet.yaml
