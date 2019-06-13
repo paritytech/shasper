@@ -21,15 +21,11 @@ impl BlockT for Block {
 	fn id(&self) -> H256 {
 		let header = BeaconBlockHeader {
 			slot: self.0.slot,
-			previous_block_root: self.0.previous_block_root,
+			parent_root: self.0.parent_root,
 			state_root: self.0.state_root,
-			block_body_root: if self.0.previous_block_root == H256::default() {
-				H256::default()
-			} else {
-				H256::from_slice(
-					Digestible::<sha2::Sha256>::hash(&self.0.body).as_slice()
-				)
-			},
+			body_root: H256::from_slice(
+				Digestible::<sha2::Sha256>::hash(&self.0.body).as_slice()
+			),
 			..Default::default()
 		};
 
@@ -39,10 +35,10 @@ impl BlockT for Block {
 	}
 
 	fn parent_id(&self) -> Option<H256> {
-		if self.0.previous_block_root == H256::default() {
+		if self.0.parent_root == H256::default() {
 			None
 		} else {
-			Some(self.0.previous_block_root)
+			Some(self.0.parent_root)
 		}
 	}
 }

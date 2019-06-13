@@ -1,7 +1,8 @@
 use beacon::{genesis, Config, ParameteredConfig, Inherent, Transaction};
 use beacon::primitives::{H256, Signature, ValidatorId, BitField};
-use beacon::types::{Eth1Data, Deposit, DepositData, AttestationData, AttestationDataAndCustodyBit, Attestation};
+use beacon::types::{Eth1Data, Deposit, DepositData, AttestationData, AttestationDataAndCustodyBit, Attestation, Crosslink};
 use ssz::Digestible;
+use core::cmp::min;
 use blockchain::backend::{SharedMemoryBackend, SharedCommittable, ChainQuery, Store, ImportLock, Operation};
 use blockchain::import::{SharedBlockImporter, MutexImporter};
 use blockchain::traits::{AsExternalities, Auxiliary, Block as BlockT};
@@ -121,7 +122,6 @@ fn main() {
 		.map(|(i, deposit_data)| {
 			Deposit {
 				proof: deposit_proof(&deposit_tree, i, &config),
-				index: i as u64,
 				data: deposit_data,
 			}
 		})
@@ -291,11 +291,18 @@ fn builder_thread<B, I, C: Config + Clone>(
 
 								source_epoch, source_root, target_epoch, target_root,
 
-								shard,
-								previous_crosslink_root: H256::from_slice(
-									Digestible::<C::Digest>::hash(&parent_crosslink).as_slice(),
-								),
-								crosslink_data_root: H256::default(),
+								crosslink: Crosslink {
+									shard,
+									start_epoch: parent_crosslink.end_epoch,
+									end_epoch: min(
+										target_epoch,
+										parent_crosslink.end_epoch + config.max_epochs_per_crosslink()
+									),
+									parent_root: H256::from_slice(
+										Digestible::<C::Digest>::hash(&parent_crosslink).as_slice(),
+									),
+									data_root: H256::default(),
+								},
 							};
 							let signature = Signature::from_slice(&bls::Signature::new(
 								Digestible::<C::Digest>::hash(&AttestationDataAndCustodyBit {
