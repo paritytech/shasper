@@ -42,10 +42,7 @@ fn main() {
 		"voluntary_exit" => run::<VoluntaryExitTest, _>(file, &config),
 		"crosslinks" => run::<CrosslinksTest, _>(file, &config),
 		"registry_updates" => run::<RegistryUpdatesTest, _>(file, &config),
-		"blocks" => {
-			config.max_transfers = 1; // Work-around a bug in test https://github.com/ethereum/eth2.0-specs/issues/1147
-			run::<BlocksTest, _>(file, &config);
-		},
+		"blocks" => run::<BlocksTest, _>(file, &config),
 		"slots" => run::<SlotsTest, _>(file, &config),
 		_ => panic!("Unsupported runner"),
 	}
