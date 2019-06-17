@@ -43,10 +43,6 @@ pub struct Executive<'state, 'config, C: Config> {
 pub enum Strategy {
 	/// The normal execution strategy
 	Full,
-	/// Execution without verifying the state root
-	IgnoreStateRoot,
-	/// Execution without verifying the state root, and without randao
-	IgnoreRandaoAndStateRoot,
 }
 
 /// Given a block, execute based on a parent state.

@@ -21,7 +21,7 @@ impl TestWithBLS for BlocksTest {
 			for block in self.blocks.clone() {
 				let mut executive = Executive { state, config };
 
-				executive.state_transition(&block, Strategy::IgnoreRandaoAndStateRoot)?
+				executive.state_transition(&block, Strategy::Full)?
 			}
 
 			Ok(())
