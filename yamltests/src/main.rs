@@ -27,7 +27,7 @@ fn main() {
         .get_matches();
 
 	let file = File::open(matches.value_of("FILE").expect("FILE parameter not found")).expect("Open file failed");
-	let mut config = match matches.value_of("CONFIG") {
+	let config = match matches.value_of("CONFIG") {
 		Some("small") | None => NoVerificationConfig::small(),
 		Some("full") => NoVerificationConfig::full(),
 		_ => panic!("Unknown config"),
