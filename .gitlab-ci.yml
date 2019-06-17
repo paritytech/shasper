@@ -26,6 +26,7 @@ test-rust-stable:
   script:
     - ./scripts/init.sh
     - ./scripts/build.sh
+    - cd yamltests && ./scripts/run.sh
     - time cargo test --all --release --locked
     - sccache -s
   only:

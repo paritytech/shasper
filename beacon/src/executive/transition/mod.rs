@@ -30,11 +30,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		strategy: Strategy,
 	) -> Result<(), Error> {
 		self.process_slots(block.slot())?;
-		self.process_block(block, strategy)?;
+		self.process_block(block)?;
 
 		match strategy {
-			Strategy::IgnoreStateRoot | Strategy::IgnoreRandaoAndStateRoot => (),
-			_ => {
+			Strategy::Full => {
 				if !(block.state_root() == &H256::from_slice(
 					Digestible::<C::Digest>::hash(self.state).as_slice()
 				)) {
