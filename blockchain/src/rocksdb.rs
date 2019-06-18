@@ -261,6 +261,22 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 	}
 }
 
+impl<'a, B: Block, A: Auxiliary<B>, S> RocksSettlement<'a, B, A, S> where
+	B::Identifier: Encode + Decode,
+	B: Encode + Decode,
+	A: Encode + Decode,
+	A::Key: Encode + Decode,
+	S: Encode + Decode,
+{
+	fn set_genesis(
+		&mut self,
+		genesis: B::Identifier
+	) {
+		let cf = self.backend.db.cf_handle(COLUMN_INFO).unwrap();
+		self.backend.db.put_cf_opt(cf, KEY_GENESIS.encode(), genesis.encode(), &WriteOptions::default()).unwrap();
+	}
+}
+
 impl<B: Block, A: Auxiliary<B>, S> ChainQuery for RocksBackend<B, A, S> where
 	B::Identifier: Encode + Decode,
 	B: Encode + Decode,
@@ -418,9 +434,7 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 			true
 		);
 		settlement.insert_canon_depth_mapping(0, genesis_id);
-
-		let cf = settlement.backend.db.cf_handle(COLUMN_INFO).unwrap();
-		settlement.backend.db.put_cf_opt(cf, KEY_GENESIS.encode(), genesis_id.encode(), &WriteOptions::default()).unwrap();
+		settlement.set_genesis(genesis_id);
 		settlement.set_head(genesis_id);
 
 		db
