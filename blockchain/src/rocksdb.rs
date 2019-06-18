@@ -57,7 +57,9 @@ pub struct RocksBackend<B: Block, A: Auxiliary<B>, S> {
 	_marker: PhantomData<(B, A, S)>,
 }
 
-struct RocksSettlement<'a, B: Block, A: Auxiliary<B>, S>(&'a RocksBackend<B, A, S>);
+struct RocksSettlement<'a, B: Block, A: Auxiliary<B>, S> {
+	backend: &'a RocksBackend<B, A, S>
+}
 
 impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> {
 	pub fn open<P: AsRef<Path>>(path: P) -> Self {
@@ -116,58 +118,58 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainQuery for RocksSettlement<'a, B, A, 
 	S: Encode + Decode,
 {
 	fn genesis(&self) -> <Self::Block as Block>::Identifier {
-		self.0.genesis()
+		self.backend.genesis()
 	}
 	fn head(&self) -> <Self::Block as Block>::Identifier {
-		self.0.head()
+		self.backend.head()
 	}
 	fn contains(
 		&self,
 		hash: &<Self::Block as Block>::Identifier,
 	) -> Result<bool, Self::Error> {
-		Ok(self.0.contains(hash)?)
+		Ok(self.backend.contains(hash)?)
 	}
 	fn is_canon(
 		&self,
 		hash: &<Self::Block as Block>::Identifier,
 	) -> Result<bool, Self::Error> {
-		Ok(self.0.is_canon(hash)?)
+		Ok(self.backend.is_canon(hash)?)
 	}
 	fn lookup_canon_depth(
 		&self,
 		depth: usize,
 	) -> Result<Option<<Self::Block as Block>::Identifier>, Self::Error> {
-		Ok(self.0.lookup_canon_depth(depth)?)
+		Ok(self.backend.lookup_canon_depth(depth)?)
 	}
 	fn auxiliary(
 		&self,
 		key: &<Self::Auxiliary as Auxiliary<Self::Block>>::Key,
 	) -> Result<Option<Self::Auxiliary>, Self::Error> {
-		Ok(self.0.auxiliary(key)?)
+		Ok(self.backend.auxiliary(key)?)
 	}
 	fn depth_at(
 		&self,
 		hash: &<Self::Block as Block>::Identifier,
 	) -> Result<usize, Self::Error> {
-		Ok(self.0.depth_at(hash)?)
+		Ok(self.backend.depth_at(hash)?)
 	}
 	fn children_at(
 		&self,
 		hash: &<Self::Block as Block>::Identifier,
 	) -> Result<Vec<<Self::Block as Block>::Identifier>, Self::Error> {
-		Ok(self.0.children_at(hash)?)
+		Ok(self.backend.children_at(hash)?)
 	}
 	fn state_at(
 		&self,
 		hash: &<Self::Block as Block>::Identifier,
 	) -> Result<Self::State, Self::Error> {
-		Ok(self.0.state_at(hash)?)
+		Ok(self.backend.state_at(hash)?)
 	}
 	fn block_at(
 		&self,
 		hash: &<Self::Block as Block>::Identifier,
 	) -> Result<Self::Block, Self::Error> {
-		Ok(self.0.block_at(hash)?)
+		Ok(self.backend.block_at(hash)?)
 	}
 }
 
@@ -187,8 +189,8 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 		children: Vec<<Self::Block as Block>::Identifier>,
 		is_canon: bool
 	) {
-		let cf = self.0.db.cf_handle(COLUMN_BLOCKS).unwrap();
-		self.0.db.put_cf_opt(cf, id.encode(), BlockData {
+		let cf = self.backend.db.cf_handle(COLUMN_BLOCKS).unwrap();
+		self.backend.db.put_cf_opt(cf, id.encode(), BlockData {
 			block, state, depth: depth as u64, children, is_canon
 		}.encode(), &WriteOptions::default()).unwrap();
 	}
@@ -197,24 +199,24 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 		id: <Self::Block as Block>::Identifier,
 		child: <Self::Block as Block>::Identifier,
 	) {
-		let cf = self.0.db.cf_handle(COLUMN_BLOCKS).unwrap();
+		let cf = self.backend.db.cf_handle(COLUMN_BLOCKS).unwrap();
 		let mut data = BlockData::<B, S>::decode(
-			&mut self.0.db.get_cf(cf, id.encode()).unwrap().unwrap().as_ref()
+			&mut self.backend.db.get_cf(cf, id.encode()).unwrap().unwrap().as_ref()
 		).unwrap();
 		data.children.push(child);
-		self.0.db.put_cf_opt(cf, id.encode(), data.encode(), &WriteOptions::default()).unwrap();
+		self.backend.db.put_cf_opt(cf, id.encode(), data.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn set_canon(
 		&mut self,
 		id: <Self::Block as Block>::Identifier,
 		is_canon: bool
 	) {
-		let cf = self.0.db.cf_handle(COLUMN_BLOCKS).unwrap();
+		let cf = self.backend.db.cf_handle(COLUMN_BLOCKS).unwrap();
 		let mut data = BlockData::<B, S>::decode(
-			&mut self.0.db.get_cf(cf, id.encode()).unwrap().unwrap().as_ref()
+			&mut self.backend.db.get_cf(cf, id.encode()).unwrap().unwrap().as_ref()
 		).unwrap();
 		data.is_canon = is_canon;
-		self.0.db.put_cf_opt(cf, id.encode(), data.encode(), &WriteOptions::default()).unwrap();
+		self.backend.db.put_cf_opt(cf, id.encode(), data.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn insert_canon_depth_mapping(
 		&mut self,
@@ -223,8 +225,8 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 	) {
 		let depth = depth as u64;
 
-		let cf = self.0.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).unwrap();
-		self.0.db.put_cf_opt(cf, depth.encode(), id.encode(), &WriteOptions::default()).unwrap();
+		let cf = self.backend.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).unwrap();
+		self.backend.db.put_cf_opt(cf, depth.encode(), id.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn remove_canon_depth_mapping(
 		&mut self,
@@ -232,30 +234,30 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 	) {
 		let depth = *depth as u64;
 
-		let cf = self.0.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).unwrap();
-		self.0.db.delete_cf_opt(cf, depth.encode(), &WriteOptions::default()).unwrap();
+		let cf = self.backend.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).unwrap();
+		self.backend.db.delete_cf_opt(cf, depth.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn insert_auxiliary(
 		&mut self,
 		key: <Self::Auxiliary as Auxiliary<Self::Block>>::Key,
 		value: Self::Auxiliary
 	) {
-		let cf = self.0.db.cf_handle(COLUMN_AUXILIARIES).unwrap();
-		self.0.db.put_cf_opt(cf, key.encode(), value.encode(), &WriteOptions::default()).unwrap();
+		let cf = self.backend.db.cf_handle(COLUMN_AUXILIARIES).unwrap();
+		self.backend.db.put_cf_opt(cf, key.encode(), value.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn remove_auxiliary(
 		&mut self,
 		key: &<Self::Auxiliary as Auxiliary<Self::Block>>::Key,
 	) {
-		let cf = self.0.db.cf_handle(COLUMN_AUXILIARIES).unwrap();
-		self.0.db.delete_cf_opt(cf, key.encode(), &WriteOptions::default()).unwrap();
+		let cf = self.backend.db.cf_handle(COLUMN_AUXILIARIES).unwrap();
+		self.backend.db.delete_cf_opt(cf, key.encode(), &WriteOptions::default()).unwrap();
 	}
 	fn set_head(
 		&mut self,
 		head: <Self::Block as Block>::Identifier
 	) {
-		let cf = self.0.db.cf_handle(COLUMN_INFO).unwrap();
-		self.0.db.put_cf_opt(cf, KEY_HEAD.encode(), head.encode(), &WriteOptions::default()).unwrap();
+		let cf = self.backend.db.cf_handle(COLUMN_INFO).unwrap();
+		self.backend.db.put_cf_opt(cf, KEY_HEAD.encode(), head.encode(), &WriteOptions::default()).unwrap();
 	}
 }
 
@@ -384,7 +386,10 @@ impl<B: Block, A: Auxiliary<B>, S> SharedCommittable for RocksBackend<B, A, S> w
 		&self,
 		operation: Operation<Self::Block, Self::State, Self::Auxiliary>,
 	) -> Result<(), Self::Error> {
-		operation.settle(&mut RocksSettlement(self))
+		let mut settlement = RocksSettlement {
+			backend: self
+		};
+		operation.settle(&mut settlement)
 	}
 }
 
@@ -401,7 +406,10 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 		let db = Self::open(path);
 		let genesis_id = block.id();
 
-		RocksSettlement(&db).insert_block(
+		let mut settlement = RocksSettlement {
+			backend: &db,
+		};
+		settlement.insert_block(
 			genesis_id,
 			block,
 			state,
@@ -409,11 +417,11 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 			Vec::new(),
 			true
 		);
-		RocksSettlement(&db).insert_canon_depth_mapping(0, genesis_id);
+		settlement.insert_canon_depth_mapping(0, genesis_id);
 
-		let cf = db.db.cf_handle(COLUMN_INFO).unwrap();
-		db.db.put_cf_opt(cf, KEY_GENESIS.encode(), genesis_id.encode(), &WriteOptions::default()).unwrap();
-		RocksSettlement(&db).set_head(genesis_id);
+		let cf = settlement.backend.db.cf_handle(COLUMN_INFO).unwrap();
+		settlement.backend.db.put_cf_opt(cf, KEY_GENESIS.encode(), genesis_id.encode(), &WriteOptions::default()).unwrap();
+		settlement.set_head(genesis_id);
 
 		db
 	}
