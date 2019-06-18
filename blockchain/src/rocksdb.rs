@@ -1,11 +1,12 @@
 use core::marker::PhantomData;
+use std::collections::HashMap;
 use std::path::Path;
 use std::{fmt, error as stderror};
 use std::sync::Arc;
 use blockchain::traits::{Block, Auxiliary};
 use blockchain::backend::{Store, ChainQuery, OperationError, SharedCommittable, ChainSettlement, Operation};
 use parity_codec::{Encode, Decode};
-use rocksdb::{DB, Options, WriteOptions};
+use rocksdb::{DB, Options, WriteBatch};
 
 const COLUMN_BLOCKS: &str = "blocks";
 const COLUMN_CANON_DEPTH_MAPPINGS: &str = "canon_depth_mappings";
@@ -15,7 +16,7 @@ const KEY_HEAD: &str = "head";
 const KEY_GENESIS: &str = "genesis";
 
 #[derive(Debug)]
-/// Memory errors
+/// RocksDB backend errors
 pub enum Error {
 	/// Invalid Operation
 	InvalidOperation,
@@ -23,6 +24,16 @@ pub enum Error {
 	IsGenesis,
 	/// Query does not exist
 	NotExist,
+	/// Corrupted database,
+	Corrupted,
+	/// RocksDB errors
+	Rocks(rocksdb::Error),
+}
+
+impl From<rocksdb::Error> for Error {
+	fn from(error: rocksdb::Error) -> Error {
+		Error::Rocks(error)
+	}
 }
 
 impl OperationError for Error {
@@ -58,7 +69,9 @@ pub struct RocksBackend<B: Block, A: Auxiliary<B>, S> {
 }
 
 struct RocksSettlement<'a, B: Block, A: Auxiliary<B>, S> {
-	backend: &'a RocksBackend<B, A, S>
+	backend: &'a RocksBackend<B, A, S>,
+	changes: HashMap<(&'static str, Vec<u8>), Option<Vec<u8>>>,
+	last_error: Option<Error>,
 }
 
 impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> {
@@ -189,75 +202,114 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 		children: Vec<<Self::Block as Block>::Identifier>,
 		is_canon: bool
 	) {
-		let cf = self.backend.db.cf_handle(COLUMN_BLOCKS).unwrap();
-		self.backend.db.put_cf_opt(cf, id.encode(), BlockData {
+		if self.last_error.is_some() {
+			return
+		}
+
+		self.changes.insert((COLUMN_BLOCKS, id.encode()), Some(BlockData {
 			block, state, depth: depth as u64, children, is_canon
-		}.encode(), &WriteOptions::default()).unwrap();
+		}.encode()));
 	}
+
 	fn push_child(
 		&mut self,
 		id: <Self::Block as Block>::Identifier,
 		child: <Self::Block as Block>::Identifier,
 	) {
-		let cf = self.backend.db.cf_handle(COLUMN_BLOCKS).unwrap();
-		let mut data = BlockData::<B, S>::decode(
-			&mut self.backend.db.get_cf(cf, id.encode()).unwrap().unwrap().as_ref()
-		).unwrap();
+		if self.last_error.is_some() {
+			return
+		}
+
+		let mut data = match self.backend.fetch_block_data(id) {
+			Ok(data) => data,
+			Err(error) => {
+				self.last_error = Some(error);
+				return
+			},
+		};
+
 		data.children.push(child);
-		self.backend.db.put_cf_opt(cf, id.encode(), data.encode(), &WriteOptions::default()).unwrap();
+		self.changes.insert((COLUMN_BLOCKS, id.encode()), Some(data.encode()));
 	}
+
 	fn set_canon(
 		&mut self,
 		id: <Self::Block as Block>::Identifier,
 		is_canon: bool
 	) {
-		let cf = self.backend.db.cf_handle(COLUMN_BLOCKS).unwrap();
-		let mut data = BlockData::<B, S>::decode(
-			&mut self.backend.db.get_cf(cf, id.encode()).unwrap().unwrap().as_ref()
-		).unwrap();
+		if self.last_error.is_some() {
+			return
+		}
+
+		let mut data = match self.backend.fetch_block_data(id) {
+			Ok(data) => data,
+			Err(error) => {
+				self.last_error = Some(error);
+				return
+			},
+		};
+
 		data.is_canon = is_canon;
-		self.backend.db.put_cf_opt(cf, id.encode(), data.encode(), &WriteOptions::default()).unwrap();
+		self.changes.insert((COLUMN_BLOCKS, id.encode()), Some(data.encode()));
 	}
+
 	fn insert_canon_depth_mapping(
 		&mut self,
 		depth: usize,
 		id: <Self::Block as Block>::Identifier,
 	) {
-		let depth = depth as u64;
+		if self.last_error.is_some() {
+			return
+		}
 
-		let cf = self.backend.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).unwrap();
-		self.backend.db.put_cf_opt(cf, depth.encode(), id.encode(), &WriteOptions::default()).unwrap();
+		let depth = depth as u64;
+		self.changes.insert((COLUMN_CANON_DEPTH_MAPPINGS, depth.encode()), Some(id.encode()));
 	}
+
 	fn remove_canon_depth_mapping(
 		&mut self,
 		depth: &usize
 	) {
-		let depth = *depth as u64;
+		if self.last_error.is_some() {
+			return
+		}
 
-		let cf = self.backend.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).unwrap();
-		self.backend.db.delete_cf_opt(cf, depth.encode(), &WriteOptions::default()).unwrap();
+		let depth = *depth as u64;
+		self.changes.insert((COLUMN_CANON_DEPTH_MAPPINGS, depth.encode()), None);
 	}
+
 	fn insert_auxiliary(
 		&mut self,
 		key: <Self::Auxiliary as Auxiliary<Self::Block>>::Key,
 		value: Self::Auxiliary
 	) {
-		let cf = self.backend.db.cf_handle(COLUMN_AUXILIARIES).unwrap();
-		self.backend.db.put_cf_opt(cf, key.encode(), value.encode(), &WriteOptions::default()).unwrap();
+		if self.last_error.is_some() {
+			return
+		}
+
+		self.changes.insert((COLUMN_AUXILIARIES, key.encode()), Some(value.encode()));
 	}
+
 	fn remove_auxiliary(
 		&mut self,
 		key: &<Self::Auxiliary as Auxiliary<Self::Block>>::Key,
 	) {
-		let cf = self.backend.db.cf_handle(COLUMN_AUXILIARIES).unwrap();
-		self.backend.db.delete_cf_opt(cf, key.encode(), &WriteOptions::default()).unwrap();
+		if self.last_error.is_some() {
+			return
+		}
+
+		self.changes.insert((COLUMN_AUXILIARIES, key.encode()), None);
 	}
+
 	fn set_head(
 		&mut self,
 		head: <Self::Block as Block>::Identifier
 	) {
-		let cf = self.backend.db.cf_handle(COLUMN_INFO).unwrap();
-		self.backend.db.put_cf_opt(cf, KEY_HEAD.encode(), head.encode(), &WriteOptions::default()).unwrap();
+		if self.last_error.is_some() {
+			return
+		}
+
+		self.changes.insert((COLUMN_INFO, KEY_HEAD.encode()), Some(head.encode()));
 	}
 }
 
@@ -272,8 +324,34 @@ impl<'a, B: Block, A: Auxiliary<B>, S> RocksSettlement<'a, B, A, S> where
 		&mut self,
 		genesis: B::Identifier
 	) {
-		let cf = self.backend.db.cf_handle(COLUMN_INFO).unwrap();
-		self.backend.db.put_cf_opt(cf, KEY_GENESIS.encode(), genesis.encode(), &WriteOptions::default()).unwrap();
+		if self.last_error.is_some() {
+			return
+		}
+
+		self.changes.insert((COLUMN_INFO, KEY_GENESIS.encode()), Some(genesis.encode()));
+	}
+
+	fn commit(self) -> Result<(), Error> {
+		if let Some(error) = self.last_error {
+			return Err(error)
+		}
+
+		let mut batch = WriteBatch::default();
+
+		for ((column, key), value) in self.changes {
+			let cf = self.backend.db.cf_handle(column).ok_or(Error::Corrupted)?;
+			match value {
+				Some(value) => {
+					batch.put_cf(cf, key, value)?;
+				},
+				None => {
+					batch.delete_cf(cf, key)?;
+				},
+			}
+		}
+
+		self.backend.db.write(batch)?;
+		Ok(())
 	}
 }
 
@@ -403,9 +481,14 @@ impl<B: Block, A: Auxiliary<B>, S> SharedCommittable for RocksBackend<B, A, S> w
 		operation: Operation<Self::Block, Self::State, Self::Auxiliary>,
 	) -> Result<(), Self::Error> {
 		let mut settlement = RocksSettlement {
-			backend: self
+			backend: self,
+			changes: Default::default(),
+			last_error: None,
 		};
-		operation.settle(&mut settlement)
+		operation.settle(&mut settlement)?;
+		settlement.commit()?;
+
+		Ok(())
 	}
 }
 
@@ -416,6 +499,15 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 	A::Key: Encode + Decode,
 	S: Encode + Decode,
 {
+	fn fetch_block_data(&self, id: B::Identifier) -> Result<BlockData<B, S>, Error> {
+		let cf = self.db.cf_handle(COLUMN_BLOCKS).ok_or(Error::Corrupted)?;
+		let raw = match self.db.get_cf(cf, id.encode())? {
+			Some(raw) => raw,
+			None => return Err(Error::Corrupted),
+		};
+		Ok(BlockData::decode(&mut raw.as_ref()).ok_or(Error::Corrupted)?)
+	}
+
 	pub fn new_with_genesis<P: AsRef<Path>>(path: P, block: B, state: S) -> Self {
 		assert!(block.parent_id().is_none(), "with_genesis must be provided with a genesis block");
 
@@ -424,6 +516,8 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 
 		let mut settlement = RocksSettlement {
 			backend: &db,
+			changes: Default::default(),
+			last_error: None,
 		};
 		settlement.insert_block(
 			genesis_id,
@@ -436,6 +530,7 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 		settlement.insert_canon_depth_mapping(0, genesis_id);
 		settlement.set_genesis(genesis_id);
 		settlement.set_head(genesis_id);
+		settlement.commit().unwrap();
 
 		db
 	}
