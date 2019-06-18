@@ -65,6 +65,8 @@ impl From<Error> for blockchain::import::Error {
 
 pub struct RocksBackend<B: Block, A: Auxiliary<B>, S> {
 	db: Arc<DB>,
+	head: B::Identifier,
+	genesis: B::Identifier,
 	_marker: PhantomData<(B, A, S)>,
 }
 
@@ -74,20 +76,31 @@ struct RocksSettlement<'a, B: Block, A: Auxiliary<B>, S> {
 	last_error: Option<Error>,
 }
 
-impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> {
-	pub fn open<P: AsRef<Path>>(path: P) -> Self {
+impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
+	B::Identifier: Decode
+{
+	fn options() -> Options {
 		let mut db_opts = Options::default();
 		db_opts.create_missing_column_families(true);
 		db_opts.create_if_missing(true);
 
+		db_opts
+	}
+
+	pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
+		let db_opts = Self::options();
 		let db = DB::open_cf(&db_opts, path, &[
 			COLUMN_BLOCKS, COLUMN_CANON_DEPTH_MAPPINGS, COLUMN_AUXILIARIES, COLUMN_INFO,
-		]).unwrap();
+		])?;
 
-		Self {
+		let head = fetch_head(&db)?.ok_or(Error::Corrupted)?;
+		let genesis = fetch_genesis(&db)?.ok_or(Error::Corrupted)?;
+
+		Ok(Self {
 			db: Arc::new(db),
+			head, genesis,
 			_marker: PhantomData,
-		}
+		})
 	}
 }
 
@@ -95,6 +108,8 @@ impl<B: Block, A: Auxiliary<B>, S> Clone for RocksBackend<B, A, S> {
 	fn clone(&self) -> Self {
 		Self {
 			db: self.db.clone(),
+			head: self.head,
+			genesis: self.genesis,
 			_marker: PhantomData,
 		}
 	}
@@ -220,7 +235,7 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 			return
 		}
 
-		let mut data = match self.backend.fetch_block_data(id) {
+		let mut data = match fetch_block_data::<B, S>(&self.backend.db, id) {
 			Ok(data) => data,
 			Err(error) => {
 				self.last_error = Some(error);
@@ -241,7 +256,7 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 			return
 		}
 
-		let mut data = match self.backend.fetch_block_data(id) {
+		let mut data = match fetch_block_data::<B, S>(&self.backend.db, id) {
 			Ok(data) => data,
 			Err(error) => {
 				self.last_error = Some(error);
@@ -499,43 +514,76 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 	A::Key: Encode + Decode,
 	S: Encode + Decode,
 {
-	fn fetch_block_data(&self, id: B::Identifier) -> Result<BlockData<B, S>, Error> {
-		let cf = self.db.cf_handle(COLUMN_BLOCKS).ok_or(Error::Corrupted)?;
-		let raw = match self.db.get_cf(cf, id.encode())? {
-			Some(raw) => raw,
-			None => return Err(Error::Corrupted),
-		};
-		Ok(BlockData::decode(&mut raw.as_ref()).ok_or(Error::Corrupted)?)
-	}
-
-	pub fn new_with_genesis<P: AsRef<Path>>(path: P, block: B, state: S) -> Self {
+	pub fn new_with_genesis<P: AsRef<Path>>(path: P, block: B, state: S) -> Result<Self, Error> {
 		assert!(block.parent_id().is_none(), "with_genesis must be provided with a genesis block");
 
-		let db = Self::open(path);
-		let genesis_id = block.id();
+		let db_opts = Self::options();
+		let db = DB::open_cf(&db_opts, path, &[
+			COLUMN_BLOCKS, COLUMN_CANON_DEPTH_MAPPINGS, COLUMN_AUXILIARIES, COLUMN_INFO,
+		])?;
+
+		let head = block.id();
+		let genesis = head;
+
+		let backend = Self {
+			db: Arc::new(db),
+			head, genesis,
+			_marker: PhantomData,
+		};
 
 		let mut settlement = RocksSettlement {
-			backend: &db,
+			backend: &backend,
 			changes: Default::default(),
 			last_error: None,
 		};
 		settlement.insert_block(
-			genesis_id,
+			genesis,
 			block,
 			state,
 			0,
 			Vec::new(),
 			true
 		);
-		settlement.insert_canon_depth_mapping(0, genesis_id);
-		settlement.set_genesis(genesis_id);
-		settlement.set_head(genesis_id);
+		settlement.insert_canon_depth_mapping(0, genesis);
+		settlement.set_genesis(genesis);
+		settlement.set_head(genesis);
 		settlement.commit().unwrap();
 
-		db
+		Ok(backend)
 	}
 
-	pub fn from_existing<P: AsRef<Path>>(path: P) -> Self {
+	pub fn from_existing<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
 		Self::open(path)
 	}
+}
+
+fn fetch_block_data<B: Block, S>(db: &DB, id: B::Identifier) -> Result<BlockData<B, S>, Error> where
+	B::Identifier: Encode + Decode,
+	B: Decode,
+	S: Decode
+{
+	let cf = db.cf_handle(COLUMN_BLOCKS).ok_or(Error::Corrupted)?;
+	let raw = match db.get_cf(cf, id.encode())? {
+		Some(raw) => raw,
+		None => return Err(Error::Corrupted),
+	};
+	Ok(BlockData::decode(&mut raw.as_ref()).ok_or(Error::Corrupted)?)
+}
+
+fn fetch_head<I: Decode>(db: &DB) -> Result<Option<I>, Error> {
+	let cf = db.cf_handle(COLUMN_INFO).ok_or(Error::Corrupted)?;
+	let raw = match db.get_cf(cf, KEY_HEAD.encode())? {
+		Some(raw) => raw,
+		None => return Ok(None),
+	};
+	Ok(Some(I::decode(&mut raw.as_ref()).ok_or(Error::Corrupted)?))
+}
+
+fn fetch_genesis<I: Decode>(db: &DB) -> Result<Option<I>, Error> {
+	let cf = db.cf_handle(COLUMN_INFO).ok_or(Error::Corrupted)?;
+	let raw = match db.get_cf(cf, KEY_GENESIS.encode())? {
+		Some(raw) => raw,
+		None => return Ok(None),
+	};
+	Ok(Some(I::decode(&mut raw.as_ref()).ok_or(Error::Corrupted)?))
 }

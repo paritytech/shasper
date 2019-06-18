@@ -143,13 +143,13 @@ fn main() {
 			if Path::new(path).exists() {
 				RocksBackend::<_, (), State>::from_existing(
 					path
-				)
+				).unwrap()
 			} else {
 				RocksBackend::<_, (), State>::new_with_genesis(
 					path,
 					genesis_block.clone(),
 					genesis_state.into(),
-				)
+				).unwrap()
 			}
 		);
 		let lock = ImportLock::new();
