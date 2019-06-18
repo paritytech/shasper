@@ -87,23 +87,6 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 
 		db_opts
 	}
-
-	pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
-		let db_opts = Self::options();
-		let db = DB::open_cf(&db_opts, path, &[
-			COLUMN_BLOCKS, COLUMN_CANON_DEPTH_MAPPINGS, COLUMN_AUXILIARIES, COLUMN_INFO,
-		])?;
-
-		let head = fetch_head(&db)?.ok_or(Error::Corrupted)?;
-		let genesis = fetch_genesis(&db)?.ok_or(Error::Corrupted)?;
-
-		Ok(Self {
-			db: Arc::new(db),
-			head: Arc::new(RwLock::new(head)),
-			genesis: Arc::new(genesis),
-			_marker: PhantomData,
-		})
-	}
 }
 
 impl<B: Block, A: Auxiliary<B>, S> Clone for RocksBackend<B, A, S> {
@@ -502,48 +485,80 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 	A::Key: Encode + Decode,
 	S: Encode + Decode,
 {
-	pub fn new_with_genesis<P: AsRef<Path>>(path: P, block: B, state: S) -> Result<Self, Error> {
-		assert!(block.parent_id().is_none(), "with_genesis must be provided with a genesis block");
-
+	pub fn open_or_create<P: AsRef<Path>, F>(path: P, f: F) -> Result<Self, Error> where
+		F: FnOnce() -> Result<(B, S), Error>
+	{
 		let db_opts = Self::options();
 		let db = DB::open_cf(&db_opts, path, &[
 			COLUMN_BLOCKS, COLUMN_CANON_DEPTH_MAPPINGS, COLUMN_AUXILIARIES, COLUMN_INFO,
 		])?;
 
-		let head = block.id();
-		let genesis = head;
+		let head = fetch_head(&db)?;
+		let genesis = fetch_genesis(&db)?;
 
-		let backend = Self {
-			db: Arc::new(db),
-			head: Arc::new(RwLock::new(head)),
-			genesis: Arc::new(genesis),
-			_marker: PhantomData,
-		};
+		match (head, genesis) {
+			(Some(head), Some(genesis)) => {
+				Ok(Self {
+					db: Arc::new(db),
+					head: Arc::new(RwLock::new(head)),
+					genesis: Arc::new(genesis),
+					_marker: PhantomData,
+				})
+			},
+			(None, None) => {
+				let (block, state) = f()?;
+				assert!(block.parent_id().is_none(),
+						"with_genesis must be provided with a genesis block");
 
-		let mut settlement = RocksSettlement {
-			backend: &backend,
-			changes: Default::default(),
-			last_error: None,
-			new_head: None,
-		};
-		settlement.insert_block(
-			genesis,
-			block,
-			state,
-			0,
-			Vec::new(),
-			true
-		);
-		settlement.insert_canon_depth_mapping(0, genesis);
-		settlement.set_genesis(genesis);
-		settlement.set_head(genesis);
-		settlement.commit()?;
+				let head = block.id();
+				let genesis = head;
 
+				let backend = Self {
+					db: Arc::new(db),
+					head: Arc::new(RwLock::new(head)),
+					genesis: Arc::new(genesis),
+					_marker: PhantomData,
+				};
+
+				let mut settlement = RocksSettlement {
+					backend: &backend,
+					changes: Default::default(),
+					last_error: None,
+					new_head: None,
+				};
+				settlement.insert_block(
+					genesis,
+					block,
+					state,
+					0,
+					Vec::new(),
+					true
+				);
+				settlement.insert_canon_depth_mapping(0, genesis);
+				settlement.set_genesis(genesis);
+				settlement.set_head(genesis);
+				settlement.commit()?;
+
+				Ok(backend)
+			},
+			_ => Err(Error::Corrupted),
+		}
+	}
+
+	pub fn new_with_genesis<P: AsRef<Path>>(path: P, block: B, state: S) -> Result<Self, Error> {
+		let mut created = false;
+		let backend = Self::open_or_create(path, || {
+			created = true;
+			Ok((block, state))
+		})?;
+		if !created {
+			return Err(Error::Corrupted);
+		}
 		Ok(backend)
 	}
 
 	pub fn from_existing<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
-		Self::open(path)
+		Self::open_or_create(path, || Err(Error::Corrupted))
 	}
 }
 

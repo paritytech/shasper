@@ -13,7 +13,6 @@ use shasper_blockchain::backend::ShasperBackend;
 use lmd_ghost::archive::{ArchiveGhostImporter, AncestorQuery};
 use clap::{App, Arg};
 use std::thread;
-use std::path::Path;
 use std::collections::HashMap;
 use core::time::Duration;
 use crypto::bls;
@@ -140,17 +139,9 @@ fn main() {
 	if let Some(path) = matches.value_of("data") {
 		println!("Using RocksDB backend");
 		let backend = ShasperBackend::new(
-			if Path::new(path).exists() {
-				RocksBackend::<_, (), State>::from_existing(
-					path
-				).unwrap()
-			} else {
-				RocksBackend::<_, (), State>::new_with_genesis(
-					path,
-					genesis_block.clone(),
-					genesis_state.into(),
-				).unwrap()
-			}
+			RocksBackend::<_, (), State>::open_or_create(path, || {
+				Ok((genesis_block.clone(), genesis_state.into()))
+			}).unwrap()
 		);
 		let lock = ImportLock::new();
 
