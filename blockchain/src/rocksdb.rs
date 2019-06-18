@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 use std::collections::HashMap;
 use std::path::Path;
 use std::{fmt, error as stderror};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use blockchain::traits::{Block, Auxiliary};
 use blockchain::backend::{Store, ChainQuery, OperationError, SharedCommittable, ChainSettlement, Operation};
 use parity_codec::{Encode, Decode};
@@ -65,14 +65,15 @@ impl From<Error> for blockchain::import::Error {
 
 pub struct RocksBackend<B: Block, A: Auxiliary<B>, S> {
 	db: Arc<DB>,
-	head: B::Identifier,
-	genesis: B::Identifier,
+	head: Arc<RwLock<B::Identifier>>,
+	genesis: Arc<B::Identifier>,
 	_marker: PhantomData<(B, A, S)>,
 }
 
 struct RocksSettlement<'a, B: Block, A: Auxiliary<B>, S> {
 	backend: &'a RocksBackend<B, A, S>,
 	changes: HashMap<(&'static str, Vec<u8>), Option<Vec<u8>>>,
+	new_head: Option<B::Identifier>,
 	last_error: Option<Error>,
 }
 
@@ -98,7 +99,8 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 
 		Ok(Self {
 			db: Arc::new(db),
-			head, genesis,
+			head: Arc::new(RwLock::new(head)),
+			genesis: Arc::new(genesis),
 			_marker: PhantomData,
 		})
 	}
@@ -108,8 +110,8 @@ impl<B: Block, A: Auxiliary<B>, S> Clone for RocksBackend<B, A, S> {
 	fn clone(&self) -> Self {
 		Self {
 			db: self.db.clone(),
-			head: self.head,
-			genesis: self.genesis,
+			head: self.head.clone(),
+			genesis: self.genesis.clone(),
 			_marker: PhantomData,
 		}
 	}
@@ -235,8 +237,12 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 			return
 		}
 
-		let mut data = match fetch_block_data::<B, S>(&self.backend.db, id) {
-			Ok(data) => data,
+		let mut data = match fetch_block_data::<B, S>(&self.backend.db, &id) {
+			Ok(Some(data)) => data,
+			Ok(None) => {
+				self.last_error = Some(Error::Corrupted);
+				return
+			},
 			Err(error) => {
 				self.last_error = Some(error);
 				return
@@ -256,8 +262,12 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 			return
 		}
 
-		let mut data = match fetch_block_data::<B, S>(&self.backend.db, id) {
-			Ok(data) => data,
+		let mut data = match fetch_block_data::<B, S>(&self.backend.db, &id) {
+			Ok(Some(data)) => data,
+			Ok(None) => {
+				self.last_error = Some(Error::Corrupted);
+				return
+			},
 			Err(error) => {
 				self.last_error = Some(error);
 				return
@@ -324,6 +334,7 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 			return
 		}
 
+		self.new_head = Some(head);
 		self.changes.insert((COLUMN_INFO, KEY_HEAD.encode()), Some(head.encode()));
 	}
 }
@@ -346,7 +357,7 @@ impl<'a, B: Block, A: Auxiliary<B>, S> RocksSettlement<'a, B, A, S> where
 		self.changes.insert((COLUMN_INFO, KEY_GENESIS.encode()), Some(genesis.encode()));
 	}
 
-	fn commit(self) -> Result<(), Error> {
+	fn commit(self) -> Result<Option<B::Identifier>, Error> {
 		if let Some(error) = self.last_error {
 			return Err(error)
 		}
@@ -366,7 +377,7 @@ impl<'a, B: Block, A: Auxiliary<B>, S> RocksSettlement<'a, B, A, S> where
 		}
 
 		self.backend.db.write(batch)?;
-		Ok(())
+		Ok(self.new_head)
 	}
 }
 
@@ -378,39 +389,25 @@ impl<B: Block, A: Auxiliary<B>, S> ChainQuery for RocksBackend<B, A, S> where
 	S: Encode + Decode,
 {
 	fn head(&self) -> B::Identifier {
-		let cf = self.db.cf_handle(COLUMN_INFO).unwrap();
-		B::Identifier::decode(
-			&mut self.db.get_cf(cf, KEY_HEAD.encode()).unwrap().unwrap().as_ref()
-		).unwrap()
+		*self.head.read().expect("Lock is poisoned")
 	}
 
 	fn genesis(&self) -> B::Identifier {
-		let cf = self.db.cf_handle(COLUMN_INFO).unwrap();
-		B::Identifier::decode(
-			&mut self.db.get_cf(cf, KEY_GENESIS.encode()).unwrap().unwrap().as_ref()
-		).unwrap()
+		*self.genesis.as_ref()
 	}
 
 	fn contains(
 		&self,
 		id: &B::Identifier
 	) -> Result<bool, Error> {
-		let cf = self.db.cf_handle(COLUMN_BLOCKS).unwrap();
-		let data = self.db.get_cf(cf, id.encode()).unwrap().map(
-			|v| BlockData::<B, S>::decode(&mut v.as_ref()).unwrap()
-		);
-		Ok(data.is_some())
+		Ok(fetch_block_data::<B, S>(&self.db, id)?.is_some())
 	}
 
 	fn is_canon(
 		&self,
 		id: &B::Identifier
 	) -> Result<bool, Error> {
-		let cf = self.db.cf_handle(COLUMN_BLOCKS).unwrap();
-		let data = self.db.get_cf(cf, id.encode()).unwrap().map(
-			|v| BlockData::<B, S>::decode(&mut v.as_ref()).unwrap()
-		);
-		Ok(data.ok_or(Error::NotExist)?.is_canon)
+		Ok(fetch_block_data::<B, S>(&self.db, id)?.ok_or(Error::NotExist)?.is_canon)
 	}
 
 	fn lookup_canon_depth(
@@ -419,66 +416,50 @@ impl<B: Block, A: Auxiliary<B>, S> ChainQuery for RocksBackend<B, A, S> where
 	) -> Result<Option<B::Identifier>, Error> {
 		let depth = depth as u64;
 
-		let cf = self.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).unwrap();
-		let hash = self.db.get_cf(cf, depth.encode()).unwrap().map(
-			|v| B::Identifier::decode(&mut v.as_ref()).unwrap()
-		);
-		Ok(hash)
+		let cf = self.db.cf_handle(COLUMN_CANON_DEPTH_MAPPINGS).ok_or(Error::Corrupted)?;
+		match self.db.get_cf(cf, depth.encode())? {
+			Some(hash) => Ok(Some(B::Identifier::decode(&mut hash.as_ref()).ok_or(Error::Corrupted)?)),
+			None => Ok(None),
+		}
 	}
 
 	fn auxiliary(
 		&self,
 		key: &A::Key
 	) -> Result<Option<A>, Error> {
-		let cf = self.db.cf_handle(COLUMN_AUXILIARIES).unwrap();
-		let auxiliary = self.db.get_cf(cf, key.encode()).unwrap().map(
-			|v| A::decode(&mut v.as_ref()).unwrap()
-		);
-		Ok(auxiliary)
+		let cf = self.db.cf_handle(COLUMN_AUXILIARIES).ok_or(Error::Corrupted)?;
+		match self.db.get_cf(cf, key.encode())? {
+			Some(v) => Ok(Some(A::decode(&mut v.as_ref()).ok_or(Error::Corrupted)?)),
+			None => Ok(None),
+		}
 	}
 
 	fn children_at(
 		&self,
 		id: &B::Identifier,
 	) -> Result<Vec<B::Identifier>, Error> {
-		let cf = self.db.cf_handle(COLUMN_BLOCKS).unwrap();
-		let data = self.db.get_cf(cf, id.encode()).unwrap().map(
-			|v| BlockData::<B, S>::decode(&mut v.as_ref()).unwrap()
-		);
-		Ok(data.ok_or(Error::NotExist)?.children)
+		Ok(fetch_block_data::<B, S>(&self.db, id)?.ok_or(Error::NotExist)?.children)
 	}
 
 	fn depth_at(
 		&self,
 		id: &B::Identifier
 	) -> Result<usize, Error> {
-		let cf = self.db.cf_handle(COLUMN_BLOCKS).unwrap();
-		let data = self.db.get_cf(cf, id.encode()).unwrap().map(
-			|v| BlockData::<B, S>::decode(&mut v.as_ref()).unwrap()
-		);
-		Ok(data.ok_or(Error::NotExist)?.depth as usize)
+		Ok(fetch_block_data::<B, S>(&self.db, id)?.ok_or(Error::NotExist)?.depth as usize)
 	}
 
 	fn block_at(
 		&self,
 		id: &B::Identifier,
 	) -> Result<B, Error> {
-		let cf = self.db.cf_handle(COLUMN_BLOCKS).unwrap();
-		let data = self.db.get_cf(cf, id.encode()).unwrap().map(
-			|v| BlockData::<B, S>::decode(&mut v.as_ref()).unwrap()
-		);
-		Ok(data.ok_or(Error::NotExist)?.block)
+		Ok(fetch_block_data::<B, S>(&self.db, id)?.ok_or(Error::NotExist)?.block)
 	}
 
 	fn state_at(
 		&self,
 		id: &B::Identifier,
 	) -> Result<Self::State, Error> {
-		let cf = self.db.cf_handle(COLUMN_BLOCKS).unwrap();
-		let data = self.db.get_cf(cf, id.encode()).unwrap().map(
-			|v| BlockData::<B, S>::decode(&mut v.as_ref()).unwrap()
-		);
-		Ok(data.ok_or(Error::NotExist)?.state)
+		Ok(fetch_block_data::<B, S>(&self.db, id)?.ok_or(Error::NotExist)?.state)
 	}
 }
 
@@ -499,9 +480,16 @@ impl<B: Block, A: Auxiliary<B>, S> SharedCommittable for RocksBackend<B, A, S> w
 			backend: self,
 			changes: Default::default(),
 			last_error: None,
+			new_head: None,
 		};
 		operation.settle(&mut settlement)?;
-		settlement.commit()?;
+
+		let mut head = self.head.write().expect("Lock is poisoned");
+		let new_head = settlement.commit()?;
+
+		if let Some(new_head) = new_head {
+			*head = new_head;
+		}
 
 		Ok(())
 	}
@@ -527,7 +515,8 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 
 		let backend = Self {
 			db: Arc::new(db),
-			head, genesis,
+			head: Arc::new(RwLock::new(head)),
+			genesis: Arc::new(genesis),
 			_marker: PhantomData,
 		};
 
@@ -535,6 +524,7 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 			backend: &backend,
 			changes: Default::default(),
 			last_error: None,
+			new_head: None,
 		};
 		settlement.insert_block(
 			genesis,
@@ -547,7 +537,7 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 		settlement.insert_canon_depth_mapping(0, genesis);
 		settlement.set_genesis(genesis);
 		settlement.set_head(genesis);
-		settlement.commit().unwrap();
+		settlement.commit()?;
 
 		Ok(backend)
 	}
@@ -557,7 +547,7 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 	}
 }
 
-fn fetch_block_data<B: Block, S>(db: &DB, id: B::Identifier) -> Result<BlockData<B, S>, Error> where
+fn fetch_block_data<B: Block, S>(db: &DB, id: &B::Identifier) -> Result<Option<BlockData<B, S>>, Error> where
 	B::Identifier: Encode + Decode,
 	B: Decode,
 	S: Decode
@@ -565,9 +555,9 @@ fn fetch_block_data<B: Block, S>(db: &DB, id: B::Identifier) -> Result<BlockData
 	let cf = db.cf_handle(COLUMN_BLOCKS).ok_or(Error::Corrupted)?;
 	let raw = match db.get_cf(cf, id.encode())? {
 		Some(raw) => raw,
-		None => return Err(Error::Corrupted),
+		None => return Ok(None),
 	};
-	Ok(BlockData::decode(&mut raw.as_ref()).ok_or(Error::Corrupted)?)
+	Ok(Some(BlockData::decode(&mut raw.as_ref()).ok_or(Error::Corrupted)?))
 }
 
 fn fetch_head<I: Decode>(db: &DB) -> Result<Option<I>, Error> {
