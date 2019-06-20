@@ -4,7 +4,7 @@ use blockchain::backend::{Store, ChainQuery, ChainSettlement};
 use parity_codec::{Encode, Decode};
 use rocksdb::WriteBatch;
 
-use super::{RocksBackend, Error};
+use super::{RocksBackend, RocksState, Error};
 use super::utils::*;
 
 pub struct RocksSettlement<'a, B: Block, A: Auxiliary<B>, S> {
@@ -21,12 +21,11 @@ impl<'a, B: Block, A: Auxiliary<B>, S> Store for RocksSettlement<'a, B, A, S> {
 	type Error = Error;
 }
 
-impl<'a, B: Block, A: Auxiliary<B>, S> ChainQuery for RocksSettlement<'a, B, A, S> where
+impl<'a, B: Block, A: Auxiliary<B>, S: RocksState> ChainQuery for RocksSettlement<'a, B, A, S> where
 	B::Identifier: Encode + Decode,
 	B: Encode + Decode,
 	A: Encode + Decode,
 	A::Key: Encode + Decode,
-	S: Encode + Decode,
 {
 	fn genesis(&self) -> <Self::Block as Block>::Identifier {
 		self.backend.genesis()
@@ -84,12 +83,11 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainQuery for RocksSettlement<'a, B, A, 
 	}
 }
 
-impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B, A, S> where
+impl<'a, B: Block, A: Auxiliary<B>, S: RocksState> ChainSettlement for RocksSettlement<'a, B, A, S> where
 	B::Identifier: Encode + Decode,
 	B: Encode + Decode,
 	A: Encode + Decode,
 	A::Key: Encode + Decode,
-	S: Encode + Decode,
 {
 	fn insert_block(
 		&mut self,
@@ -105,7 +103,7 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 		}
 
 		self.changes.insert((COLUMN_BLOCKS, id.encode()), Some(BlockData {
-			block, state, depth: depth as u64, children, is_canon
+			block, state: state.into_raw(), depth: depth as u64, children, is_canon
 		}.encode()));
 	}
 
@@ -118,7 +116,7 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 			return
 		}
 
-		let mut data = match fetch_block_data::<B, S>(self.backend.db(), &id) {
+		let mut data = match fetch_block_data::<B, S::Raw>(self.backend.db(), &id) {
 			Ok(Some(data)) => data,
 			Ok(None) => {
 				self.last_error = Some(Error::Corrupted);
@@ -143,7 +141,7 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 			return
 		}
 
-		let mut data = match fetch_block_data::<B, S>(self.backend.db(), &id) {
+		let mut data = match fetch_block_data::<B, S::Raw>(self.backend.db(), &id) {
 			Ok(Some(data)) => data,
 			Ok(None) => {
 				self.last_error = Some(Error::Corrupted);
@@ -220,12 +218,11 @@ impl<'a, B: Block, A: Auxiliary<B>, S> ChainSettlement for RocksSettlement<'a, B
 	}
 }
 
-impl<'a, B: Block, A: Auxiliary<B>, S> RocksSettlement<'a, B, A, S> where
+impl<'a, B: Block, A: Auxiliary<B>, S: RocksState> RocksSettlement<'a, B, A, S> where
 	B::Identifier: Encode + Decode,
 	B: Encode + Decode,
 	A: Encode + Decode,
 	A::Key: Encode + Decode,
-	S: Encode + Decode,
 {
 	pub fn new(backend: &'a RocksBackend<B, A, S>) -> Self {
 		Self {

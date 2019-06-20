@@ -6,7 +6,7 @@ use blockchain::backend::{Store, ChainQuery, SharedCommittable, ChainSettlement,
 use parity_codec::{Encode, Decode};
 use rocksdb::{DB, Options};
 
-use super::Error;
+use super::{RocksState, Error};
 use super::settlement::RocksSettlement;
 use super::utils::*;
 
@@ -47,12 +47,11 @@ impl<B: Block, A: Auxiliary<B>, S> Store for RocksBackend<B, A, S> {
 	type Error = Error;
 }
 
-impl<B: Block, A: Auxiliary<B>, S> ChainQuery for RocksBackend<B, A, S> where
+impl<B: Block, A: Auxiliary<B>, S: RocksState> ChainQuery for RocksBackend<B, A, S> where
 	B::Identifier: Encode + Decode,
 	B: Encode + Decode,
 	A: Encode + Decode,
 	A::Key: Encode + Decode,
-	S: Encode + Decode,
 {
 	fn head(&self) -> B::Identifier {
 		*self.head.read().expect("Lock is poisoned")
@@ -66,14 +65,14 @@ impl<B: Block, A: Auxiliary<B>, S> ChainQuery for RocksBackend<B, A, S> where
 		&self,
 		id: &B::Identifier
 	) -> Result<bool, Error> {
-		Ok(fetch_block_data::<B, S>(&self.db, id)?.is_some())
+		Ok(fetch_block_data::<B, S::Raw>(&self.db, id)?.is_some())
 	}
 
 	fn is_canon(
 		&self,
 		id: &B::Identifier
 	) -> Result<bool, Error> {
-		Ok(fetch_block_data::<B, S>(&self.db, id)?.ok_or(Error::NotExist)?.is_canon)
+		Ok(fetch_block_data::<B, S::Raw>(&self.db, id)?.ok_or(Error::NotExist)?.is_canon)
 	}
 
 	fn lookup_canon_depth(
@@ -104,37 +103,39 @@ impl<B: Block, A: Auxiliary<B>, S> ChainQuery for RocksBackend<B, A, S> where
 		&self,
 		id: &B::Identifier,
 	) -> Result<Vec<B::Identifier>, Error> {
-		Ok(fetch_block_data::<B, S>(&self.db, id)?.ok_or(Error::NotExist)?.children)
+		Ok(fetch_block_data::<B, S::Raw>(&self.db, id)?.ok_or(Error::NotExist)?.children)
 	}
 
 	fn depth_at(
 		&self,
 		id: &B::Identifier
 	) -> Result<usize, Error> {
-		Ok(fetch_block_data::<B, S>(&self.db, id)?.ok_or(Error::NotExist)?.depth as usize)
+		Ok(fetch_block_data::<B, S::Raw>(&self.db, id)?.ok_or(Error::NotExist)?.depth as usize)
 	}
 
 	fn block_at(
 		&self,
 		id: &B::Identifier,
 	) -> Result<B, Error> {
-		Ok(fetch_block_data::<B, S>(&self.db, id)?.ok_or(Error::NotExist)?.block)
+		Ok(fetch_block_data::<B, S::Raw>(&self.db, id)?.ok_or(Error::NotExist)?.block)
 	}
 
 	fn state_at(
 		&self,
 		id: &B::Identifier,
 	) -> Result<Self::State, Error> {
-		Ok(fetch_block_data::<B, S>(&self.db, id)?.ok_or(Error::NotExist)?.state)
+		Ok(S::from_raw(
+			fetch_block_data::<B, S::Raw>(&self.db, id)?.ok_or(Error::NotExist)?.state,
+			self.db.clone()
+		))
 	}
 }
 
-impl<B: Block, A: Auxiliary<B>, S> SharedCommittable for RocksBackend<B, A, S> where
+impl<B: Block, A: Auxiliary<B>, S: RocksState> SharedCommittable for RocksBackend<B, A, S> where
 	B::Identifier: Encode + Decode,
 	B: Encode + Decode,
 	A: Encode + Decode,
 	A::Key: Encode + Decode,
-	S: Encode + Decode,
 {
 	type Operation = Operation<Self::Block, Self::State, Self::Auxiliary>;
 
@@ -156,20 +157,19 @@ impl<B: Block, A: Auxiliary<B>, S> SharedCommittable for RocksBackend<B, A, S> w
 	}
 }
 
-impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
+impl<B: Block, A: Auxiliary<B>, S: RocksState> RocksBackend<B, A, S> where
 	B::Identifier: Encode + Decode,
 	B: Encode + Decode,
 	A: Encode + Decode,
 	A::Key: Encode + Decode,
-	S: Encode + Decode,
 {
 	pub fn open_or_create<P: AsRef<Path>, F>(path: P, f: F) -> Result<Self, Error> where
-		F: FnOnce() -> Result<(B, S), Error>
+		F: FnOnce(Arc<DB>) -> Result<(B, S), Error>
 	{
 		let db_opts = Self::options();
-		let db = DB::open_cf(&db_opts, path, &[
+		let db = Arc::new(DB::open_cf(&db_opts, path, &[
 			COLUMN_BLOCKS, COLUMN_CANON_DEPTH_MAPPINGS, COLUMN_AUXILIARIES, COLUMN_INFO,
-		])?;
+		])?);
 
 		let head = fetch_head(&db)?;
 		let genesis = fetch_genesis(&db)?;
@@ -177,14 +177,14 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 		match (head, genesis) {
 			(Some(head), Some(genesis)) => {
 				Ok(Self {
-					db: Arc::new(db),
+					db: db,
 					head: Arc::new(RwLock::new(head)),
 					genesis: Arc::new(genesis),
 					_marker: PhantomData,
 				})
 			},
 			(None, None) => {
-				let (block, state) = f()?;
+				let (block, state) = f(db.clone())?;
 				assert!(block.parent_id().is_none(),
 						"with_genesis must be provided with a genesis block");
 
@@ -192,7 +192,7 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 				let genesis = head;
 
 				let backend = Self {
-					db: Arc::new(db),
+					db: db,
 					head: Arc::new(RwLock::new(head)),
 					genesis: Arc::new(genesis),
 					_marker: PhantomData,
@@ -220,7 +220,7 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 
 	pub fn new_with_genesis<P: AsRef<Path>>(path: P, block: B, state: S) -> Result<Self, Error> {
 		let mut created = false;
-		let backend = Self::open_or_create(path, || {
+		let backend = Self::open_or_create(path, |_| {
 			created = true;
 			Ok((block, state))
 		})?;
@@ -231,7 +231,7 @@ impl<B: Block, A: Auxiliary<B>, S> RocksBackend<B, A, S> where
 	}
 
 	pub fn from_existing<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
-		Self::open_or_create(path, || Err(Error::Corrupted))
+		Self::open_or_create(path, |_| Err(Error::Corrupted))
 	}
 
 	pub(crate) fn db(&self) -> &DB {

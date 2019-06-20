@@ -7,7 +7,7 @@ use blockchain::backend::{SharedMemoryBackend, SharedCommittable, ChainQuery, St
 use blockchain::import::{SharedBlockImporter, MutexImporter};
 use blockchain::traits::{AsExternalities, Auxiliary, Block as BlockT};
 use blockchain_network_simple::BestDepthStatusProducer;
-use shasper_blockchain::{Block, Executor, State, Error, StateExternalities, AttestationPool};
+use shasper_blockchain::{Block, Executor, MemoryState, RocksState, Error, StateExternalities, AttestationPool};
 use shasper_blockchain::rocksdb::RocksBackend;
 use shasper_blockchain::backend::ShasperBackend;
 use lmd_ghost::archive::{ArchiveGhostImporter, AncestorQuery};
@@ -139,7 +139,7 @@ fn main() {
 	if let Some(path) = matches.value_of("data") {
 		println!("Using RocksDB backend");
 		let backend = ShasperBackend::new(
-			RocksBackend::<_, (), State>::open_or_create(path, || {
+			RocksBackend::<_, (), RocksState>::open_or_create(path, |_| {
 				Ok((genesis_block.clone(), genesis_state.into()))
 			}).unwrap()
 		);
@@ -155,7 +155,7 @@ fn main() {
 	} else {
 		println!("Using in-memory backend");
 		let backend = ShasperBackend::new(
-			SharedMemoryBackend::<_, (), State>::new_with_genesis(
+			SharedMemoryBackend::<_, (), MemoryState>::new_with_genesis(
 				genesis_block.clone(),
 				genesis_state.into(),
 			)
@@ -181,7 +181,8 @@ fn run<B, C: Config>(
 	keys: HashMap<ValidatorId, bls::Secret>,
 	config: C,
 ) where
-	B: ChainQuery + AncestorQuery + Store<Block=Block, State=State>,
+	B: ChainQuery + AncestorQuery + Store<Block=Block>,
+	B::State: StateExternalities + AsExternalities<dyn StateExternalities>,
 	B::Auxiliary: Auxiliary<Block>,
 	B: SharedCommittable<Operation=Operation<<B as Store>::Block, <B as Store>::State, <B as Store>::Auxiliary>>,
 	B: Send + Sync + 'static,
@@ -212,7 +213,8 @@ fn builder_thread<B, I, C: Config + Clone>(
 	keys: HashMap<ValidatorId, bls::Secret>,
 	config: C,
 ) where
-	B: ChainQuery + Store<Block=Block, State=State>,
+	B: ChainQuery + Store<Block=Block>,
+	B::State: StateExternalities + AsExternalities<dyn StateExternalities>,
 	B::Auxiliary: Auxiliary<Block>,
 	I: SharedBlockImporter<Block=Block>
 {
