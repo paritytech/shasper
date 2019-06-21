@@ -5,6 +5,9 @@ mod backend;
 pub use self::backend::RocksBackend;
 
 use std::{fmt, error as stderror};
+use std::sync::Arc;
+use parity_codec::{Encode, Decode};
+use rocksdb::DB;
 use blockchain::backend::OperationError;
 
 #[derive(Debug)]
@@ -53,4 +56,11 @@ impl From<Error> for blockchain::import::Error {
 			error => blockchain::import::Error::Backend(Box::new(error)),
 		}
 	}
+}
+
+pub trait RocksState {
+	type Raw: Encode + Decode;
+
+	fn from_raw(raw: Self::Raw, db: Arc<DB>) -> Self;
+	fn into_raw(self) -> Self::Raw;
 }

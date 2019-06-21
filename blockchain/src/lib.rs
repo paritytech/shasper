@@ -7,10 +7,13 @@ pub use pool::AttestationPool;
 use beacon::primitives::H256;
 use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockHeader};
 use beacon::{Error as BeaconError, Executive, Config, Inherent, Transaction};
+use std::sync::Arc;
 use blockchain::traits::{Block as BlockT, BlockExecutor, AsExternalities};
 use lmd_ghost::JustifiableExecutor;
 use parity_codec::{Encode, Decode};
 use ssz::Digestible;
+
+use self::rocksdb::RocksState as RocksStateT;
 
 #[derive(Eq, PartialEq, Clone, Debug, Encode, Decode)]
 pub struct Block(pub BeaconBlock);
@@ -47,32 +50,73 @@ pub trait StateExternalities {
 	fn state(&mut self) -> &mut BeaconState;
 }
 
-#[derive(Clone, Encode, Decode)]
-pub struct State {
+#[derive(Clone)]
+pub struct MemoryState {
 	state: BeaconState,
 }
 
-impl From<BeaconState> for State {
+impl From<BeaconState> for MemoryState {
 	fn from(state: BeaconState) -> Self {
 		Self { state }
 	}
 }
 
-impl Into<BeaconState> for State {
+impl Into<BeaconState> for MemoryState {
 	fn into(self) -> BeaconState {
 		self.state
 	}
 }
 
-impl StateExternalities for State {
+impl StateExternalities for MemoryState {
 	fn state(&mut self) -> &mut BeaconState {
 		&mut self.state
 	}
 }
 
-impl AsExternalities<dyn StateExternalities> for State {
+impl AsExternalities<dyn StateExternalities> for MemoryState {
 	fn as_externalities(&mut self) -> &mut (dyn StateExternalities + 'static) {
 		self
+	}
+}
+
+#[derive(Clone)]
+pub struct RocksState {
+	state: BeaconState,
+}
+
+impl From<BeaconState> for RocksState {
+	fn from(state: BeaconState) -> Self {
+		Self { state }
+	}
+}
+
+impl Into<BeaconState> for RocksState {
+	fn into(self) -> BeaconState {
+		self.state
+	}
+}
+
+impl StateExternalities for RocksState {
+	fn state(&mut self) -> &mut BeaconState {
+		&mut self.state
+	}
+}
+
+impl AsExternalities<dyn StateExternalities> for RocksState {
+	fn as_externalities(&mut self) -> &mut (dyn StateExternalities + 'static) {
+		self
+	}
+}
+
+impl RocksStateT for RocksState {
+	type Raw = BeaconState;
+
+	fn from_raw(state: BeaconState, _db: Arc<::rocksdb::DB>) -> Self {
+		Self { state }
+	}
+
+	fn into_raw(self) -> BeaconState {
+		self.state
 	}
 }
 
