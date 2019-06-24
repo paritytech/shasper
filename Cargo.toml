@@ -9,6 +9,7 @@ members = [
 	"substrate/consensus",
 	"substrate/casper",
 	"blockchain",
+	"blockchain/common/rocksdb",
 	"blockchain/lmd-ghost",
 	"utils/ssz",
 	"utils/ssz-derive",

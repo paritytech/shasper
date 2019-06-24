@@ -322,6 +322,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "blockchain-rocksdb"
+version = "0.1.0"
+dependencies = [
+ "blockchain 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parity-codec 3.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rocksdb 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "bls-aggregates"
 version = "0.7.0"
 source = "git+https://github.com/sigp/signature-schemes#54fef9183e130832a627f000cec9b0a20fb19f07"
@@ -3227,6 +3236,7 @@ dependencies = [
  "beacon 0.1.2",
  "blockchain 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "blockchain-network-simple 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "blockchain-rocksdb 0.1.0",
  "bls-aggregates 0.7.0 (git+https://github.com/sigp/signature-schemes)",
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lmd-ghost 0.1.0",
