@@ -7,8 +7,8 @@ use blockchain::backend::{SharedMemoryBackend, SharedCommittable, ChainQuery, St
 use blockchain::import::{SharedBlockImporter, MutexImporter};
 use blockchain::traits::{AsExternalities, Auxiliary, Block as BlockT};
 use blockchain_network_simple::BestDepthStatusProducer;
+use blockchain_rocksdb::RocksBackend;
 use shasper_blockchain::{Block, Executor, MemoryState, RocksState, Error, StateExternalities, AttestationPool};
-use shasper_blockchain::rocksdb::RocksBackend;
 use shasper_blockchain::backend::ShasperBackend;
 use lmd_ghost::archive::{ArchiveGhostImporter, AncestorQuery};
 use clap::{App, Arg};

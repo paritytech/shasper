@@ -1,5 +1,4 @@
 mod pool;
-pub mod rocksdb;
 pub mod backend;
 
 pub use pool::AttestationPool;
@@ -13,7 +12,7 @@ use lmd_ghost::JustifiableExecutor;
 use parity_codec::{Encode, Decode};
 use ssz::Digestible;
 
-use self::rocksdb::RocksState as RocksStateT;
+use blockchain_rocksdb::RocksState as RocksStateT;
 
 #[derive(Eq, PartialEq, Clone, Debug, Encode, Decode)]
 pub struct Block(pub BeaconBlock);

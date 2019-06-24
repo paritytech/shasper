@@ -13,6 +13,7 @@ parity-codec = { version = "3.0", features = ["derive"] }
 crypto = { package = "shasper-crypto", path = "../crypto" }
 blockchain = "0.8"
 blockchain-network-simple = "0.4"
+blockchain-rocksdb = { version = "0.1", path = "common/rocksdb" }
 ssz = { path = "../utils/ssz" }
 sha2 = "0.8"
 bls-aggregates = { git = "https://github.com/sigp/signature-schemes" }
