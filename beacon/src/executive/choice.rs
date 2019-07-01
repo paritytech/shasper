@@ -21,7 +21,7 @@ use crate::types::BeaconBlock;
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Get justified active validators from current state.
 	pub fn justified_active_validators(&self) -> Vec<u64> {
-		let current_justified_epoch = self.state.current_justified_epoch;
+		let current_justified_epoch = self.state.current_justified_checkpoint.epoch;
 		self.active_validator_indices(current_justified_epoch)
 	}
 
@@ -29,12 +29,12 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	pub fn block_vote_targets(&self, block: &BeaconBlock) -> Result<Vec<(u64, H256)>, Error> {
 		let mut ret = Vec::new();
 		for attestation in block.body.attestations.clone() {
-			let indexed = self.convert_to_indexed(attestation)?;
+			let indexed = self.indexed_attestation(attestation)?;
 
 			for v in indexed.custody_bit_0_indices.into_iter()
 				.chain(indexed.custody_bit_1_indices.into_iter())
 			{
-				ret.push((v, indexed.data.target_root));
+				ret.push((v, indexed.data.target.root));
 			}
 		}
 

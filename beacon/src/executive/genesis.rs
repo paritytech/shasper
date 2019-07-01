@@ -21,13 +21,13 @@ use crate::{Config, Executive, Error};
 
 /// Generate genesis state and genesis block from given deposits, timestamp and eth1 data.
 pub fn genesis<C: Config>(
-	genesis_validator_deposits: &[Deposit],
-	genesis_time: Uint,
-	genesis_eth1_data: Eth1Data,
+	eth1_block_hash: H256,
+	eth1_timestamp: Uint,
+	deposits: &[Deposit],
 	config: &C,
 ) -> Result<(BeaconBlock, BeaconState), Error> {
 	let state = genesis_beacon_state(
-		genesis_validator_deposits, genesis_time, genesis_eth1_data, config
+		eth1_block_hash, eth1_timestamp, deposits, config
 	)?;
 
 	Ok((BeaconBlock {
@@ -40,14 +40,18 @@ pub fn genesis<C: Config>(
 
 /// Generate genesis state from given deposits, timestamp, and eth1 data.
 pub fn genesis_beacon_state<C: Config>(
+	eth1_block_hash: H256,
+	eth1_timestamp: Uint,
 	deposits: &[Deposit],
-	genesis_time: Uint,
-	genesis_eth1_data: Eth1Data,
 	config: &C,
 ) -> Result<BeaconState, Error> {
 	let mut state = BeaconState {
-		genesis_time,
-		latest_eth1_data: genesis_eth1_data,
+		genesis_time: eth1_timestamp - eth1_timestamp % consts::SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
+		eth1_data: Eth1Data {
+			block_hash: eth1_block_hash,
+			deposit_count: deposits.len() as u64,
+			..Default::default()
+		},
 		latest_block_header: BeaconBlockHeader {
 			body_root: H256::from_slice(
 				Digestible::<C::Digest>::hash(
@@ -64,11 +68,21 @@ pub fn genesis_beacon_state<C: Config>(
 			state: &mut state,
 			config,
 		};
-		for deposit in deposits {
+		let leaves = deposits.iter().map(|d| d.data.clone()).collect::<Vec<_>>();
+		for (index, deposit) in deposits.into_iter().enumerate() {
+			let deposit_data_list = leaves[..(index + 1)].iter().cloned().collect::<Vec<_>>();
+			executive.state.eth1_data.deposit_root = H256::from_slice(
+				Digestible::<C::Digest>::hash(&deposit_data_list).as_slice()
+			);
 			executive.process_deposit(deposit.clone())?;
 		}
 
-		for validator in &mut executive.state.validator_registry {
+		for (index, validator) in (&mut executive.state.validators).into_iter().enumerate() {
+			let balance = state.balances[index];
+			validator.effective_balance = min(
+				balance - balance % config.effective_balance_increment(),
+				config.max_effective_balance()
+			);
 			if validator.effective_balance >= config.max_effective_balance() {
 				validator.activation_eligibility_epoch = config.genesis_epoch();
 				validator.activation_epoch = config.genesis_epoch();
@@ -76,14 +90,17 @@ pub fn genesis_beacon_state<C: Config>(
 		}
 
 		// Populate latest_active_index_roots
-		let genesis_active_index_root = H256::from_slice(
+		let active_index_root = H256::from_slice(
 			Digestible::<C::Digest>::hash(
 				&executive.active_validator_indices(config.genesis_epoch())
 			).as_slice()
 		);
-		for index in 0..config.latest_active_index_roots_length() {
-			executive.state.latest_active_index_roots[index as usize] =
-				genesis_active_index_root;
+		let committee_root = executive.compact_committees_root(config.genesis_epoch());
+		for index in 0..config.epochs_per_historical_vector() {
+			executive.state.active_index_roots[index as usize] =
+				active_index_root;
+			executive.state.compact_committees_roots[index as usize] =
+				committee_root;
 		}
 	}
 

@@ -135,9 +135,9 @@ pub struct AttestationData {
 impl AttestationData {
 	/// Is slashable.
 	pub fn is_slashable(&self, other: &AttestationData) -> bool {
-		(self != other && self.target_epoch == other.target_epoch) ||
-			(self.source_epoch < other.source_epoch &&
-			 other.target_epoch < self.target_epoch)
+		(self != other && self.target.epoch == other.target.epoch) ||
+			(self.source.epoch < other.source.epoch &&
+			 other.target.epoch < self.target.epoch)
 	}
 }
 

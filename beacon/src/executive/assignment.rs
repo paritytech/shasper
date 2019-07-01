@@ -39,13 +39,13 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		let committees_per_slot =
-			self.epoch_committee_count(epoch) / self.config.slots_per_epoch();
-		let epoch_start_slot = self.config.epoch_start_slot(epoch);
+			self.committee_count(epoch) / self.config.slots_per_epoch();
+		let epoch_start_slot = self.compute_start_slot_of_epoch(epoch);
 		for slot in epoch_start_slot..(epoch_start_slot + self.config.slots_per_epoch()) {
 			let offset = committees_per_slot *
 				(slot % self.config.slots_per_epoch());
 			let slot_start_shard =
-				(self.epoch_start_shard(epoch)? + offset) % self.config.shard_count();
+				(self.start_shard(epoch)? + offset) % self.config.shard_count();
 			for i in 0..committees_per_slot {
 				let shard = (slot_start_shard + i) % self.config.shard_count();
 				let committee = self.crosslink_committee(epoch, shard)?;

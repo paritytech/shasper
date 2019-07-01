@@ -88,7 +88,7 @@ impl Deposit {
 	/// Default deposit from config.
 	pub fn default_with_config<C: Config>(config: &C) -> Self {
 		Self {
-			proof: fixed_vec(config.deposit_contract_tree_depth()),
+			proof: fixed_vec(consts::DEPOSIT_CONTRACT_TREE_DEPTH + 1),
 			data: Default::default(),
 		}
 	}
