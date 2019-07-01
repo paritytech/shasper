@@ -74,19 +74,17 @@ pub trait Config {
 	/// Target committee size.
 	fn target_committee_size(&self) -> Uint;
 	/// Maximum indices per attestation.
-	fn max_indices_per_attestation(&self) -> Uint;
+	fn max_validators_per_committee(&self) -> Uint;
 	/// Minimum per-epoch churn limit.
 	fn min_per_epoch_churn_limit(&self) -> Uint;
 	/// Churn limit quotient.
 	fn churn_limit_quotient(&self) -> Uint;
-	/// Base rewards per epoch.
-	fn base_rewards_per_epoch(&self) -> Uint;
 	/// Shuffle round count.
 	fn shuffle_round_count(&self) -> Uint;
-
-	// == Deposit contract ==
-	/// Deposit contract tree depth.
-	fn deposit_contract_tree_depth(&self) -> Uint;
+	/// Min genesis active validator count.
+	fn min_genesis_active_validator_count(&self) -> Uint;
+	/// Min genesis time.
+	fn min_genesis_time(&self) -> Uint;
 
 	// == Gwei values ==
 	/// Minimum deposit amount.
@@ -103,8 +101,6 @@ pub trait Config {
 	fn genesis_slot(&self) -> Uint;
 	/// Genesis epoch.
 	fn genesis_epoch(&self) -> Uint;
-	/// Far future epoch.
-	fn far_future_epoch(&self) -> Uint { u64::max_value() }
 	/// BLS withdrawal prefix byte.
 	fn bls_withdrawal_prefix_byte(&self) -> u8;
 
@@ -131,18 +127,20 @@ pub trait Config {
 	fn min_epochs_to_inactivity_penalty(&self) -> Uint;
 
 	// == State list lengths ==
-	/// Latest randao mixes length.
-	fn latest_randao_mixes_length(&self) -> Uint;
-	/// Latest active index roots length.
-	fn latest_active_index_roots_length(&self) -> Uint;
-	/// Latest slashed exit length.
-	fn latest_slashed_exit_length(&self) -> Uint;
+	/// Epochs per historical vector
+	fn epochs_per_historical_vector(&self) -> Uint;
+	/// Epochs per slashings vector
+	fn epochs_per_slashings_vector(&self) -> Uint;
+	/// Historical roots limit
+	fn historical_roots_limit(&self) -> Uint;
+	/// Validator registry limit
+	fn validator_registry_limit(&self) -> Uint;
 
 	// == Reward and penalty quotients ==
 	/// Base reward quotient.
 	fn base_reward_factor(&self) -> Uint;
 	/// Whistleblowing reward quotient.
-	fn whistleblowing_reward_quotient(&self) -> Uint;
+	fn whistleblower_reward_quotient(&self) -> Uint;
 	/// Proposer reward quotient.
 	fn proposer_reward_quotient(&self) -> Uint;
 	/// Inactivity penalty quotient.
@@ -278,7 +276,6 @@ pub trait Config {
 
 #[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Config that does not verify BLS signature.
 pub struct ParameteredConfig<BLS: BLSVerification> {
@@ -288,19 +285,17 @@ pub struct ParameteredConfig<BLS: BLSVerification> {
 	/// Target committee size.
 	pub target_committee_size: Uint,
 	/// Maximum indices per attestation.
-	pub max_indices_per_attestation: Uint,
+	pub max_validators_per_committee: Uint,
 	/// Minimum per-epoch churn limit.
 	pub min_per_epoch_churn_limit: Uint,
 	/// Churn limit quotient.
 	pub churn_limit_quotient: Uint,
-	/// Base rewards per epoch.
-	pub base_rewards_per_epoch: Uint,
 	/// Shuffle round count.
 	pub shuffle_round_count: Uint,
-
-	// == Deposit contract ==
-	/// Deposit contract tree depth.
-	pub deposit_contract_tree_depth: Uint,
+	/// Min genesis active validator count.
+	pub min_genesis_active_validator_count: Uint,
+	/// Min genesis time.
+	pub min_genesis_time: Uint,
 
 	// == Gwei values ==
 	/// Minimum deposit amount.
@@ -318,7 +313,7 @@ pub struct ParameteredConfig<BLS: BLSVerification> {
 	/// Genesis epoch.
 	pub genesis_epoch: Uint,
 	/// BLS withdrawal prefix byte.
-	pub bls_withdrawal_prefix_byte: [u8; 1],
+	pub bls_withdrawal_prefix_byte: u8,
 
 	// == Time parameters ==
 	/// Minimum attestation inclusion delay.
@@ -343,18 +338,20 @@ pub struct ParameteredConfig<BLS: BLSVerification> {
 	pub min_epochs_to_inactivity_penalty: Uint,
 
 	// == State list lengths ==
-	/// Latest randao mixes length.
-	pub latest_randao_mixes_length: Uint,
-	/// Latest active index roots length.
-	pub latest_active_index_roots_length: Uint,
-	/// Latest slashed exit length.
-	pub latest_slashed_exit_length: Uint,
+	/// Epochs per historical vector
+	pub epochs_per_historical_vector: Uint,
+	/// Epochs per slashings vector
+	pub epochs_per_slashings_vector: Uint,
+	/// Historical roots limit
+	pub historical_roots_limit: Uint,
+	/// Validator registry limit
+	pub validator_registry_limit: Uint,
 
 	// == Reward and penalty quotients ==
 	/// Base reward quotient.
 	pub base_reward_factor: Uint,
 	/// Whistleblowing reward quotient.
-	pub whistleblowing_reward_quotient: Uint,
+	pub whistleblower_reward_quotient: Uint,
 	/// Proposer reward quotient.
 	pub proposer_reward_quotient: Uint,
 	/// Inactivity penalty quotient.
@@ -397,52 +394,67 @@ pub struct ParameteredConfig<BLS: BLSVerification> {
 impl<BLS: BLSVerification> Config for ParameteredConfig<BLS> {
 	type Digest = sha2::Sha256;
 
+	// === Misc ===
 	fn shard_count(&self) -> Uint { self.shard_count }
 	fn target_committee_size(&self) -> Uint { self.target_committee_size }
+	fn max_validators_per_committee(&self) -> Uint { self.max_validators_per_committee }
+	fn min_per_epoch_churn_limit(&self) -> Uint { self.min_per_epoch_churn_limit }
+	fn churn_limit_quotient(&self) -> Uint { self.churn_limit_quotient }
 	fn shuffle_round_count(&self) -> Uint { self.shuffle_round_count }
-	fn deposit_contract_tree_depth(&self) -> Uint { self.deposit_contract_tree_depth }
+	fn min_genesis_active_validator_count(&self) -> Uint { self.min_genesis_active_validator_count }
+	fn min_genesis_time(&self) -> Uint { self.min_genesis_time }
+
+	// == Gwei values ==
 	fn min_deposit_amount(&self) -> Uint { self.min_deposit_amount }
+	fn max_effective_balance(&self) -> Uint { self.max_effective_balance }
 	fn ejection_balance(&self) -> Uint { self.ejection_balance }
-	fn genesis_slot(&self) -> Slot { self.genesis_slot }
-	fn bls_withdrawal_prefix_byte(&self) -> u8 { self.bls_withdrawal_prefix_byte[0] }
-	fn min_attestation_inclusion_delay(&self) -> Slot { self.min_attestation_inclusion_delay }
-	fn slots_per_epoch(&self) -> Slot { self.slots_per_epoch }
+	fn effective_balance_increment(&self) -> Uint { self.effective_balance_increment }
+
+	// == Initial values ==
+	fn genesis_slot(&self) -> Uint { self.genesis_slot }
+	fn genesis_epoch(&self) -> Uint { self.genesis_epoch }
+	fn bls_withdrawal_prefix_byte(&self) -> u8;
+
+	// == Time parameters ==
+	fn min_attestation_inclusion_delay(&self) -> Uint { self.min_attestation_inclusion_delay }
+	fn slots_per_epoch(&self) -> Uint { self.slots_per_epoch }
 	fn min_seed_lookahead(&self) -> Uint { self.min_seed_lookahead }
 	fn activation_exit_delay(&self) -> Uint { self.activation_exit_delay }
+	fn slots_per_eth1_voting_period(&self) -> Uint { self.slots_per_eth1_voting_period }
 	fn slots_per_historical_root(&self) -> Uint { self.slots_per_historical_root }
 	fn min_validator_withdrawability_delay(&self) -> Uint { self.min_validator_withdrawability_delay }
 	fn persistent_committee_period(&self) -> Uint { self.persistent_committee_period }
-	fn latest_randao_mixes_length(&self) -> Uint { self.latest_randao_mixes_length }
-	fn latest_active_index_roots_length(&self) -> Uint { self.latest_active_index_roots_length }
-	fn latest_slashed_exit_length(&self) -> Uint { self.latest_slashed_exit_length }
+	fn max_epochs_per_crosslink(&self) -> Uint { self.max_epochs_per_crosslink }
+	fn min_epochs_to_inactivity_penalty(&self) -> Uint { self.min_epochs_to_inactivity_penalty }
+
+	// == State list lengths ==
+	fn epochs_per_historical_vector(&self) -> Uint { self.epochs_per_historical_vector }
+	fn epochs_per_slashings_vector(&self) -> Uint { self.epochs_per_slashings_vector }
+	fn historical_roots_limit(&self) -> Uint { self.historical_roots_limit }
+	fn validator_registry_limit(&self) -> Uint { self.validator_registry_limit }
+
+	// == Reward and penalty quotients ==
 	fn base_reward_factor(&self) -> Uint { self.base_reward_factor }
+	fn whistleblower_reward_quotient(&self) -> Uint { self.whistleblower_reward_quotient }
+	fn proposer_reward_quotient(&self) -> Uint { self.proposer_reward_quotient }
 	fn inactivity_penalty_quotient(&self) -> Uint { self.inactivity_penalty_quotient }
+	fn min_slashing_penalty_quotient(&self) -> Uint { self.min_slashing_penalty_quotient }
+
+	// == Max operations per block ==
 	fn max_proposer_slashings(&self) -> Uint { self.max_proposer_slashings }
 	fn max_attester_slashings(&self) -> Uint { self.max_attester_slashings }
 	fn max_attestations(&self) -> Uint { self.max_attestations }
 	fn max_deposits(&self) -> Uint { self.max_deposits }
 	fn max_voluntary_exits(&self) -> Uint { self.max_voluntary_exits }
 	fn max_transfers(&self) -> Uint { self.max_transfers }
+
+	// == Signature domains ==
 	fn domain_beacon_proposer(&self) -> Uint { self.domain_beacon_proposer }
 	fn domain_randao(&self) -> Uint { self.domain_randao }
 	fn domain_attestation(&self) -> Uint { self.domain_attestation }
 	fn domain_deposit(&self) -> Uint { self.domain_deposit }
 	fn domain_voluntary_exit(&self) -> Uint { self.domain_voluntary_exit }
 	fn domain_transfer(&self) -> Uint { self.domain_transfer }
-
-	fn max_indices_per_attestation(&self) -> Uint { self.max_indices_per_attestation }
-	fn min_per_epoch_churn_limit(&self) -> Uint { self.min_per_epoch_churn_limit }
-	fn churn_limit_quotient(&self) -> Uint { self.churn_limit_quotient }
-	fn base_rewards_per_epoch(&self) -> Uint { self.base_rewards_per_epoch }
-	fn max_effective_balance(&self) -> Uint { self.max_effective_balance }
-	fn effective_balance_increment(&self) -> Uint { self.effective_balance_increment }
-	fn genesis_epoch(&self) -> Uint { self.genesis_epoch }
-	fn slots_per_eth1_voting_period(&self) -> Uint { self.slots_per_eth1_voting_period }
-	fn max_epochs_per_crosslink(&self) -> Uint { self.max_epochs_per_crosslink }
-	fn min_epochs_to_inactivity_penalty(&self) -> Uint { self.min_epochs_to_inactivity_penalty }
-	fn whistleblowing_reward_quotient(&self) -> Uint { self.whistleblowing_reward_quotient }
-	fn proposer_reward_quotient(&self) -> Uint { self.proposer_reward_quotient }
-	fn min_slashing_penalty_quotient(&self) -> Uint { self.min_slashing_penalty_quotient }
 
 	fn bls_verify(&self, pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool {
 		BLS::verify(pubkey, message, signature, domain)
@@ -461,46 +473,53 @@ impl<BLS: BLSVerification> Config for ParameteredConfig<BLS> {
 impl<BLS: BLSVerification> FromConfig for ParameteredConfig<BLS> {
 	fn from_config<C: Config>(config: &C) -> Self {
 		Self {
+			// === Misc ===
 			shard_count: config.shard_count(),
 			target_committee_size: config.target_committee_size(),
-			max_indices_per_attestation: config.max_indices_per_attestation(),
+			max_validators_per_committee: config.max_validators_per_committee(),
 			min_per_epoch_churn_limit: config.min_per_epoch_churn_limit(),
 			churn_limit_quotient: config.churn_limit_quotient(),
-			base_rewards_per_epoch: config.base_rewards_per_epoch(),
 			shuffle_round_count: config.shuffle_round_count(),
+			min_genesis_active_validator_count: config.min_genesis_active_validator_count(),
+			min_genesis_time: config.min_genesis_time(),
 
-			deposit_contract_tree_depth: config.deposit_contract_tree_depth(),
-
+			// == Gwei values ==
 			min_deposit_amount: config.min_deposit_amount(),
 			max_effective_balance: config.max_effective_balance(),
 			ejection_balance: config.ejection_balance(),
 			effective_balance_increment: config.effective_balance_increment(),
 
+			// == Initial values ==
 			genesis_slot: config.genesis_slot(),
 			genesis_epoch: config.genesis_epoch(),
-			bls_withdrawal_prefix_byte: [config.bls_withdrawal_prefix_byte()],
+			bls_withdrawal_prefix_byte: u8,
 
+			// == Time parameters ==
 			min_attestation_inclusion_delay: config.min_attestation_inclusion_delay(),
 			slots_per_epoch: config.slots_per_epoch(),
 			min_seed_lookahead: config.min_seed_lookahead(),
 			activation_exit_delay: config.activation_exit_delay(),
-			slots_per_eth1_voting_period: config.slots_per_eth1_voting_period(),
+			slots_per_eth1_voting_period: config._voting_period(),
 			slots_per_historical_root: config.slots_per_historical_root(),
 			min_validator_withdrawability_delay: config.min_validator_withdrawability_delay(),
 			persistent_committee_period: config.persistent_committee_period(),
 			max_epochs_per_crosslink: config.max_epochs_per_crosslink(),
 			min_epochs_to_inactivity_penalty: config.min_epochs_to_inactivity_penalty(),
 
-			latest_randao_mixes_length: config.latest_randao_mixes_length(),
-			latest_active_index_roots_length: config.latest_active_index_roots_length(),
-			latest_slashed_exit_length: config.latest_slashed_exit_length(),
+			// == State list lengths ==
+			epochs_per_historical_vector: config.epochs_per_historical_vector(),
+			epochs_per_slashings_vector: config.epochs_per_slashings_vector(),
+			historical_roots_limit: config.historical_roots_limit(),
+			validator_registry_limit: config.validator_registry_limit(),
 
+			// == Reward and penalty quotients ==
 			base_reward_factor: config.base_reward_factor(),
-			whistleblowing_reward_quotient: config.whistleblowing_reward_quotient(),
+			whistleblower_reward_quotient: config.whistleblower_reward_quotient(),
 			proposer_reward_quotient: config.proposer_reward_quotient(),
 			inactivity_penalty_quotient: config.inactivity_penalty_quotient(),
 			min_slashing_penalty_quotient: config.min_slashing_penalty_quotient(),
 
+			// == Max operations per block ==
 			max_proposer_slashings: config.max_proposer_slashings(),
 			max_attester_slashings: config.max_attester_slashings(),
 			max_attestations: config.max_attestations(),
@@ -508,6 +527,7 @@ impl<BLS: BLSVerification> FromConfig for ParameteredConfig<BLS> {
 			max_voluntary_exits: config.max_voluntary_exits(),
 			max_transfers: config.max_transfers(),
 
+			// == Signature domains ==
 			domain_beacon_proposer: config.domain_beacon_proposer(),
 			domain_randao: config.domain_randao(),
 			domain_attestation: config.domain_attestation(),
@@ -524,26 +544,29 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 	/// Small config with 8 shards.
 	pub fn small() -> Self {
 		Self {
+			// === Misc ===
 			shard_count: 8,
 			target_committee_size: 4,
-			max_indices_per_attestation: 4096,
+			max_validators_per_committee: 4096,
 			min_per_epoch_churn_limit: 4,
 			churn_limit_quotient: 65536,
-			base_rewards_per_epoch: 5,
 			shuffle_round_count: 10,
+			min_genesis_active_validator_count: 64,
+			min_genesis_time: 1578009600,
 
-			deposit_contract_tree_depth: 32,
-
+			// == Gwei values ==
 			min_deposit_amount: 1000000000,
 			max_effective_balance: 32000000000,
 			ejection_balance: 16000000000,
 			effective_balance_increment: 1000000000,
 
+			// == Initial values ==
 			genesis_slot: 0,
 			genesis_epoch: 0,
-			bls_withdrawal_prefix_byte: [0],
+			bls_withdrawal_prefix_byte: 0x00,
 
-			min_attestation_inclusion_delay: 2,
+			// == Time parameters ==
+			min_attestation_inclusion_delay: 1,
 			slots_per_epoch: 8,
 			min_seed_lookahead: 1,
 			activation_exit_delay: 4,
@@ -551,19 +574,23 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 			slots_per_historical_root: 64,
 			min_validator_withdrawability_delay: 256,
 			persistent_committee_period: 2048,
-			max_epochs_per_crosslink: 64,
+			max_epochs_per_crosslink: 4,
 			min_epochs_to_inactivity_penalty: 4,
 
-			latest_randao_mixes_length: 64,
-			latest_active_index_roots_length: 64,
-			latest_slashed_exit_length: 64,
+			// == State list lengths ==
+			epochs_per_historical_vector: 64,
+			epochs_per_slashings_vector: 64,
+			historical_roots_limit: 16777216,
+			validator_registry_limit: 1099511627776,
 
-			base_reward_factor: 32,
-			whistleblowing_reward_quotient: 512,
+			// == Reward and penalty quotients ==
+			base_reward_factor: 64,
+			whistleblower_reward_quotient: 512,
 			proposer_reward_quotient: 8,
 			inactivity_penalty_quotient: 33554432,
 			min_slashing_penalty_quotient: 32,
 
+			// == Max operations per block ==
 			max_proposer_slashings: 16,
 			max_attester_slashings: 1,
 			max_attestations: 128,
@@ -571,12 +598,13 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 			max_voluntary_exits: 16,
 			max_transfers: 0,
 
-			domain_beacon_proposer: 0,
-			domain_randao: 1,
-			domain_attestation: 2,
-			domain_deposit: 3,
-			domain_voluntary_exit: 4,
-			domain_transfer: 5,
+			// == Signature domains ==
+			domain_beacon_proposer: 0x00000000,
+			domain_randao: 0x01000000,
+			domain_attestation: 0x02000000,
+			domain_deposit: 0x03000000,
+			domain_voluntary_exit: 0x04000000,
+			domain_transfer: 0x05000000,
 
 			_marker: PhantomData,
 		}
@@ -585,26 +613,29 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 	/// Full config with 1024 shards.
 	pub fn full() -> Self {
 		Self {
+			// === Misc ===
 			shard_count: 1024,
 			target_committee_size: 128,
-			max_indices_per_attestation: 4096,
+			max_validators_per_committee: 4096,
 			min_per_epoch_churn_limit: 4,
 			churn_limit_quotient: 65536,
-			base_rewards_per_epoch: 5,
 			shuffle_round_count: 90,
+			min_genesis_active_validator_count: 65536,
+			min_genesis_time: 1578009600,
 
-			deposit_contract_tree_depth: 32,
-
+			// == Gwei values ==
 			min_deposit_amount: 1000000000,
 			max_effective_balance: 32000000000,
 			ejection_balance: 16000000000,
 			effective_balance_increment: 1000000000,
 
+			// == Initial values ==
 			genesis_slot: 0,
 			genesis_epoch: 0,
-			bls_withdrawal_prefix_byte: [0],
+			bls_withdrawal_prefix_byte: 0x00,
 
-			min_attestation_inclusion_delay: 4,
+			// == Time parameters ==
+			min_attestation_inclusion_delay: 1,
 			slots_per_epoch: 64,
 			min_seed_lookahead: 1,
 			activation_exit_delay: 4,
@@ -615,16 +646,20 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 			max_epochs_per_crosslink: 64,
 			min_epochs_to_inactivity_penalty: 4,
 
-			latest_randao_mixes_length: 8192,
-			latest_active_index_roots_length: 8192,
-			latest_slashed_exit_length: 8192,
+			// == State list lengths ==
+			epochs_per_historical_vector: 65536,
+			epochs_per_slashings_vector: 8192,
+			historical_roots_limit: 16777216,
+			validator_registry_limit: 1099511627776,
 
-			base_reward_factor: 32,
-			whistleblowing_reward_quotient: 512,
+			// == Reward and penalty quotients ==
+			base_reward_factor: 64,
+			whistleblower_reward_quotient: 512,
 			proposer_reward_quotient: 8,
 			inactivity_penalty_quotient: 33554432,
 			min_slashing_penalty_quotient: 32,
 
+			// == Max operations per block ==
 			max_proposer_slashings: 16,
 			max_attester_slashings: 1,
 			max_attestations: 128,
@@ -632,12 +667,13 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 			max_voluntary_exits: 16,
 			max_transfers: 0,
 
-			domain_beacon_proposer: 0,
-			domain_randao: 1,
-			domain_attestation: 2,
-			domain_deposit: 3,
-			domain_voluntary_exit: 4,
-			domain_transfer: 5,
+			// == Signature domains ==
+			domain_beacon_proposer: 0x00000000,
+			domain_randao: 0x01000000,
+			domain_attestation: 0x02000000,
+			domain_deposit: 0x03000000,
+			domain_voluntary_exit: 0x04000000,
+			domain_transfer: 0x05000000,
 
 			_marker: PhantomData,
 		}

@@ -49,6 +49,7 @@ mod executive;
 
 pub mod primitives;
 pub mod types;
+pub mod consts;
 pub use crate::config::*;
 pub use crate::executive::*;
 pub use crate::error::Error;
