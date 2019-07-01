@@ -22,6 +22,7 @@ use serde_derive::{Serialize, Deserialize};
 #[cfg(feature = "parity-codec")]
 use codec::{Encode, Decode};
 
+use crate::consts;
 use crate::primitives::{Uint, BitField, Signature, H256, ValidatorId};
 use crate::types::{BeaconBlockHeader, IndexedAttestation, AttestationData, DepositData};
 use crate::utils::fixed_vec;

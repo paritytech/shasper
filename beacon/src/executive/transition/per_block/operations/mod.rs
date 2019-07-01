@@ -35,8 +35,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		// number of deposits
 		if body.deposits.len() as u64 != min(
 			self.config.max_deposits(),
-			self.state.latest_eth1_data.deposit_count -
-				self.state.deposit_index
+			self.state.eth1_data.deposit_count -
+				self.state.eth1_deposit_index
 		) {
 			return Err(Error::TooManyDeposits)
 		}

@@ -23,7 +23,7 @@ use serde_derive::{Serialize, Deserialize};
 use codec::{Encode, Decode};
 
 use crate::primitives::{Uint, H256, ValidatorId};
-use crate::types::{Fork, Validator, BeaconBlockHeader, Eth1Data, Crosslink, PendingAttestation};
+use crate::types::{Fork, Validator, BeaconBlockHeader, Eth1Data, Crosslink, PendingAttestation, CompactCommittee, Checkpoint};
 use crate::utils::fixed_vec;
 use crate::Config;
 
@@ -136,7 +136,7 @@ impl BeaconState {
 			active_index_roots: fixed_vec(config.epochs_per_historical_vector()),
 			compact_committees_roots: fixed_vec(config.epochs_per_historical_vector()),
 
-			slashings: fixed_vec(epochs_per_slashings_vector()),
+			slashings: fixed_vec(config.epochs_per_slashings_vector()),
 
 			previous_epoch_attestations: Default::default(),
 			current_epoch_attestations: Default::default(),

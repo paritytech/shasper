@@ -16,6 +16,7 @@
 
 use core::cmp::min;
 use ssz::Digestible;
+use crate::consts;
 use crate::primitives::H256;
 use crate::types::{Deposit, Validator};
 use crate::{Config, Executive, Error};
@@ -23,23 +24,23 @@ use crate::{Config, Executive, Error};
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Push a new `Deposit` to the state.
 	pub fn process_deposit(&mut self, deposit: Deposit) -> Result<(), Error> {
-		if !self.config.verify_merkle_branch(
+		if !self.is_valid_merkle_branch(
 			H256::from_slice(
 				Digestible::<C::Digest>::hash(&deposit.data).as_slice()
 			),
 			&deposit.proof,
-			self.config.deposit_contract_tree_depth(),
-			self.state.deposit_index,
-			self.state.latest_eth1_data.deposit_root,
+			consts::DEPOSIT_CONTRACT_TREE_DEPTH,
+			self.state.eth1_deposit_index,
+			self.state.eth1_data.deposit_root,
 		) {
 			return Err(Error::DepositMerkleInvalid)
 		}
 
-		self.state.deposit_index += 1;
+		self.state.eth1_deposit_index += 1;
 
 		let pubkey = deposit.data.pubkey.clone();
 		let amount = deposit.data.amount.clone();
-		let validator_pubkeys = self.state.validator_registry.iter()
+		let validator_pubkeys = self.state.validators.iter()
 			.map(|v| v.pubkey.clone()).collect::<Vec<_>>();
 
 		if !validator_pubkeys.contains(&pubkey) {
@@ -62,17 +63,17 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			let validator = Validator {
 				pubkey,
 				withdrawal_credentials: deposit.data.withdrawal_credentials,
-				activation_eligibility_epoch: self.config.far_future_epoch(),
-				activation_epoch: self.config.far_future_epoch(),
-				exit_epoch: self.config.far_future_epoch(),
-				withdrawable_epoch: self.config.far_future_epoch(),
+				activation_eligibility_epoch: consts::FAR_FUTURE_EPOCH,
+				activation_epoch: consts::FAR_FUTURE_EPOCH,
+				exit_epoch: consts::FAR_FUTURE_EPOCH,
+				withdrawable_epoch: consts::FAR_FUTURE_EPOCH,
 				effective_balance: min(
 					amount - amount % self.config.effective_balance_increment(),
 					self.config.max_effective_balance(),
 				),
 				slashed: false,
 			};
-			self.state.validator_registry.push(validator);
+			self.state.validators.push(validator);
 			self.state.balances.push(amount);
 		} else {
 			let index = validator_pubkeys.iter().position(|v| v == &pubkey)

@@ -17,7 +17,7 @@
 //! Routines for updating validator status.
 
 use core::cmp::max;
-use crate::primitives::ValidatorIndex;
+use crate::primitives::{ValidatorIndex, Gwei};
 use crate::{Config, Executive, Error};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {

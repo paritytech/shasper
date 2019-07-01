@@ -26,7 +26,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			.count() * 2 >
 			self.config.slots_per_eth1_voting_period() as usize
 		{
-			self.state.latest_eth1_data = body.eth1_data.clone();
+			self.state.eth1_data = body.eth1_data.clone();
 		}
 	}
 }

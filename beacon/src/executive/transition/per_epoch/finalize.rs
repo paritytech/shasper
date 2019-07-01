@@ -82,8 +82,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		{
 			self.state.historical_roots.push(H256::from_slice(
 				Digestible::<C::Digest>::hash(&HistoricalBatch {
-					block_roots: self.state.latest_block_roots.clone(),
-					state_roots: self.state.latest_state_roots.clone(),
+					block_roots: self.state.block_roots.clone(),
+					state_roots: self.state.state_roots.clone(),
 				}).as_slice()
 			));
 		}

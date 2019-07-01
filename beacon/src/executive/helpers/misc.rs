@@ -16,9 +16,9 @@
 
 use core::cmp::{min, max};
 use ssz::Digestible;
-use crate::primitives::{Uint, Epoch, Slot, ValidatorIndex, Gwei, Shard, H256, BitField};
+use crate::primitives::{Uint, Epoch, Slot, ValidatorIndex, Gwei, Shard, H256, BitField, Version};
 use crate::types::{Attestation, AttestationData, IndexedAttestation, AttestationDataAndCustodyBit};
-use crate::utils::{self, to_bytes};
+use crate::utils::{self, to_bytes, to_uint};
 use crate::{Config, Executive, Error};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {

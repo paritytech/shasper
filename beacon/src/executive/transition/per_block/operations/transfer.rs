@@ -15,6 +15,7 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use ssz::Digestible;
+use crate::consts;
 use crate::primitives::H256;
 use crate::types::Transfer;
 use crate::{Config, Executive, Error};
@@ -35,10 +36,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		// Sender must be not yet eligible for activation, withdrawn,
 		// or transfer balance over MAX_EFFECTIVE_BALANCE
-		if !(self.state.validator_registry[transfer.sender as usize]
-			 .activation_eligibility_epoch == self.config.far_future_epoch() ||
+		if !(self.state.validators[transfer.sender as usize]
+			 .activation_eligibility_epoch == consts::FAR_FUTURE_EPOCH ||
 			 self.current_epoch() >=
-			 self.state.validator_registry[transfer.sender as usize].withdrawable_epoch ||
+			 self.state.validators[transfer.sender as usize].withdrawable_epoch ||
 			 transfer.amount + transfer.fee + self.config.max_effective_balance() <=
 			 self.state.balances[transfer.sender as usize])
 		{
@@ -46,9 +47,9 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		// Verify that the pubkey is valid
-		if !(self.state.validator_registry[transfer.sender as usize]
+		if !(self.state.validators[transfer.sender as usize]
 			 .withdrawal_credentials[0] == self.config.bls_withdrawal_prefix_byte() &&
-			 &self.state.validator_registry[transfer.sender as usize]
+			 &self.state.validators[transfer.sender as usize]
 			 .withdrawal_credentials[1..] ==
 			 &self.config.hash(&[&transfer.pubkey[..]])[1..])
 		{

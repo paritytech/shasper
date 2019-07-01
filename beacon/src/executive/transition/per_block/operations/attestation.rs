@@ -36,28 +36,28 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 		let pending_attestation = PendingAttestation {
 			data: data.clone(),
-			aggregation_bitfield: attestation.aggregation_bitfield.clone(),
+			aggregation_bits: attestation.aggregation_bits.clone(),
 			inclusion_delay: self.state.slot - attestation_slot,
 			proposer_index: self.beacon_proposer_index()?,
 		};
 
-		if !(data.target_epoch == self.current_epoch() ||
-			 data.target_epoch == self.previous_epoch())
+		if !(data.target.epoch == self.current_epoch() ||
+			 data.target.epoch == self.previous_epoch())
 		{
 			return Err(Error::AttestationIncorrectJustifiedEpochOrBlockRoot)
 		}
 
-		let (ffg_data, parent_crosslink, push_current) = if data.target_epoch == self.current_epoch() {
-			let ffg_data = (self.state.current_justified_epoch,
-							self.state.current_justified_root,
+		let (ffg_data, parent_crosslink, push_current) = if data.target.epoch == self.current_epoch() {
+			let ffg_data = (self.state.current_justified_checkpoint.epoch,
+							self.state.current_justified_checkpoint.root,
 							self.current_epoch());
 			let parent_crosslink = self.state.current_crosslinks[
 				data.crosslink.shard as usize
 			].clone();
 			(ffg_data, parent_crosslink, true)
 		} else {
-			let ffg_data = (self.state.previous_justified_epoch,
-							self.state.previous_justified_root,
+			let ffg_data = (self.state.previous_justified_checkpoint.epoch,
+							self.state.previous_justified_checkpoint.root,
 							self.previous_epoch());
 			let parent_crosslink = self.state.previous_crosslinks[
 				data.crosslink.shard as usize
@@ -65,7 +65,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			(ffg_data, parent_crosslink, false)
 		};
 
-		if ffg_data != (data.source_epoch, data.source_root, data.target_epoch) {
+		if ffg_data != (data.source.epoch, data.source.root, data.target.epoch) {
 			return Err(Error::AttestationIncorrectJustifiedEpochOrBlockRoot)
 		}
 
@@ -74,7 +74,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		if data.crosslink.end_epoch != min(
-			data.target_epoch,
+			data.target.epoch,
 			parent_crosslink.end_epoch + self.config.max_epochs_per_crosslink()
 		) {
 			return Err(Error::AttestationIncorrectCrosslinkData)
@@ -90,7 +90,9 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::AttestationIncorrectCrosslinkData)
 		}
 
-		self.validate_indexed_attestation(&self.convert_to_indexed(attestation.clone())?)?;
+		if !self.is_valid_indexed_attestation(&self.indexed_attestation(attestation.clone())?) {
+			return Err(Error::AttestationInvalidSignature)
+		}
 
 		if push_current {
 			self.state.current_epoch_attestations.push(pending_attestation);

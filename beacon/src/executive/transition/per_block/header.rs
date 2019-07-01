@@ -43,7 +43,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			..Default::default()
 		};
 
-		let proposer = &self.state.validator_registry[
+		let proposer = &self.state.validators[
 			self.beacon_proposer_index()? as usize
 		];
 		if proposer.slashed {

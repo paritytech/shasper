@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+use core::cmp::min;
 use ssz::Digestible;
+
+use crate::consts;
 use crate::primitives::{H256, Uint};
 use crate::types::{Deposit, Eth1Data, BeaconState, BeaconBlock, BeaconBlockHeader, BeaconBlockBody};
 use crate::{Config, Executive, Error};
@@ -46,7 +49,7 @@ pub fn genesis_beacon_state<C: Config>(
 	config: &C,
 ) -> Result<BeaconState, Error> {
 	let mut state = BeaconState {
-		genesis_time: eth1_timestamp - eth1_timestamp % consts::SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
+		genesis_time: eth1_timestamp - eth1_timestamp % consts::SECONDS_PER_DAY + 2 * consts::SECONDS_PER_DAY,
 		eth1_data: Eth1Data {
 			block_hash: eth1_block_hash,
 			deposit_count: deposits.len() as u64,

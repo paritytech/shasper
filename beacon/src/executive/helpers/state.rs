@@ -15,9 +15,9 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use core::cmp::{min, max};
-use ssz::Digestible;
+use ssz::{Digestible, Fixed};
 use crate::primitives::{Uint, Epoch, Slot, ValidatorIndex, Gwei, Shard, H256, BitField};
-use crate::types::{Attestation, AttestationData, IndexedAttestation, AttestationDataAndCustodyBit};
+use crate::types::{Attestation, AttestationData, IndexedAttestation, AttestationDataAndCustodyBit, CompactCommittee, Checkpoint};
 use crate::utils::{self, to_bytes};
 use crate::{Config, Executive, Error};
 

@@ -15,6 +15,7 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use ssz::Digestible;
+use crate::consts;
 use crate::primitives::H256;
 use crate::types::VoluntaryExit;
 use crate::{Config, Executive, Error};
@@ -23,17 +24,17 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Push a new `VoluntaryExit` to the state.
 	pub fn process_voluntary_exit(&mut self, exit: VoluntaryExit) -> Result<(), Error> {
 		{
-			if exit.validator_index >= self.state.validator_registry.len() as u64 {
+			if exit.validator_index >= self.state.validators.len() as u64 {
 				return Err(Error::VoluntaryExitInvalidSignature)
 			}
 
-			let validator = &self.state.validator_registry[exit.validator_index as usize];
+			let validator = &self.state.validators[exit.validator_index as usize];
 
 			if !validator.is_active(self.current_epoch()) {
 				return Err(Error::VoluntaryExitAlreadyInitiated)
 			}
 
-			if validator.exit_epoch != self.config.far_future_epoch() {
+			if validator.exit_epoch != consts::FAR_FUTURE_EPOCH {
 				return Err(Error::VoluntaryExitAlreadyExited)
 			}
 

@@ -249,7 +249,7 @@ pub struct ParameteredConfig<BLS: BLSVerification> {
 	/// Genesis epoch.
 	pub genesis_epoch: Uint,
 	/// BLS withdrawal prefix byte.
-	pub bls_withdrawal_prefix_byte: u8,
+	pub bls_withdrawal_prefix_byte: [u8; 1],
 
 	// == Time parameters ==
 	/// Minimum attestation inclusion delay.
@@ -398,9 +398,6 @@ impl<BLS: BLSVerification> Config for ParameteredConfig<BLS> {
 	fn bls_aggregate_pubkeys(&self, pubkeys: &[ValidatorId]) -> ValidatorId {
 		BLS::aggregate_pubkeys(pubkeys)
 	}
-	fn aggregate_signatures(signatures: &[Signature]) -> Signature {
-		BLS::aggregate_signatures(signatures)
-	}
 	fn bls_verify_multiple(&self, pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool {
 		BLS::verify_multiple(pubkeys, messages, signature, domain)
 	}
@@ -428,14 +425,14 @@ impl<BLS: BLSVerification> FromConfig for ParameteredConfig<BLS> {
 			// == Initial values ==
 			genesis_slot: config.genesis_slot(),
 			genesis_epoch: config.genesis_epoch(),
-			bls_withdrawal_prefix_byte: u8,
+			bls_withdrawal_prefix_byte: config.bls_withdrawal_prefix_byte(),
 
 			// == Time parameters ==
 			min_attestation_inclusion_delay: config.min_attestation_inclusion_delay(),
 			slots_per_epoch: config.slots_per_epoch(),
 			min_seed_lookahead: config.min_seed_lookahead(),
 			activation_exit_delay: config.activation_exit_delay(),
-			slots_per_eth1_voting_period: config._voting_period(),
+			slots_per_eth1_voting_period: config.slots_per_eth1_voting_period(),
 			slots_per_historical_root: config.slots_per_historical_root(),
 			min_validator_withdrawability_delay: config.min_validator_withdrawability_delay(),
 			persistent_committee_period: config.persistent_committee_period(),

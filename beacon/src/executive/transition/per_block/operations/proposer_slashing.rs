@@ -25,8 +25,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		&mut self,
 		proposer_slashing: ProposerSlashing
 	) -> Result<(), Error> {
-		if self.config.slot_to_epoch(proposer_slashing.header_1.slot) !=
-			self.config.slot_to_epoch(proposer_slashing.header_2.slot)
+		if self.compute_epoch_of_slot(proposer_slashing.header_1.slot) !=
+			self.compute_epoch_of_slot(proposer_slashing.header_2.slot)
 		{
 			return Err(Error::ProposerSlashingInvalidSlot)
 		}
@@ -36,11 +36,11 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		{
-			if proposer_slashing.proposer_index as usize >= self.state.validator_registry.len() {
+			if proposer_slashing.proposer_index as usize >= self.state.validators.len() {
 				return Err(Error::ProposerSlashingInvalidProposerIndex)
 			}
 
-			let proposer = &self.state.validator_registry[
+			let proposer = &self.state.validators[
 				proposer_slashing.proposer_index as usize
 			];
 
@@ -51,7 +51,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			for header in &[&proposer_slashing.header_1, &proposer_slashing.header_2] {
 				let domain = self.domain(
 					self.config.domain_beacon_proposer(),
-					Some(self.config.slot_to_epoch(header.slot))
+					Some(self.compute_epoch_of_slot(header.slot))
 				);
 
 				if !self.config.bls_verify(

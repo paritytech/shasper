@@ -27,8 +27,13 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			return Err(Error::AttesterSlashingNotSlashable)
 		}
 
-		self.validate_indexed_attestation(&attestation_1)?;
-		self.validate_indexed_attestation(&attestation_2)?;
+		if !self.is_valid_indexed_attestation(&attestation_1) {
+			return Err(Error::AttestationInvalidSignature)
+		}
+
+		if !self.is_valid_indexed_attestation(&attestation_2) {
+			return Err(Error::AttestationInvalidSignature)
+		}
 
 		let mut slashed_any = false;
 		let attesting_indices_1 = attestation_1.custody_bit_0_indices.clone().into_iter()
@@ -45,7 +50,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		full.sort();
 
 		for index in full {
-			if self.state.validator_registry[index as usize]
+			if self.state.validators[index as usize]
 				.is_slashable(self.current_epoch())
 			{
 				self.slash_validator(index, None)?;

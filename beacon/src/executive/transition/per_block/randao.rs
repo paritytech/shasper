@@ -22,7 +22,7 @@ use crate::{Config, Executive, Error};
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	/// Process randao information given in a block.
 	pub fn process_randao(&mut self, body: &BeaconBlockBody) -> Result<(), Error> {
-		let proposer = &self.state.validator_registry[
+		let proposer = &self.state.validators[
 			self.beacon_proposer_index()? as usize
 		];
 
@@ -38,8 +38,8 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		let current_epoch = self.current_epoch();
-		self.state.latest_randao_mixes[
-			(current_epoch % self.config.latest_randao_mixes_length()) as usize
+		self.state.randao_mixes[
+			(current_epoch % self.config.epochs_per_historical_vector()) as usize
 		] = self.randao_mix(current_epoch) ^
 			self.config.hash(&[&body.randao_reveal[..]]);
 
