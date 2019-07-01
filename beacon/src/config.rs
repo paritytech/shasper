@@ -276,6 +276,7 @@ pub trait Config {
 
 #[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Config that does not verify BLS signature.
 pub struct ParameteredConfig<BLS: BLSVerification> {

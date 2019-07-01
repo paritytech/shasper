@@ -44,12 +44,30 @@ pub struct Fork {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Checkpoint
+pub struct Checkpoint {
+	/// Epoch
+	pub epoch: Uint,
+	/// Root of the checkpoint
+	pub root: H256,
+}
+
+#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
 /// Validator record.
 pub struct Validator {
 	/// BLS public key
 	pub pubkey: ValidatorId,
 	/// Withdrawal credentials
 	pub withdrawal_credentials: H256,
+	/// Effective balance
+	pub effective_balance: Uint,
+	/// Was the validator slashed
+	pub slashed: bool,
+
+	// == Status epochs ==
 	/// Epoch when became eligible for activation
 	pub activation_eligibility_epoch: Uint,
 	/// Epoch when validator activated
@@ -58,10 +76,7 @@ pub struct Validator {
 	pub exit_epoch: Uint,
 	/// Epoch when validator is eligible to withdraw
 	pub withdrawable_epoch: Uint,
-	/// Was the validator slashed
-	pub slashed: bool,
-	/// Effective balance
-	pub effective_balance: Uint,
+
 }
 
 impl Validator {
@@ -85,12 +100,14 @@ impl Validator {
 pub struct Crosslink {
 	/// Shard number
 	pub shard: Uint,
+	/// Root of the previous crosslink
+	pub parent_root: H256,
+
+	// == Crosslinking data ==
 	/// Crosslinking data from epoch start
 	pub start_epoch: Uint,
 	/// Crosslinking data to epoch end
 	pub end_epoch: Uint,
-	/// Root of the previous crosslink
-	pub parent_root: H256,
 	/// Root of the crosslinked shard data since the previous crosslink
 	pub data_root: H256,
 }
@@ -106,14 +123,10 @@ pub struct AttestationData {
 	pub beacon_block_root: H256,
 
 	// == FFG vote ==
-	/// Last justified epoch in the beacon state
-	pub source_epoch: Uint,
-	/// Hash of the last justified beacon block
-	pub source_root: H256,
-	/// Target epoch
-	pub target_epoch: Uint,
-	/// Root of the ancestor at the epoch boundary
-	pub target_root: H256,
+	/// Source
+	pub source: Checkpoint,
+	/// Target
+	pub target: Checkpoint,
 
 	/// Crosslink vote
 	pub crosslink: Crosslink,
@@ -164,7 +177,7 @@ pub struct IndexedAttestation {
 /// Pending attestation.
 pub struct PendingAttestation {
 	/// Attester aggregation bitfield
-	pub aggregation_bitfield: BitField,
+	pub aggregation_bits: BitField,
 	/// Attestation data
 	pub data: AttestationData,
 	/// Inclusion delay
@@ -227,6 +240,18 @@ pub struct DepositData {
 	#[ssz(truncate)]
 	/// Container self-signature
 	pub signature: Signature,
+}
+
+#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
+/// Compact committee
+pub struct CompactCommittee {
+	/// BLS pubkeys
+	pub pubkeys: Vec<ValidatorId>,
+	/// Compact validators
+	pub compact_validators: Vec<Uint>,
 }
 
 #[derive(Ssz, Clone, PartialEq, Eq, Default)]

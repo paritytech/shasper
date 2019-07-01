@@ -34,78 +34,81 @@ use crate::Config;
 #[ssz(no_decode, no_encode)]
 /// Beacon state.
 pub struct BeaconState {
-	// == Misc ==
-	/// Current slot.
-	pub slot: Uint,
+	// == Versioning ==
 	/// Genesis time.
 	pub genesis_time: Uint,
+	/// Current slot.
+	pub slot: Uint,
 	/// For versioning hard forks.
 	pub fork: Fork,
 
+	// == History ==
+	/// Latest block header.
+	pub latest_block_header: BeaconBlockHeader,
+	#[ssz(use_fixed)]
+	/// Latest block roots, of length `SLOTS_PER_HISTORICAL_ROOT`.
+	pub block_roots: Vec<H256>,
+	#[ssz(use_fixed)]
+	/// Latest state roots, of length `SLOTS_PER_HISTORICAL_ROOT`.
+	pub state_roots: Vec<H256>,
+	/// Historical roots.
+	pub historical_roots: Vec<H256>,
+
+	// == Eth1 ==
+	/// Latest eth1 data.
+	pub eth1_data: Eth1Data,
+	/// Eth1 data votes.
+	pub eth1_data_votes: Vec<Eth1Data>,
+	/// Deposit index.
+	pub eth1_deposit_index: Uint,
+
 	// == Validator registry ==
 	/// Validator registry.
-	pub validator_registry: Vec<Validator>,
+	pub validators: Vec<Validator>,
 	/// Validator balances.
 	pub balances: Vec<u64>,
 
 	// == Randomness and committees ==
-	#[ssz(use_fixed)]
-	/// Latest randao mixes, of length `LATEST_RANDAO_MIXES_LENGTH`.
-	pub latest_randao_mixes: Vec<H256>,
 	/// Latest start shard.
-	pub latest_start_shard: Uint,
+	pub start_shard: Uint,
+	#[ssz(use_fixed)]
+	/// Latest randao mixes, of length `EPOCHS_PER_HISTORICAL_VECTOR`.
+	pub randao_mixes: Vec<H256>,
+	#[ssz(use_fixed)]
+	/// Latest active index roots, of length `EPOCHS_PER_HISTORICAL_VECTOR`.
+	pub active_index_roots: Vec<H256>,
+	#[ssz(use_fixed)]
+	/// Compact committees roots, of length `EPOCHS_PER_HISTORICAL_VECTOR`.
+	pub compact_committees_roots: Vec<H256>,
 
-	// == Finality ==
+	// == Slashings ==
+	#[ssz(use_fixed)]
+	/// Balances slashed at every withdrawal period, of length `EPOCHS_PER_SLASHINGS_VECTOR`.
+	pub slashings: Vec<u64>,
+
+	// == Attestations ==
 	/// Previous epoch attestations.
 	pub previous_epoch_attestations: Vec<PendingAttestation>,
 	/// Current epoch attestations.
 	pub current_epoch_attestations: Vec<PendingAttestation>,
-	/// Previous justified epoch.
-	pub previous_justified_epoch: Uint,
-	/// Current justified epoch.
-	pub current_justified_epoch: Uint,
-	/// Previous justified root.
-	pub previous_justified_root: H256,
-	/// Current justified root.
-	pub current_justified_root: H256,
-	/// Justification bitfield.
-	pub justification_bitfield: Uint,
-	/// Finalized epoch.
-	pub finalized_epoch: Uint,
-	/// Finalized root.
-	pub finalized_root: H256,
 
-	// Recent state
-	#[ssz(use_fixed)]
-	/// Current crosslinks, of length `SHARD_COUNT`.
-	pub current_crosslinks: Vec<Crosslink>,
+	// == Crosslinks ==
 	#[ssz(use_fixed)]
 	/// Previous crosslinks, of length `SHARD_COUNT`.
 	pub previous_crosslinks: Vec<Crosslink>,
 	#[ssz(use_fixed)]
-	/// Latest block roots, of length `SLOTS_PER_HISTORICAL_ROOT`.
-	pub latest_block_roots: Vec<H256>,
-	#[ssz(use_fixed)]
-	/// Latest state roots, of length `SLOTS_PER_HISTORICAL_ROOT`.
-	pub latest_state_roots: Vec<H256>,
-	#[ssz(use_fixed)]
-	/// Latest active index roots, of length `LATEST_ACTIVE_INDEX_ROOTS_LENGTH`.
-	pub latest_active_index_roots: Vec<H256>,
-	#[ssz(use_fixed)]
-	/// Balances slashed at every withdrawal period, of length `LATEST_SLASHED_EXIT_LENGTH`.
-	pub latest_slashed_balances: Vec<u64>,
-	/// Latest block header.
-	pub latest_block_header: BeaconBlockHeader,
-	/// Historical roots.
-	pub historical_roots: Vec<H256>,
+	/// Current crosslinks, of length `SHARD_COUNT`.
+	pub current_crosslinks: Vec<Crosslink>,
 
-	// Ethereum 1.0 chain data
-	/// Latest eth1 data.
-	pub latest_eth1_data: Eth1Data,
-	/// Eth1 data votes.
-	pub eth1_data_votes: Vec<Eth1Data>,
-	/// Deposit index.
-	pub deposit_index: Uint,
+	// == Finality ==
+	/// Justification bits.
+	pub justification_bits: Uint,
+	/// Previous justified checkpoint.
+	pub previous_justified_checkpoint: Checkpoint,
+	/// Current justified checkpoint.
+	pub current_justified_checkpoint: Checkpoint,
+	/// Finalized checkpoint.
+	pub finalized_checkpoint: Checkpoint,
 }
 
 impl BeaconState {

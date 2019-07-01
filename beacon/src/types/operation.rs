@@ -60,11 +60,11 @@ pub struct AttesterSlashing {
 /// Attestation.
 pub struct Attestation {
 	/// Attester aggregation bitfield
-	pub aggregation_bitfield: BitField,
+	pub aggregation_bits: BitField,
 	/// Attestation data
 	pub data: AttestationData,
 	/// Custody bitfield
-	pub custody_bitfield: BitField,
+	pub custody_bits: BitField,
 	#[ssz(truncate)]
 	/// BLS aggregate signature
 	pub signature: Signature,
