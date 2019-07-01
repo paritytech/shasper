@@ -349,7 +349,7 @@ impl<BLS: BLSVerification> Config for ParameteredConfig<BLS> {
 	// == Initial values ==
 	fn genesis_slot(&self) -> Uint { self.genesis_slot }
 	fn genesis_epoch(&self) -> Uint { self.genesis_epoch }
-	fn bls_withdrawal_prefix_byte(&self) -> u8;
+	fn bls_withdrawal_prefix_byte(&self) -> u8 { self.bls_withdrawal_prefix_byte }
 
 	// == Time parameters ==
 	fn min_attestation_inclusion_delay(&self) -> Uint { self.min_attestation_inclusion_delay }

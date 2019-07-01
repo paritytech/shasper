@@ -21,8 +21,6 @@ use crate::types::{Attestation, AttestationData, IndexedAttestation, Attestation
 use crate::utils::{self, to_bytes};
 use crate::{Config, Executive, Error};
 
-mod validator;
-
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	pub(crate) fn is_active_validator(&self, validator: &Validator, epoch: Uint) -> bool {
 		validator.is_active(epoch)

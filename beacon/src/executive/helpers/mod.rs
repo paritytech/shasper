@@ -21,13 +21,7 @@ use crate::types::{Attestation, AttestationData, IndexedAttestation, Attestation
 use crate::utils::{self, to_bytes};
 use crate::{Config, Executive, Error};
 
-mod validator;
-
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
-
-	pub(crate) fn active_index_root(&self, epoch: Epoch) -> H256 {
-		self.state.latest_active_index_roots[
-			(epoch % self.config.latest_active_index_roots_length()) as usize
-		]
-	}
-}
+mod misc;
+mod mutators;
+mod predicates;
+mod state;
