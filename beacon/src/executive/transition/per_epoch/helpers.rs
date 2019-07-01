@@ -22,10 +22,6 @@ use crate::utils::compare_hash;
 use crate::{Config, Executive, Error};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
-	pub(crate) fn total_active_balance(&self) -> Gwei {
-		self.total_balance(&self.active_validator_indices(self.current_epoch()))
-	}
-
 	pub(crate) fn matching_source_attestations(&self, epoch: Epoch) -> Result<Vec<PendingAttestation>, Error> {
 		if epoch == self.current_epoch() {
 			Ok(self.state.current_epoch_attestations.clone())

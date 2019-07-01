@@ -102,7 +102,7 @@ pub struct BeaconState {
 
 	// == Finality ==
 	/// Justification bits.
-	pub justification_bits: Uint,
+	pub justification_bits: u32,
 	/// Previous justified checkpoint.
 	pub previous_justified_checkpoint: Checkpoint,
 	/// Current justified checkpoint.

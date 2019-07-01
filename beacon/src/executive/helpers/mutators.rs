@@ -21,6 +21,15 @@ use crate::primitives::ValidatorIndex;
 use crate::{Config, Executive, Error};
 
 impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+	pub(crate) fn increase_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
+		self.state.balances[index as usize] += delta;
+	}
+
+	pub(crate) fn decrease_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
+		self.state.balances[index as usize] =
+			self.state.balances[index as usize].saturating_sub(delta);
+	}
+
 	pub(crate) fn initiate_validator_exit(&mut self, index: ValidatorIndex) {
 		if self.state.validator_registry[index as usize].exit_epoch !=
 			self.config.far_future_epoch()
