@@ -26,7 +26,6 @@ use crate::consts;
 use crate::primitives::{Uint, BitField, Signature, H256, ValidatorId};
 use crate::types::{BeaconBlockHeader, IndexedAttestation, AttestationData, DepositData};
 use crate::utils::fixed_vec;
-use crate::Config;
 
 #[derive(Ssz, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
@@ -85,9 +84,8 @@ pub struct Deposit {
 	pub data: DepositData,
 }
 
-impl Deposit {
-	/// Default deposit from config.
-	pub fn default_with_config<C: Config>(config: &C) -> Self {
+impl Default for Deposit {
+	fn default() -> Self {
 		Self {
 			proof: fixed_vec(consts::DEPOSIT_CONTRACT_TREE_DEPTH + 1),
 			data: Default::default(),

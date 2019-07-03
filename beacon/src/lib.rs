@@ -38,18 +38,16 @@ use crate::prelude::*;
 extern crate parity_codec as codec;
 
 /// Version of ethereum/eth2.0-specs.
-pub const VERSION: &str = "v0.7.0";
+pub const VERSION: &str = "v0.8.0";
 /// Commit of ethereum/eth2.0-specs.
-pub const COMMIT: &str = "54c6b035ce727c6d549e406d5f6fc234e44168d5";
+pub const COMMIT: &str = "8d324b7497bcb558e0183a30002d78d18704e3fa";
 
 mod config;
 mod utils;
 mod error;
-mod executive;
 
 pub mod primitives;
 pub mod types;
 pub mod consts;
 pub use crate::config::*;
-pub use crate::executive::*;
 pub use crate::error::Error;

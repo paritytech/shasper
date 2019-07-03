@@ -23,7 +23,7 @@ use serde_derive::{Serialize, Deserialize};
 use codec::{Encode, Decode};
 
 use crate::primitives::{Uint, H256, ValidatorId};
-use crate::types::{Fork, Validator, BeaconBlockHeader, Eth1Data, Crosslink, PendingAttestation, CompactCommittee, Checkpoint};
+use crate::types::{Fork, Validator, BeaconBlockHeader, Eth1Data, Crosslink, PendingAttestation, Checkpoint};
 use crate::utils::fixed_vec;
 use crate::Config;
 

@@ -19,11 +19,9 @@ use serde_derive::{Serialize, Deserialize};
 #[cfg(feature = "parity-codec")]
 use codec::{Encode, Decode};
 
-use core::cmp::max;
 use core::marker::PhantomData;
 use digest::Digest;
-use crate::primitives::{H256, Uint, Epoch, Slot, ValidatorIndex, Signature, ValidatorId};
-use crate::utils::to_uint;
+use crate::primitives::{H256, Uint, Signature, ValidatorId};
 
 /// Traits that allows creation from any other config.
 pub trait FromConfig {
@@ -349,7 +347,7 @@ impl<BLS: BLSVerification> Config for ParameteredConfig<BLS> {
 	// == Initial values ==
 	fn genesis_slot(&self) -> Uint { self.genesis_slot }
 	fn genesis_epoch(&self) -> Uint { self.genesis_epoch }
-	fn bls_withdrawal_prefix_byte(&self) -> u8 { self.bls_withdrawal_prefix_byte }
+	fn bls_withdrawal_prefix_byte(&self) -> u8 { self.bls_withdrawal_prefix_byte[0] }
 
 	// == Time parameters ==
 	fn min_attestation_inclusion_delay(&self) -> Uint { self.min_attestation_inclusion_delay }
@@ -425,7 +423,7 @@ impl<BLS: BLSVerification> FromConfig for ParameteredConfig<BLS> {
 			// == Initial values ==
 			genesis_slot: config.genesis_slot(),
 			genesis_epoch: config.genesis_epoch(),
-			bls_withdrawal_prefix_byte: config.bls_withdrawal_prefix_byte(),
+			bls_withdrawal_prefix_byte: [config.bls_withdrawal_prefix_byte()],
 
 			// == Time parameters ==
 			min_attestation_inclusion_delay: config.min_attestation_inclusion_delay(),
@@ -496,7 +494,7 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 			// == Initial values ==
 			genesis_slot: 0,
 			genesis_epoch: 0,
-			bls_withdrawal_prefix_byte: 0x00,
+			bls_withdrawal_prefix_byte: [0x00],
 
 			// == Time parameters ==
 			min_attestation_inclusion_delay: 1,
@@ -565,7 +563,7 @@ impl<BLS: BLSVerification> ParameteredConfig<BLS> {
 			// == Initial values ==
 			genesis_slot: 0,
 			genesis_epoch: 0,
-			bls_withdrawal_prefix_byte: 0x00,
+			bls_withdrawal_prefix_byte: [0x00],
 
 			// == Time parameters ==
 			min_attestation_inclusion_delay: 1,
