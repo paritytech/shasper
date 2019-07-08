@@ -16,51 +16,49 @@
 
 //! SimpleSerialization crate written in Rust.
 
-#![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(alloc_prelude), feature(prelude_import))]
+#![no_std]
 
-#![warn(missing_docs)]
-
-#[cfg(not(feature = "std"))]
-#[macro_use]
 extern crate alloc;
 
-#[cfg(not(feature = "std"))]
-#[doc(hidden)]
-pub mod prelude {
-	pub use core::prelude::v1::*;
-	pub use alloc::prelude::v1::*;
+use alloc::vec::Vec;
+use codec_io::{Input, Output};
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Error {
+	IO(codec_io::Error),
 }
 
-#[cfg(feature = "std")]
-#[doc(hidden)]
-pub mod prelude {
-	pub use std::prelude::v1::*;
+impl From<codec_io::Error> for Error {
+	fn from(err: codec_io::Error) -> Error {
+		Error::IO(err)
+	}
 }
 
-#[doc(hidden)]
-pub use hash_db;
+/// Trait that allows zero-copy write of value-references to slices in ssz format.
+///
+/// Implementations should override `using_encoded` for value types and `encode_to` and `size_hint` for allocating types.
+/// Wrapper types should override all methods.
+pub trait Encode {
+	/// Convert self to a slice and append it to the destination.
+	fn encode_to<T: Output>(&self, dest: &mut T) -> Result<(), Error> {
+		self.using_encoded(|buf| dest.write(buf)).map_err(Into::into)
+	}
 
-#[doc(hidden)]
-pub use digest;
+	/// Convert self to an owned vector.
+	fn encode(&self) -> Vec<u8> {
+		let mut r = Vec::new();
+		self.encode_to(&mut r).expect("Vec encoding never fails; qed");
+		r
+	}
 
-#[doc(hidden)]
-pub use generic_array;
+	/// Convert self to a slice and then invoke the given closure with it.
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		f(&self.encode())
+	}
+}
 
-#[cfg(not(feature = "std"))]
-#[allow(unused)]
-#[prelude_import]
-use crate::prelude::*;
-
-mod codec;
-#[doc(hidden)]
-pub mod hash;
-#[cfg(test)]
-mod tests;
-
-pub use self::codec::{Input, Output, Encode, Decode, Prefixable, Fixed};
-pub use self::hash::{Hashable, Digestible, Composite, RawDigestible, RawHashable};
-
-/// Trait that allows zero-copy read/write of value-references to/from slices in LE format.
-pub trait Ssz: Decode + Encode {}
-
-impl<S: Encode + Decode> Ssz for S {}
+/// Trait that allows zero-copy read of value-references from slices in ssz format.
+pub trait Decode: Sized {
+	/// Attempt to deserialise the value from input.
+	fn decode<I: Input>(value: &mut I) -> Result<Self, Error>;
+}
