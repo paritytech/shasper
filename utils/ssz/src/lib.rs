@@ -20,11 +20,13 @@
 
 extern crate alloc;
 
+mod size;
 mod basic;
-pub mod size;
+mod fixed;
 
-pub use size::{VariableSize, Size, Sum};
-pub use bm_le::{Composite, FixedVec, VariableVec};
+pub use bm_le::{Composite, FixedVec, FixedVecRef, VariableVec, VariableVecRef,
+				LenFromConfig, MaxLenFromConfig};
+pub use size::{Size, VariableSize, Sum};
 
 use alloc::vec::Vec;
 
@@ -37,17 +39,23 @@ pub enum Error {
 	InvalidType,
 }
 
-/// Base trait for both Encode and Decode.
-pub trait Codec {
-	/// Whether this type is variable-size or fixed-size.
-	type Size: Size;
+/// Trait for fetching size from config.
+pub trait SizeFromConfig<C> {
+	/// Get the size of this type with given config.
+	fn size_from_config(config: &C) -> Option<usize>;
+}
+
+/// Trait for type with known size.
+pub trait KnownSize {
+	/// Size of this type.
+	fn size() -> Option<usize>;
 }
 
 /// Trait that allows zero-copy write of value-references to slices in ssz format.
 ///
 /// Implementations should override `using_encoded` for value types and `encode_to` and `size_hint` for allocating types.
 /// Wrapper types should override all methods.
-pub trait Encode: Codec {
+pub trait Encode {
 	/// Convert self to an owned vector.
 	fn encode(&self) -> Vec<u8> {
 		let mut r = Vec::new();
@@ -62,7 +70,22 @@ pub trait Encode: Codec {
 }
 
 /// Trait that allows zero-copy read of value-references from slices in ssz format.
-pub trait Decode: Codec + Sized {
+pub trait Decode: Sized {
 	/// Attempt to deserialise the value from input.
 	fn decode(value: &[u8]) -> Result<Self, Error>;
+}
+
+pub trait DecodeWithConfig<C>: Sized {
+	fn decode_with_config(value: &[u8], config: &C) -> Result<Self, Error>;
+}
+
+#[macro_export]
+macro_rules! impl_decode_with_empty_config {
+	( $t:ty ) => {
+		impl<C> $crate::DecodeWithConfig<C> for $t {
+			fn decode_with_config(value: &[u8], _config: &C) -> Result<Self, $crate::Error> {
+				Self::decode(value)
+			}
+		}
+	}
 }

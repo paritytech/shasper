@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 primitive-types = { version = "0.4", default-features = false }
-bm-le = "0.2"
+bm-le = "0.3"
 generic-array = "0.12"
 typenum = "1.10"
 digest = "0.8"
