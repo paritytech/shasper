@@ -10,7 +10,6 @@ members = [
 	"blockchain",
 	"blockchain/common/rocksdb",
 	"blockchain/lmd-ghost",
-	"utils/codec-io",
 	"utils/ssz",
 	"utils/ssz-derive",
 	"utils/keccak-hasher",

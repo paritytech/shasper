@@ -8,7 +8,6 @@ edition = "2018"
 
 [dependencies]
 primitive-types = { version = "0.4", default-features = false }
-codec-io = { version = "0.2", path = "../codec-io", default-features = false }
 bm-le = "0.2"
 generic-array = "0.12"
 typenum = "1.10"
@@ -19,4 +18,4 @@ sha2 = "0.8"
 
 [features]
 default = ["std"]
-std = ["primitive-types/std", "codec-io/std", "bm-le/std"]
+std = ["primitive-types/std", "bm-le/std"]

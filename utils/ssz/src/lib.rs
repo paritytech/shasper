@@ -27,21 +27,14 @@ pub use size::{VariableSize, Size, Sum};
 pub use bm_le::{Composite, FixedVec, VariableVec};
 
 use alloc::vec::Vec;
-use codec_io::{Input, Output};
 
 #[derive(Debug)]
 /// Error type for encoding and decoding.
 pub enum Error {
+	/// Incorrect size.
+	IncorrectSize,
 	/// Invalid type.
 	InvalidType,
-	/// I/O error.
-	IO(codec_io::Error),
-}
-
-impl From<codec_io::Error> for Error {
-	fn from(err: codec_io::Error) -> Error {
-		Error::IO(err)
-	}
 }
 
 /// Base trait for both Encode and Decode.
@@ -55,15 +48,10 @@ pub trait Codec {
 /// Implementations should override `using_encoded` for value types and `encode_to` and `size_hint` for allocating types.
 /// Wrapper types should override all methods.
 pub trait Encode: Codec {
-	/// Convert self to a slice and append it to the destination.
-	fn encode_to<T: Output>(&self, dest: &mut T) -> Result<(), Error> {
-		self.using_encoded(|buf| dest.write(buf)).map_err(Into::into)
-	}
-
 	/// Convert self to an owned vector.
 	fn encode(&self) -> Vec<u8> {
 		let mut r = Vec::new();
-		self.encode_to(&mut r).expect("Vec encoding never fails; qed");
+		self.using_encoded(|buf| r.extend_from_slice(buf));
 		r
 	}
 
@@ -76,5 +64,5 @@ pub trait Encode: Codec {
 /// Trait that allows zero-copy read of value-references from slices in ssz format.
 pub trait Decode: Codec + Sized {
 	/// Attempt to deserialise the value from input.
-	fn decode<I: Input>(value: &mut I) -> Result<Self, Error>;
+	fn decode(value: &[u8]) -> Result<Self, Error>;
 }

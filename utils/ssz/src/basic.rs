@@ -1,4 +1,4 @@
-use crate::{Encode, Decode, Input, Error, Codec};
+use crate::{Encode, Decode, Error, Codec};
 
 macro_rules! impl_builtin_uint {
 	( $t:ty, $len:ty ) => {
@@ -14,9 +14,12 @@ macro_rules! impl_builtin_uint {
 		}
 
 		impl Decode for $t {
-			fn decode<I: Input>(value: &mut I) -> Result<Self, Error> {
+			fn decode(value: &[u8]) -> Result<Self, Error> {
 				let mut bytes = <$t>::default().to_le_bytes();
-				value.read(&mut bytes)?;
+				if value.len() != bytes.len() {
+					return Err(Error::IncorrectSize)
+				}
+				bytes.copy_from_slice(value);
 				Ok(<$t>::from_le_bytes(bytes))
 			}
 		}
@@ -44,7 +47,7 @@ impl Encode for bool {
 }
 
 impl Decode for bool {
-	fn decode<I: Input>(value: &mut I) -> Result<Self, Error> {
+	fn decode(value: &[u8]) -> Result<Self, Error> {
 		let value = u8::decode(value)?;
 		match value {
 			0x01 => Ok(true),
