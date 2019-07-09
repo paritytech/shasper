@@ -23,7 +23,8 @@ extern crate alloc;
 mod basic;
 pub mod size;
 
-pub use size::{FixedSize, VariableSize, Size};
+pub use size::{VariableSize, Size, Sum};
+pub use bm_le::{Composite, FixedVec, VariableVec};
 
 use alloc::vec::Vec;
 use codec_io::{Input, Output};

@@ -1,9 +1,9 @@
-use crate::{Encode, Decode, Input, Error, Codec, FixedSize};
+use crate::{Encode, Decode, Input, Error, Codec};
 
 macro_rules! impl_builtin_uint {
-	( $( $t:ty ),* ) => { $(
+	( $t:ty, $len:ty ) => {
 		impl Codec for $t {
-			type Size = FixedSize;
+			type Size = $len;
 		}
 
 		impl Encode for $t {
@@ -20,13 +20,17 @@ macro_rules! impl_builtin_uint {
 				Ok(<$t>::from_le_bytes(bytes))
 			}
 		}
-	)* }
+	}
 }
 
-impl_builtin_uint!(u8, u16, u32, u64, u128);
+impl_builtin_uint!(u8, typenum::U1);
+impl_builtin_uint!(u16, typenum::U2);
+impl_builtin_uint!(u32, typenum::U4);
+impl_builtin_uint!(u64, typenum::U8);
+impl_builtin_uint!(u128, typenum::U16);
 
 impl Codec for bool {
-	type Size = FixedSize;
+	type Size = typenum::U1;
 }
 
 impl Encode for bool {
