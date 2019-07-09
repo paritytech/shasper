@@ -238,6 +238,11 @@ version = "0.5.0"
 source = "git+https://github.com/paritytech/bitmask#a84e147be602631617badd18b6b9af83391db4a9"
 
 [[package]]
+name = "bitvec"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "blake2"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -356,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "bm-le"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bm 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -856,6 +861,9 @@ name = "fixed-hash"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+ "byteorder 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hex 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "static_assertions 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1200,6 +1208,14 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "parity-codec 3.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "impl-codec"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "parity-codec 4.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2474,6 +2490,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "parity-codec"
+version = "4.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "arrayvec 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitvec 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "parity-codec-derive"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2708,6 +2734,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "fixed-hash 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "impl-codec 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "uint 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3628,7 +3655,7 @@ dependencies = [
 name = "ssz"
 version = "0.1.2"
 dependencies = [
- "bm-le 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bm-le 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "codec-io 0.2.0",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -5092,6 +5119,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum bindgen 0.47.3 (registry+https://github.com/rust-lang/crates.io-index)" = "df683a55b54b41d5ea8ebfaebb5aa7e6b84e3f3006a78f010dadc9ca88469260"
 "checksum bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "228047a76f468627ca71776ecdebd732a3423081fcf5125585bcd7c49886ce12"
 "checksum bitmask 0.5.0 (git+https://github.com/paritytech/bitmask)" = "<none>"
+"checksum bitvec 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)" = "b67491e1cc6f37da6c4415cd743cb8d2e2c65388acc91ca3094a054cbf3cbd0c"
 "checksum blake2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "73b77e29dbd0115e43938be2d5128ecf81c0353e00acaa65339a1242586951d9"
 "checksum blake2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "91721a6330935673395a0607df4d49a9cb90ae12d259f1b3e0a3f6e1d486872e"
 "checksum blake2-rfc 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)" = "5d6d530bdd2d52966a6d03b7a964add7ae1a288d25214066fd4b600f0f796400"
@@ -5103,7 +5131,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum blockchain-network-simple 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5de28fb4c0d532038a9cf7b76365839faa1f415d3481084948094eaf8e93d52d"
 "checksum bls-aggregates 0.7.0 (git+https://github.com/sigp/signature-schemes)" = "<none>"
 "checksum bm 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "8527b168630c0b57ca1e0f6f80e2854f6568a1e5d5a72e171a738d732196f4f3"
-"checksum bm-le 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "e47bedd16032bc1e667ba133f599585a2a157534bd8e4cbab04aaa931b7cf95e"
+"checksum bm-le 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "444371994c4b08390f19b7e8fceb44a0bad329cd618be331e18791f485e02372"
 "checksum bm-le-derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "754b37cc48976c63c4ad03ae7a42649e08f3e3e57fb0b391e30b2fd1dd8a3038"
 "checksum bs58 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0de79cfb98e7aa9988188784d8664b4b5dad6eaaa0863b91d9a4ed871d4f7a42"
 "checksum bumpalo 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4639720be048090544634e0402490838995ccdc9d2fe648f528f30d3c33ae71f"
@@ -5200,6 +5228,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum hyper 0.12.23 (registry+https://github.com/rust-lang/crates.io-index)" = "860faf61a9957c9cb0e23e69f1c8290e92f6eb660fcdd1f2d6777043a2ae1a46"
 "checksum idna 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "38f09e0f0b1fb55fdee1f17470ad800da77af5186a1a76c026b679358b7e844e"
 "checksum impl-codec 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d2050d823639fbeae26b2b5ba09aca8907793117324858070ade0673c49f793b"
+"checksum impl-codec 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "62ed8ff267bc916dd848a800b96d3129aec73d5b23a5e3d018c83655d0c55371"
 "checksum impl-serde 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5158079de9d4158e0ce1de3ae0bd7be03904efc40b3d7dd8b8c301cbf6b52b56"
 "checksum indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7e81a7c05f79578dbc15793d8b619db9ba32b4577003ef3af1a91c416798c58d"
 "checksum integer-sqrt 0.1.0 (git+https://github.com/paritytech/integer-sqrt-rs.git)" = "<none>"
@@ -5302,6 +5331,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum owning_ref 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "49a4b8ea2179e6a2e27411d3bca09ca6dd630821cf6894c6c7c8467a8ee7ef13"
 "checksum parity-bytes 0.1.0 (git+https://github.com/paritytech/parity-common?rev=b0317f649ab2c665b7987b8475878fc4d2e1f81d)" = "<none>"
 "checksum parity-codec 3.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "21c9c3a1623c71ed83964ff28cac6126e178920f7646d32c337eacb9152b2907"
+"checksum parity-codec 4.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7902deb39d3b431897f211c1918789938251e67a740f55effd53201e79c0906c"
 "checksum parity-codec-derive 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "864e9f66b58c0b38f0d6b511b6576afa2b678ae801b64220553bced57ac12df9"
 "checksum parity-crypto 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "17b9db194dfbcfe3b398d63d765437a5c7232d59906e203055f0e993f6458ff1"
 "checksum parity-multiaddr 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "61ae6944d4435d41f4d0f12108c5cbb9207cbb14bc8f2b4984c6e930dc9c8e41"

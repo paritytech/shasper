@@ -20,11 +20,20 @@
 
 extern crate alloc;
 
+mod basic;
+pub mod size;
+
+pub use size::{FixedSize, VariableSize, Size};
+
 use alloc::vec::Vec;
 use codec_io::{Input, Output};
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug)]
+/// Error type for encoding and decoding.
 pub enum Error {
+	/// Invalid type.
+	InvalidType,
+	/// I/O error.
 	IO(codec_io::Error),
 }
 
@@ -34,11 +43,17 @@ impl From<codec_io::Error> for Error {
 	}
 }
 
+/// Base trait for both Encode and Decode.
+pub trait Codec {
+	/// Whether this type is variable-size or fixed-size.
+	type Size: Size;
+}
+
 /// Trait that allows zero-copy write of value-references to slices in ssz format.
 ///
 /// Implementations should override `using_encoded` for value types and `encode_to` and `size_hint` for allocating types.
 /// Wrapper types should override all methods.
-pub trait Encode {
+pub trait Encode: Codec {
 	/// Convert self to a slice and append it to the destination.
 	fn encode_to<T: Output>(&self, dest: &mut T) -> Result<(), Error> {
 		self.using_encoded(|buf| dest.write(buf)).map_err(Into::into)
@@ -58,7 +73,7 @@ pub trait Encode {
 }
 
 /// Trait that allows zero-copy read of value-references from slices in ssz format.
-pub trait Decode: Sized {
+pub trait Decode: Codec + Sized {
 	/// Attempt to deserialise the value from input.
 	fn decode<I: Input>(value: &mut I) -> Result<Self, Error>;
 }
