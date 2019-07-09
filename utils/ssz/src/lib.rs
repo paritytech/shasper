@@ -20,13 +20,11 @@
 
 extern crate alloc;
 
-mod size;
 mod basic;
 mod fixed;
 
 pub use bm_le::{Composite, FixedVec, FixedVecRef, VariableVec, VariableVecRef,
 				LenFromConfig, MaxLenFromConfig};
-pub use size::{Size, VariableSize, Sum};
 
 use alloc::vec::Vec;
 
