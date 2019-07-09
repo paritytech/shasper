@@ -47,7 +47,8 @@ macro_rules! impl_builtin_fixed_uint_vector {
 
 		impl<L: Unsigned> Decode for FixedVec<$t, L> {
 			fn decode(value: &[u8]) -> Result<Self, Error> {
-				decode_builtin_vector(value, L::to_usize())
+				let len = L::to_usize();
+				decode_builtin_vector(value, len)
 			}
 		}
 
@@ -61,6 +62,44 @@ macro_rules! impl_builtin_fixed_uint_vector {
 }
 
 impl_builtin_fixed_uint_vector!(u8, u16, u32, u64, u128);
+
+impl<'a, L: Unsigned> KnownSize for FixedVecRef<'a, bool, L> {
+	fn size() -> Option<usize> {
+		Some((L::to_usize() + 7) / 8)
+	}
+}
+
+impl<'a, C, L: LenFromConfig<C>> SizeFromConfig<C> for FixedVecRef<'a, bool, L> {
+	fn size_from_config(config: &C) -> Option<usize> {
+		let len = L::len_from_config(config);
+		Some((len + 7) / 8)
+	}
+}
+
+fn decode_bool_vector<L>(value: &[u8], len: usize) -> Result<FixedVec<bool, L>, Error> {
+	let mut ret = Vec::new();
+	for i in 0..len {
+		if i / 8 >= value.len() {
+			return Err(Error::IncorrectSize)
+		}
+        ret.push(value[i / 8] & (1 << (i % 8)) != 0);
+    }
+	Ok(FixedVec(ret, PhantomData))
+}
+
+impl<L: Unsigned> Decode for FixedVec<bool, L> {
+	fn decode(value: &[u8]) -> Result<Self, Error> {
+		let len = L::to_usize();
+		decode_bool_vector(value, len)
+	}
+}
+
+impl<C, L: LenFromConfig<C>> DecodeWithConfig<C> for FixedVec<bool, L> {
+	fn decode_with_config(value: &[u8], config: &C) -> Result<Self, Error> {
+		let len = L::len_from_config(config);
+		decode_bool_vector(value, len)
+	}
+}
 
 impl<T, L> KnownSize for FixedVec<T, L> where
 	for<'a> FixedVecRef<'a, T, L>: KnownSize,
