@@ -4,14 +4,15 @@ use typenum::Unsigned;
 /// Indicate the size type of the current ssz value.
 pub trait Size {
 	/// Whether the value is fixed sized.
-	fn is_fixed() -> bool { Self::size().is_some() }
+	fn is_fixed() -> bool { !Self::is_variable() }
 	/// Whether the value is variable sized.
-	fn is_variable() -> bool { Self::size().is_none() }
+	fn is_variable() -> bool { !Self::is_fixed() }
 	/// The actual size of the value.
 	fn size() -> Option<usize>;
 }
 
 impl<U: Unsigned> Size for U {
+	fn is_fixed() -> bool { true }
 	fn size() -> Option<usize> { Some(Self::to_usize()) }
 }
 
@@ -19,6 +20,15 @@ impl<U: Unsigned> Size for U {
 pub struct VariableSize;
 
 impl Size for VariableSize {
+	fn is_variable() -> bool { true }
+	fn size() -> Option<usize> { None }
+}
+
+/// A fixed unknown sized value.
+pub struct FixedUnknownSize;
+
+impl Size for FixedUnknownSize {
+	fn is_fixed() -> bool { true }
 	fn size() -> Option<usize> { None }
 }
 
@@ -30,7 +40,23 @@ impl<U: Unsigned> Sum<VariableSize> for U {
 	type Output = VariableSize;
 }
 
+impl<U: Unsigned> Sum<FixedUnknownSize> for U {
+	type Output = FixedUnknownSize;
+}
+
 impl<U: Unsigned> Sum<U> for VariableSize {
+	type Output = VariableSize;
+}
+
+impl<U: Unsigned> Sum<U> for FixedUnknownSize {
+	type Output = FixedUnknownSize;
+}
+
+impl Sum<VariableSize> for FixedUnknownSize {
+	type Output = VariableSize;
+}
+
+impl Sum<FixedUnknownSize> for VariableSize {
 	type Output = VariableSize;
 }
 
@@ -42,6 +68,10 @@ impl<U: Unsigned, V: Unsigned + Add<U>> Sum<U> for V where
 
 impl Sum<VariableSize> for VariableSize {
 	type Output = VariableSize;
+}
+
+impl Sum<FixedUnknownSize> for FixedUnknownSize {
+	type Output = FixedUnknownSize;
 }
 
 #[macro_export]
