@@ -87,6 +87,18 @@ impl<'a, C, L: LenFromConfig<C>> SizeFromConfig<C> for FixedVecRef<'a, bool, L> 
 	}
 }
 
+impl<'a, L> Encode for FixedVecRef<'a, bool, L> {
+	fn encode(&self) -> Vec<u8> {
+		let mut bytes = Vec::new();
+        bytes.resize((self.0.len() + 7) / 8, 0u8);
+
+        for i in 0..self.0.len() {
+            bytes[i / 8] |= (self.0[i] as u8) << (i % 8);
+        }
+		bytes
+	}
+}
+
 fn decode_bool_vector<L>(value: &[u8], len: usize) -> Result<FixedVec<bool, L>, Error> {
 	let mut ret = Vec::new();
 	for i in 0..len {
