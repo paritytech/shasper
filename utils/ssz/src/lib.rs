@@ -20,6 +20,7 @@
 
 extern crate alloc;
 
+mod utils;
 mod basic;
 mod series;
 mod fixed;

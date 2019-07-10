@@ -1,29 +1,10 @@
 use crate::{Encode, Series, SeriesItem, FixedVec, FixedVecRef,
 			KnownSize, SizeFromConfig, LenFromConfig, Error, Decode,
 			DecodeWithConfig, Composite, SizeType};
+use crate::utils::{decode_builtin_list, encode_composite, decode_composite};
 use typenum::Unsigned;
 use core::marker::PhantomData;
 use alloc::vec::Vec;
-
-fn decode_builtin_list<T: KnownSize + Decode, L>(
-	value: &[u8],
-) -> Result<FixedVec<T, L>, Error> {
-	let series = Series::decode_list(value, T::size())?;
-	let mut ret = Vec::new();
-
-	for part in series.0 {
-		match part {
-			SeriesItem::Fixed(fixed) => {
-				ret.push(T::decode(&fixed)?);
-			},
-			SeriesItem::Variable(_) => {
-				return Err(Error::InvalidType);
-			},
-		}
-	}
-
-	Ok(FixedVec(ret, PhantomData))
-}
 
 macro_rules! impl_builtin_fixed_uint_vector {
 	( $( $t:ty ),* ) => { $(
@@ -53,20 +34,20 @@ macro_rules! impl_builtin_fixed_uint_vector {
 		impl<L: Unsigned> Decode for FixedVec<$t, L> {
 			fn decode(value: &[u8]) -> Result<Self, Error> {
 				let decoded = decode_builtin_list(value)?;
-				if decoded.0.len() != L::to_usize() {
+				if decoded.len() != L::to_usize() {
 					return Err(Error::InvalidLength)
 				}
-				Ok(decoded)
+				Ok(FixedVec(decoded, PhantomData))
 			}
 		}
 
 		impl<C, L: LenFromConfig<C>> DecodeWithConfig<C> for FixedVec<$t, L> {
 			fn decode_with_config(value: &[u8], config: &C) -> Result<Self, Error> {
 				let decoded = decode_builtin_list(value)?;
-				if decoded.0.len() != L::len_from_config(config) {
+				if decoded.len() != L::len_from_config(config) {
 					return Err(Error::InvalidLength)
 				}
-				Ok(decoded)
+				Ok(FixedVec(decoded, PhantomData))
 			}
 		}
 	)* }
@@ -138,42 +119,14 @@ impl<'a, C, T: Composite + SizeFromConfig<C>, L: LenFromConfig<C>> SizeFromConfi
 
 impl<'a, T: Composite + Encode + SizeType, L> Encode for FixedVecRef<'a, T, L> {
 	fn encode(&self) -> Vec<u8> {
-		let mut series = Series(Default::default());
-		for value in self.0 {
-			if T::is_fixed() {
-				series.0.push(SeriesItem::Fixed(value.encode()));
-			} else {
-				series.0.push(SeriesItem::Variable(value.encode()));
-			}
-		}
-		series.encode()
+		encode_composite(self.0)
 	}
 }
 
 impl<'a, T: Composite + Decode + KnownSize, L: Unsigned> Decode for FixedVec<T, L> {
 	fn decode(value: &[u8]) -> Result<Self, Error> {
 		let value_typ = T::size();
-		let series = Series::decode_list(value, value_typ)?;
-		let mut ret = Vec::new();
-
-		for part in series.0 {
-			match part {
-				SeriesItem::Fixed(fixed) => {
-					if value_typ.is_some() {
-						ret.push(T::decode(&fixed)?);
-					} else {
-						return Err(Error::InvalidType);
-					}
-				},
-				SeriesItem::Variable(variable) => {
-					if value_typ.is_none() {
-						ret.push(T::decode(&variable)?);
-					} else {
-						return Err(Error::InvalidType);
-					}
-				},
-			}
-		}
+		let ret = decode_composite::<T, _>(value, value_typ, |buf| T::decode(buf))?;
 
 		if L::to_usize() == ret.len() {
 			Ok(FixedVec(ret, PhantomData))
@@ -186,27 +139,9 @@ impl<'a, T: Composite + Decode + KnownSize, L: Unsigned> Decode for FixedVec<T, 
 impl<'a, C, T: Composite + DecodeWithConfig<C> + SizeFromConfig<C>, L: LenFromConfig<C>> DecodeWithConfig<C> for FixedVec<T, L> {
 	fn decode_with_config(value: &[u8], config: &C) -> Result<Self, Error> {
 		let value_typ = T::size_from_config(config);
-		let series = Series::decode_list(value, value_typ)?;
-		let mut ret = Vec::new();
-
-		for part in series.0 {
-			match part {
-				SeriesItem::Fixed(fixed) => {
-					if value_typ.is_some() {
-						ret.push(T::decode_with_config(&fixed, config)?);
-					} else {
-						return Err(Error::InvalidType);
-					}
-				},
-				SeriesItem::Variable(variable) => {
-					if value_typ.is_none() {
-						ret.push(T::decode_with_config(&variable, config)?);
-					} else {
-						return Err(Error::InvalidType);
-					}
-				},
-			}
-		}
+		let ret = decode_composite::<T, _>(value, value_typ, |buf| {
+			T::decode_with_config(buf, config)
+		})?;
 
 		if L::len_from_config(config) == ret.len() {
 			Ok(FixedVec(ret, PhantomData))
