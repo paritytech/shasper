@@ -19,3 +19,6 @@ mod version {
 pub use self::validator_id::{ValidatorId, H384};
 pub use self::signature::{Signature, H768};
 pub use self::version::{Version, H32};
+
+pub type Uint = u64;
+pub use primitive_types::H256;

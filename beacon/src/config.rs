@@ -15,9 +15,7 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 #[cfg(feature = "serde")]
-use serde_derive::{Serialize, Deserialize};
-#[cfg(feature = "parity-codec")]
-use codec::{Encode, Decode};
+use serde::{Serialize, Deserialize};
 
 use core::marker::PhantomData;
 use digest::Digest;
@@ -209,7 +207,6 @@ pub trait Config {
 
 #[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Config that does not verify BLS signature.
 pub struct ParameteredConfig<BLS: BLSVerification> {
