@@ -1,6 +1,21 @@
 use crate::{KnownSize, Encode, Decode, Composite, SizeType, Error, SeriesItem, Series};
 use alloc::vec::Vec;
 
+pub fn encode_builtin_list<T: KnownSize + Encode>(
+	values: &[T]
+) -> Vec<u8> {
+	let mut series = Series(Default::default());
+	for value in values {
+		if T::is_fixed() {
+			series.0.push(SeriesItem::Fixed(value.encode()));
+		} else {
+			series.0.push(SeriesItem::Variable(value.encode()));
+		}
+	}
+	series.encode()
+}
+
+
 pub fn decode_builtin_list<T: KnownSize + Decode>(
 	value: &[u8],
 ) -> Result<Vec<T>, Error> {

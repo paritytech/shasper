@@ -16,7 +16,7 @@
 
 //! SimpleSerialization crate written in Rust.
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
 
@@ -24,6 +24,7 @@ mod utils;
 mod basic;
 mod series;
 mod fixed;
+mod variable;
 
 pub use bm_le::{FixedVec, FixedVecRef, VariableVec, VariableVecRef,
 				LenFromConfig, MaxLenFromConfig};
@@ -40,6 +41,8 @@ pub enum Error {
 	InvalidType,
 	/// Vector length is incorrect.
 	InvalidLength,
+	/// List length is too large.
+	ListTooLarge,
 }
 
 /// Type of this size.

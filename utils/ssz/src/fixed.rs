@@ -1,7 +1,7 @@
-use crate::{Encode, Series, SeriesItem, FixedVec, FixedVecRef,
+use crate::{Encode, FixedVec, FixedVecRef,
 			KnownSize, SizeFromConfig, LenFromConfig, Error, Decode,
 			DecodeWithConfig, Composite, SizeType};
-use crate::utils::{decode_builtin_list, encode_composite, decode_composite};
+use crate::utils::{encode_builtin_list, decode_builtin_list, encode_composite, decode_composite};
 use typenum::Unsigned;
 use core::marker::PhantomData;
 use alloc::vec::Vec;
@@ -23,11 +23,7 @@ macro_rules! impl_builtin_fixed_uint_vector {
 
 		impl<'a, L> Encode for FixedVecRef<'a, $t, L> {
 			fn encode(&self) -> Vec<u8> {
-				let mut series = Series(Default::default());
-				for value in self.0 {
-					series.0.push(SeriesItem::Fixed(value.encode()));
-				}
-				series.encode()
+				encode_builtin_list(self.0)
 			}
 		}
 
