@@ -182,18 +182,16 @@ dependencies = [
 name = "beacon"
 version = "0.1.2"
 dependencies = [
+ "bm-le 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "fixed-hash 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "hash-db 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "impl-serde 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "parity-codec 3.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "primitive-types 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "primitive-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ssz 0.1.2",
- "ssz-derive 0.1.2",
+ "typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -360,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "bm-le"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bm 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3192,6 +3190,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "serde"
 version = "1.0.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "serde_derive 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "serde_derive"
@@ -3368,7 +3369,6 @@ dependencies = [
 name = "shasper-primitives"
 version = "0.1.0"
 dependencies = [
- "beacon 0.1.2",
  "byteorder 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "casper 0.1.0",
  "fixed-hash 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3648,11 +3648,12 @@ dependencies = [
 name = "ssz"
 version = "0.1.2"
 dependencies = [
- "bm-le 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bm-le 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitive-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ssz-derive 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3663,6 +3664,16 @@ dependencies = [
  "deriving 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "ssz 0.1.2",
+ "syn 0.15.31 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "ssz-derive"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "proc-macro2 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 0.15.31 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -5123,7 +5134,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum blockchain-network-simple 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5de28fb4c0d532038a9cf7b76365839faa1f415d3481084948094eaf8e93d52d"
 "checksum bls-aggregates 0.7.0 (git+https://github.com/sigp/signature-schemes)" = "<none>"
 "checksum bm 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "8527b168630c0b57ca1e0f6f80e2854f6568a1e5d5a72e171a738d732196f4f3"
-"checksum bm-le 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "fe4cbfcb26637dbb2230281f73c4072e36044b204356e99cd2338c5da3bc9de7"
+"checksum bm-le 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "26bdcdaf51f65a5db99ccc6f1efb74ee7128f037664357ddc10f74718ddee130"
 "checksum bm-le-derive 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4f4a8fe91d0536d11af7759cadb9e232d147c95df65dda9b3ad9bb1a1f05bbfc"
 "checksum bs58 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0de79cfb98e7aa9988188784d8664b4b5dad6eaaa0863b91d9a4ed871d4f7a42"
 "checksum bumpalo 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4639720be048090544634e0402490838995ccdc9d2fe648f528f30d3c33ae71f"
@@ -5429,6 +5440,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum srml-support-procedural 0.1.0 (git+https://github.com/paritytech/substrate)" = "<none>"
 "checksum srml-support-procedural-tools 0.1.0 (git+https://github.com/paritytech/substrate)" = "<none>"
 "checksum srml-support-procedural-tools-derive 0.1.0 (git+https://github.com/paritytech/substrate)" = "<none>"
+"checksum ssz-derive 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7de9c582f68fe64b0c5469ea0eb145710654694fc98becd0d5474e5920a46e8d"
 "checksum stable_deref_trait 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "dba1a27d3efae4351c8051072d619e3ade2820635c3958d826bfea39d59b54c8"
 "checksum static_assertions 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "c19be23126415861cb3a23e501d34a708f7f9b2183c5252d690941c2e69199d5"
 "checksum static_slice 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "92a7e0c5e3dfb52e8fbe0e63a1b947bbb17b4036408b151353c4491374931362"

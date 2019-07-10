@@ -106,3 +106,30 @@ macro_rules! impl_decode_with_empty_config {
 		}
 	}
 }
+
+#[macro_export]
+macro_rules! impl_size_from_empty_config {
+	( $t:ty ) => {
+		impl<C> $crate::SizeFromConfig<C> for $t {
+			fn size_from_config(_config: &C) -> Option<usize> {
+				<Self as $crate::KnownSize>::size()
+			}
+		}
+	}
+}
+
+#[macro_export]
+macro_rules! impl_composite_known_size {
+	( $t:ty, $size:expr ) => {
+		impl $crate::SizeType for $t {
+			fn is_fixed() -> bool { $size.is_some() }
+		}
+
+		$crate::impl_size_from_empty_config!($t);
+		impl $crate::KnownSize for $t {
+			fn size() -> Option<usize> { $size }
+		}
+
+		impl $crate::Composite for $t { }
+	}
+}

@@ -19,7 +19,7 @@ hash-db = { version = "0.11", default-features = false }
 keccak-hasher = { path = "../../utils/keccak-hasher", default-features = false }
 byteorder = { version = "1.2", default-features = false }
 casper = { path = "../casper", default-features = false }
-beacon = { path = "../../beacon", default-features = false, features = ["with-codec"] }
+# beacon = { path = "../../beacon", default-features = false, features = ["with-codec"] }
 
 [features]
 default = ["std"]
@@ -37,7 +37,7 @@ std = [
 	"primitive-types/std",
 	"primitive-types/serde",
 	"impl-serde",
-	"beacon/std",
-	"beacon/std-with-codec",
-	"beacon/with-serde",
+	# "beacon/std",
+	# "beacon/std-with-codec",
+	# "beacon/with-serde",
 ]
