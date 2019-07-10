@@ -1,22 +1,27 @@
-use crate::{FixedVec, FixedVecRef, LenFromConfig, Encode, Decode, DecodeWithConfig, Error, KnownSize, SizeFromConfig};
-use alloc::vec::Vec;
-use core::marker::PhantomData;
+use crate::{Encode, Series, SeriesItem, FixedVec, FixedVecRef,
+			KnownSize, SizeFromConfig, LenFromConfig, Error, Decode,
+			DecodeWithConfig};
 use typenum::Unsigned;
+use core::marker::PhantomData;
+use alloc::vec::Vec;
 
-fn decode_builtin_vector<T: KnownSize + Decode, L>(
+fn decode_builtin_list<T: KnownSize + Decode, L>(
 	value: &[u8],
-	len: usize
 ) -> Result<FixedVec<T, L>, Error> {
+	let series = Series::decode_list(value, T::size())?;
 	let mut ret = Vec::new();
-	let single_size = T::size().expect("uint size are fixed known; qed");
-	for i in 0..len {
-		let start = i * single_size;
-		let end = (i + 1) * single_size;
-		if end >= value.len() {
-			return Err(Error::IncorrectSize)
+
+	for part in series.0 {
+		match part {
+			SeriesItem::Fixed(fixed) => {
+				ret.push(T::decode(&fixed)?);
+			},
+			SeriesItem::Variable(_) => {
+				return Err(Error::InvalidType);
+			},
 		}
-		ret.push(T::decode(&value[start..end])?);
 	}
+
 	Ok(FixedVec(ret, PhantomData))
 }
 
@@ -36,26 +41,32 @@ macro_rules! impl_builtin_fixed_uint_vector {
 		}
 
 		impl<'a, L> Encode for FixedVecRef<'a, $t, L> {
-			fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
-				let mut ret = Vec::new();
+			fn encode(&self) -> Vec<u8> {
+				let mut series = Series(Default::default());
 				for value in self.0 {
-					value.using_encoded(|buf| ret.extend_from_slice(buf));
+					series.0.push(SeriesItem::Fixed(value.encode()));
 				}
-				f(&ret)
+				series.encode()
 			}
 		}
 
 		impl<L: Unsigned> Decode for FixedVec<$t, L> {
 			fn decode(value: &[u8]) -> Result<Self, Error> {
-				let len = L::to_usize();
-				decode_builtin_vector(value, len)
+				let decoded = decode_builtin_list(value)?;
+				if decoded.0.len() != L::to_usize() {
+					return Err(Error::InvalidLength)
+				}
+				Ok(decoded)
 			}
 		}
 
 		impl<C, L: LenFromConfig<C>> DecodeWithConfig<C> for FixedVec<$t, L> {
 			fn decode_with_config(value: &[u8], config: &C) -> Result<Self, Error> {
-				let len = L::len_from_config(config);
-				decode_builtin_vector(value, len)
+				let decoded = decode_builtin_list(value)?;
+				if decoded.0.len() != L::len_from_config(config) {
+					return Err(Error::InvalidLength)
+				}
+				Ok(decoded)
 			}
 		}
 	)* }

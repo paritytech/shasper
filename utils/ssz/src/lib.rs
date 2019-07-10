@@ -21,10 +21,12 @@
 extern crate alloc;
 
 mod basic;
+mod series;
 mod fixed;
 
 pub use bm_le::{Composite, FixedVec, FixedVecRef, VariableVec, VariableVecRef,
 				LenFromConfig, MaxLenFromConfig};
+pub use series::{Series, SeriesItem};
 
 use alloc::vec::Vec;
 
@@ -35,6 +37,8 @@ pub enum Error {
 	IncorrectSize,
 	/// Invalid type.
 	InvalidType,
+	/// Vector length is incorrect.
+	InvalidLength,
 }
 
 /// Trait for fetching size from config.
