@@ -1,11 +1,14 @@
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Write};
 
 use clap::{App, Arg};
 use beacon::{Config, NoVerificationConfig};
 use beacon::primitives::*;
 use beacon::types::*;
 use serde::Deserialize;
+use ssz::{Encode, Decode};
+use bm_le::{IntoTree, NoopBackend, Intermediate, End};
+use sha2::Sha256;
 
 #[derive(Deserialize, Debug)]
 pub struct Collection {
@@ -29,11 +32,7 @@ pub enum Test {
 	Deposit { },
 	DepositData { },
 	Eth1Data { },
-	Fork {
-		value: Fork,
-		serialized: String,
-		root: H256,
-	},
+	Fork(TestItem<Fork>),
 	HistoricalBatch { },
 	IndexedAttestation { },
 	PendingAttestation { },
@@ -41,6 +40,28 @@ pub enum Test {
 	Transfer { },
 	Validator { },
 	VoluntaryExit { },
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TestItem<T> {
+	value: T,
+	serialized: String,
+	root: H256,
+	signing_root: Option<H256>,
+}
+
+impl<T: Encode + Decode + IntoTree<NoopBackend<Sha256, End>>> TestItem<T> {
+	pub fn test(&self) {
+		print!("Testing {} ...", self.serialized);
+		std::io::stdout().flush().ok().expect("Could not flush stdout");
+		assert!(self.serialized.starts_with("0x"));
+		let expected = hex::decode(&self.serialized[2..]).unwrap();
+		let encoded = Encode::encode(&self.value);
+		assert_eq!(encoded, expected);
+		let encoded_root = bm_le::tree_root(&self.value);
+		assert_eq!(encoded_root, self.root);
+		println!(" passed");
+	}
 }
 
 fn main() {
@@ -67,5 +88,30 @@ fn main() {
 	let reader = BufReader::new(file);
 	let coll = serde_yaml::from_reader::<_, Collection>(reader).expect("Parse test cases failed");
 
-	println!("collection: {:?}", coll);
+	for test in coll.test_cases {
+		match test {
+			Test::Attestation { } => (),
+			Test::AttestationData { } => (),
+			Test::AttestationDataAndCustodyBit { } => (),
+			Test::AttesterSlashing { } => (),
+			Test::BeaconBlock { } => (),
+			Test::BeaconBlockBody { } => (),
+			Test::BeaconBlockHeader { } => (),
+			Test::BeaconState { } => (),
+			Test::Checkpoint { } => (),
+			Test::CompactCommittee { } => (),
+			Test::Crosslink { } => (),
+			Test::Deposit { } => (),
+			Test::DepositData { } => (),
+			Test::Eth1Data { } => (),
+			Test::Fork(test) => test.test(),
+			Test::HistoricalBatch { } => (),
+			Test::IndexedAttestation { } => (),
+			Test::PendingAttestation { } => (),
+			Test::ProposerSlashing { } => (),
+			Test::Transfer { } => (),
+			Test::Validator { } => (),
+			Test::VoluntaryExit { } => (),
+		}
+	}
 }

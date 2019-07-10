@@ -19,6 +19,7 @@ use serde::{Serialize, Deserialize};
 
 use core::marker::PhantomData;
 use digest::Digest;
+use bm_le::MaxLenFromConfig;
 use crate::primitives::{H256, Uint, Signature, ValidatorId};
 
 /// Traits that allows creation from any other config.
@@ -202,6 +203,26 @@ pub trait Config {
 			digest.input(input);
 		}
 		H256::from_slice(digest.result().as_slice())
+	}
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct MaxValidatorsPerCommitteeFromConfig;
+
+impl<C: Config> MaxLenFromConfig<C> for MaxValidatorsPerCommitteeFromConfig {
+	fn max_len_from_config(config: &C) -> Option<usize> {
+		Some(config.max_validators_per_committee() as usize)
+	}
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct SlotsPerHistoricalRootFromConfig;
+
+impl<C: Config> MaxLenFromConfig<C> for SlotsPerHistoricalRootFromConfig {
+	fn max_len_from_config(config: &C) -> Option<usize> {
+		Some(config.slots_per_historical_root() as usize)
 	}
 }
 
