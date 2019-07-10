@@ -1,6 +1,6 @@
 use crate::{Encode, Series, SeriesItem, FixedVec, FixedVecRef,
 			KnownSize, SizeFromConfig, LenFromConfig, Error, Decode,
-			DecodeWithConfig};
+			DecodeWithConfig, Composite, SizeType};
 use typenum::Unsigned;
 use core::marker::PhantomData;
 use alloc::vec::Vec;
@@ -124,7 +124,107 @@ impl<C, L: LenFromConfig<C>> DecodeWithConfig<C> for FixedVec<bool, L> {
 	}
 }
 
-impl<T, L> KnownSize for FixedVec<T, L> where
+impl<'a, T: Composite + KnownSize, L: Unsigned> KnownSize for FixedVecRef<'a, T, L> {
+	fn size() -> Option<usize> {
+		T::size().map(|l| l * L::to_usize())
+	}
+}
+
+impl<'a, C, T: Composite + SizeFromConfig<C>, L: LenFromConfig<C>> SizeFromConfig<C> for FixedVecRef<'a, T, L> {
+	fn size_from_config(config: &C) -> Option<usize> {
+		T::size_from_config(config).map(|l| l * L::len_from_config(config))
+	}
+}
+
+impl<'a, T: Composite + Encode + SizeType, L> Encode for FixedVecRef<'a, T, L> {
+	fn encode(&self) -> Vec<u8> {
+		let mut series = Series(Default::default());
+		for value in self.0 {
+			if T::is_fixed() {
+				series.0.push(SeriesItem::Fixed(value.encode()));
+			} else {
+				series.0.push(SeriesItem::Variable(value.encode()));
+			}
+		}
+		series.encode()
+	}
+}
+
+impl<'a, T: Composite + Decode + KnownSize, L: Unsigned> Decode for FixedVec<T, L> {
+	fn decode(value: &[u8]) -> Result<Self, Error> {
+		let value_typ = T::size();
+		let series = Series::decode_list(value, value_typ)?;
+		let mut ret = Vec::new();
+
+		for part in series.0 {
+			match part {
+				SeriesItem::Fixed(fixed) => {
+					if value_typ.is_some() {
+						ret.push(T::decode(&fixed)?);
+					} else {
+						return Err(Error::InvalidType);
+					}
+				},
+				SeriesItem::Variable(variable) => {
+					if value_typ.is_none() {
+						ret.push(T::decode(&variable)?);
+					} else {
+						return Err(Error::InvalidType);
+					}
+				},
+			}
+		}
+
+		if L::to_usize() == ret.len() {
+			Ok(FixedVec(ret, PhantomData))
+		} else {
+			Err(Error::InvalidLength)
+		}
+	}
+}
+
+impl<'a, C, T: Composite + DecodeWithConfig<C> + SizeFromConfig<C>, L: LenFromConfig<C>> DecodeWithConfig<C> for FixedVec<T, L> {
+	fn decode_with_config(value: &[u8], config: &C) -> Result<Self, Error> {
+		let value_typ = T::size_from_config(config);
+		let series = Series::decode_list(value, value_typ)?;
+		let mut ret = Vec::new();
+
+		for part in series.0 {
+			match part {
+				SeriesItem::Fixed(fixed) => {
+					if value_typ.is_some() {
+						ret.push(T::decode_with_config(&fixed, config)?);
+					} else {
+						return Err(Error::InvalidType);
+					}
+				},
+				SeriesItem::Variable(variable) => {
+					if value_typ.is_none() {
+						ret.push(T::decode_with_config(&variable, config)?);
+					} else {
+						return Err(Error::InvalidType);
+					}
+				},
+			}
+		}
+
+		if L::len_from_config(config) == ret.len() {
+			Ok(FixedVec(ret, PhantomData))
+		} else {
+			Err(Error::InvalidLength)
+		}
+	}
+}
+
+impl<'a, T: SizeType, L> SizeType for FixedVecRef<'a, T, L> {
+	fn is_fixed() -> bool { T::is_fixed() }
+}
+
+impl<T: SizeType, L> SizeType for FixedVec<T, L> {
+	fn is_fixed() -> bool { T::is_fixed() }
+}
+
+impl<T: SizeType, L> KnownSize for FixedVec<T, L> where
 	for<'a> FixedVecRef<'a, T, L>: KnownSize,
 {
 	fn size() -> Option<usize> {
@@ -132,7 +232,7 @@ impl<T, L> KnownSize for FixedVec<T, L> where
 	}
 }
 
-impl<C, T, L> SizeFromConfig<C> for FixedVec<T, L> where
+impl<C, T: SizeType, L> SizeFromConfig<C> for FixedVec<T, L> where
 	for<'a> FixedVecRef<'a, T, L>: SizeFromConfig<C>,
 {
 	fn size_from_config(config: &C) -> Option<usize> {

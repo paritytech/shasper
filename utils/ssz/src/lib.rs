@@ -24,7 +24,7 @@ mod basic;
 mod series;
 mod fixed;
 
-pub use bm_le::{Composite, FixedVec, FixedVecRef, VariableVec, VariableVecRef,
+pub use bm_le::{FixedVec, FixedVecRef, VariableVec, VariableVecRef,
 				LenFromConfig, MaxLenFromConfig};
 pub use series::{Series, SeriesItem};
 
@@ -41,14 +41,22 @@ pub enum Error {
 	InvalidLength,
 }
 
+/// Type of this size.
+pub trait SizeType {
+	/// Whether this value is fixed.
+	fn is_fixed() -> bool { !Self::is_variable() }
+	/// Whether this value is variable.
+	fn is_variable() -> bool { !Self::is_fixed() }
+}
+
 /// Trait for fetching size from config.
-pub trait SizeFromConfig<C> {
+pub trait SizeFromConfig<C>: SizeType {
 	/// Get the size of this type with given config.
 	fn size_from_config(config: &C) -> Option<usize>;
 }
 
 /// Trait for type with known size.
-pub trait KnownSize {
+pub trait KnownSize: SizeType {
 	/// Size of this type.
 	fn size() -> Option<usize>;
 }
@@ -76,6 +84,9 @@ pub trait Decode: Sized {
 	/// Attempt to deserialise the value from input.
 	fn decode(value: &[u8]) -> Result<Self, Error>;
 }
+
+/// Trait for composite values.
+pub trait Composite { }
 
 pub trait DecodeWithConfig<C>: Sized {
 	fn decode_with_config(value: &[u8], config: &C) -> Result<Self, Error>;

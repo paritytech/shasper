@@ -1,8 +1,12 @@
-use crate::{Encode, Decode, Error, KnownSize, SizeFromConfig, impl_decode_with_empty_config};
+use crate::{Encode, Decode, Error, KnownSize, SizeFromConfig, SizeType, impl_decode_with_empty_config};
 use typenum::Unsigned;
 
 macro_rules! impl_builtin_uint {
 	( $t:ty, $len:ty ) => {
+		impl SizeType for $t {
+			fn is_fixed() -> bool { true }
+		}
+
 		impl KnownSize for $t {
 			fn size() -> Option<usize> {
 				Some(<$len>::to_usize())
@@ -41,6 +45,10 @@ impl_builtin_uint!(u16, typenum::U2);
 impl_builtin_uint!(u32, typenum::U4);
 impl_builtin_uint!(u64, typenum::U8);
 impl_builtin_uint!(u128, typenum::U16);
+
+impl SizeType for bool {
+	fn is_fixed() -> bool { true }
+}
 
 impl KnownSize for bool {
 	fn size() -> Option<usize> {
