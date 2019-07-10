@@ -13,4 +13,5 @@ default = ["std"]
 std = [
 	"bls-crate/std",
 	"beacon/std",
+	"beacon/with-serde",
 ]

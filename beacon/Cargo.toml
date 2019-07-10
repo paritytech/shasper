@@ -19,11 +19,16 @@ generic-array = "0.12"
 typenum = "1.10"
 
 [features]
-default = ["std", "serde", "impl-serde"]
+default = ["std", "with-serde"]
 std = [
 	"ssz/std",
 	"bm-le/std",
 	"primitive-types/std",
 	"sha2/std",
 	"fixed-hash/std",
+]
+with-serde = [
+	"serde",
+	"impl-serde",
+	"primitive-types/serde"
 ]

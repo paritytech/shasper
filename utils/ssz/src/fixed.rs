@@ -2,6 +2,7 @@ use crate::{Encode, FixedVec, FixedVecRef,
 			KnownSize, SizeFromConfig, LenFromConfig, Error, Decode,
 			DecodeWithConfig, Composite, SizeType};
 use crate::utils::{encode_builtin_list, decode_builtin_list, encode_composite, decode_composite};
+use primitive_types::H256;
 use typenum::Unsigned;
 use core::marker::PhantomData;
 use alloc::vec::Vec;
@@ -144,6 +145,21 @@ impl<'a, C, T: Composite + DecodeWithConfig<C> + SizeFromConfig<C>, L: LenFromCo
 		} else {
 			Err(Error::InvalidLength)
 		}
+	}
+}
+
+crate::impl_composite_known_size!(H256, Some(32));
+crate::impl_decode_with_empty_config!(H256);
+
+impl Encode for H256 {
+	fn encode(&self) -> Vec<u8> {
+		FixedVecRef::<u8, typenum::U32>(&self.0, PhantomData).encode()
+	}
+}
+
+impl Decode for H256 {
+	fn decode(value: &[u8]) -> Result<Self, Error> {
+		Ok(H256::from_slice(&FixedVec::<u8, typenum::U32>::decode(value)?.0))
 	}
 }
 

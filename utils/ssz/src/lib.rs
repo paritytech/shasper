@@ -29,6 +29,7 @@ mod variable;
 pub use bm_le::{FixedVec, FixedVecRef, VariableVec, VariableVecRef,
 				LenFromConfig, MaxLenFromConfig};
 pub use series::{Series, SeriesItem};
+pub use ssz_derive::Ssz;
 
 use alloc::vec::Vec;
 
