@@ -2,11 +2,13 @@ use crate::{Encode, Decode, KnownSize, Error};
 use alloc::vec::Vec;
 use alloc::collections::VecDeque;
 
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub enum SeriesItem {
 	Fixed(Vec<u8>),
 	Variable(Vec<u8>),
 }
 
+#[derive(Default, Eq, PartialEq, Clone, Debug)]
 pub struct Series(pub Vec<SeriesItem>);
 
 impl Encode for Series {

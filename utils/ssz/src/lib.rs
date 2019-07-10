@@ -101,7 +101,7 @@ macro_rules! impl_decode_with_empty_config {
 	( $t:ty ) => {
 		impl<C> $crate::DecodeWithConfig<C> for $t {
 			fn decode_with_config(value: &[u8], _config: &C) -> Result<Self, $crate::Error> {
-				Self::decode(value)
+				<Self as $crate::Decode>::decode(value)
 			}
 		}
 	}

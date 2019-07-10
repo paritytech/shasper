@@ -10,9 +10,9 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-syn = "0.15"
+syn = { version = "0.15", features = ["extra-traits"] }
 quote = "0.6"
-proc-macro2 = "0.4"
+deriving = "0.1"
 
 [dev-dependencies]
-ssz = { version = "0.1", path = "../ssz" }
+ssz = { version = "0.1", path = ".." }

@@ -11,7 +11,7 @@ members = [
 	"blockchain/common/rocksdb",
 	"blockchain/lmd-ghost",
 	"utils/ssz",
-	"utils/ssz-derive",
+	"utils/ssz/derive",
 	"utils/keccak-hasher",
 ]
 exclude = [
