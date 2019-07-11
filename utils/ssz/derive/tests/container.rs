@@ -1,18 +1,11 @@
-use ssz_derive::Ssz;
+use ssz_derive::{Codec, Encode, Decode};
+use generic_array::GenericArray;
+use typenum::*;
 
-#[derive(Ssz)]
+#[derive(Codec, Encode, Decode)]
 pub struct A {
 	a: u64,
 	b: u64,
-}
-
-pub trait Config {
-
-}
-
-#[derive(Ssz)]
-#[bm(config_trait = "Config")]
-pub struct B {
-	a: u64,
-	b: u64,
+	#[bm(compact)]
+	c: GenericArray<u8, U3>,
 }

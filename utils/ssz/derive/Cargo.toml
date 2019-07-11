@@ -16,3 +16,5 @@ deriving = "0.1"
 
 [dev-dependencies]
 ssz = { version = "0.1", path = ".." }
+generic-array = "0.12"
+typenum = "1.10"

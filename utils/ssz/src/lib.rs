@@ -29,7 +29,7 @@ mod variable;
 
 pub use bm_le::{Compact, CompactRef, MaxVec};
 pub use series::{Series, SeriesItem};
-pub use ssz_derive::Ssz;
+pub use ssz_derive::{Codec, Encode, Decode};
 
 pub use crate::size::{Size, VariableSize, Add, Mul, Div};
 

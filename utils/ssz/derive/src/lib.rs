@@ -21,217 +21,144 @@ extern crate proc_macro;
 use quote::{quote, quote_spanned};
 use syn::{parse_macro_input, DeriveInput};
 use syn::spanned::Spanned;
-use deriving::{struct_fields, attribute_value};
+use deriving::{struct_fields, has_attribute};
 
 use proc_macro::TokenStream;
 
-#[proc_macro_derive(Ssz, attributes(ssz, bm))]
-pub fn into_tree_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
+#[proc_macro_derive(Codec, attributes(ssz, bm))]
+pub fn codec_derive(input: TokenStream) -> TokenStream {
+	let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
-    let config_trait = attribute_value("bm", &input.attrs, "config_trait");
 
-    let encode_fields = struct_fields(&input.data)
+	let fields = struct_fields(&input.data)
+		.expect("Not supported derive type")
+		.iter()
+		.map(|f| {
+			let ty = &f.ty;
+
+			quote_spanned! { f.span() => <#ty as ssz::Codec>::Size }
+		});
+
+	let expanded = quote! {
+		impl ssz::Codec for #name {
+			type Size = ssz::sum!(#(#fields),*);
+		}
+	};
+
+	proc_macro::TokenStream::from(expanded)
+}
+
+#[proc_macro_derive(Encode, attributes(ssz, bm))]
+pub fn encode_derive(input: TokenStream) -> TokenStream {
+	let input = parse_macro_input!(input as DeriveInput);
+    let name = input.ident;
+
+	let fields = struct_fields(&input.data)
         .expect("Not supported derive type")
         .iter()
         .map(|f| {
             let name = &f.ident;
 			let ty = &f.ty;
 
+			let encode = if has_attribute("bm", &f.attrs, "compact") {
+				quote_spanned! { f.span() => {
+					ssz::Encode::encode(&ssz::CompactRef(&self.#name))
+				} }
+			} else {
+				quote_spanned! { f.span() => {
+					ssz::Encode::encode(&self.#name)
+				} }
+			};
+
             quote_spanned! { f.span() => {
-				if <#ty as ssz::SizeType>::is_fixed() {
-					series.0.push(ssz::SeriesItem::Fixed(ssz::Encode::encode(&self.#name)));
+				if <<#ty as ssz::Codec>::Size as ssz::Size>::is_fixed() {
+					series.0.push(ssz::SeriesItem::Fixed(#encode));
 				} else {
-					series.0.push(ssz::SeriesItem::Variable(ssz::Encode::encode(&self.#name)));
+					series.0.push(ssz::SeriesItem::Variable(#encode));
 				}
             } }
         });
 
-	let is_fixed_fields = struct_fields(&input.data)
+	let expanded = quote! {
+		impl ssz::Encode for #name {
+			fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+				let mut series = ssz::Series::default();
+				#(#fields)*
+				f(&series.encode())
+			}
+		}
+	};
+
+	proc_macro::TokenStream::from(expanded)
+}
+
+#[proc_macro_derive(Decode, attributes(ssz, bm))]
+pub fn decode_derive(input: TokenStream) -> TokenStream {
+	let input = parse_macro_input!(input as DeriveInput);
+    let name = input.ident;
+
+	let size_fields = struct_fields(&input.data)
         .expect("Not supported derive type")
         .iter()
         .map(|f| {
 			let ty = &f.ty;
 
-			quote_spanned! { f.span() => {
-				<#ty as ssz::SizeType>::is_fixed()
-			} }
+			quote_spanned! {
+				f.span() =>
+					<<#ty as ssz::Codec>::Size as ssz::Size>::size()
+			}
 		});
 
-    let basic_expanded = quote! {
-		impl ssz::SizeType for #name {
-			fn is_fixed() -> bool {
-				[#(#is_fixed_fields),*].iter().all(|v| *v)
-			}
-		}
+	let fields = struct_fields(&input.data)
+        .expect("Not supported derive type")
+        .iter()
+		.enumerate()
+        .map(|(i, f)| {
+            let name = &f.ident;
+			let ty = &f.ty;
 
-        impl ssz::Composite for #name { }
-
-		impl ssz::Encode for #name {
-			fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
-				let mut series = ssz::Series::default();
-				#(#encode_fields)*
-				f(&series.encode())
-			}
-		}
-    };
-
-	let config_expanded = if let Some(config_trait) = config_trait {
-		let config_trait = config_trait.parse::<syn::TraitBound>().expect("Invalid syntax");
-
-		let size_fields = struct_fields(&input.data)
-			.expect("Not supported derive type")
-			.iter()
-			.map(|f| {
-				let ty = &f.ty;
-
+			let decode = if has_attribute("bm", &f.attrs, "compact") {
 				quote_spanned! { f.span() => {
-					<#ty as ssz::SizeFromConfig<C>>::size_from_config(config)
+					<ssz::Compact<#ty> as ssz::Decode>::decode(item)?.0
 				} }
-			}).collect::<Vec<_>>();
-
-		let size_fields2 = size_fields.clone();
-
-		let decode_fields = struct_fields(&input.data)
-			.expect("Not supported derive type")
-			.iter()
-			.enumerate()
-			.map(|(i, f)| {
-				let name = &f.ident;
-				let ty = &f.ty;
-
-                quote_spanned! {
-                    f.span() =>
-                        #name: match &series.0[#i] {
-							ssz::SeriesItem::Fixed(ref fixed) => {
-								if <#ty as ssz::SizeType>::is_fixed() {
-									<#ty as ssz::DecodeWithConfig<C>>::decode_with_config(
-										fixed,
-										config
-									)?
-								} else {
-									return Err(ssz::Error::InvalidType)
-								}
-							},
-							ssz::SeriesItem::Variable(ref variable) => {
-								if <#ty as ssz::SizeType>::is_variable() {
-									<#ty as ssz::DecodeWithConfig<C>>::decode_with_config(
-										variable,
-										config
-									)?
-								} else {
-									return Err(ssz::Error::InvalidType)
-								}
-							},
-						},
-                }
-			});
-
-		quote! {
-			impl<C: #config_trait> ssz::SizeFromConfig<C> for #name {
-				fn size_from_config(config: &C) -> Option<usize> {
-					[#(#size_fields),*].iter().fold(Some(0), |acc, size| {
-						match size {
-							Some(size) => acc.map(|acc| acc + size),
-							None => None
-						}
-					})
-				}
-			}
-
-			impl<C: #config_trait> ssz::DecodeWithConfig<C> for #name {
-				fn decode_with_config(value: &[u8], config: &C) -> Result<Self, ssz::Error> {
-					let types = [#(#size_fields2),*];
-					let series = ssz::Series::decode_vector(value, &types)?;
-					Ok(Self {
-						#(#decode_fields)*
-					})
-				}
-			}
-		}
-	} else {
-		let size_fields = struct_fields(&input.data)
-			.expect("Not supported derive type")
-			.iter()
-			.map(|f| {
-				let ty = &f.ty;
-
+			} else {
 				quote_spanned! { f.span() => {
-					<#ty as ssz::KnownSize>::size()
+					<#ty as ssz::Decode>::decode(item)?
 				} }
-			}).collect::<Vec<_>>();
+			};
 
-		let size_fields2 = size_fields.clone();
-
-		let decode_fields = struct_fields(&input.data)
-			.expect("Not supported derive type")
-			.iter()
-			.enumerate()
-			.map(|(i, f)| {
-				let name = &f.ident;
-				let ty = &f.ty;
-
-                quote_spanned! {
-                    f.span() =>
-                        #name: match &series.0[#i] {
-							ssz::SeriesItem::Fixed(ref fixed) => {
-								if <#ty as ssz::SizeType>::is_fixed() {
-									<#ty as ssz::Decode>::decode(
-										fixed,
-									)?
-								} else {
-									return Err(ssz::Error::InvalidType)
-								}
-							},
-							ssz::SeriesItem::Variable(ref variable) => {
-								if <#ty as ssz::SizeType>::is_variable() {
-									<#ty as ssz::Decode>::decode(
-										variable,
-									)?
-								} else {
-									return Err(ssz::Error::InvalidType)
-								}
-							},
+			quote_spanned! {
+                f.span() =>
+                    #name: match &series.0[#i] {
+						ssz::SeriesItem::Fixed(ref item) => {
+							if <<#ty as ssz::Codec>::Size as ssz::Size>::is_fixed() {
+								#decode
+							} else {
+								return Err(ssz::Error::InvalidType)
+							}
 						},
-                }
-			});
-
-		quote! {
-			impl ssz::KnownSize for #name {
-				fn size() -> Option<usize> {
-					[#(#size_fields),*].iter().fold(Some(0), |acc, size| {
-						match size {
-							Some(size) => acc.map(|acc| acc + size),
-							None => None
-						}
-					})
-				}
-			}
-
-			impl<C> ssz::SizeFromConfig<C> for #name {
-				fn size_from_config(_config: &C) -> Option<usize> {
-					<Self as ssz::KnownSize>::size()
-				}
-			}
-
-			ssz::impl_decode_with_empty_config!(#name);
-			impl ssz::Decode for #name {
-				fn decode(value: &[u8]) -> Result<Self, ssz::Error> {
-					let types = [#(#size_fields2),*];
-					let series = ssz::Series::decode_vector(value, &types)?;
-					Ok(Self {
-						#(#decode_fields)*
-					})
-				}
-			}
-		}
-	};
+						ssz::SeriesItem::Variable(ref item) => {
+							if <<#ty as ssz::Codec>::Size as ssz::Size>::is_variable() {
+								#decode
+							} else {
+								return Err(ssz::Error::InvalidType)
+							}
+						},
+					},
+            }
+		});
 
 	let expanded = quote! {
-		#basic_expanded
-
-		#config_expanded
+		impl ssz::Decode for #name {
+			fn decode(value: &[u8]) -> Result<Self, ssz::Error> {
+				let types = [#(#size_fields),*];
+				let series = ssz::Series::decode_vector(value, &types)?;
+				Ok(Self {
+					#(#fields)*
+				})
+			}
+		}
 	};
 
-    proc_macro::TokenStream::from(expanded)
+	proc_macro::TokenStream::from(expanded)
 }
