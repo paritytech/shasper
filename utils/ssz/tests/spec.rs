@@ -1,5 +1,5 @@
-use ssz::{Encode, Decode, FixedVec, VariableVec};
-use core::marker::PhantomData;
+use ssz::{Encode, Decode, MaxVec, Compact};
+use generic_array::GenericArray;
 use core::fmt::Debug;
 use typenum::*;
 
@@ -28,24 +28,24 @@ fn spec() {
 	t(0x0123456789abcdefu64, &[0xef, 0xcd, 0xab, 0x89, 0x67, 0x45, 0x23, 0x01]);
 
 	// bitvector TTFTFTFF
-	t(FixedVec::<bool, U8>(vec![true, true, false, true, false, true, false, false], PhantomData), &[0x2b]);
+	t(Compact(GenericArray::<bool, U8>::from([true, true, false, true, false, true, false, false])), &[0x2b]);
 	// bitvector FTFT
-	t(FixedVec::<bool, U4>(vec![false, true, false, true], PhantomData), &[0x0a]);
+	t(Compact(GenericArray::<bool, U4>::from([false, true, false, true])), &[0x0a]);
 	// bitvector FTF
-	t(FixedVec::<bool, U3>(vec![false, true, false], PhantomData), &[0x02]);
+	t(Compact(GenericArray::<bool, U3>::from([false, true, false])), &[0x02]);
 	// bitvector TFTFFFTTFT
-	t(FixedVec::<bool, U10>(vec![true, false, true, false, false, false, true, true, false, true], PhantomData), &[0xc5, 0x02]);
+	t(Compact(GenericArray::<bool, U10>::from([true, false, true, false, false, false, true, true, false, true])), &[0xc5, 0x02]);
 	// bitvector TFTFFFTTFTFFFFTT
-	t(FixedVec::<bool, U16>(vec![true, false, true, false, false, false, true, true, false, true,
-								 false, false, false, false, true, true], PhantomData),
+	t(Compact(GenericArray::<bool, U16>::from([true, false, true, false, false, false, true, true, false, true,
+								 false, false, false, false, true, true])),
 	  &[0xc5, 0xc2]);
 	// long bitvector
 	{
-		let mut v = Vec::new();
-		for _ in 0..512 {
-			v.push(true);
+		let mut v = GenericArray::<bool, U512>::default();
+		for i in 0..512 {
+			v[i] = true;
 		}
-		t(FixedVec::<bool, U512>(v, PhantomData),
+		t(Compact(v),
 		  &[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -58,11 +58,11 @@ fn spec() {
 
 	// long bitlist
 	{
-		let mut v = Vec::new();
+		let mut v = MaxVec::<bool, U513>::default();
 		for _ in 0..512 {
 			v.push(true);
 		}
-		t(VariableVec::<bool, U513>(v, Some(513), PhantomData),
+		t(Compact(v),
 		  &[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -76,11 +76,11 @@ fn spec() {
 
 	// longer bitlist
 	{
-		let mut v = Vec::new();
+		let mut v = MaxVec::<bool, U513>::default();
 		for _ in 0..513 {
 			v.push(true);
 		}
-		t(VariableVec::<bool, U513>(v, Some(513), PhantomData),
+		t(Compact(v),
 		  &[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,

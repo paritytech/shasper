@@ -91,7 +91,7 @@ impl Div<VariableSize> for VariableSize {
 macro_rules! sum {
 	( $one: ty ) => ( $one );
 	( $first: ty, $( $rest:ty ),* ) => (
-		<$first as $crate::Sum<$crate::sum!($( $rest ),*)>>::Output
+		<$first as $crate::Add<$crate::sum!($( $rest ),*)>>::Output
 	);
 }
 
