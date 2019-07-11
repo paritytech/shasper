@@ -1,7 +1,6 @@
-use crate::{Encode, FixedVec, FixedVecRef,
-			KnownSize, SizeFromConfig, LenFromConfig, Error, Decode,
-			DecodeWithConfig, Composite, SizeType};
-use crate::utils::{encode_builtin_list, decode_builtin_list, encode_composite, decode_composite};
+use crate::{Encode, Error, Decode, Compact, CompactRef, Add, Mul, Div, Codec};
+use crate::utils::{encode_list, decode_list};
+use generic_array::{GenericArray, ArrayLength};
 use primitive_types::H256;
 use typenum::Unsigned;
 use core::marker::PhantomData;
@@ -9,42 +8,48 @@ use alloc::vec::Vec;
 
 macro_rules! impl_builtin_fixed_uint_vector {
 	( $( $t:ty ),* ) => { $(
-		impl<'a, L: Unsigned> KnownSize for FixedVecRef<'a, $t, L> {
-			fn size() -> Option<usize> {
-				<$t>::size().map(|s| s * L::to_usize())
-			}
+		impl<L: ArrayLength<$t> + Unsigned> Codec for Compact<GenericArray<$t, L>> where
+			<$t as Codec>::Size: Mul<L>,
+		{
+			type Size = <<$t as Codec>::Size as Mul<L>>::Output;
 		}
 
-		impl<'a, C, L: LenFromConfig<C>> SizeFromConfig<C> for FixedVecRef<'a, $t, L> {
-			fn size_from_config(config: &C) -> Option<usize> {
-				let len = L::len_from_config(config);
-				<$t>::size().map(|s| s * len)
-			}
+		impl<'a, L: ArrayLength<$t> + Unsigned> Codec for CompactRef<'a, GenericArray<$t, L>> where
+			Compact<GenericArray<$t, L>>: Codec,
+		{
+			type Size = <Compact<GenericArray<$t, L>> as Codec>::Size;
 		}
 
-		impl<'a, L> Encode for FixedVecRef<'a, $t, L> {
+		impl<'a, L: ArrayLength<$t>> Encode for CompactRef<'a, GenericArray<$t, L>> where
+			CompactRef<'a, GenericArray<$t, L>>: Codec
+		{
 			fn encode(&self) -> Vec<u8> {
-				encode_builtin_list(self.0)
+				encode_list(self.0)
 			}
 		}
 
-		impl<L: Unsigned> Decode for FixedVec<$t, L> {
+		impl<L: ArrayLength<$t>> Encode for Compact<GenericArray<$t, L>> where
+			Compact<GenericArray<$t, L>>: Codec,
+			for<'a> CompactRef<'a, GenericArray<$t, L>>: Encode
+		{
+			fn encode(&self) -> Vec<u8> {
+				CompactRef(&self.0).encode()
+			}
+		}
+
+		impl<L: ArrayLength<$t>> Decode for Compact<GenericArray<$t, L>> where
+			Compact<GenericArray<$t, L>>: Codec,
+		{
 			fn decode(value: &[u8]) -> Result<Self, Error> {
-				let decoded = decode_builtin_list(value)?;
+				let decoded = decode_list::<$t>(value)?;
 				if decoded.len() != L::to_usize() {
 					return Err(Error::InvalidLength)
 				}
-				Ok(FixedVec(decoded, PhantomData))
-			}
-		}
-
-		impl<C, L: LenFromConfig<C>> DecodeWithConfig<C> for FixedVec<$t, L> {
-			fn decode_with_config(value: &[u8], config: &C) -> Result<Self, Error> {
-				let decoded = decode_builtin_list(value)?;
-				if decoded.len() != L::len_from_config(config) {
-					return Err(Error::InvalidLength)
+				let mut ret = GenericArray::default();
+				for i in 0..decoded.len() {
+					ret[i] = decoded[i];
 				}
-				Ok(FixedVec(decoded, PhantomData))
+				Ok(Compact(ret))
 			}
 		}
 	)* }
@@ -52,20 +57,22 @@ macro_rules! impl_builtin_fixed_uint_vector {
 
 impl_builtin_fixed_uint_vector!(u8, u16, u32, u64, u128);
 
-impl<'a, L: Unsigned> KnownSize for FixedVecRef<'a, bool, L> {
-	fn size() -> Option<usize> {
-		Some((L::to_usize() + 7) / 8)
-	}
+impl<L: ArrayLength<bool> + Unsigned> Codec for Compact<GenericArray<bool, L>> where
+	L: Add<typenum::U7>,
+	<L as Add<typenum::U7>>::Output: Div<typenum::U8>,
+{
+	type Size = <<L as Add<typenum::U7>>::Output as Div<typenum::U8>>::Output;
 }
 
-impl<'a, C, L: LenFromConfig<C>> SizeFromConfig<C> for FixedVecRef<'a, bool, L> {
-	fn size_from_config(config: &C) -> Option<usize> {
-		let len = L::len_from_config(config);
-		Some((len + 7) / 8)
-	}
+impl<'a, L: ArrayLength<bool> + Unsigned> Codec for CompactRef<'a, GenericArray<bool, L>> where
+	Compact<GenericArray<bool, L>>: Codec,
+{
+	type Size = <Compact<GenericArray<bool, L>> as Codec>::Size;
 }
 
-impl<'a, L> Encode for FixedVecRef<'a, bool, L> {
+impl<'a, L: ArrayLength<bool>> Encode for CompactRef<'a, GenericArray<bool, L>> where
+	CompactRef<'a, GenericArray<bool, L>>: Codec
+{
 	fn encode(&self) -> Vec<u8> {
 		let mut bytes = Vec::new();
         bytes.resize((self.0.len() + 7) / 8, 0u8);
@@ -77,120 +84,68 @@ impl<'a, L> Encode for FixedVecRef<'a, bool, L> {
 	}
 }
 
-fn decode_bool_vector<L>(value: &[u8], len: usize) -> Result<FixedVec<bool, L>, Error> {
-	let mut ret = Vec::new();
-	for i in 0..len {
-		if i / 8 >= value.len() {
-			return Err(Error::IncorrectSize)
-		}
-        ret.push(value[i / 8] & (1 << (i % 8)) != 0);
-    }
-	Ok(FixedVec(ret, PhantomData))
+impl<L: ArrayLength<bool>> Encode for Compact<GenericArray<bool, L>> where
+	Compact<GenericArray<bool, L>>: Codec,
+	for<'a> CompactRef<'a, GenericArray<bool, L>>: Encode
+{
+	fn encode(&self) -> Vec<u8> {
+		CompactRef(&self.0).encode()
+	}
 }
 
-impl<L: Unsigned> Decode for FixedVec<bool, L> {
+impl<L: ArrayLength<bool>> Decode for Compact<GenericArray<bool, L>> where
+	Compact<GenericArray<bool, L>>: Codec,
+{
 	fn decode(value: &[u8]) -> Result<Self, Error> {
 		let len = L::to_usize();
-		decode_bool_vector(value, len)
+		let mut ret = GenericArray::default();
+		for i in 0..len {
+			if i / 8 >= value.len() {
+				return Err(Error::IncorrectSize)
+			}
+			ret[i] = value[i / 8] & (1 << (i % 8)) != 0;
+		}
+		Ok(Compact(ret))
 	}
 }
 
-impl<C, L: LenFromConfig<C>> DecodeWithConfig<C> for FixedVec<bool, L> {
-	fn decode_with_config(value: &[u8], config: &C) -> Result<Self, Error> {
-		let len = L::len_from_config(config);
-		decode_bool_vector(value, len)
-	}
+impl<T: Codec, L: ArrayLength<T>> Codec for GenericArray<T, L> where
+	<T as Codec>::Size: Mul<L>,
+{
+	type Size = <<T as Codec>::Size as Mul<L>>::Output;
 }
 
-impl<'a, T: Composite + KnownSize, L: Unsigned> KnownSize for FixedVecRef<'a, T, L> {
-	fn size() -> Option<usize> {
-		T::size().map(|l| l * L::to_usize())
-	}
-}
-
-impl<'a, C, T: Composite + SizeFromConfig<C>, L: LenFromConfig<C>> SizeFromConfig<C> for FixedVecRef<'a, T, L> {
-	fn size_from_config(config: &C) -> Option<usize> {
-		T::size_from_config(config).map(|l| l * L::len_from_config(config))
-	}
-}
-
-impl<'a, T: Composite + Encode + SizeType, L> Encode for FixedVecRef<'a, T, L> {
+impl<T: Encode, L: ArrayLength<T>> Encode for GenericArray<T, L> where
+	GenericArray<T, L>: Codec
+{
 	fn encode(&self) -> Vec<u8> {
-		encode_composite(self.0)
+		encode_list(&self)
 	}
 }
 
-impl<'a, T: Composite + Decode + KnownSize, L: Unsigned> Decode for FixedVec<T, L> {
+impl<T: Decode, L: ArrayLength<T>> Decode for GenericArray<T, L> where
+	GenericArray<T, L>: Codec
+{
 	fn decode(value: &[u8]) -> Result<Self, Error> {
-		let value_typ = T::size();
-		let ret = decode_composite::<T, _>(value, value_typ, |buf| T::decode(buf))?;
+		let decoded = decode_list::<T>(value)?;
 
-		if L::to_usize() == ret.len() {
-			Ok(FixedVec(ret, PhantomData))
-		} else {
-			Err(Error::InvalidLength)
-		}
+		GenericArray::from_exact_iter(decoded).ok_or(Error::InvalidLength)
 	}
 }
 
-impl<'a, C, T: Composite + DecodeWithConfig<C> + SizeFromConfig<C>, L: LenFromConfig<C>> DecodeWithConfig<C> for FixedVec<T, L> {
-	fn decode_with_config(value: &[u8], config: &C) -> Result<Self, Error> {
-		let value_typ = T::size_from_config(config);
-		let ret = decode_composite::<T, _>(value, value_typ, |buf| {
-			T::decode_with_config(buf, config)
-		})?;
-
-		if L::len_from_config(config) == ret.len() {
-			Ok(FixedVec(ret, PhantomData))
-		} else {
-			Err(Error::InvalidLength)
-		}
-	}
+impl Codec for H256 {
+	type Size = <Compact<GenericArray<u8, typenum::U32>> as Codec>::Size;
 }
-
-crate::impl_composite_known_size!(H256, Some(32));
-crate::impl_decode_with_empty_config!(H256);
 
 impl Encode for H256 {
 	fn encode(&self) -> Vec<u8> {
-		FixedVecRef::<u8, typenum::U32>(&self.0, PhantomData).encode()
+		CompactRef(GenericArray::<u8, typenum::U32>::from_slice(&self.0[..])).encode()
 	}
 }
 
 impl Decode for H256 {
 	fn decode(value: &[u8]) -> Result<Self, Error> {
-		Ok(H256::from_slice(&FixedVec::<u8, typenum::U32>::decode(value)?.0))
-	}
-}
-
-impl<'a, T: SizeType, L> SizeType for FixedVecRef<'a, T, L> {
-	fn is_fixed() -> bool { T::is_fixed() }
-}
-
-impl<T: SizeType, L> SizeType for FixedVec<T, L> {
-	fn is_fixed() -> bool { T::is_fixed() }
-}
-
-impl<T: SizeType, L> KnownSize for FixedVec<T, L> where
-	for<'a> FixedVecRef<'a, T, L>: KnownSize,
-{
-	fn size() -> Option<usize> {
-		FixedVecRef::<T, L>::size()
-	}
-}
-
-impl<C, T: SizeType, L> SizeFromConfig<C> for FixedVec<T, L> where
-	for<'a> FixedVecRef<'a, T, L>: SizeFromConfig<C>,
-{
-	fn size_from_config(config: &C) -> Option<usize> {
-		FixedVecRef::<T, L>::size_from_config(config)
-	}
-}
-
-impl<T, L> Encode for FixedVec<T, L> where
-	for<'a> FixedVecRef<'a, T, L>: Encode
-{
-	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
-		FixedVecRef(&self.0, PhantomData).using_encoded(f)
+		let decoded = Compact::<GenericArray<u8, typenum::U32>>::decode(value)?;
+		Ok(H256::from_slice(decoded.0.as_slice()))
 	}
 }

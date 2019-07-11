@@ -23,13 +23,15 @@ extern crate alloc;
 mod utils;
 mod basic;
 mod series;
+mod size;
 mod fixed;
-mod variable;
+// mod variable;
 
-pub use bm_le::{FixedVec, FixedVecRef, VariableVec, VariableVecRef,
-				LenFromConfig, MaxLenFromConfig};
+pub use bm_le::{Compact, CompactRef, MaxVec};
 pub use series::{Series, SeriesItem};
 pub use ssz_derive::Ssz;
+
+pub use crate::size::{Size, VariableSize, Add, Mul, Div};
 
 use alloc::vec::Vec;
 
@@ -46,31 +48,15 @@ pub enum Error {
 	ListTooLarge,
 }
 
-/// Type of this size.
-pub trait SizeType {
-	/// Whether this value is fixed.
-	fn is_fixed() -> bool { !Self::is_variable() }
-	/// Whether this value is variable.
-	fn is_variable() -> bool { !Self::is_fixed() }
-}
-
-/// Trait for fetching size from config.
-pub trait SizeFromConfig<C>: SizeType {
-	/// Get the size of this type with given config.
-	fn size_from_config(config: &C) -> Option<usize>;
-}
-
-/// Trait for type with known size.
-pub trait KnownSize: SizeType {
-	/// Size of this type.
-	fn size() -> Option<usize>;
+pub trait Codec {
+	type Size: Size;
 }
 
 /// Trait that allows zero-copy write of value-references to slices in ssz format.
 ///
 /// Implementations should override `using_encoded` for value types and `encode_to` and `size_hint` for allocating types.
 /// Wrapper types should override all methods.
-pub trait Encode {
+pub trait Encode: Codec {
 	/// Convert self to an owned vector.
 	fn encode(&self) -> Vec<u8> {
 		let mut r = Vec::new();
@@ -85,52 +71,7 @@ pub trait Encode {
 }
 
 /// Trait that allows zero-copy read of value-references from slices in ssz format.
-pub trait Decode: Sized {
+pub trait Decode: Codec + Sized {
 	/// Attempt to deserialise the value from input.
 	fn decode(value: &[u8]) -> Result<Self, Error>;
-}
-
-/// Trait for composite values.
-pub trait Composite { }
-
-pub trait DecodeWithConfig<C>: Sized {
-	fn decode_with_config(value: &[u8], config: &C) -> Result<Self, Error>;
-}
-
-#[macro_export]
-macro_rules! impl_decode_with_empty_config {
-	( $t:ty ) => {
-		impl<C> $crate::DecodeWithConfig<C> for $t {
-			fn decode_with_config(value: &[u8], _config: &C) -> Result<Self, $crate::Error> {
-				<Self as $crate::Decode>::decode(value)
-			}
-		}
-	}
-}
-
-#[macro_export]
-macro_rules! impl_size_from_empty_config {
-	( $t:ty ) => {
-		impl<C> $crate::SizeFromConfig<C> for $t {
-			fn size_from_config(_config: &C) -> Option<usize> {
-				<Self as $crate::KnownSize>::size()
-			}
-		}
-	}
-}
-
-#[macro_export]
-macro_rules! impl_composite_known_size {
-	( $t:ty, $size:expr ) => {
-		impl $crate::SizeType for $t {
-			fn is_fixed() -> bool { $size.is_some() }
-		}
-
-		$crate::impl_size_from_empty_config!($t);
-		impl $crate::KnownSize for $t {
-			fn size() -> Option<usize> { $size }
-		}
-
-		impl $crate::Composite for $t { }
-	}
 }

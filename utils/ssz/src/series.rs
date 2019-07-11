@@ -1,4 +1,4 @@
-use crate::{Encode, Decode, KnownSize, Error};
+use crate::{Encode, Decode, Error};
 use alloc::vec::Vec;
 use alloc::collections::VecDeque;
 
@@ -11,14 +11,14 @@ pub enum SeriesItem {
 #[derive(Default, Eq, PartialEq, Clone, Debug)]
 pub struct Series(pub Vec<SeriesItem>);
 
-impl Encode for Series {
-	fn encode(&self) -> Vec<u8> {
+impl Series {
+	pub fn encode(&self) -> Vec<u8> {
 		let mut ret = Vec::new();
 
 		let fixed_parts_size = self.0.iter().fold(0, |acc, part| {
 			acc + match part {
 				SeriesItem::Fixed(ref fixed) => fixed.len(),
-				SeriesItem::Variable(_) => u16::size().expect("uint is fixed size; qed"),
+				SeriesItem::Variable(_) => 0u16.using_encoded(|buf| buf.len()),
 			}
 		});
 
@@ -47,9 +47,7 @@ impl Encode for Series {
 
 		ret
 	}
-}
 
-impl Series {
 	pub fn decode_vector(value: &[u8], typs: &[Option<usize>]) -> Result<Self, Error> {
 		let mut ret = Vec::new();
 		let mut variable_offsets = VecDeque::new();
@@ -65,7 +63,7 @@ impl Series {
 				},
 				None => {
 					ret.push(SeriesItem::Variable(Default::default()));
-					let len = u16::size().expect("uint is fixed size; qed");
+					let len = 0u16.using_encoded(|buf| buf.len());
 					variable_offsets.push_back(u16::decode(&value[pos..(pos + len)])? as usize);
 					pos += len;
 				},
@@ -107,7 +105,7 @@ impl Series {
 			None => {
 				let mut pos = 0;
 				let mut variable_offsets = VecDeque::new();
-				let fixed_len = u16::size().expect("uint is fixed size; qed");
+				let fixed_len = 0u16.using_encoded(|buf| buf.len());
 
 				while pos + fixed_len <= value.len() &&
 					variable_offsets.front().map(|f| pos + fixed_len <= *f).unwrap_or(true)
