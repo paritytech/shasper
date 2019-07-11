@@ -3,7 +3,6 @@ use crate::utils::{encode_list, decode_list};
 use generic_array::{GenericArray, ArrayLength};
 use primitive_types::H256;
 use typenum::Unsigned;
-use core::marker::PhantomData;
 use alloc::vec::Vec;
 
 macro_rules! impl_builtin_fixed_uint_vector {

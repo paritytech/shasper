@@ -25,7 +25,7 @@ mod basic;
 mod series;
 mod size;
 mod fixed;
-// mod variable;
+mod variable;
 
 pub use bm_le::{Compact, CompactRef, MaxVec};
 pub use series::{Series, SeriesItem};
