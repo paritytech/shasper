@@ -74,8 +74,14 @@ pub fn encode_derive(input: TokenStream) -> TokenStream {
         .map(|f| {
 			let ty = &f.ty;
 
-			quote_spanned! {
-				f.span() => #ty: ssz::Encode
+			if has_attribute("bm", &f.attrs, "compact") {
+				quote_spanned! {
+					f.span() => for<'a> ssz::CompactRef<'a, #ty>: ssz::Encode
+				}
+			} else {
+				quote_spanned! {
+					f.span() => #ty: ssz::Encode
+				}
 			}
 		});
 
@@ -130,8 +136,14 @@ pub fn decode_derive(input: TokenStream) -> TokenStream {
         .map(|f| {
 			let ty = &f.ty;
 
-			quote_spanned! {
-				f.span() => #ty: ssz::Decode
+			if has_attribute("bm", &f.attrs, "compact") {
+				quote_spanned! {
+					f.span() => ssz::Compact<#ty>: ssz::Decode
+				}
+			} else {
+				quote_spanned! {
+					f.span() => #ty: ssz::Decode
+				}
 			}
 		});
 
