@@ -1,11 +1,11 @@
 #[cfg(feature = "serde")]
 use serde::{Serialize, Deserialize};
-use ssz::Ssz;
-use bm_le::{IntoTree, FromTree, VariableVec, DefaultWithConfig};
+use ssz::{Codec, Encode, Decode};
+use bm_le::{IntoTree, FromTree, MaxVec};
 use crate::*;
 use crate::primitives::*;
 
-#[derive(Ssz, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Fork information.
@@ -18,7 +18,7 @@ pub struct Fork {
 	pub epoch: Uint,
 }
 
-#[derive(Ssz, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Checkpoint
@@ -29,7 +29,7 @@ pub struct Checkpoint {
 	pub root: H256,
 }
 
-#[derive(Ssz, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Validator record.
@@ -67,7 +67,7 @@ impl Validator {
 	}
 }
 
-#[derive(Ssz, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Crosslink.
@@ -86,7 +86,7 @@ pub struct Crosslink {
 	pub data_root: H256,
 }
 
-#[derive(Ssz, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Attestation data.
@@ -114,7 +114,7 @@ impl AttestationData {
 	}
 }
 
-#[derive(Ssz, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Attestation data with custody bit.
@@ -125,34 +125,25 @@ pub struct AttestationDataAndCustodyBit {
 	pub custody_bit: bool,
 }
 
-#[derive(Ssz, IntoTree, FromTree, Clone, PartialEq, Eq)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[bm(config_trait = "Config")]
 /// Indexed attestation.
-pub struct IndexedAttestation {
+pub struct IndexedAttestation<C: Config> {
 	/// Validator indices of custody bit 0.
-	pub custody_bit_0_indices: VariableVec<Uint, MaxValidatorsPerCommitteeFromConfig>,
+	#[bm(compact)]
+	pub custody_bit_0_indices: MaxVec<Uint, C::MaxValidatorsPerCommittee>,
 	/// Validator indices of custody bit 1
-	pub custody_bit_1_indices: VariableVec<Uint, MaxValidatorsPerCommitteeFromConfig>,
+	#[bm(compact)]
+	pub custody_bit_1_indices: MaxVec<Uint, C::MaxValidatorsPerCommittee>,
 	/// Attestation data
 	pub data: AttestationData,
 	/// Aggregate signature
 	pub signature: Signature,
 }
 
-impl<C: Config> DefaultWithConfig<C> for IndexedAttestation {
-	fn default_with_config(config: &C) -> Self {
-		Self {
-			custody_bit_0_indices: VariableVec::default_with_config(config),
-			custody_bit_1_indices: VariableVec::default_with_config(config),
-			data: Default::default(),
-			signature: Default::default(),
-		}
-	}
-}
-
-impl From<IndexedAttestation> for SigningIndexedAttestation {
-	fn from(indexed: IndexedAttestation) -> Self {
+impl<C: Config> From<IndexedAttestation<C>> for SigningIndexedAttestation<C> {
+	fn from(indexed: IndexedAttestation<C>) -> Self {
 		Self {
 			custody_bit_0_indices: indexed.custody_bit_0_indices,
 			custody_bit_1_indices: indexed.custody_bit_1_indices,
@@ -161,26 +152,29 @@ impl From<IndexedAttestation> for SigningIndexedAttestation {
 	}
 }
 
-#[derive(Ssz, IntoTree, FromTree, Clone, PartialEq, Eq)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[bm(config_trait = "Config")]
 /// Signing indexed attestation.
-pub struct SigningIndexedAttestation {
+pub struct SigningIndexedAttestation<C: Config> {
 	/// Validator indices of custody bit 0.
-	pub custody_bit_0_indices: VariableVec<Uint, MaxValidatorsPerCommitteeFromConfig>,
+	#[bm(compact)]
+	pub custody_bit_0_indices: MaxVec<Uint, C::MaxValidatorsPerCommittee>,
 	/// Validator indices of custody bit 1
-	pub custody_bit_1_indices: VariableVec<Uint, MaxValidatorsPerCommitteeFromConfig>,
+	#[bm(compact)]
+	pub custody_bit_1_indices: MaxVec<Uint, C::MaxValidatorsPerCommittee>,
 	/// Attestation data
 	pub data: AttestationData,
 }
 
-#[derive(Ssz, FromTree, IntoTree, Clone, PartialEq, Eq)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[bm(config_trait = "Config")]
 /// Pending attestation.
-pub struct PendingAttestation {
+pub struct PendingAttestation<C: Config> {
 	/// Attester aggregation bitfield
-	pub aggregation_bits: VariableVec<bool, MaxValidatorsPerCommitteeFromConfig>,
+	#[bm(compact)]
+	pub aggregation_bits: MaxVec<bool, C::MaxValidatorsPerCommittee>,
 	/// Attestation data
 	pub data: AttestationData,
 	/// Inclusion delay
@@ -189,7 +183,7 @@ pub struct PendingAttestation {
 	pub proposer_index: Uint,
 }
 
-#[derive(Ssz, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Eth1 data.
@@ -202,27 +196,18 @@ pub struct Eth1Data {
 	pub block_hash: H256,
 }
 
-#[derive(Ssz, FromTree, IntoTree, Clone, PartialEq, Eq)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[bm(config_trait = "Config")]
 /// Historical batch information.
-pub struct HistoricalBatch {
+pub struct HistoricalBatch<C: Config> {
 	/// Block roots
-	pub block_roots: VariableVec<H256, SlotsPerHistoricalRootFromConfig>,
+	pub block_roots: MaxVec<H256, C::SlotsPerHistoricalRoot>,
 	/// State roots
-	pub state_roots: VariableVec<H256, SlotsPerHistoricalRootFromConfig>,
+	pub state_roots: MaxVec<H256, C::SlotsPerHistoricalRoot>,
 }
 
-impl<C: Config> DefaultWithConfig<C> for HistoricalBatch {
-	fn default_with_config(config: &C) -> Self {
-		Self {
-			block_roots: VariableVec::default_with_config(config),
-			state_roots: VariableVec::default_with_config(config),
-		}
-	}
-}
-
-#[derive(Ssz, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Deposit data.
@@ -247,7 +232,7 @@ impl From<DepositData> for SigningDepositData {
 	}
 }
 
-#[derive(Ssz, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Deposit data.
@@ -260,27 +245,19 @@ pub struct SigningDepositData {
 	pub amount: Uint,
 }
 
-#[derive(Ssz, FromTree, IntoTree, Clone, PartialEq, Eq)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[bm(config_trait = "Config")]
 /// Compact committee
-pub struct CompactCommittee {
+pub struct CompactCommittee<C: Config> {
 	/// BLS pubkeys
-	pub pubkeys: VariableVec<ValidatorId, MaxValidatorsPerCommitteeFromConfig>,
+	pub pubkeys: MaxVec<ValidatorId, C::MaxValidatorsPerCommittee>,
 	/// Compact validators
-	pub compact_validators: VariableVec<Uint, MaxValidatorsPerCommitteeFromConfig>,
+	#[bm(compact)]
+	pub compact_validators: MaxVec<Uint, C::MaxValidatorsPerCommittee>,
 }
 
-impl<C: Config> DefaultWithConfig<C> for CompactCommittee {
-	fn default_with_config(config: &C) -> Self {
-		Self {
-			pubkeys: VariableVec::default_with_config(config),
-			compact_validators: VariableVec::default_with_config(config),
-		}
-	}
-}
-
-#[derive(Ssz, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Beacon block header.
@@ -308,7 +285,7 @@ impl From<BeaconBlockHeader> for SigningBeaconBlockHeader {
 	}
 }
 
-#[derive(Ssz, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Beacon block header.

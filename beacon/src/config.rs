@@ -16,6 +16,8 @@
 
 use core::marker::PhantomData;
 use digest::Digest;
+use typenum::Unsigned;
+use serde::{Serialize, Deserialize};
 use crate::primitives::{H256, Uint, Signature, ValidatorId};
 
 /// BLS operations
@@ -54,6 +56,8 @@ impl BLSVerification for BLSNoVerification {
 pub trait Config {
 	/// Digest hash function.
 	type Digest: Digest;
+	type MaxValidatorsPerCommittee: Unsigned;
+	type SlotsPerHistoricalRoot: Unsigned;
 
 	// === Misc ===
 	/// Shard count.
@@ -61,7 +65,7 @@ pub trait Config {
 	/// Target committee size.
 	fn target_committee_size() -> Uint;
 	/// Maximum indices per attestation.
-	fn max_validators_per_committee() -> Uint;
+	fn max_validators_per_committee() -> Uint { Self::MaxValidatorsPerCommittee::to_u64() }
 	/// Minimum per-epoch churn limit.
 	fn min_per_epoch_churn_limit() -> Uint;
 	/// Churn limit quotient.
@@ -103,7 +107,7 @@ pub trait Config {
 	/// Slots per eth1 voting period.
 	fn slots_per_eth1_voting_period() -> Uint;
 	/// Slots per historical root.
-	fn slots_per_historical_root() -> Uint;
+	fn slots_per_historical_root() -> Uint { Self::SlotsPerHistoricalRoot::to_u64() }
 	/// Minimal validator withdrawability delay.
 	fn min_validator_withdrawability_delay() -> Uint;
 	/// Persistent committee period.
@@ -194,15 +198,17 @@ pub trait Config {
 	}
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MinimalConfig<BLS>(PhantomData<BLS>);
 
 impl<BLS: BLSVerification> Config for MinimalConfig<BLS> {
 	type Digest = sha2::Sha256;
+	type MaxValidatorsPerCommittee = typenum::U4096;
+	type SlotsPerHistoricalRoot = typenum::U64;
 
 	// === Misc ===
 	fn shard_count() -> Uint { 8 }
 	fn target_committee_size() -> Uint { 4 }
-	fn max_validators_per_committee() -> Uint { 4096 }
 	fn min_per_epoch_churn_limit() -> Uint { 4 }
 	fn churn_limit_quotient() -> Uint { 65536 }
 	fn shuffle_round_count() -> Uint { 10 }
@@ -226,7 +232,6 @@ impl<BLS: BLSVerification> Config for MinimalConfig<BLS> {
 	fn min_seed_lookahead() -> Uint { 1 }
 	fn activation_exit_delay() -> Uint { 4 }
 	fn slots_per_eth1_voting_period() -> Uint { 16 }
-	fn slots_per_historical_root() -> Uint { 64 }
 	fn min_validator_withdrawability_delay() -> Uint { 256 }
 	fn persistent_committee_period() -> Uint { 2048 }
 	fn max_epochs_per_crosslink() -> Uint { 4 }
@@ -282,15 +287,17 @@ impl<BLS: BLSVerification> Config for MinimalConfig<BLS> {
 	}
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MainnetConfig<BLS>(PhantomData<BLS>);
 
 impl<BLS: BLSVerification> Config for MainnetConfig<BLS> {
 	type Digest = sha2::Sha256;
+	type MaxValidatorsPerCommittee = typenum::U4096;
+	type SlotsPerHistoricalRoot = typenum::U8192;
 
 	// === Misc ===
 	fn shard_count() -> Uint { 1024 }
 	fn target_committee_size() -> Uint { 128 }
-	fn max_validators_per_committee() -> Uint { 4096 }
 	fn min_per_epoch_churn_limit() -> Uint { 4 }
 	fn churn_limit_quotient() -> Uint { 65536 }
 	fn shuffle_round_count() -> Uint { 90 }
@@ -314,7 +321,6 @@ impl<BLS: BLSVerification> Config for MainnetConfig<BLS> {
 	fn min_seed_lookahead() -> Uint { 1 }
 	fn activation_exit_delay() -> Uint { 4 }
 	fn slots_per_eth1_voting_period() -> Uint { 1024 }
-	fn slots_per_historical_root() -> Uint { 8192 }
 	fn min_validator_withdrawability_delay() -> Uint { 256 }
 	fn persistent_committee_period() -> Uint { 2048 }
 	fn max_epochs_per_crosslink() -> Uint { 64 }
