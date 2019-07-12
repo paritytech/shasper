@@ -75,3 +75,5 @@ pub trait Decode: Codec + Sized {
 	/// Attempt to deserialise the value from input.
 	fn decode(value: &[u8]) -> Result<Self, Error>;
 }
+
+pub type LengthOffset = u32;

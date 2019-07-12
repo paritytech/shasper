@@ -2,44 +2,73 @@ use std::fs::File;
 use std::io::{BufReader, Write};
 
 use clap::{App, Arg};
-use beacon::{Config, NoVerificationConfig};
+use beacon::{Config, BLSNoVerification, MinimalConfig, MainnetConfig};
 use beacon::primitives::*;
 use beacon::types::*;
 use serde::Deserialize;
 use ssz::{Encode, Decode};
-use bm_le::{IntoTree, NoopBackend, Intermediate, End};
+use bm_le::{IntoTree, NoopBackend, End};
 use sha2::Sha256;
 
 #[derive(Deserialize, Debug)]
-pub struct Collection {
+pub struct Collection<C: Config> {
 	pub title: String,
-	pub test_cases: Vec<Test>,
+	pub test_cases: Vec<Test<C>>,
 }
 
 #[derive(Deserialize, Debug)]
-pub enum Test {
+pub enum Test<C: Config> {
 	Attestation { },
-	AttestationData { },
-	AttestationDataAndCustodyBit { },
+	AttestationData(TestItem<AttestationData>),
+	AttestationDataAndCustodyBit(TestItem<AttestationDataAndCustodyBit>),
 	AttesterSlashing { },
 	BeaconBlock { },
 	BeaconBlockBody { },
-	BeaconBlockHeader { },
+	BeaconBlockHeader(TestItem<BeaconBlockHeader>),
 	BeaconState { },
-	Checkpoint { },
-	CompactCommittee { },
-	Crosslink { },
+	Checkpoint(TestItem<Checkpoint>),
+	CompactCommittee(TestItem<CompactCommittee<C>>),
+	Crosslink(TestItem<Crosslink>),
 	Deposit { },
-	DepositData { },
-	Eth1Data { },
+	DepositData(TestItem<DepositData>),
+	Eth1Data(TestItem<Eth1Data>),
 	Fork(TestItem<Fork>),
-	HistoricalBatch { },
-	IndexedAttestation { },
-	PendingAttestation { },
+	HistoricalBatch(TestItem<HistoricalBatch<C>>),
+	IndexedAttestation(TestItem<IndexedAttestation<C>>),
+	PendingAttestation(TestItem<PendingAttestation<C>>),
 	ProposerSlashing { },
 	Transfer { },
-	Validator { },
+	Validator(TestItem<Validator>),
 	VoluntaryExit { },
+}
+
+impl<C: Config> Test<C> {
+	pub fn test(&self) {
+		match self {
+			Test::Attestation { } => (),
+			Test::AttestationData(test) => test.test(),
+			Test::AttestationDataAndCustodyBit(test) => test.test(),
+			Test::AttesterSlashing { } => (),
+			Test::BeaconBlock { } => (),
+			Test::BeaconBlockBody { } => (),
+			Test::BeaconBlockHeader(test) => test.test(),
+			Test::BeaconState { } => (),
+			Test::Checkpoint(test) => test.test(),
+			Test::CompactCommittee(test) => test.test(),
+			Test::Crosslink(test) => test.test(),
+			Test::Deposit { } => (),
+			Test::DepositData(test) => test.test(),
+			Test::Eth1Data(test) => test.test(),
+			Test::Fork(test) => test.test(),
+			Test::HistoricalBatch(test) => test.test(),
+			Test::IndexedAttestation(test) => test.test(),
+			Test::PendingAttestation(test) => test.test(),
+			Test::ProposerSlashing { } => (),
+			Test::Transfer { } => (),
+			Test::Validator(test) => test.test(),
+			Test::VoluntaryExit { } => (),
+		}
+	}
 }
 
 #[derive(Deserialize, Debug)]
@@ -79,39 +108,23 @@ fn main() {
         .get_matches();
 
 	let file = File::open(matches.value_of("FILE").expect("FILE parameter not found")).expect("Open file failed");
-	let config = match matches.value_of("CONFIG") {
-		Some("small") | None => NoVerificationConfig::small(),
-		Some("full") => NoVerificationConfig::full(),
-		_ => panic!("Unknown config"),
-	};
-
 	let reader = BufReader::new(file);
-	let coll = serde_yaml::from_reader::<_, Collection>(reader).expect("Parse test cases failed");
 
-	for test in coll.test_cases {
-		match test {
-			Test::Attestation { } => (),
-			Test::AttestationData { } => (),
-			Test::AttestationDataAndCustodyBit { } => (),
-			Test::AttesterSlashing { } => (),
-			Test::BeaconBlock { } => (),
-			Test::BeaconBlockBody { } => (),
-			Test::BeaconBlockHeader { } => (),
-			Test::BeaconState { } => (),
-			Test::Checkpoint { } => (),
-			Test::CompactCommittee { } => (),
-			Test::Crosslink { } => (),
-			Test::Deposit { } => (),
-			Test::DepositData { } => (),
-			Test::Eth1Data { } => (),
-			Test::Fork(test) => test.test(),
-			Test::HistoricalBatch { } => (),
-			Test::IndexedAttestation { } => (),
-			Test::PendingAttestation { } => (),
-			Test::ProposerSlashing { } => (),
-			Test::Transfer { } => (),
-			Test::Validator { } => (),
-			Test::VoluntaryExit { } => (),
-		}
+	match matches.value_of("CONFIG") {
+		Some("small") | None => {
+			let coll = serde_yaml::from_reader::<_, Collection<MinimalConfig<BLSNoVerification>>>(reader)
+				.expect("Parse test cases failed");
+			for test in coll.test_cases {
+				test.test()
+			}
+		},
+		Some("full") => {
+			let coll = serde_yaml::from_reader::<_, Collection<MainnetConfig<BLSNoVerification>>>(reader)
+				.expect("Parse test cases failed");
+			for test in coll.test_cases {
+				test.test()
+			}
+		},
+		_ => panic!("Unknown config"),
 	}
 }

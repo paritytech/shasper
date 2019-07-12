@@ -30,5 +30,6 @@ std = [
 with-serde = [
 	"serde",
 	"impl-serde",
-	"primitive-types/serde"
+	"primitive-types/serde",
+	"generic-array/serde",
 ]

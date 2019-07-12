@@ -6,6 +6,7 @@ pub mod consts;
 
 mod error;
 mod config;
+mod utils;
 
 pub use self::error::*;
 pub use self::config::*;

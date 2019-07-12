@@ -17,6 +17,7 @@
 use core::marker::PhantomData;
 use digest::Digest;
 use typenum::Unsigned;
+use generic_array::ArrayLength;
 use serde::{Serialize, Deserialize};
 use crate::primitives::{H256, Uint, Signature, ValidatorId};
 
@@ -56,8 +57,8 @@ impl BLSVerification for BLSNoVerification {
 pub trait Config {
 	/// Digest hash function.
 	type Digest: Digest;
-	type MaxValidatorsPerCommittee: Unsigned;
-	type SlotsPerHistoricalRoot: Unsigned;
+	type MaxValidatorsPerCommittee: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq;
+	type SlotsPerHistoricalRoot: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + ArrayLength<H256>;
 
 	// === Misc ===
 	/// Shard count.

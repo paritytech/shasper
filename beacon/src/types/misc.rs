@@ -2,6 +2,7 @@
 use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
+use generic_array::GenericArray;
 use crate::*;
 use crate::primitives::*;
 
@@ -174,6 +175,8 @@ pub struct SigningIndexedAttestation<C: Config> {
 pub struct PendingAttestation<C: Config> {
 	/// Attester aggregation bitfield
 	#[bm(compact)]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "crate::utils::serialize_bitlist"))]
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_bitlist"))]
 	pub aggregation_bits: MaxVec<bool, C::MaxValidatorsPerCommittee>,
 	/// Attestation data
 	pub data: AttestationData,
@@ -202,9 +205,9 @@ pub struct Eth1Data {
 /// Historical batch information.
 pub struct HistoricalBatch<C: Config> {
 	/// Block roots
-	pub block_roots: MaxVec<H256, C::SlotsPerHistoricalRoot>,
+	pub block_roots: GenericArray<H256, C::SlotsPerHistoricalRoot>,
 	/// State roots
-	pub state_roots: MaxVec<H256, C::SlotsPerHistoricalRoot>,
+	pub state_roots: GenericArray<H256, C::SlotsPerHistoricalRoot>,
 }
 
 #[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]

@@ -1,4 +1,4 @@
-use crate::{Encode, Decode, Error};
+use crate::{Encode, Decode, Error, LengthOffset};
 use alloc::vec::Vec;
 use alloc::collections::VecDeque;
 
@@ -18,7 +18,8 @@ impl Series {
 		let fixed_parts_size = self.0.iter().fold(0, |acc, part| {
 			acc + match part {
 				SeriesItem::Fixed(ref fixed) => fixed.len(),
-				SeriesItem::Variable(_) => 0u16.using_encoded(|buf| buf.len()),
+				SeriesItem::Variable(_) => LengthOffset::default()
+					.using_encoded(|buf| buf.len()),
 			}
 		});
 
@@ -30,7 +31,7 @@ impl Series {
 					ret.extend_from_slice(fixed);
 				},
 				SeriesItem::Variable(ref variable) => {
-					(offset as u16).using_encoded(|buf| ret.extend_from_slice(buf));
+					(offset as LengthOffset).using_encoded(|buf| ret.extend_from_slice(buf));
 					offset += variable.len();
 				},
 			}
@@ -63,8 +64,8 @@ impl Series {
 				},
 				None => {
 					ret.push(SeriesItem::Variable(Default::default()));
-					let len = 0u16.using_encoded(|buf| buf.len());
-					variable_offsets.push_back(u16::decode(&value[pos..(pos + len)])? as usize);
+					let len = LengthOffset::default().using_encoded(|buf| buf.len());
+					variable_offsets.push_back(LengthOffset::decode(&value[pos..(pos + len)])? as usize);
 					pos += len;
 				},
 			}
@@ -105,12 +106,12 @@ impl Series {
 			None => {
 				let mut pos = 0;
 				let mut variable_offsets = VecDeque::new();
-				let fixed_len = 0u16.using_encoded(|buf| buf.len());
+				let fixed_len = LengthOffset::default().using_encoded(|buf| buf.len());
 
 				while pos + fixed_len <= value.len() &&
 					variable_offsets.front().map(|f| pos + fixed_len <= *f).unwrap_or(true)
 				{
-					variable_offsets.push_back(u16::decode(&value[pos..(pos + fixed_len)])? as usize);
+					variable_offsets.push_back(LengthOffset::decode(&value[pos..(pos + fixed_len)])? as usize);
 					pos += fixed_len;
 				}
 
