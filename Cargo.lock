@@ -182,7 +182,7 @@ dependencies = [
 name = "beacon"
 version = "0.1.2"
 dependencies = [
- "bm-le 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bm-le 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "fixed-hash 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -348,7 +348,7 @@ dependencies = [
 
 [[package]]
 name = "bm"
-version = "0.5.3"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -358,10 +358,10 @@ dependencies = [
 
 [[package]]
 name = "bm-le"
-version = "0.6.1"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "bm 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bm 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "bm-le-derive 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -963,6 +963,7 @@ name = "generic-array"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+ "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
  "typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3674,7 +3675,7 @@ dependencies = [
 name = "ssz"
 version = "0.1.2"
 dependencies = [
- "bm-le 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bm-le 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitive-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3701,7 +3702,7 @@ name = "ssztests"
 version = "0.1.0"
 dependencies = [
  "beacon 0.1.2",
- "bm-le 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bm-le 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -5167,8 +5168,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum blockchain 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "beacfb01421b763e29d6fc003cb07f3d7a7a853ee2d1e7d74cbe6c0ac9c896f6"
 "checksum blockchain-network-simple 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5de28fb4c0d532038a9cf7b76365839faa1f415d3481084948094eaf8e93d52d"
 "checksum bls-aggregates 0.7.0 (git+https://github.com/sigp/signature-schemes)" = "<none>"
-"checksum bm 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "8527b168630c0b57ca1e0f6f80e2854f6568a1e5d5a72e171a738d732196f4f3"
-"checksum bm-le 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "6a2a613d00080d8b9b405dc546d8b74a507846be1639291fbcb7daf281172053"
+"checksum bm 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)" = "2913292638d58b9790d89c5e46ba7373742d9ff33249f0410deafa4f6086e0ca"
+"checksum bm-le 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "43656a0267a76ae654083b0c2d43243512ee437798bf8f8e6cd08f8566a3acfc"
 "checksum bm-le-derive 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3513b2c57a53effebda33dc0ce6dbb6c8248a1914ee45e0331119aeeec86d1f0"
 "checksum bs58 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0de79cfb98e7aa9988188784d8664b4b5dad6eaaa0863b91d9a4ed871d4f7a42"
 "checksum bumpalo 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4639720be048090544634e0402490838995ccdc9d2fe648f528f30d3c33ae71f"

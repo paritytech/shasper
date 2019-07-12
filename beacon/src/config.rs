@@ -57,8 +57,14 @@ impl BLSVerification for BLSNoVerification {
 pub trait Config {
 	/// Digest hash function.
 	type Digest: Digest;
-	type MaxValidatorsPerCommittee: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq;
-	type SlotsPerHistoricalRoot: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + ArrayLength<H256>;
+	type MaxValidatorsPerCommittee: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type SlotsPerHistoricalRoot: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + ArrayLength<H256>;
+	type MaxProposerSlashings: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxAttesterSlashings: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxAttestations: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxDeposits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxVoluntaryExits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxTransfers: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 
 	// === Misc ===
 	/// Shard count.
@@ -142,17 +148,17 @@ pub trait Config {
 
 	// == Max operations per block ==
 	/// Maximum proposer slashings per block.
-	fn max_proposer_slashings() -> Uint;
+	fn max_proposer_slashings() -> Uint { Self::MaxProposerSlashings::to_u64() }
 	/// Maximum attester slashings per block.
-	fn max_attester_slashings() -> Uint;
+	fn max_attester_slashings() -> Uint { Self::MaxAttesterSlashings::to_u64() }
 	/// Maximum attestations per block.
-	fn max_attestations() -> Uint;
+	fn max_attestations() -> Uint { Self::MaxAttestations::to_u64() }
 	/// Maximum deposits per block.
-	fn max_deposits() -> Uint;
+	fn max_deposits() -> Uint { Self::MaxDeposits::to_u64() }
 	/// Maximum voluntary exits per block.
-	fn max_voluntary_exits() -> Uint;
+	fn max_voluntary_exits() -> Uint { Self::MaxVoluntaryExits::to_u64() }
 	/// Maximum transfers per block.
-	fn max_transfers() -> Uint;
+	fn max_transfers() -> Uint { Self::MaxTransfers::to_u64() }
 
 	// == Signature domains ==
 	/// Beacon proposer domain.
@@ -208,6 +214,12 @@ impl<BLS: BLSVerification> Config for MinimalConfig<BLS> {
 	type Digest = sha2::Sha256;
 	type MaxValidatorsPerCommittee = typenum::U4096;
 	type SlotsPerHistoricalRoot = typenum::U64;
+	type MaxProposerSlashings = typenum::U16;
+	type MaxAttesterSlashings = typenum::U1;
+	type MaxAttestations = typenum::U128;
+	type MaxDeposits = typenum::U16;
+	type MaxVoluntaryExits = typenum::U16;
+	type MaxTransfers = typenum::U0;
 
 	// === Misc ===
 	fn shard_count() -> Uint { 8 }
@@ -253,14 +265,6 @@ impl<BLS: BLSVerification> Config for MinimalConfig<BLS> {
 	fn inactivity_penalty_quotient() -> Uint { 33554432 }
 	fn min_slashing_penalty_quotient() -> Uint { 32 }
 
-	// == Max operations per block ==
-	fn max_proposer_slashings() -> Uint { 16 }
-	fn max_attester_slashings() -> Uint { 1 }
-	fn max_attestations() -> Uint { 128 }
-	fn max_deposits() -> Uint { 16 }
-	fn max_voluntary_exits() -> Uint { 16 }
-	fn max_transfers() -> Uint { 0 }
-
 	// == Signature domains ==
 	fn domain_beacon_proposer() -> Uint { 0x00000000 }
 	fn domain_randao() -> Uint { 0x01000000 }
@@ -299,6 +303,12 @@ impl<BLS: BLSVerification> Config for MainnetConfig<BLS> {
 	type Digest = sha2::Sha256;
 	type MaxValidatorsPerCommittee = typenum::U4096;
 	type SlotsPerHistoricalRoot = typenum::U8192;
+	type MaxProposerSlashings = typenum::U16;
+	type MaxAttesterSlashings = typenum::U1;
+	type MaxAttestations = typenum::U128;
+	type MaxDeposits = typenum::U16;
+	type MaxVoluntaryExits = typenum::U16;
+	type MaxTransfers = typenum::U0;
 
 	// === Misc ===
 	fn shard_count() -> Uint { 1024 }
@@ -343,14 +353,6 @@ impl<BLS: BLSVerification> Config for MainnetConfig<BLS> {
 	fn proposer_reward_quotient() -> Uint { 8 }
 	fn inactivity_penalty_quotient() -> Uint { 33554432 }
 	fn min_slashing_penalty_quotient() -> Uint { 32 }
-
-	// == Max operations per block ==
-	fn max_proposer_slashings() -> Uint { 16 }
-	fn max_attester_slashings() -> Uint { 1 }
-	fn max_attestations() -> Uint { 128 }
-	fn max_deposits() -> Uint { 16 }
-	fn max_voluntary_exits() -> Uint { 16 }
-	fn max_transfers() -> Uint { 0 }
 
 	// == Signature domains ==
 	fn domain_beacon_proposer() -> Uint { 0x00000000 }

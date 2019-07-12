@@ -5,68 +5,70 @@ use clap::{App, Arg};
 use beacon::{Config, BLSNoVerification, MinimalConfig, MainnetConfig};
 use beacon::primitives::*;
 use beacon::types::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use ssz::{Encode, Decode};
 use bm_le::{IntoTree, FromTree, InMemoryBackend, End};
 use sha2::Sha256;
 
 #[derive(Deserialize, Debug)]
+#[serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static")]
 pub struct Collection<C: Config> {
 	pub title: String,
 	pub test_cases: Vec<Test<C>>,
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static")]
 pub enum Test<C: Config> {
-	Attestation { },
+	Attestation(TestItem<Attestation<C>>),
 	AttestationData(TestItem<AttestationData>),
 	AttestationDataAndCustodyBit(TestItem<AttestationDataAndCustodyBit>),
-	AttesterSlashing { },
-	BeaconBlock { },
-	BeaconBlockBody { },
+	AttesterSlashing(TestItem<AttesterSlashing<C>>),
+	BeaconBlock(TestItem<BeaconBlock<C>>),
+	BeaconBlockBody(TestItem<BeaconBlockBody<C>>),
 	BeaconBlockHeader(TestItem<BeaconBlockHeader>),
 	BeaconState { },
 	Checkpoint(TestItem<Checkpoint>),
 	CompactCommittee(TestItem<CompactCommittee<C>>),
 	Crosslink(TestItem<Crosslink>),
-	Deposit { },
+	Deposit(TestItem<Deposit>),
 	DepositData(TestItem<DepositData>),
 	Eth1Data(TestItem<Eth1Data>),
 	Fork(TestItem<Fork>),
 	HistoricalBatch(TestItem<HistoricalBatch<C>>),
 	IndexedAttestation(TestItem<IndexedAttestation<C>>),
 	PendingAttestation(TestItem<PendingAttestation<C>>),
-	ProposerSlashing { },
-	Transfer { },
+	ProposerSlashing(TestItem<ProposerSlashing>),
+	Transfer(TestItem<Transfer>),
 	Validator(TestItem<Validator>),
-	VoluntaryExit { },
+	VoluntaryExit(TestItem<VoluntaryExit>),
 }
 
 impl<C: Config + core::fmt::Debug + PartialEq> Test<C> {
 	pub fn test(&self) {
 		match self {
-			Test::Attestation { } => (),
+			Test::Attestation(test) => test.test(),
 			Test::AttestationData(test) => test.test(),
 			Test::AttestationDataAndCustodyBit(test) => test.test(),
-			Test::AttesterSlashing { } => (),
-			Test::BeaconBlock { } => (),
-			Test::BeaconBlockBody { } => (),
+			Test::AttesterSlashing(test) => test.test(),
+			Test::BeaconBlock(test) => (),
+			Test::BeaconBlockBody(test) => (),
 			Test::BeaconBlockHeader(test) => test.test(),
 			Test::BeaconState { } => (),
 			Test::Checkpoint(test) => test.test(),
 			Test::CompactCommittee(test) => test.test(),
 			Test::Crosslink(test) => test.test(),
-			Test::Deposit { } => (),
+			Test::Deposit(test) => test.test(),
 			Test::DepositData(test) => test.test(),
 			Test::Eth1Data(test) => test.test(),
 			Test::Fork(test) => test.test(),
 			Test::HistoricalBatch(test) => test.test(),
 			Test::IndexedAttestation(test) => test.test(),
 			Test::PendingAttestation(test) => test.test(),
-			Test::ProposerSlashing { } => (),
-			Test::Transfer { } => (),
+			Test::ProposerSlashing(test) => test.test(),
+			Test::Transfer(test) => test.test(),
 			Test::Validator(test) => test.test(),
-			Test::VoluntaryExit { } => (),
+			Test::VoluntaryExit(test) => test.test(),
 		}
 	}
 }
