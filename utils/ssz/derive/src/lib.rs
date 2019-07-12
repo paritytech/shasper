@@ -30,6 +30,19 @@ pub fn codec_derive(input: TokenStream) -> TokenStream {
 	let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
 
+	let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+	let where_fields = struct_fields(&input.data)
+		.expect("Not supported derive type")
+        .iter()
+        .map(|f| {
+			let ty = &f.ty;
+
+			quote_spanned! {
+				f.span() => #ty: ssz::Codec
+			}
+		});
+
 	let fields = struct_fields(&input.data)
 		.expect("Not supported derive type")
 		.iter()
@@ -40,7 +53,7 @@ pub fn codec_derive(input: TokenStream) -> TokenStream {
 		});
 
 	let expanded = quote! {
-		impl ssz::Codec for #name {
+		impl #impl_generics ssz::Codec for #name #ty_generics where #where_clause #(#where_fields),* {
 			type Size = ssz::sum!(#(#fields),*);
 		}
 	};
@@ -52,6 +65,19 @@ pub fn codec_derive(input: TokenStream) -> TokenStream {
 pub fn encode_derive(input: TokenStream) -> TokenStream {
 	let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
+
+	let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+	let where_fields = struct_fields(&input.data)
+		.expect("Not supported derive type")
+        .iter()
+        .map(|f| {
+			let ty = &f.ty;
+
+			quote_spanned! {
+				f.span() => #ty: ssz::Encode
+			}
+		});
 
 	let fields = struct_fields(&input.data)
         .expect("Not supported derive type")
@@ -80,7 +106,7 @@ pub fn encode_derive(input: TokenStream) -> TokenStream {
         });
 
 	let expanded = quote! {
-		impl ssz::Encode for #name {
+		impl #impl_generics ssz::Encode for #name #ty_generics where #where_clause #(#where_fields),* {
 			fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
 				let mut series = ssz::Series::default();
 				#(#fields)*
@@ -96,6 +122,18 @@ pub fn encode_derive(input: TokenStream) -> TokenStream {
 pub fn decode_derive(input: TokenStream) -> TokenStream {
 	let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
+	let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+	let where_fields = struct_fields(&input.data)
+		.expect("Not supported derive type")
+        .iter()
+        .map(|f| {
+			let ty = &f.ty;
+
+			quote_spanned! {
+				f.span() => #ty: ssz::Decode
+			}
+		});
 
 	let size_fields = struct_fields(&input.data)
         .expect("Not supported derive type")
@@ -149,7 +187,7 @@ pub fn decode_derive(input: TokenStream) -> TokenStream {
 		});
 
 	let expanded = quote! {
-		impl ssz::Decode for #name {
+		impl #impl_generics ssz::Decode for #name #ty_generics where #where_clause #(#where_fields),* {
 			fn decode(value: &[u8]) -> Result<Self, ssz::Error> {
 				let types = [#(#size_fields),*];
 				let series = ssz::Series::decode_vector(value, &types)?;

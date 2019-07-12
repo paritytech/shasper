@@ -7,10 +7,9 @@ use alloc::vec::Vec;
 
 macro_rules! impl_builtin_fixed_uint_vector {
 	( $( $t:ty ),* ) => { $(
-		impl<L: ArrayLength<$t> + Unsigned> Codec for Compact<GenericArray<$t, L>> where
-			<$t as Codec>::Size: Mul<L>,
+		impl<L: ArrayLength<$t> + Unsigned> Codec for Compact<GenericArray<$t, L>>
 		{
-			type Size = <<$t as Codec>::Size as Mul<L>>::Output;
+			type Size = Mul<<$t as Codec>::Size, L>;
 		}
 
 		impl<'a, L: ArrayLength<$t> + Unsigned> Codec for CompactRef<'a, GenericArray<$t, L>> where
@@ -56,11 +55,8 @@ macro_rules! impl_builtin_fixed_uint_vector {
 
 impl_builtin_fixed_uint_vector!(u8, u16, u32, u64, u128);
 
-impl<L: ArrayLength<bool> + Unsigned> Codec for Compact<GenericArray<bool, L>> where
-	L: Add<typenum::U7>,
-	<L as Add<typenum::U7>>::Output: Div<typenum::U8>,
-{
-	type Size = <<L as Add<typenum::U7>>::Output as Div<typenum::U8>>::Output;
+impl<L: ArrayLength<bool> + Unsigned> Codec for Compact<GenericArray<bool, L>> {
+	type Size = Div<Add<L, typenum::U7>, typenum::U8>;
 }
 
 impl<'a, L: ArrayLength<bool> + Unsigned> Codec for CompactRef<'a, GenericArray<bool, L>> where
@@ -108,10 +104,8 @@ impl<L: ArrayLength<bool>> Decode for Compact<GenericArray<bool, L>> where
 	}
 }
 
-impl<T: Codec, L: ArrayLength<T>> Codec for GenericArray<T, L> where
-	<T as Codec>::Size: Mul<L>,
-{
-	type Size = <<T as Codec>::Size as Mul<L>>::Output;
+impl<T: Codec, L: ArrayLength<T>> Codec for GenericArray<T, L> {
+	type Size = Mul<<T as Codec>::Size, L>;
 }
 
 impl<T: Encode, L: ArrayLength<T>> Encode for GenericArray<T, L> where
