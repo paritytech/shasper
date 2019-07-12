@@ -199,6 +199,8 @@ pub trait Config {
 	}
 }
 
+#[derive(Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MinimalConfig<BLS>(PhantomData<BLS>);
 
@@ -288,6 +290,8 @@ impl<BLS: BLSVerification> Config for MinimalConfig<BLS> {
 	}
 }
 
+#[derive(Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MainnetConfig<BLS>(PhantomData<BLS>);
 

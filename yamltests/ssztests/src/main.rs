@@ -7,7 +7,7 @@ use beacon::primitives::*;
 use beacon::types::*;
 use serde::Deserialize;
 use ssz::{Encode, Decode};
-use bm_le::{IntoTree, NoopBackend, End};
+use bm_le::{IntoTree, FromTree, InMemoryBackend, End};
 use sha2::Sha256;
 
 #[derive(Deserialize, Debug)]
@@ -42,7 +42,7 @@ pub enum Test<C: Config> {
 	VoluntaryExit { },
 }
 
-impl<C: Config> Test<C> {
+impl<C: Config + core::fmt::Debug + PartialEq> Test<C> {
 	pub fn test(&self) {
 		match self {
 			Test::Attestation { } => (),
@@ -79,7 +79,7 @@ pub struct TestItem<T> {
 	signing_root: Option<H256>,
 }
 
-impl<T: Encode + Decode + IntoTree<NoopBackend<Sha256, End>>> TestItem<T> {
+impl<T: core::fmt::Debug + PartialEq + Encode + Decode + IntoTree<InMemoryBackend<Sha256, End>> + FromTree<InMemoryBackend<Sha256, End>>> TestItem<T> {
 	pub fn test(&self) {
 		print!("Testing {} ...", self.serialized);
 		std::io::stdout().flush().ok().expect("Could not flush stdout");
@@ -87,8 +87,14 @@ impl<T: Encode + Decode + IntoTree<NoopBackend<Sha256, End>>> TestItem<T> {
 		let expected = hex::decode(&self.serialized[2..]).unwrap();
 		let encoded = Encode::encode(&self.value);
 		assert_eq!(encoded, expected);
-		let encoded_root = bm_le::tree_root(&self.value);
-		assert_eq!(encoded_root, self.root);
+		let decoded = T::decode(&encoded).unwrap();
+		assert_eq!(decoded, self.value);
+		let mut db = InMemoryBackend::new_with_inherited_empty();
+		let encoded_root = self.value.into_tree(&mut db).unwrap();
+		assert_eq!(H256::from_slice(encoded_root.as_ref()), self.root);
+		let decoded_root = T::from_tree(&encoded_root, &db).unwrap();
+		assert_eq!(decoded_root, self.value);
+
 		println!(" passed");
 	}
 }
