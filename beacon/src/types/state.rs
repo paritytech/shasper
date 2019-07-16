@@ -5,11 +5,13 @@ use bm_le::{IntoTree, FromTree, MaxVec};
 use generic_array::GenericArray;
 use crate::*;
 use crate::primitives::*;
+use crate::types::*;
+use crate::consts;
 
 #[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct BeaconState {
+pub struct BeaconState<C: Config> {
 	// == Versioning ==
 	pub genesis_time: Uint,
 	pub slot: Uint,
@@ -40,8 +42,8 @@ pub struct BeaconState {
 	pub slashings: GenericArray<Uint, C::EpochsPerSlashingsVector>,
 
 	// == Attestations ==
-	pub previous_epoch_attestations: MaxVec<PendingAttestation, Prod<C::MaxAttestations, C::SlotsPerEpoch>>,
-	pub current_epoch_attestations: MaxVec<PendingAttestation, Prod<C::MaxAttestations, C::SlotsPerEpoch>>,
+	pub previous_epoch_attestations: MaxVec<PendingAttestation<C>, C::MaxAttestationsPerEpoch>,
+	pub current_epoch_attestations: MaxVec<PendingAttestation<C>, C::MaxAttestationsPerEpoch>,
 
 	// == Crosslinks ==
 	pub previous_crosslinks: GenericArray<Crosslink, C::ShardCount>,
@@ -49,7 +51,7 @@ pub struct BeaconState {
 
 	// == Finality ==
 	#[bm(compact)]
-	pub justification_bits: GenericArray<bool, C::JustificationBitsLength>,
+	pub justification_bits: GenericArray<bool, consts::JustificationBitsLength>,
 	pub previous_justified_checkpoint: Checkpoint,
 	pub current_justified_checkpoint: Checkpoint,
 	pub finalized_checkpoint: Checkpoint,

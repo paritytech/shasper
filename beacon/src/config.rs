@@ -20,9 +20,10 @@ use typenum::Unsigned;
 use generic_array::ArrayLength;
 use serde::{Serialize, Deserialize};
 use crate::primitives::{H256, Uint, Signature, ValidatorId};
+use crate::types;
 
 /// BLS operations
-pub trait BLSVerification {
+pub trait BLSVerification: Clone + 'static {
 	/// Verify BLS signature.
 	fn verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool;
 	/// Aggregate BLS public keys.
@@ -54,7 +55,7 @@ impl BLSVerification for BLSNoVerification {
 }
 
 /// Constants used in beacon block.
-pub trait Config {
+pub trait Config: Clone + 'static {
 	/// Digest hash function.
 	type Digest: Digest;
 	type MaxValidatorsPerCommittee: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
@@ -66,10 +67,17 @@ pub trait Config {
 	type MaxVoluntaryExits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type MaxTransfers: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type HistoricalRootsLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type ShardCount: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + ArrayLength<types::Crosslink>;
+	type SlotsPerEpoch: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type SlotsPerEth1VotingPeriod: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type ValidatorRegistryLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type EpochsPerHistoricalVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + ArrayLength<H256>;
+	type EpochsPerSlashingsVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + ArrayLength<u64>;
+	type MaxAttestationsPerEpoch: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 
 	// === Misc ===
 	/// Shard count.
-	fn shard_count() -> Uint;
+	fn shard_count() -> Uint { Self::ShardCount::to_u64() }
 	/// Target committee size.
 	fn target_committee_size() -> Uint;
 	/// Maximum indices per attestation.
@@ -107,13 +115,13 @@ pub trait Config {
 	/// Minimum attestation inclusion delay.
 	fn min_attestation_inclusion_delay() -> Uint;
 	/// Slots per epoch.
-	fn slots_per_epoch() -> Uint;
+	fn slots_per_epoch() -> Uint { Self::SlotsPerEpoch::to_u64() }
 	/// Minimum seed lookahead.
 	fn min_seed_lookahead() -> Uint;
 	/// Activation exit delay.
 	fn activation_exit_delay() -> Uint;
 	/// Slots per eth1 voting period.
-	fn slots_per_eth1_voting_period() -> Uint;
+	fn slots_per_eth1_voting_period() -> Uint { Self::SlotsPerEth1VotingPeriod::to_u64() }
 	/// Slots per historical root.
 	fn slots_per_historical_root() -> Uint { Self::SlotsPerHistoricalRoot::to_u64() }
 	/// Minimal validator withdrawability delay.
@@ -127,13 +135,13 @@ pub trait Config {
 
 	// == State list lengths ==
 	/// Epochs per historical vector
-	fn epochs_per_historical_vector() -> Uint;
+	fn epochs_per_historical_vector() -> Uint { Self::EpochsPerHistoricalVector::to_u64() }
 	/// Epochs per slashings vector
-	fn epochs_per_slashings_vector() -> Uint;
+	fn epochs_per_slashings_vector() -> Uint { Self::EpochsPerSlashingsVector::to_u64() }
 	/// Historical roots limit
 	fn historical_roots_limit() -> Uint { Self::HistoricalRootsLimit::to_u64() }
 	/// Validator registry limit
-	fn validator_registry_limit() -> Uint;
+	fn validator_registry_limit() -> Uint { Self::ValidatorRegistryLimit::to_u64() }
 
 	// == Reward and penalty quotients ==
 	/// Base reward quotient.
@@ -221,9 +229,16 @@ impl<BLS: BLSVerification> Config for MinimalConfig<BLS> {
 	type MaxDeposits = typenum::U16;
 	type MaxVoluntaryExits = typenum::U16;
 	type MaxTransfers = typenum::U0;
+	type HistoricalRootsLimit = typenum::U16777216;
+	type ShardCount = typenum::U8;
+	type SlotsPerEpoch = typenum::U8;
+	type SlotsPerEth1VotingPeriod = typenum::U16;
+	type ValidatorRegistryLimit = typenum::U1099511627776;
+	type EpochsPerHistoricalVector = typenum::U64;
+	type EpochsPerSlashingsVector = typenum::U64;
+	type MaxAttestationsPerEpoch = typenum::Prod<Self::MaxAttestations, Self::SlotsPerEpoch>;
 
 	// === Misc ===
-	fn shard_count() -> Uint { 8 }
 	fn target_committee_size() -> Uint { 4 }
 	fn min_per_epoch_churn_limit() -> Uint { 4 }
 	fn churn_limit_quotient() -> Uint { 65536 }
@@ -244,20 +259,12 @@ impl<BLS: BLSVerification> Config for MinimalConfig<BLS> {
 
 	// == Time parameters ==
 	fn min_attestation_inclusion_delay() -> Uint { 1 }
-	fn slots_per_epoch() -> Uint { 8 }
 	fn min_seed_lookahead() -> Uint { 1 }
 	fn activation_exit_delay() -> Uint { 4 }
-	fn slots_per_eth1_voting_period() -> Uint { 16 }
 	fn min_validator_withdrawability_delay() -> Uint { 256 }
 	fn persistent_committee_period() -> Uint { 2048 }
 	fn max_epochs_per_crosslink() -> Uint { 4 }
 	fn min_epochs_to_inactivity_penalty() -> Uint { 4 }
-
-	// == State list lengths ==
-	fn epochs_per_historical_vector() -> Uint { 64 }
-	fn epochs_per_slashings_vector() -> Uint { 64 }
-	fn historical_roots_limit() -> Uint { 16777216 }
-	fn validator_registry_limit() -> Uint { 1099511627776 }
 
 	// == Reward and penalty quotients ==
 	fn base_reward_factor() -> Uint { 64 }
@@ -310,9 +317,16 @@ impl<BLS: BLSVerification> Config for MainnetConfig<BLS> {
 	type MaxDeposits = typenum::U16;
 	type MaxVoluntaryExits = typenum::U16;
 	type MaxTransfers = typenum::U0;
+	type HistoricalRootsLimit = typenum::U16777216;
+	type ShardCount = typenum::U1024;
+	type SlotsPerEpoch = typenum::U64;
+	type SlotsPerEth1VotingPeriod = typenum::U1024;
+	type ValidatorRegistryLimit = typenum::U1099511627776;
+	type EpochsPerHistoricalVector = typenum::U65536;
+	type EpochsPerSlashingsVector = typenum::U8192;
+	type MaxAttestationsPerEpoch = typenum::Prod<Self::MaxAttestations, Self::SlotsPerEpoch>;
 
 	// === Misc ===
-	fn shard_count() -> Uint { 1024 }
 	fn target_committee_size() -> Uint { 128 }
 	fn min_per_epoch_churn_limit() -> Uint { 4 }
 	fn churn_limit_quotient() -> Uint { 65536 }
@@ -333,20 +347,12 @@ impl<BLS: BLSVerification> Config for MainnetConfig<BLS> {
 
 	// == Time parameters ==
 	fn min_attestation_inclusion_delay() -> Uint { 1 }
-	fn slots_per_epoch() -> Uint { 64 }
 	fn min_seed_lookahead() -> Uint { 1 }
 	fn activation_exit_delay() -> Uint { 4 }
-	fn slots_per_eth1_voting_period() -> Uint { 1024 }
 	fn min_validator_withdrawability_delay() -> Uint { 256 }
 	fn persistent_committee_period() -> Uint { 2048 }
 	fn max_epochs_per_crosslink() -> Uint { 64 }
 	fn min_epochs_to_inactivity_penalty() -> Uint { 4 }
-
-	// == State list lengths ==
-	fn epochs_per_historical_vector() -> Uint { 65536 }
-	fn epochs_per_slashings_vector() -> Uint { 8192 }
-	fn historical_roots_limit() -> Uint { 16777216 }
-	fn validator_registry_limit() -> Uint { 1099511627776 }
 
 	// == Reward and penalty quotients ==
 	fn base_reward_factor() -> Uint { 64 }

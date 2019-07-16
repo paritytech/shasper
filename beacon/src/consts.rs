@@ -13,4 +13,4 @@ pub type DepositContractTreeDepth = typenum::U32;
 /// Seconds per day.
 pub const SECONDS_PER_DAY: Uint = 86400;
 /// Justification bits length;
-pub const JUSTIFICATION_BITS_LENGTH: Uint = 4;
+pub type JustificationBitsLength = typenum::U4;
