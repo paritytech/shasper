@@ -52,6 +52,50 @@ macro_rules! impl_builtin_fixed_uint_vector {
 				Ok(Compact(ret))
 			}
 		}
+
+		impl<L: Unsigned> Codec for Compact<VecArray<$t, L>>
+		{
+			type Size = Mul<<$t as Codec>::Size, L>;
+		}
+
+		impl<'a, L: Unsigned> Codec for CompactRef<'a, VecArray<$t, L>> where
+			Compact<VecArray<$t, L>>: Codec,
+		{
+			type Size = <Compact<VecArray<$t, L>> as Codec>::Size;
+		}
+
+		impl<'a, L: Unsigned> Encode for CompactRef<'a, VecArray<$t, L>> where
+			CompactRef<'a, VecArray<$t, L>>: Codec
+		{
+			fn encode(&self) -> Vec<u8> {
+				encode_list(self.0)
+			}
+		}
+
+		impl<L: Unsigned> Encode for Compact<VecArray<$t, L>> where
+			Compact<VecArray<$t, L>>: Codec,
+			for<'a> CompactRef<'a, GenericArray<$t, L>>: Encode
+		{
+			fn encode(&self) -> Vec<u8> {
+				CompactRef(&self.0).encode()
+			}
+		}
+
+		impl<L: Unsigned> Decode for Compact<VecArray<$t, L>> where
+			Compact<VecArray<$t, L>>: Codec,
+		{
+			fn decode(value: &[u8]) -> Result<Self, Error> {
+				let decoded = decode_list::<$t>(value)?;
+				if decoded.len() != L::to_usize() {
+					return Err(Error::InvalidLength)
+				}
+				let mut ret = VecArray::default();
+				for i in 0..decoded.len() {
+					ret[i] = decoded[i];
+				}
+				Ok(Compact(ret))
+			}
+		}
 	)* }
 }
 

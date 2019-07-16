@@ -30,6 +30,7 @@ pub struct BeaconState<C: Config> {
 
 	// == Registry ==
 	pub validators: MaxVec<Validator, C::ValidatorRegistryLimit>,
+	#[bm(compact)]
 	pub balances: MaxVec<Uint, C::ValidatorRegistryLimit>,
 
 	// == Shuffling ==
@@ -39,6 +40,7 @@ pub struct BeaconState<C: Config> {
 	pub compact_committees_roots: VecArray<H256, C::EpochsPerHistoricalVector>,
 
 	// == Slashings ==
+	#[bm(compact)]
 	pub slashings: VecArray<Uint, C::EpochsPerSlashingsVector>,
 
 	// == Attestations ==
@@ -53,7 +55,7 @@ pub struct BeaconState<C: Config> {
 	#[bm(compact)]
 	#[cfg_attr(feature = "serde", serde(serialize_with = "crate::utils::serialize_bitvector"))]
 	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_bitvector"))]
-	pub justification_bits: generic_array::GenericArray<bool, consts::JustificationBitsLength>,
+	pub justification_bits: VecArray<bool, consts::JustificationBitsLength>,
 	pub previous_justified_checkpoint: Checkpoint,
 	pub current_justified_checkpoint: Checkpoint,
 	pub finalized_checkpoint: Checkpoint,
