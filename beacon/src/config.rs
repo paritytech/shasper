@@ -65,6 +65,7 @@ pub trait Config {
 	type MaxDeposits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type MaxVoluntaryExits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type MaxTransfers: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type HistoricalRootsLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 
 	// === Misc ===
 	/// Shard count.
@@ -130,7 +131,7 @@ pub trait Config {
 	/// Epochs per slashings vector
 	fn epochs_per_slashings_vector() -> Uint;
 	/// Historical roots limit
-	fn historical_roots_limit() -> Uint;
+	fn historical_roots_limit() -> Uint { Self::HistoricalRootsLimit::to_u64() }
 	/// Validator registry limit
 	fn validator_registry_limit() -> Uint;
 
