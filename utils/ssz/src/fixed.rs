@@ -1,8 +1,10 @@
 use crate::{Encode, Error, Decode, Compact, CompactRef, Add, Mul, Div, Codec};
 use crate::utils::{encode_list, decode_list};
 use generic_array::{GenericArray, ArrayLength};
+use vecarray::VecArray;
 use primitive_types::H256;
 use typenum::Unsigned;
+use core::convert::TryFrom;
 use alloc::vec::Vec;
 
 macro_rules! impl_builtin_fixed_uint_vector {
@@ -123,6 +125,77 @@ impl<T: Decode, L: ArrayLength<T>> Decode for GenericArray<T, L> where
 		let decoded = decode_list::<T>(value)?;
 
 		GenericArray::from_exact_iter(decoded).ok_or(Error::InvalidLength)
+	}
+}
+
+impl<L: Unsigned> Codec for Compact<VecArray<bool, L>> {
+	type Size = Div<Add<L, typenum::U7>, typenum::U8>;
+}
+
+impl<'a, L: Unsigned> Codec for CompactRef<'a, VecArray<bool, L>> where
+	Compact<VecArray<bool, L>>: Codec,
+{
+	type Size = <Compact<VecArray<bool, L>> as Codec>::Size;
+}
+
+impl<'a, L: Unsigned> Encode for CompactRef<'a, VecArray<bool, L>> where
+	CompactRef<'a, VecArray<bool, L>>: Codec
+{
+	fn encode(&self) -> Vec<u8> {
+		let mut bytes = Vec::new();
+        bytes.resize((self.0.len() + 7) / 8, 0u8);
+
+        for i in 0..self.0.len() {
+            bytes[i / 8] |= (self.0[i] as u8) << (i % 8);
+        }
+		bytes
+	}
+}
+
+impl<L: Unsigned> Encode for Compact<VecArray<bool, L>> where
+	Compact<VecArray<bool, L>>: Codec,
+	for<'a> CompactRef<'a, VecArray<bool, L>>: Encode
+{
+	fn encode(&self) -> Vec<u8> {
+		CompactRef(&self.0).encode()
+	}
+}
+
+impl<L: Unsigned> Decode for Compact<VecArray<bool, L>> where
+	Compact<VecArray<bool, L>>: Codec,
+{
+	fn decode(value: &[u8]) -> Result<Self, Error> {
+		let len = L::to_usize();
+		let mut ret = VecArray::default();
+		for i in 0..len {
+			if i / 8 >= value.len() {
+				return Err(Error::IncorrectSize)
+			}
+			ret[i] = value[i / 8] & (1 << (i % 8)) != 0;
+		}
+		Ok(Compact(ret))
+	}
+}
+
+impl<T: Codec, L: Unsigned> Codec for VecArray<T, L> {
+	type Size = Mul<<T as Codec>::Size, L>;
+}
+
+impl<T: Encode, L: Unsigned> Encode for VecArray<T, L> where
+	VecArray<T, L>: Codec
+{
+	fn encode(&self) -> Vec<u8> {
+		encode_list(&self)
+	}
+}
+
+impl<T: Decode, L: Unsigned> Decode for VecArray<T, L> where
+	VecArray<T, L>: Codec
+{
+	fn decode(value: &[u8]) -> Result<Self, Error> {
+		let decoded = decode_list::<T>(value)?;
+
+		VecArray::try_from(decoded).map_err(|_| Error::InvalidLength)
 	}
 }
 

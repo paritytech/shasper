@@ -17,10 +17,8 @@
 use core::marker::PhantomData;
 use digest::Digest;
 use typenum::Unsigned;
-use generic_array::ArrayLength;
 use serde::{Serialize, Deserialize};
 use crate::primitives::{H256, Uint, Signature, ValidatorId};
-use crate::types;
 
 /// BLS operations
 pub trait BLSVerification: Clone + 'static {
@@ -59,7 +57,7 @@ pub trait Config: Clone + 'static {
 	/// Digest hash function.
 	type Digest: Digest;
 	type MaxValidatorsPerCommittee: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
-	type SlotsPerHistoricalRoot: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + ArrayLength<H256>;
+	type SlotsPerHistoricalRoot: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type MaxProposerSlashings: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type MaxAttesterSlashings: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type MaxAttestations: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
@@ -67,12 +65,12 @@ pub trait Config: Clone + 'static {
 	type MaxVoluntaryExits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type MaxTransfers: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type HistoricalRootsLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
-	type ShardCount: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + ArrayLength<types::Crosslink>;
+	type ShardCount: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type SlotsPerEpoch: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type SlotsPerEth1VotingPeriod: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type ValidatorRegistryLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
-	type EpochsPerHistoricalVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + ArrayLength<H256>;
-	type EpochsPerSlashingsVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + ArrayLength<u64>;
+	type EpochsPerHistoricalVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type EpochsPerSlashingsVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type MaxAttestationsPerEpoch: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 
 	// === Misc ===

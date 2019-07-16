@@ -2,7 +2,7 @@
 use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
-use generic_array::GenericArray;
+use vecarray::VecArray;
 use crate::*;
 use crate::primitives::*;
 
@@ -205,9 +205,9 @@ pub struct Eth1Data {
 /// Historical batch information.
 pub struct HistoricalBatch<C: Config> {
 	/// Block roots
-	pub block_roots: GenericArray<H256, C::SlotsPerHistoricalRoot>,
+	pub block_roots: VecArray<H256, C::SlotsPerHistoricalRoot>,
 	/// State roots
-	pub state_roots: GenericArray<H256, C::SlotsPerHistoricalRoot>,
+	pub state_roots: VecArray<H256, C::SlotsPerHistoricalRoot>,
 }
 
 #[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]

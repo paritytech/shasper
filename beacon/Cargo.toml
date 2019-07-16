@@ -15,6 +15,7 @@ bm-le = { version = "0.6", default-features = false, features = ["derive"] }
 fixed-hash = { version = "0.3.0", default-features = false }
 sha2 = { version = "0.8", default-features = false }
 digest = "0.8"
+vecarray = "0.1"
 generic-array = "0.12"
 typenum = "1.10"
 
@@ -26,10 +27,11 @@ std = [
 	"primitive-types/std",
 	"sha2/std",
 	"fixed-hash/std",
+	"vecarray/std",
 ]
 with-serde = [
 	"serde",
 	"impl-serde",
 	"primitive-types/serde",
-	"generic-array/serde",
+	"vecarray/serde",
 ]

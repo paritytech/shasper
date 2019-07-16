@@ -153,9 +153,16 @@ pub fn decode_derive(input: TokenStream) -> TokenStream {
         .map(|f| {
 			let ty = &f.ty;
 
-			quote_spanned! {
-				f.span() =>
-					<<#ty as ssz::Codec>::Size as ssz::Size>::size()
+			if has_attribute("bm", &f.attrs, "compact") {
+				quote_spanned! {
+					f.span() =>
+						<<ssz::Compact<#ty> as ssz::Codec>::Size as ssz::Size>::size()
+				}
+			} else {
+				quote_spanned! {
+					f.span() =>
+						<<#ty as ssz::Codec>::Size as ssz::Size>::size()
+				}
 			}
 		});
 

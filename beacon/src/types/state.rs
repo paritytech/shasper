@@ -2,7 +2,7 @@
 use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
-use generic_array::GenericArray;
+use vecarray::VecArray;
 use crate::*;
 use crate::primitives::*;
 use crate::types::*;
@@ -19,8 +19,8 @@ pub struct BeaconState<C: Config> {
 
 	// == History ==
 	pub latest_block_header: BeaconBlockHeader,
-	pub block_roots: GenericArray<H256, C::SlotsPerHistoricalRoot>,
-	pub state_roots: GenericArray<H256, C::SlotsPerHistoricalRoot>,
+	pub block_roots: VecArray<H256, C::SlotsPerHistoricalRoot>,
+	pub state_roots: VecArray<H256, C::SlotsPerHistoricalRoot>,
 	pub historical_roots: MaxVec<H256, C::HistoricalRootsLimit>,
 
 	// == Eth1 ==
@@ -34,24 +34,26 @@ pub struct BeaconState<C: Config> {
 
 	// == Shuffling ==
 	pub start_shard: Uint,
-	pub randao_mixes: GenericArray<H256, C::EpochsPerHistoricalVector>,
-	pub active_index_roots: GenericArray<H256, C::EpochsPerHistoricalVector>,
-	pub compact_committees_roots: GenericArray<H256, C::EpochsPerHistoricalVector>,
+	pub randao_mixes: VecArray<H256, C::EpochsPerHistoricalVector>,
+	pub active_index_roots: VecArray<H256, C::EpochsPerHistoricalVector>,
+	pub compact_committees_roots: VecArray<H256, C::EpochsPerHistoricalVector>,
 
 	// == Slashings ==
-	pub slashings: GenericArray<Uint, C::EpochsPerSlashingsVector>,
+	pub slashings: VecArray<Uint, C::EpochsPerSlashingsVector>,
 
 	// == Attestations ==
 	pub previous_epoch_attestations: MaxVec<PendingAttestation<C>, C::MaxAttestationsPerEpoch>,
 	pub current_epoch_attestations: MaxVec<PendingAttestation<C>, C::MaxAttestationsPerEpoch>,
 
 	// == Crosslinks ==
-	pub previous_crosslinks: GenericArray<Crosslink, C::ShardCount>,
-	pub current_crosslinks: GenericArray<Crosslink, C::ShardCount>,
+	pub previous_crosslinks: VecArray<Crosslink, C::ShardCount>,
+	pub current_crosslinks: VecArray<Crosslink, C::ShardCount>,
 
 	// == Finality ==
 	#[bm(compact)]
-	pub justification_bits: GenericArray<bool, consts::JustificationBitsLength>,
+	#[cfg_attr(feature = "serde", serde(serialize_with = "crate::utils::serialize_bitvector"))]
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_bitvector"))]
+	pub justification_bits: generic_array::GenericArray<bool, consts::JustificationBitsLength>,
 	pub previous_justified_checkpoint: Checkpoint,
 	pub current_justified_checkpoint: Checkpoint,
 	pub finalized_checkpoint: Checkpoint,

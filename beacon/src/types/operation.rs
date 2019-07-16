@@ -20,7 +20,7 @@
 use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
-use generic_array::GenericArray;
+use vecarray::VecArray;
 use crate::*;
 use crate::primitives::*;
 use crate::types::*;
@@ -104,7 +104,7 @@ pub struct SigningAttestation<C: Config> {
 /// Block deposit.
 pub struct Deposit {
 	/// Branch in the deposit tree
-	pub proof: GenericArray<H256, typenum::Sum<consts::DepositContractTreeDepth, typenum::U1>>,
+	pub proof: VecArray<H256, typenum::Sum<consts::DepositContractTreeDepth, typenum::U1>>,
 	/// Data
 	pub data: DepositData,
 }
