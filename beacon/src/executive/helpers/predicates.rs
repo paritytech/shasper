@@ -1,6 +1,5 @@
 use crate::types::*;
-use crate::primitives::*;
-use crate::{BeaconState, Config, Error};
+use crate::{BeaconState, Config};
 use bm_le::tree_root;
 
 impl<C: Config> BeaconState<C> {
@@ -57,7 +56,7 @@ impl<C: Config> BeaconState<C> {
 					data: indexed_attestation.data.clone(),
 					custody_bit: false,
 				}),
-				tree_root(&AttestationDataAndCustodyBit {
+				tree_root::<C::Digest, _>(&AttestationDataAndCustodyBit {
 					data: indexed_attestation.data.clone(),
 					custody_bit: true,
 				}),
