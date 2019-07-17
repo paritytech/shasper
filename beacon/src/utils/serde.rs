@@ -1,10 +1,7 @@
-#[cfg(feature = "serde")]
 use serde::{Serializer, Deserializer, de::Error as _};
-#[cfg(feature = "serde")]
 use impl_serde::serialize;
 use core::convert::TryFrom;
 
-#[cfg(feature = "serde")]
 pub fn serialize_bitseq<T: AsRef<[bool]>, S: Serializer>(
 	value: &T,
 	serializer: S,
@@ -23,19 +20,16 @@ pub fn serialize_bitseq<T: AsRef<[bool]>, S: Serializer>(
 	serialize::serialize(&bytes, serializer)
 }
 
-#[cfg(feature = "serde")]
 pub fn serialize_bitlist<ML, S: Serializer>(
 	value: &bm_le::MaxVec<bool, ML>,
 	serializer: S
 ) -> Result<S::Ok, S::Error> { serialize_bitseq(value, serializer, true) }
 
-#[cfg(feature = "serde")]
 pub fn serialize_bitvector<L: typenum::Unsigned, S: Serializer>(
 	value: &vecarray::VecArray<bool, L>,
 	serializer: S
 ) -> Result<S::Ok, S::Error> { serialize_bitseq(value, serializer, false) }
 
-#[cfg(feature = "serde")]
 pub fn deserialize_bitseq<'a, 'de, D: Deserializer<'de>>(
 	deserializer: D,
 	is_list: bool,
@@ -51,14 +45,12 @@ pub fn deserialize_bitseq<'a, 'de, D: Deserializer<'de>>(
 	Ok(ret)
 }
 
-#[cfg(feature = "serde")]
 pub fn deserialize_bitlist<'a, 'de, ML, D: Deserializer<'de>>(
 	deserializer: D
 ) -> Result<bm_le::MaxVec<bool, ML>, D::Error> {
 	Ok(bm_le::MaxVec::from(deserialize_bitseq(deserializer, true)?))
 }
 
-#[cfg(feature = "serde")]
 pub fn deserialize_bitvector<'a, 'de, L: typenum::Unsigned, D: Deserializer<'de>>(
 	deserializer: D
 ) -> Result<vecarray::VecArray<bool, L>, D::Error> {
