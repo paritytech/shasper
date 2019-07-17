@@ -22,3 +22,7 @@ pub use self::version::{Version, H32};
 
 pub type Uint = u64;
 pub use primitive_types::H256;
+
+pub type Epoch = Uint;
+pub type Slot = Uint;
+pub type ValidatorIndex = Uint;

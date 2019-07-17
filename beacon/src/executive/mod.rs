@@ -1,3 +1,5 @@
+mod helpers;
+
 #[cfg(feature = "serde")]
 use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};

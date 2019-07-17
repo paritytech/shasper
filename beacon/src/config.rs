@@ -55,7 +55,7 @@ impl BLSVerification for BLSNoVerification {
 /// Constants used in beacon block.
 pub trait Config: Clone + 'static {
 	/// Digest hash function.
-	type Digest: Digest;
+	type Digest: Digest<OutputSize=typenum::U32>;
 	type MaxValidatorsPerCommittee: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type SlotsPerHistoricalRoot: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 	type MaxProposerSlashings: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
