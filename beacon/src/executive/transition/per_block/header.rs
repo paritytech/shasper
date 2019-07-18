@@ -14,7 +14,9 @@ impl<C: Config> BeaconState<C> {
 			return Err(Error::BlockSlotInvalid)
 		}
 
-		if block.parent_root() != &tree_root::<C::Digest, _>(&self.latest_block_header) {
+		if block.parent_root() != &tree_root::<C::Digest, _>(
+			&SigningBeaconBlockHeader::from(self.latest_block_header.clone())
+		) {
 			return Err(Error::BlockPreviousRootInvalid)
 		}
 

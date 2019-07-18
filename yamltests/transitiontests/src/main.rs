@@ -36,12 +36,12 @@ fn main() {
 	}
 }
 
-fn run_all<C: Config + DeserializeOwned>(runner: &str, file: File) {
+fn run_all<C: Config + serde::Serialize + DeserializeOwned>(runner: &str, file: File) {
 	match runner {
 		"attestation" => run::<AttestationTest<C>>(file),
 		"attester_slashing" => run::<AttesterSlashingTest<C>>(file),
-		// "block_header" => run::<BlockHeaderTest, _>(file, &config),
-		// "deposit" => run::<DepositTest, _>(file, &config),
+		"block_header" => run::<BlockHeaderTest<C>>(file),
+		"deposit" => run::<DepositTest<C>>(file),
 		"proposer_slashing" => run::<ProposerSlashingTest<C>>(file),
 		// "transfer" => run::<TransferTest, _>(file, &config),
 		// "voluntary_exit" => run::<VoluntaryExitTest, _>(file, &config),

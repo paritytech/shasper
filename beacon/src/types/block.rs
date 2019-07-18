@@ -94,6 +94,17 @@ impl<C: Config> Block for BeaconBlock<C> {
 	fn signature(&self) -> Option<&Signature> { Some(&self.signature) }
 }
 
+impl<'a, C: Config, T: Block<Config=C>> From<&'a T> for UnsealedBeaconBlock<C> {
+	fn from(t: &'a T) -> UnsealedBeaconBlock<C> {
+		UnsealedBeaconBlock {
+			slot: t.slot(),
+			parent_root: t.parent_root().clone(),
+			state_root: t.state_root().clone(),
+			body: t.body().clone(),
+		}
+	}
+}
+
 #[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static"))]
