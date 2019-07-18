@@ -254,12 +254,12 @@ impl Config for MinimalConfig {
 	fn min_slashing_penalty_quotient() -> Uint { 32 }
 
 	// == Signature domains ==
-	fn domain_beacon_proposer() -> Uint { 0x00000000 }
-	fn domain_randao() -> Uint { 0x01000000 }
-	fn domain_attestation() -> Uint { 0x02000000 }
-	fn domain_deposit() -> Uint { 0x03000000 }
-	fn domain_voluntary_exit() -> Uint { 0x04000000 }
-	fn domain_transfer() -> Uint { 0x05000000 }
+	fn domain_beacon_proposer() -> Uint { 0 }
+	fn domain_randao() -> Uint { 1 }
+	fn domain_attestation() -> Uint { 2 }
+	fn domain_deposit() -> Uint { 3 }
+	fn domain_voluntary_exit() -> Uint { 4 }
+	fn domain_transfer() -> Uint { 5 }
 }
 
 #[derive(Default, Clone, PartialEq, Eq)]
@@ -322,10 +322,10 @@ impl Config for MainnetConfig {
 	fn min_slashing_penalty_quotient() -> Uint { 32 }
 
 	// == Signature domains ==
-	fn domain_beacon_proposer() -> Uint { 0x00000000 }
-	fn domain_randao() -> Uint { 0x01000000 }
-	fn domain_attestation() -> Uint { 0x02000000 }
-	fn domain_deposit() -> Uint { 0x03000000 }
-	fn domain_voluntary_exit() -> Uint { 0x04000000 }
-	fn domain_transfer() -> Uint { 0x05000000 }
+	fn domain_beacon_proposer() -> Uint { 0 }
+	fn domain_randao() -> Uint { 1 }
+	fn domain_attestation() -> Uint { 2 }
+	fn domain_deposit() -> Uint { 3 }
+	fn domain_voluntary_exit() -> Uint { 4 }
+	fn domain_transfer() -> Uint { 5 }
 }

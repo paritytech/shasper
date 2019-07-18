@@ -116,8 +116,8 @@ pub fn is_valid_merkle_branch<C: Config>(
 
 pub fn bls_domain(domain_type: u64, fork_version: Version) -> u64 {
 	let mut bytes = [0u8; 8];
-	(&mut bytes[0..4]).copy_from_slice(fork_version.as_ref());
-	(&mut bytes[4..8]).copy_from_slice(&domain_type.to_le_bytes()[0..4]);
+	(&mut bytes[0..4]).copy_from_slice(&domain_type.to_le_bytes()[0..4]);
+	(&mut bytes[4..8]).copy_from_slice(fork_version.as_ref());
 
 	u64::from_le_bytes(bytes)
 }

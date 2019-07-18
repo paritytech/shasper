@@ -23,25 +23,25 @@ use crate::{TestWithBLS, run_test_with};
 // 	}
 // }
 
-// #[derive(Serialize, Deserialize, Debug)]
-// #[serde(deny_unknown_fields)]
-// pub struct AttesterSlashingTest {
-// 	pub bls_setting: Option<usize>,
-// 	pub description: String,
-// 	pub pre: BeaconState,
-// 	pub attester_slashing: AttesterSlashing,
-// 	pub post: Option<BeaconState>,
-// }
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct AttesterSlashingTest<C: Config> {
+	pub bls_setting: Option<usize>,
+	pub description: String,
+	pub pre: BeaconState<C>,
+	pub attester_slashing: AttesterSlashing<C>,
+	pub post: Option<BeaconState<C>>,
+}
 
-// impl TestWithBLS for AttesterSlashingTest {
-// 	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
+impl<C: Config> TestWithBLS for AttesterSlashingTest<C> {
+	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
 
-// 	fn run<C: Config>(&self, config: &C) {
-// 		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
-// 			executive.process_attester_slashing(self.attester_slashing.clone())
-// 		});
-// 	}
-// }
+	fn run<BLS: BLSConfig>(&self) {
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), |state| {
+			state.process_attester_slashing::<BLS>(self.attester_slashing.clone())
+		});
+	}
+}
 
 // #[derive(Serialize, Deserialize, Debug)]
 // #[serde(deny_unknown_fields)]
