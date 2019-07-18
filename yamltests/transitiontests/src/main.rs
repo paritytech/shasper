@@ -38,7 +38,7 @@ fn main() {
 
 fn run_all<C: Config + DeserializeOwned>(runner: &str, file: File) {
 	match runner {
-		// "attestation" => run::<AttestationTest, _>(file, &config),
+		"attestation" => run::<AttestationTest<C>>(file),
 		"attester_slashing" => run::<AttesterSlashingTest<C>>(file),
 		// "block_header" => run::<BlockHeaderTest, _>(file, &config),
 		// "deposit" => run::<DepositTest, _>(file, &config),

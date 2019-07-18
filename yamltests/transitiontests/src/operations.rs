@@ -3,25 +3,25 @@ use beacon::types::*;
 use beacon::{BeaconState, Config, BLSConfig};
 use crate::{TestWithBLS, run_test_with};
 
-// #[derive(Serialize, Deserialize, Debug)]
-// #[serde(deny_unknown_fields)]
-// pub struct AttestationTest {
-// 	pub bls_setting: Option<usize>,
-// 	pub description: String,
-// 	pub pre: BeaconState,
-// 	pub attestation: Attestation,
-// 	pub post: Option<BeaconState>,
-// }
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct AttestationTest<C: Config> {
+	pub bls_setting: Option<usize>,
+	pub description: String,
+	pub pre: BeaconState<C>,
+	pub attestation: Attestation<C>,
+	pub post: Option<BeaconState<C>>,
+}
 
-// impl TestWithBLS for AttestationTest {
-// 	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
+impl<C: Config> TestWithBLS for AttestationTest<C> {
+	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
 
-// 	fn run<C: Config>(&self, config: &C) {
-// 		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
-// 			executive.process_attestation(self.attestation.clone())
-// 		});
-// 	}
-// }
+	fn run<BLS: BLSConfig>(&self) {
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), |state| {
+			state.process_attestation::<BLS>(self.attestation.clone())
+		});
+	}
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
