@@ -1,7 +1,5 @@
-use crate::primitives::*;
 use crate::types::*;
-use crate::{Config, BeaconState, Error};
-use bm_le::tree_root;
+use crate::{Config, BeaconState};
 
 impl<C: Config> BeaconState<C> {
 	/// Process eth1 data vote given in a block.

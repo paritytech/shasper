@@ -1,8 +1,6 @@
-use crate::primitives::*;
 use crate::types::*;
-use crate::{Config, BeaconState, Error, BLSConfig, utils, consts};
-use bm_le::{tree_root, MaxVec};
-use core::cmp::min;
+use crate::{Config, BeaconState, Error, BLSConfig, consts};
+use bm_le::tree_root;
 
 impl<C: Config> BeaconState<C> {
 	/// Push a new `VoluntaryExit` to the state.

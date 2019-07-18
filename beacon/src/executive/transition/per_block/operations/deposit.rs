@@ -1,7 +1,6 @@
-use crate::primitives::*;
 use crate::types::*;
 use crate::{Config, BeaconState, Error, BLSConfig, utils, consts};
-use bm_le::{tree_root, MaxVec};
+use bm_le::tree_root;
 use core::cmp::min;
 
 impl<C: Config> BeaconState<C> {

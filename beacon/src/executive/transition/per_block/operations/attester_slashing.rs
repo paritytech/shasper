@@ -1,7 +1,5 @@
-use crate::primitives::*;
 use crate::types::*;
-use crate::{Config, BeaconState, Error, BLSConfig, utils};
-use bm_le::{tree_root, MaxVec};
+use crate::{Config, BeaconState, Error, BLSConfig};
 
 impl<C: Config> BeaconState<C> {
 	/// Push a new `AttesterSlashing` to the state.

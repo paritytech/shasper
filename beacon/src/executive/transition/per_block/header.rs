@@ -1,4 +1,3 @@
-use crate::primitives::*;
 use crate::types::*;
 use crate::{Config, BeaconState, Error, BLSConfig};
 use bm_le::tree_root;

@@ -108,25 +108,25 @@ impl<C: Config> TestWithBLS for ProposerSlashingTest<C> {
 	}
 }
 
-// #[derive(Serialize, Deserialize, Debug)]
-// #[serde(deny_unknown_fields)]
-// pub struct TransferTest {
-// 	pub bls_setting: Option<usize>,
-// 	pub description: String,
-// 	pub pre: BeaconState,
-// 	pub transfer: Transfer,
-// 	pub post: Option<BeaconState>,
-// }
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct TransferTest<C: Config> {
+	pub bls_setting: Option<usize>,
+	pub description: String,
+	pub pre: BeaconState<C>,
+	pub transfer: Transfer,
+	pub post: Option<BeaconState<C>>,
+}
 
-// impl TestWithBLS for TransferTest {
-// 	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
+impl<C: Config> TestWithBLS for TransferTest<C> {
+	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
 
-// 	fn run<C: Config>(&self, config: &C) {
-// 		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
-// 			executive.process_transfer(self.transfer.clone())
-// 		});
-// 	}
-// }
+	fn run<BLS: BLSConfig>(&self) {
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), |state| {
+			state.process_transfer::<BLS>(self.transfer.clone())
+		});
+	}
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
