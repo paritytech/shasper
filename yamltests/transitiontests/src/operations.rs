@@ -128,22 +128,22 @@ impl<C: Config> TestWithBLS for ProposerSlashingTest<C> {
 // 	}
 // }
 
-// #[derive(Serialize, Deserialize, Debug)]
-// #[serde(deny_unknown_fields)]
-// pub struct VoluntaryExitTest {
-// 	pub bls_setting: Option<usize>,
-// 	pub description: String,
-// 	pub pre: BeaconState,
-// 	pub voluntary_exit: VoluntaryExit,
-// 	pub post: Option<BeaconState>,
-// }
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct VoluntaryExitTest<C: Config> {
+	pub bls_setting: Option<usize>,
+	pub description: String,
+	pub pre: BeaconState<C>,
+	pub voluntary_exit: VoluntaryExit,
+	pub post: Option<BeaconState<C>>,
+}
 
-// impl TestWithBLS for VoluntaryExitTest {
-// 	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
+impl<C: Config> TestWithBLS for VoluntaryExitTest<C> {
+	fn bls_setting(&self) -> Option<usize> { self.bls_setting }
 
-// 	fn run<C: Config>(&self, config: &C) {
-// 		run_test_with(&self.description, &self.pre, self.post.as_ref(), config, |executive| {
-// 			executive.process_voluntary_exit(self.voluntary_exit.clone())
-// 		});
-// 	}
-// }
+	fn run<BLS: BLSConfig>(&self) {
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), |state| {
+			state.process_voluntary_exit::<BLS>(self.voluntary_exit.clone())
+		});
+	}
+}

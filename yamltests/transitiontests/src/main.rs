@@ -44,7 +44,7 @@ fn run_all<C: Config + serde::Serialize + DeserializeOwned>(runner: &str, file: 
 		"deposit" => run::<DepositTest<C>>(file),
 		"proposer_slashing" => run::<ProposerSlashingTest<C>>(file),
 		// "transfer" => run::<TransferTest, _>(file, &config),
-		// "voluntary_exit" => run::<VoluntaryExitTest, _>(file, &config),
+		"voluntary_exit" => run::<VoluntaryExitTest<C>>(file),
 		// "crosslinks" => run::<CrosslinksTest, _>(file, &config),
 		// "registry_updates" => run::<RegistryUpdatesTest, _>(file, &config),
 		// "blocks" => run::<BlocksTest, _>(file, &config),
