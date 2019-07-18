@@ -21,7 +21,7 @@ use serde::{Serialize, Deserialize};
 use crate::primitives::{H256, Uint, Signature, ValidatorId};
 
 /// BLS operations
-pub trait BLSVerification: Clone + 'static {
+pub trait BLSVerification: Default + Clone + 'static {
 	/// Verify BLS signature.
 	fn verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool;
 	/// Aggregate BLS public keys.
@@ -33,7 +33,7 @@ pub trait BLSVerification: Clone + 'static {
 }
 
 /// Run bls without any verification.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct BLSNoVerification;
 
@@ -53,7 +53,7 @@ impl BLSVerification for BLSNoVerification {
 }
 
 /// Constants used in beacon block.
-pub trait Config: Clone + 'static {
+pub trait Config: Default + Clone + 'static {
 	/// Digest hash function.
 	type Digest: Digest<OutputSize=typenum::U32>;
 	type MaxValidatorsPerCommittee: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
@@ -212,7 +212,7 @@ pub trait Config: Clone + 'static {
 	}
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MinimalConfig<BLS>(PhantomData<BLS>);
@@ -300,7 +300,7 @@ impl<BLS: BLSVerification> Config for MinimalConfig<BLS> {
 	}
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MainnetConfig<BLS>(PhantomData<BLS>);

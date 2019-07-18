@@ -1,6 +1,8 @@
 use crate::types::*;
 use crate::primitives::*;
 use crate::{BeaconState, Config, Error, utils};
+use vecarray::VecArray;
+use bm_le::tree_root;
 use core::cmp::{max, min};
 
 impl<C: Config> BeaconState<C> {
@@ -163,6 +165,25 @@ impl<C: Config> BeaconState<C> {
 
 		Ok(utils::start_slot_of_epoch::<C>(attestation.target.epoch) +
 		   offset / (committee_count / C::slots_per_epoch()))
+	}
+
+	pub fn compact_committees_root(&self, epoch: Uint) -> Result<H256, Error> {
+		let mut committees = VecArray::<CompactCommittee<C>, C::ShardCount>::default();
+		let start_shard = self.start_shard(epoch)?;
+
+		for committee_number in 0..self.committee_count(epoch) {
+			let shard = (start_shard + committee_number) % C::shard_count();
+			for index in self.crosslink_committee(epoch, shard)? {
+				let validator = &self.validators[index as usize];
+				committees[shard as usize].pubkeys.push(validator.pubkey.clone());
+				let compact_balance = validator.effective_balance / C::effective_balance_increment();
+				let compact_validator = (index << 16) +
+					(if validator.slashed { 1 } else { 0 } << 15) + compact_balance;
+				committees[shard as usize].compact_validators.append(compact_validator);
+			}
+		}
+
+		Ok(tree_root::<C::Digest, _>(&committees))
 	}
 
 	pub fn domain(&self, domain_type: Uint, message_epoch: Option<Uint>) -> Uint {
