@@ -4646,6 +4646,19 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "transitiontests"
+version = "0.1.0"
+dependencies = [
+ "beacon 0.1.2",
+ "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_yaml 0.8.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shasper-crypto 0.1.0",
+ "ssz 0.1.2",
+]
+
+[[package]]
 name = "trie-db"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

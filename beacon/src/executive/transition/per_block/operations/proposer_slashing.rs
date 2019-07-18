@@ -1,11 +1,11 @@
 use crate::primitives::*;
 use crate::types::*;
-use crate::{Config, BeaconState, Error, utils};
+use crate::{Config, BeaconState, Error, BLSConfig, utils};
 use bm_le::tree_root;
 
 impl<C: Config> BeaconState<C> {
 	/// Push a new `ProposerSlashing` to the state.
-	pub fn process_proposer_slashing(
+	pub fn process_proposer_slashing<BLS: BLSConfig>(
 		&mut self,
 		proposer_slashing: ProposerSlashing
 	) -> Result<(), Error> {
@@ -38,7 +38,7 @@ impl<C: Config> BeaconState<C> {
 					Some(utils::epoch_of_slot::<C>(header.slot))
 				);
 
-				if !C::bls_verify(
+				if !BLS::verify(
 					&proposer.pubkey,
 					&tree_root::<C::Digest, _>(&SigningBeaconBlockHeader::from((*header).clone())),
 					&header.signature,

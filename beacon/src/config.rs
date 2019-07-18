@@ -21,7 +21,7 @@ use serde::{Serialize, Deserialize};
 use crate::primitives::{H256, Uint, Signature, ValidatorId};
 
 /// BLS operations
-pub trait BLSVerification: Default + Clone + 'static {
+pub trait BLSConfig: Default + Clone + 'static {
 	/// Verify BLS signature.
 	fn verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool;
 	/// Aggregate BLS public keys.
@@ -37,7 +37,7 @@ pub trait BLSVerification: Default + Clone + 'static {
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct BLSNoVerification;
 
-impl BLSVerification for BLSNoVerification {
+impl BLSConfig for BLSNoVerification {
 	fn verify(_pubkey: &ValidatorId, _message: &H256, _signature: &Signature, _domain: u64) -> bool {
 		true
 	}
@@ -53,7 +53,7 @@ impl BLSVerification for BLSNoVerification {
 }
 
 /// Constants used in beacon block.
-pub trait Config: Default + Clone + 'static {
+pub trait Config: Default + Clone + PartialEq + Eq + core::fmt::Debug + 'static {
 	/// Digest hash function.
 	type Digest: Digest<OutputSize=typenum::U32>;
 	type MaxValidatorsPerCommittee: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
@@ -181,24 +181,6 @@ pub trait Config: Default + Clone + 'static {
 	/// Transfer domain.
 	fn domain_transfer() -> Uint;
 
-	// == BLS ==
-	/// Verify BLS signature.
-	fn bls_verify(
-		pubkey: &ValidatorId,
-		message: &H256,
-		signature: &Signature,
-		domain: u64
-	) -> bool;
-	/// Verify multiple BLS signatures.
-	fn bls_verify_multiple(
-		pubkeys: &[ValidatorId],
-		messages: &[H256],
-		signature: &Signature,
-		domain: u64
-	) -> bool;
-	/// Aggregate BLS public keys.
-	fn bls_aggregate_pubkeys(pubkeys: &[ValidatorId]) -> ValidatorId;
-
 	// == Helpers ==
 	/// Hash function.
 	fn hash<A: AsRef<[u8]>, I: IntoIterator<Item=A>>(
@@ -215,9 +197,9 @@ pub trait Config: Default + Clone + 'static {
 #[derive(Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct MinimalConfig<BLS>(PhantomData<BLS>);
+pub struct MinimalConfig;
 
-impl<BLS: BLSVerification> Config for MinimalConfig<BLS> {
+impl Config for MinimalConfig {
 	type Digest = sha2::Sha256;
 	type MaxValidatorsPerCommittee = typenum::U4096;
 	type SlotsPerHistoricalRoot = typenum::U64;
@@ -278,34 +260,14 @@ impl<BLS: BLSVerification> Config for MinimalConfig<BLS> {
 	fn domain_deposit() -> Uint { 0x03000000 }
 	fn domain_voluntary_exit() -> Uint { 0x04000000 }
 	fn domain_transfer() -> Uint { 0x05000000 }
-
-	// == BLS ==
-	/// Verify BLS signature.
-	fn bls_verify(
-		pubkey: &ValidatorId,
-		message: &H256,
-		signature: &Signature,
-		domain: u64
-	) -> bool { BLS::verify(pubkey, message, signature, domain) }
-	/// Verify multiple BLS signatures.
-	fn bls_verify_multiple(
-		pubkeys: &[ValidatorId],
-		messages: &[H256],
-		signature: &Signature,
-		domain: u64
-	) -> bool { BLS::verify_multiple(pubkeys, messages, signature, domain) }
-	/// Aggregate BLS public keys.
-	fn bls_aggregate_pubkeys(pubkeys: &[ValidatorId]) -> ValidatorId {
-		BLS::aggregate_pubkeys(pubkeys)
-	}
 }
 
 #[derive(Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct MainnetConfig<BLS>(PhantomData<BLS>);
+pub struct MainnetConfig;
 
-impl<BLS: BLSVerification> Config for MainnetConfig<BLS> {
+impl Config for MainnetConfig {
 	type Digest = sha2::Sha256;
 	type MaxValidatorsPerCommittee = typenum::U4096;
 	type SlotsPerHistoricalRoot = typenum::U8192;
@@ -366,24 +328,4 @@ impl<BLS: BLSVerification> Config for MainnetConfig<BLS> {
 	fn domain_deposit() -> Uint { 0x03000000 }
 	fn domain_voluntary_exit() -> Uint { 0x04000000 }
 	fn domain_transfer() -> Uint { 0x05000000 }
-
-	// == BLS ==
-	/// Verify BLS signature.
-	fn bls_verify(
-		pubkey: &ValidatorId,
-		message: &H256,
-		signature: &Signature,
-		domain: u64
-	) -> bool { BLS::verify(pubkey, message, signature, domain) }
-	/// Verify multiple BLS signatures.
-	fn bls_verify_multiple(
-		pubkeys: &[ValidatorId],
-		messages: &[H256],
-		signature: &Signature,
-		domain: u64
-	) -> bool { BLS::verify_multiple(pubkeys, messages, signature, domain) }
-	/// Aggregate BLS public keys.
-	fn bls_aggregate_pubkeys(pubkeys: &[ValidatorId]) -> ValidatorId {
-		BLS::aggregate_pubkeys(pubkeys)
-	}
 }

@@ -1,10 +1,10 @@
 use crate::types::*;
-use crate::{BeaconState, Config};
+use crate::{BeaconState, Config, BLSConfig};
 use bm_le::tree_root;
 
 impl<C: Config> BeaconState<C> {
 	/// Check if ``indexed_attestation`` has valid indices and signature.
-	pub fn is_valid_indexed_attestation(
+	pub fn is_valid_indexed_attestation<BLS: BLSConfig>(
 		&self,
 		indexed_attestation: &IndexedAttestation<C>
 	) -> bool {
@@ -36,15 +36,15 @@ impl<C: Config> BeaconState<C> {
 			return false
 		}
 
-		C::bls_verify_multiple(
+		BLS::verify_multiple(
 			&[
-				C::bls_aggregate_pubkeys(
+				BLS::aggregate_pubkeys(
 					&bit_0_indices
 						.iter()
 						.map(|i| self.validators[*i as usize].pubkey)
 						.collect::<Vec<_>>()[..]
 				),
-				C::bls_aggregate_pubkeys(
+				BLS::aggregate_pubkeys(
 					&bit_1_indices
 						.iter()
 						.map(|i| self.validators[*i as usize].pubkey)

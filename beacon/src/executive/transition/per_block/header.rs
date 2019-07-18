@@ -1,10 +1,10 @@
 use crate::primitives::*;
 use crate::types::*;
-use crate::{Config, BeaconState, Error};
+use crate::{Config, BeaconState, Error, BLSConfig};
 use bm_le::tree_root;
 
 impl<C: Config> BeaconState<C> {
-	pub fn process_block_header<'a, B: Block>(
+	pub fn process_block_header<'a, B: Block, BLS: BLSConfig>(
 		&'a mut self,
 		block: &'a B
 	) -> Result<(), Error> where
@@ -33,7 +33,7 @@ impl<C: Config> BeaconState<C> {
 		}
 
 		if let Some(signature) = block.signature() {
-			if !C::bls_verify(
+			if !BLS::verify(
 				&proposer.pubkey,
 				&tree_root::<C::Digest, _>(&UnsealedBeaconBlock::from(block)),
 				signature,

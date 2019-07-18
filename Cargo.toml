@@ -14,6 +14,7 @@ members = [
 	"utils/ssz/derive",
 	"utils/keccak-hasher",
 	"yamltests/ssztests",
+	"yamltests/transitiontests",
 ]
 exclude = [
 	"substrate/runtime/wasm",

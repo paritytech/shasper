@@ -1,15 +1,14 @@
-mod epoch_processing;
+// mod epoch_processing;
 mod operations;
-mod sanity;
+// mod sanity;
 
-pub use epoch_processing::{CrosslinksTest, RegistryUpdatesTest};
-pub use operations::{AttestationTest, AttesterSlashingTest, BlockHeaderTest, DepositTest, ProposerSlashingTest, TransferTest, VoluntaryExitTest};
-pub use sanity::{BlocksTest, SlotsTest};
+// pub use epoch_processing::{CrosslinksTest, RegistryUpdatesTest};
+pub use operations::*;
+// pub use sanity::{BlocksTest, SlotsTest};
 
 use serde_derive::{Serialize, Deserialize};
-use beacon::types::BeaconState;
-use beacon::{Executive, ParameteredConfig, Config, FromConfig, Error};
-use crypto::bls;
+use beacon::{BeaconState, Config, BLSConfig, BLSNoVerification, Error};
+use crypto::bls::BLSVerification;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -26,18 +25,17 @@ pub struct Collection<T> {
 
 pub trait TestWithBLS {
 	fn bls_setting(&self) -> Option<usize>;
-	fn run<C: Config>(&self, config: &C);
+	fn run<BLS: BLSConfig>(&self);
 }
 
 impl<T: TestWithBLS> Test for T {
-	fn run<C: Config>(&self, config: &C) {
+	fn run(&self) {
 		match self.bls_setting() {
 			None | Some(0) | Some(2) => {
-				TestWithBLS::run(self, config);
+				TestWithBLS::run::<BLSNoVerification>(self);
 			},
 			Some(1) => {
-				let config = ParameteredConfig::<bls::Verification>::from_config(config);
-				TestWithBLS::run(self, &config);
+				TestWithBLS::run::<BLSVerification>(self);
 			},
 			_ => panic!("Invalid test format"),
 		}
@@ -45,11 +43,11 @@ impl<T: TestWithBLS> Test for T {
 }
 
 pub trait Test {
-	fn run<C: Config>(&self, config: &C);
+	fn run(&self);
 }
 
-pub fn run_state_test_with<F: FnOnce(&mut BeaconState) -> Result<(), Error>>(
-	description: &str, pre: &BeaconState, post: Option<&BeaconState>, f: F
+pub fn run_test_with<C: Config, F: FnOnce(&mut BeaconState<C>) -> Result<(), Error>>(
+	description: &str, pre: &BeaconState<C>, post: Option<&BeaconState<C>>, f: F
 ) {
 	print!("Running test: {} ...", description);
 
@@ -74,22 +72,9 @@ pub fn run_state_test_with<F: FnOnce(&mut BeaconState) -> Result<(), Error>>(
 	println!("");
 }
 
-pub fn run_test_with<C: Config, F: FnOnce(&mut Executive<C>) -> Result<(), Error>>(
-	description: &str, pre: &BeaconState, post: Option<&BeaconState>, config: &C, f: F
-) {
-	run_state_test_with(description, pre, post, |state| {
-		let mut executive = Executive {
-			state,
-			config,
-		};
-
-		f(&mut executive)
-	});
-}
-
-pub fn run_collection<T: Test, C: Config>(coll: Collection<T>, config: &C) {
+pub fn run_collection<T: Test>(coll: Collection<T>) {
 	for test in coll.test_cases {
-		test.run(config);
+		test.run();
 	}
 }
 

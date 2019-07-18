@@ -1,16 +1,16 @@
 use crate::primitives::*;
 use crate::types::*;
-use crate::{Config, BeaconState, Error};
+use crate::{Config, BeaconState, Error, BLSConfig};
 use bm_le::tree_root;
 
 impl<C: Config> BeaconState<C> {
 	/// Process randao information given in a block.
-	pub fn process_randao(&mut self, body: &BeaconBlockBody<C>) -> Result<(), Error> {
+	pub fn process_randao<BLS: BLSConfig>(&mut self, body: &BeaconBlockBody<C>) -> Result<(), Error> {
 		let proposer = &self.validators[
 			self.beacon_proposer_index()? as usize
 		];
 
-		if !C::bls_verify(
+		if !BLS::verify(
 			&proposer.pubkey,
 			&tree_root::<C::Digest, _>(&self.current_epoch()),
 			&body.randao_reveal,
