@@ -209,4 +209,43 @@ impl<C: Config> BeaconState<C> {
 
 		utils::bls_domain(domain_type, fork_version)
 	}
+
+	pub fn indexed_attestation(
+		&self,
+		attestation: Attestation<C>
+	) -> Result<IndexedAttestation<C>, Error> {
+		let attesting_indices = self.attesting_indices(
+			&attestation.data, &attestation.aggregation_bits
+		)?;
+		let custody_bit_1_indices = self.attesting_indices(
+			&attestation.data, &attestation.custody_bits
+		)?;
+		let custody_bit_0_indices = attesting_indices.clone()
+			.into_iter()
+			.filter(|index| !custody_bit_1_indices.contains(index))
+			.collect::<Vec<_>>();
+
+		Ok(IndexedAttestation {
+			data: attestation.data,
+			signature: attestation.signature,
+			custody_bit_0_indices: custody_bit_0_indices.into(),
+			custody_bit_1_indices: custody_bit_1_indices.into(),
+		})
+	}
+
+	pub fn attesting_indices(
+		&self, attestation_data: &AttestationData, bitfield: &[bool],
+	) -> Result<Vec<ValidatorIndex>, Error> {
+		let committee = self.crosslink_committee(
+			attestation_data.target.epoch, attestation_data.crosslink.shard
+		)?;
+
+		let mut ret = committee.into_iter()
+			.enumerate()
+			.filter(|(i, _)| bitfield[*i])
+			.map(|(_, val)| val)
+			.collect::<Vec<_>>();
+		ret.sort();
+		Ok(ret)
+	}
 }
