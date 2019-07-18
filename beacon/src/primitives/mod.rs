@@ -27,3 +27,4 @@ pub type Epoch = Uint;
 pub type Slot = Uint;
 pub type ValidatorIndex = Uint;
 pub type Shard = Uint;
+pub type Gwei = Uint;

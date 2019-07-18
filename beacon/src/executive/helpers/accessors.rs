@@ -179,11 +179,24 @@ impl<C: Config> BeaconState<C> {
 				let compact_balance = validator.effective_balance / C::effective_balance_increment();
 				let compact_validator = (index << 16) +
 					(if validator.slashed { 1 } else { 0 } << 15) + compact_balance;
-				committees[shard as usize].compact_validators.append(compact_validator);
+				committees[shard as usize].compact_validators.push(compact_validator);
 			}
 		}
 
 		Ok(tree_root::<C::Digest, _>(&committees))
+	}
+
+	pub fn total_balance(&self, indices: &[ValidatorIndex]) -> Gwei {
+		max(
+			indices.iter().fold(0, |sum, index| {
+				sum + self.validators[*index as usize].effective_balance
+			}),
+			1
+		)
+	}
+
+	pub fn total_active_balance(&self) -> Gwei {
+		self.total_balance(&self.active_validator_indices(self.current_epoch()))
 	}
 
 	pub fn domain(&self, domain_type: Uint, message_epoch: Option<Uint>) -> Uint {
