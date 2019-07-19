@@ -8,10 +8,12 @@ mod error;
 mod config;
 mod utils;
 mod executive;
+mod genesis;
 
 pub use self::error::*;
 pub use self::config::*;
 pub use self::executive::*;
+pub use self::genesis::*;
 
 use self::primitives::*;
 use self::types::*;
