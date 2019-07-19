@@ -1,10 +1,10 @@
 mod epoch_processing;
 mod operations;
-// mod sanity;
+mod sanity;
 
 pub use epoch_processing::*;
 pub use operations::*;
-// pub use sanity::{BlocksTest, SlotsTest};
+pub use sanity::*;
 
 use serde_derive::{Serialize, Deserialize};
 use beacon::{BeaconState, Config, BLSConfig, BLSNoVerification, Error};
