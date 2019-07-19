@@ -1,8 +1,8 @@
-// mod epoch_processing;
+mod epoch_processing;
 mod operations;
 // mod sanity;
 
-// pub use epoch_processing::{CrosslinksTest, RegistryUpdatesTest};
+pub use epoch_processing::*;
 pub use operations::*;
 // pub use sanity::{BlocksTest, SlotsTest};
 
