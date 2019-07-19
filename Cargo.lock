@@ -3349,6 +3349,7 @@ dependencies = [
  "blockchain-network-simple 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "blockchain-rocksdb 0.1.0",
  "bls-aggregates 0.7.0 (git+https://github.com/sigp/signature-schemes)",
+ "bm-le 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lmd-ghost 0.1.0",
  "parity-codec 3.2.0 (registry+https://github.com/rust-lang/crates.io-index)",

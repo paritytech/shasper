@@ -1,5 +1,9 @@
 mod helpers;
 mod transition;
+mod assignment;
+mod choice;
+
+pub use self::assignment::*;
 
 #[cfg(feature = "serde")]
 use serde::{Serialize, Deserialize};

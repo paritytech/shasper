@@ -4,20 +4,21 @@ pub mod backend;
 pub use pool::AttestationPool;
 
 use beacon::primitives::H256;
-use beacon::types::{BeaconState, BeaconBlock, UnsealedBeaconBlock, BeaconBlockHeader};
-use beacon::{Error as BeaconError, Executive, Config, Inherent, Transaction};
+use beacon::types::*;
+use beacon::{Error as BeaconError, BeaconState, Config, BLSConfig, MinimalConfig, Inherent, Transaction};
 use std::sync::Arc;
 use blockchain::traits::{Block as BlockT, BlockExecutor, AsExternalities};
 use lmd_ghost::JustifiableExecutor;
 use parity_codec::{Encode, Decode};
-use ssz::Digestible;
+use bm_le::tree_root;
+use crypto::bls::BLSVerification;
 
 use blockchain_rocksdb::RocksState as RocksStateT;
 
 #[derive(Eq, PartialEq, Clone, Debug, Encode, Decode)]
-pub struct Block(pub BeaconBlock);
+pub struct Block<C: Config>(pub BeaconBlock<C>);
 
-impl BlockT for Block {
+impl<C: Config> BlockT for Block<C> {
 	type Identifier = H256;
 
 	fn id(&self) -> H256 {
@@ -25,15 +26,11 @@ impl BlockT for Block {
 			slot: self.0.slot,
 			parent_root: self.0.parent_root,
 			state_root: self.0.state_root,
-			body_root: H256::from_slice(
-				Digestible::<sha2::Sha256>::hash(&self.0.body).as_slice()
-			),
+			body_root: tree_root::<sha2::Sha256, _>(&self.0.body),
 			..Default::default()
 		};
 
-		H256::from_slice(
-			Digestible::<sha2::Sha256>::truncated_hash(&header).as_slice()
-		)
+		tree_root::<sha2::Sha256, _>(&SigningBeaconBlockHeader::from(header.clone()))
 	}
 
 	fn parent_id(&self) -> Option<H256> {
@@ -46,75 +43,81 @@ impl BlockT for Block {
 }
 
 pub trait StateExternalities {
-	fn state(&mut self) -> &mut BeaconState;
+	type Config: Config;
+
+	fn state(&mut self) -> &mut BeaconState<Self::Config>;
 }
 
 #[derive(Clone)]
-pub struct MemoryState {
-	state: BeaconState,
+pub struct MemoryState<C: Config> {
+	state: BeaconState<C>,
 }
 
-impl From<BeaconState> for MemoryState {
-	fn from(state: BeaconState) -> Self {
+impl<C: Config> From<BeaconState<C>> for MemoryState<C> {
+	fn from(state: BeaconState<C>) -> Self {
 		Self { state }
 	}
 }
 
-impl Into<BeaconState> for MemoryState {
-	fn into(self) -> BeaconState {
+impl<C: Config> Into<BeaconState<C>> for MemoryState<C> {
+	fn into(self) -> BeaconState<C> {
 		self.state
 	}
 }
 
-impl StateExternalities for MemoryState {
-	fn state(&mut self) -> &mut BeaconState {
+impl<C: Config> StateExternalities for MemoryState<C> {
+	type Config = C;
+
+	fn state(&mut self) -> &mut BeaconState<C> {
 		&mut self.state
 	}
 }
 
-impl AsExternalities<dyn StateExternalities> for MemoryState {
-	fn as_externalities(&mut self) -> &mut (dyn StateExternalities + 'static) {
+impl<C: Config> AsExternalities<dyn StateExternalities<Config=C>> for MemoryState<C> {
+	fn as_externalities(&mut self) -> &mut (dyn StateExternalities<Config=C> + 'static) {
 		self
 	}
 }
 
 #[derive(Clone)]
-pub struct RocksState {
-	state: BeaconState,
+pub struct RocksState<C: Config> {
+	state: BeaconState<C>,
 }
 
-impl From<BeaconState> for RocksState {
-	fn from(state: BeaconState) -> Self {
+impl<C: Config> From<BeaconState<C>> for RocksState<C> {
+	fn from(state: BeaconState<C>) -> Self {
 		Self { state }
 	}
 }
 
-impl Into<BeaconState> for RocksState {
-	fn into(self) -> BeaconState {
+impl<C: Config> Into<BeaconState<C>> for RocksState<C> {
+	fn into(self) -> BeaconState<C> {
 		self.state
 	}
 }
 
-impl StateExternalities for RocksState {
-	fn state(&mut self) -> &mut BeaconState {
+impl<C: Config> StateExternalities for RocksState<C> {
+	type Config = C;
+
+	fn state(&mut self) -> &mut BeaconState<C> {
 		&mut self.state
 	}
 }
 
-impl AsExternalities<dyn StateExternalities> for RocksState {
-	fn as_externalities(&mut self) -> &mut (dyn StateExternalities + 'static) {
+impl<C: Config> AsExternalities<dyn StateExternalities<Config=C>> for RocksState<C> {
+	fn as_externalities(&mut self) -> &mut (dyn StateExternalities<Config=C> + 'static) {
 		self
 	}
 }
 
-impl RocksStateT for RocksState {
-	type Raw = BeaconState;
+impl<C: Config> RocksStateT for RocksState<C> {
+	type Raw = BeaconState<C>;
 
-	fn from_raw(state: BeaconState, _db: Arc<::rocksdb::DB>) -> Self {
+	fn from_raw(state: BeaconState<C>, _db: Arc<::rocksdb::DB>) -> Self {
 		Self { state }
 	}
 
-	fn into_raw(self) -> BeaconState {
+	fn into_raw(self) -> BeaconState<C> {
 		self.state
 	}
 }
@@ -145,23 +148,13 @@ impl From<Error> for blockchain::import::Error {
 }
 
 #[derive(Clone)]
-pub struct Executor<C: Config> {
-	config: C,
+pub struct Executor<C: Config, BLS: BLSConfig> {
+	_marker: PhantomData<(C, BLS)>,
 }
 
-impl<C: Config> Executor<C> {
-	pub fn new(config: C) -> Self {
-		Self { config }
-	}
-
-	pub fn executive<'state, 'config>(
-		&'config self,
-		state: &'state mut <Self as BlockExecutor>::Externalities,
-	) -> Executive<'state, 'config, C> {
-		Executive {
-			state: state.state(),
-			config: &self.config,
-		}
+impl<C: Config, BLS: BLSConfig> Executor<C, BLS> {
+	pub fn new() -> Self {
+		Self { _marker: PhantomData }
 	}
 
 	pub fn initialize_block(
@@ -169,58 +162,58 @@ impl<C: Config> Executor<C> {
 		state: &mut <Self as BlockExecutor>::Externalities,
 		target_slot: u64,
 	) -> Result<(), Error> {
-		Ok(beacon::initialize_block(state.state(), target_slot, &self.config)?)
+		Ok(beacon::initialize_block::<C>(state.state(), target_slot)?)
 	}
 
 	pub fn apply_inherent(
 		&self,
-		parent_block: &Block,
+		parent_block: &Block<C>,
 		state: &mut <Self as BlockExecutor>::Externalities,
 		inherent: Inherent,
-	) -> Result<UnsealedBeaconBlock, Error> {
-		Ok(beacon::apply_inherent(&parent_block.0, state.state(), inherent, &self.config)?)
+	) -> Result<UnsealedBeaconBlock<C>, Error> {
+		Ok(beacon::apply_inherent::<C, BLS>(&parent_block.0, state.state(), inherent)?)
 	}
 
 	pub fn apply_extrinsic(
 		&self,
-		block: &mut UnsealedBeaconBlock,
+		block: &mut UnsealedBeaconBlock<C>,
 		state: &mut <Self as BlockExecutor>::Externalities,
-		extrinsic: Transaction,
+		extrinsic: Transaction<C>,
 	) -> Result<(), Error> {
-		Ok(beacon::apply_transaction(block, state.state(), extrinsic, &self.config)?)
+		Ok(beacon::apply_transaction::<C, BLS>(block, state.state(), extrinsic)?)
 	}
 
 	pub fn finalize_block(
 		&self,
-		block: &mut UnsealedBeaconBlock,
+		block: &mut UnsealedBeaconBlock<C>,
 		state: &mut <Self as BlockExecutor>::Externalities,
 	) -> Result<(), Error> {
-		Ok(beacon::finalize_block(block, state.state(), &self.config)?)
+		Ok(beacon::finalize_block::<C, BLS>(block, state.state())?)
 	}
 }
 
-impl<C: Config> BlockExecutor for Executor<C> {
+impl<C: Config, BLS: BLSConfig> BlockExecutor for Executor<C, BLS> {
 	type Error = Error;
-	type Block = Block;
-	type Externalities = dyn StateExternalities + 'static;
+	type Block = Block<C>;
+	type Externalities = dyn StateExternalities<Config=C> + 'static;
 
 	fn execute_block(
 		&self,
-		block: &Block,
+		block: &Block<C>,
 		state: &mut Self::Externalities,
 	) -> Result<(), Error> {
-		Ok(beacon::execute_block(&block.0, state.state(), &self.config)?)
+		Ok(beacon::execute_block::<C, BLS>(&block.0, state.state(), &self.config)?)
 	}
 }
 
-impl<C: Config> JustifiableExecutor for Executor<C> {
+impl<C: Config, BLS: BLSConfig> JustifiableExecutor for Executor<C, BLS> {
 	type ValidatorIndex = u64;
 
 	fn justified_active_validators(
 		&self,
 		state: &mut Self::Externalities,
 	) -> Result<Vec<Self::ValidatorIndex>, Self::Error> {
-		Ok(self.executive(state).justified_active_validators())
+		Ok(state.justified_active_validators())
 	}
 
 	fn justified_block_id(
@@ -240,6 +233,6 @@ impl<C: Config> JustifiableExecutor for Executor<C> {
 		block: &Self::Block,
 		state: &mut Self::Externalities,
 	) -> Result<Vec<(Self::ValidatorIndex, <Self::Block as BlockT>::Identifier)>, Self::Error> {
-		Ok(self.executive(state).block_vote_targets(&block.0)?)
+		Ok(state.block_vote_targets(&block.0)?)
 	}
 }

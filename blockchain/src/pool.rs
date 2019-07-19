@@ -1,27 +1,25 @@
 use beacon::Config;
 use beacon::primitives::H256;
 use beacon::types::{Attestation, AttestationDataAndCustodyBit};
-use ssz::Digestible;
 use std::collections::HashMap;
+use bm_le::tree_root;
 
-pub struct AttestationPool<'config, C: Config> {
-	pool: HashMap<H256, Vec<Attestation>>,
-	_config: &'config C,
+pub struct AttestationPool<C: Config> {
+	pool: HashMap<H256, Vec<Attestation<C>>>,
 }
 
-impl<'config, C: Config> AttestationPool<'config, C> {
-	pub fn new(_config: &'config C) -> Self {
+impl<C: Config> AttestationPool<C> {
+	pub fn new() -> Self {
 		Self {
 			pool: Default::default(),
-			_config,
 		}
 	}
 
-	pub fn push(&mut self, attestation: Attestation) {
-		let hash = H256::from_slice(Digestible::<C::Digest>::hash(&AttestationDataAndCustodyBit {
+	pub fn push(&mut self, attestation: Attestation<C>) {
+		let hash = tree_root::<C::Digest>(&AttestationDataAndCustodyBit {
 			data: attestation.data.clone(),
 			custody_bit: false,
-		}).as_slice());
+		});
 
 		self.pool.entry(hash)
 			.and_modify(|existings| {
