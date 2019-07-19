@@ -49,6 +49,7 @@ fn run_all<C: Config + serde::Serialize + DeserializeOwned>(runner: &str, file: 
 		"crosslinks" => run::<CrosslinksTest<C>>(file),
 		"registry_updates" => run::<RegistryUpdatesTest<C>>(file),
 		"slashings" => run::<SlashingsTest<C>>(file),
+		"final_updates" => run::<FinalUpdatesTest<C>>(file),
 		// "blocks" => run::<BlocksTest, _>(file, &config),
 		// "slots" => run::<SlotsTest, _>(file, &config),
 		_ => panic!("Unsupported runner"),

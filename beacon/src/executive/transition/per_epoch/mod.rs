@@ -4,3 +4,4 @@ mod crosslink;
 mod reward;
 mod registry;
 mod slashing;
+mod finalize;

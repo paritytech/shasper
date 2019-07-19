@@ -65,3 +65,19 @@ impl<C: Config> Test for SlashingsTest<C> {
 		});
 	}
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct FinalUpdatesTest<C: Config> {
+	pub description: String,
+	pub pre: BeaconState<C>,
+	pub post: Option<BeaconState<C>>,
+}
+
+impl<C: Config> Test for FinalUpdatesTest<C> {
+	fn run(&self) {
+		run_test_with(&self.description, &self.pre, self.post.as_ref(), |state| {
+			state.process_final_updates()
+		});
+	}
+}
