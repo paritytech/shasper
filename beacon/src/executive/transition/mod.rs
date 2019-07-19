@@ -3,10 +3,25 @@ mod per_epoch;
 
 use crate::primitives::*;
 use crate::types::*;
-use crate::{Error, Config, BeaconState};
+use crate::{Error, Config, BeaconState, BLSConfig};
 use bm_le::tree_root;
 
 impl<C: Config> BeaconState<C> {
+	/// Execute state transition.
+	pub fn state_transition<B: Block<Config=C>, BLS: BLSConfig>(
+		&mut self,
+		block: &B,
+	) -> Result<(), Error> {
+		self.process_slots(block.slot())?;
+		self.process_block::<_, BLS>(block)?;
+
+		if !(block.state_root() == &tree_root::<C::Digest, _>(self)) {
+			return Err(Error::BlockStateRootInvalid)
+		}
+
+		Ok(())
+	}
+
 	/// Process slots, process epoch if at epoch boundary.
 	pub fn process_slots(&mut self, slot: Uint) -> Result<(), Error> {
 		if self.slot > slot {

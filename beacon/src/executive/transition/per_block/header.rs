@@ -3,11 +3,11 @@ use crate::{Config, BeaconState, Error, BLSConfig};
 use bm_le::tree_root;
 
 impl<C: Config> BeaconState<C> {
-	pub fn process_block_header<'a, B: Block, BLS: BLSConfig>(
+	pub fn process_block_header<'a, 'b, B: Block, BLS: BLSConfig>(
 		&'a mut self,
-		block: &'a B
+		block: &'b B
 	) -> Result<(), Error> where
-		UnsealedBeaconBlock<C>: From<&'a B>,
+		UnsealedBeaconBlock<C>: From<&'b B>,
 	{
 		if block.slot() != self.slot {
 			return Err(Error::BlockSlotInvalid)
