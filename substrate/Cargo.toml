@@ -19,7 +19,7 @@ exit-future = "0.1"
 parking_lot = "0.4"
 hex-literal = "0.1"
 slog = "^2"
-parity-codec = { version = "3.0" }
+parity-codec = { version = "3.5" }
 trie-root = { version = "0.9" }
 runtime-io = { package = "sr-io", git = "https://github.com/paritytech/substrate" }
 runtime-primitives = { package = "sr-primitives", git = "https://github.com/paritytech/substrate" }

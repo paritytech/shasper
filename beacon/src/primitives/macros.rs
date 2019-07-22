@@ -16,16 +16,32 @@ macro_rules! impl_beacon_fixed_hash {
 			pub struct $t(SIZE);
 		}
 
+		#[cfg(feature = "serde")]
 		impl Serialize for $t {
 			fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
 				bytes::serialize(&self.0, serializer)
 			}
 		}
 
+		#[cfg(feature = "serde")]
 		impl<'de> Deserialize<'de> for $t {
 			fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
 				bytes::deserialize_check_len(deserializer, bytes::ExpectedLen::Exact(SIZE))
 					.map(|x| <$t>::from_slice(&x))
+			}
+		}
+
+		#[cfg(feature = "parity-codec")]
+		impl parity_codec::Encode for $t {
+			fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+				self.0.using_encoded(f)
+			}
+		}
+
+		#[cfg(feature = "parity-codec")]
+		impl parity_codec::Decode for $t {
+			fn decode<I: parity_codec::Input>(input: &mut I) -> Option<Self> {
+				<[u8; SIZE] as parity_codec::Decode>::decode(input).map($t)
 			}
 		}
 

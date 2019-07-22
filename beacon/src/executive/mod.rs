@@ -17,6 +17,7 @@ use crate::consts;
 
 #[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct BeaconState<C: Config> {
 	// == Versioning ==

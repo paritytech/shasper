@@ -27,6 +27,7 @@ use crate::types::*;
 #[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static"))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Beacon block body.
 pub struct BeaconBlockBody<C: Config> {
@@ -69,6 +70,7 @@ pub trait Block {
 #[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static"))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Beacon block.
 pub struct BeaconBlock<C: Config> {
@@ -108,6 +110,7 @@ impl<'a, C: Config, T: Block<Config=C>> From<&'a T> for UnsealedBeaconBlock<C> {
 #[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "serde", serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static"))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Unsealed Beacon block.
 pub struct UnsealedBeaconBlock<C: Config> {

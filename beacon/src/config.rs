@@ -196,6 +196,7 @@ pub trait Config: Default + Clone + PartialEq + Eq + core::fmt::Debug + 'static 
 #[derive(Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 pub struct MinimalConfig;
 
 impl Config for MinimalConfig {
@@ -264,6 +265,7 @@ impl Config for MinimalConfig {
 #[derive(Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 pub struct MainnetConfig;
 
 impl Config for MainnetConfig {
