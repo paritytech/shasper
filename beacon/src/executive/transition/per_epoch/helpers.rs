@@ -1,49 +1,37 @@
-// Copyright 2018 Parity Technologies (UK) Ltd.
-// This file is part of Substrate Shasper.
-
-// Substrate is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Substrate is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
-
+use crate::primitives::*;
+use crate::types::*;
+use crate::{Config, BeaconState, Error, utils};
+use bm_le::tree_root;
 use core::cmp::Ordering;
-use ssz::Digestible;
-use crate::primitives::{Epoch, ValidatorIndex, Gwei, Shard, H256};
-use crate::types::{PendingAttestation, Crosslink};
-use crate::utils::compare_hash;
-use crate::{Config, Executive, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
-	pub(crate) fn total_active_balance(&self) -> Gwei {
-		self.total_balance(&self.active_validator_indices(self.current_epoch()))
-	}
-
-	pub(crate) fn matching_source_attestations(&self, epoch: Epoch) -> Result<Vec<PendingAttestation>, Error> {
+impl<C: Config> BeaconState<C> {
+	pub fn matching_source_attestations(
+		&self,
+		epoch: Epoch
+	) -> Result<Vec<PendingAttestation<C>>, Error> {
 		if epoch == self.current_epoch() {
-			Ok(self.state.current_epoch_attestations.clone())
+			Ok(self.current_epoch_attestations.clone().into())
 		} else if epoch == self.previous_epoch() {
-			Ok(self.state.previous_epoch_attestations.clone())
+			Ok(self.previous_epoch_attestations.clone().into())
 		} else {
 			Err(Error::EpochOutOfRange)
 		}
 	}
 
-	pub(crate) fn matching_target_attestations(&self, epoch: Epoch) -> Result<Vec<PendingAttestation>, Error> {
+	pub fn matching_target_attestations(
+		&self,
+		epoch: Epoch
+	) -> Result<Vec<PendingAttestation<C>>, Error> {
 		let block_root = self.block_root(epoch)?;
 		Ok(self.matching_source_attestations(epoch)?.into_iter()
-		   .filter(|a| a.data.target_root == block_root)
+		   .filter(|a| a.data.target.root == block_root)
 		   .collect())
 	}
 
-	pub(crate) fn matching_head_attestations(&self, epoch: Epoch) -> Result<Vec<PendingAttestation>, Error> {
+	pub fn matching_head_attestations(
+		&self,
+		epoch: Epoch
+	) -> Result<Vec<PendingAttestation<C>>, Error> {
 		self.matching_source_attestations(epoch)?.into_iter()
 			.map(|a| {
 				Ok((a.data.beacon_block_root == self.block_root_at_slot(
@@ -59,31 +47,31 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			})
 	}
 
-	pub(crate) fn unslashed_attesting_indices(
-		&self, attestations: &[PendingAttestation]
+	pub fn unslashed_attesting_indices(
+		&self, attestations: &[PendingAttestation<C>]
 	) -> Result<Vec<ValidatorIndex>, Error> {
 		let mut ret = Vec::new();
 		for a in attestations {
-			for index in self.attesting_indices(&a.data, &a.aggregation_bitfield)? {
+			for index in self.attesting_indices(&a.data, &a.aggregation_bits)? {
 				if !ret.contains(&index) {
 					ret.push(index);
 				}
 			}
 		}
 		ret.retain(|index| {
-			!self.state.validator_registry[*index as usize].slashed
+			!self.validators[*index as usize].slashed
 		});
 		ret.sort();
 		Ok(ret)
 	}
 
-	pub(crate) fn attesting_balance(
-		&self, attestations: &[PendingAttestation]
+	pub fn attesting_balance(
+		&self, attestations: &[PendingAttestation<C>]
 	) -> Result<Gwei, Error> {
 		Ok(self.total_balance(&self.unslashed_attesting_indices(attestations)?))
 	}
 
-	pub(crate) fn winning_crosslink_and_attesting_indices(
+	pub fn winning_crosslink_and_attesting_indices(
 		&self, epoch: Epoch, shard: Shard
 	) -> Result<(Crosslink, Vec<ValidatorIndex>), Error> {
 		let attestations = self.matching_source_attestations(epoch)?.into_iter()
@@ -92,14 +80,10 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		let crosslinks = attestations.clone().into_iter()
 			.map(|a| a.data.crosslink)
 			.filter(|c| {
-				let current_root = H256::from_slice(
-					Digestible::<C::Digest>::hash(
-						&self.state.current_crosslinks[shard as usize]
-					).as_slice()
+				let current_root = tree_root::<C::Digest, _>(
+					&self.current_crosslinks[shard as usize]
 				);
-				let root = H256::from_slice(
-					Digestible::<C::Digest>::hash(c).as_slice()
-				);
+				let root = tree_root::<C::Digest, _>(c);
 
 				current_root == root || current_root == c.parent_root
 			})
@@ -119,7 +103,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 					let a = a?;
 					let cmp1 = self.attesting_balance(&attestations_for(&a))?
 						.cmp(&self.attesting_balance(&attestations_for(b))?);
-					let cmp2 = compare_hash(&a.data_root, &b.data_root);
+					let cmp2 = utils::compare_hash(&a.data_root, &b.data_root);
 
 					Ok(match (cmp1, cmp2) {
 						(Ordering::Greater, _) |

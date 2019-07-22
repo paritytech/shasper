@@ -1,101 +1,67 @@
-// Copyright 2018 Parity Technologies (UK) Ltd.
-// This file is part of Substrate Shasper.
-
-// Substrate is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Substrate is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
-
+use crate::types::*;
+use crate::{Config, BeaconState, Error, BLSConfig};
+use bm_le::tree_root;
 use core::cmp::min;
-use ssz::Digestible;
-use crate::primitives::H256;
-use crate::types::{Attestation, PendingAttestation};
-use crate::{Config, Executive, Error};
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<C: Config> BeaconState<C> {
 	/// Push a new `Attestation` to the state.
-	pub fn process_attestation(&mut self, attestation: Attestation) -> Result<(), Error> {
+	pub fn process_attestation<BLS: BLSConfig>(&mut self, attestation: Attestation<C>) -> Result<(), Error> {
 		let data = attestation.data.clone();
+		if !(data.crosslink.shard < C::shard_count()) {
+			return Err(Error::AttestationIncorrectCrosslinkData)
+		}
+		if !(data.target.epoch == self.current_epoch() ||
+			 data.target.epoch == self.previous_epoch())
+		{
+			return Err(Error::AttestationIncorrectJustifiedEpochOrBlockRoot)
+		}
+
 		let attestation_slot = self.attestation_data_slot(&data)?;
 
-		if !(attestation_slot + self.config.min_attestation_inclusion_delay() <=
-			 self.state.slot &&
-			 self.state.slot <=
-			 attestation_slot + self.config.slots_per_epoch())
+		if !(attestation_slot + C::min_attestation_inclusion_delay() <=
+			 self.slot &&
+			 self.slot <=
+			 attestation_slot + C::slots_per_epoch())
 		{
 			return Err(Error::AttestationSubmittedTooQuickly)
 		}
 
 		let pending_attestation = PendingAttestation {
 			data: data.clone(),
-			aggregation_bitfield: attestation.aggregation_bitfield.clone(),
-			inclusion_delay: self.state.slot - attestation_slot,
+			aggregation_bits: attestation.aggregation_bits.clone(),
+			inclusion_delay: self.slot - attestation_slot,
 			proposer_index: self.beacon_proposer_index()?,
 		};
 
-		if !(data.target_epoch == self.current_epoch() ||
-			 data.target_epoch == self.previous_epoch())
+		let (push_current, parent_crosslink) =
+			if data.target.epoch == self.current_epoch() {
+				if data.source != self.current_justified_checkpoint {
+					return Err(Error::AttestationInvalidData)
+				}
+
+				(true, self.current_crosslinks[data.crosslink.shard as usize].clone())
+			} else {
+				(false, self.previous_crosslinks[data.crosslink.shard as usize].clone())
+			};
+
+		if !(data.crosslink.parent_root == tree_root::<C::Digest, _>(&parent_crosslink) &&
+			 data.crosslink.start_epoch == parent_crosslink.end_epoch &&
+			 data.crosslink.end_epoch == min(data.target.epoch,
+											 parent_crosslink.end_epoch +
+											 C::max_epochs_per_crosslink()) &&
+			 data.crosslink.data_root == Default::default())
 		{
-			return Err(Error::AttestationIncorrectJustifiedEpochOrBlockRoot)
+			return Err(Error::AttestationInvalidCrosslink)
 		}
 
-		let (ffg_data, parent_crosslink, push_current) = if data.target_epoch == self.current_epoch() {
-			let ffg_data = (self.state.current_justified_epoch,
-							self.state.current_justified_root,
-							self.current_epoch());
-			let parent_crosslink = self.state.current_crosslinks[
-				data.crosslink.shard as usize
-			].clone();
-			(ffg_data, parent_crosslink, true)
-		} else {
-			let ffg_data = (self.state.previous_justified_epoch,
-							self.state.previous_justified_root,
-							self.previous_epoch());
-			let parent_crosslink = self.state.previous_crosslinks[
-				data.crosslink.shard as usize
-			].clone();
-			(ffg_data, parent_crosslink, false)
-		};
-
-		if ffg_data != (data.source_epoch, data.source_root, data.target_epoch) {
-			return Err(Error::AttestationIncorrectJustifiedEpochOrBlockRoot)
+		if !self.is_valid_indexed_attestation::<BLS>(&self.indexed_attestation(attestation)?) {
+			return Err(Error::AttestationInvalidSignature)
 		}
-
-		if data.crosslink.start_epoch != parent_crosslink.end_epoch {
-			return Err(Error::AttestationIncorrectCrosslinkData)
-		}
-
-		if data.crosslink.end_epoch != min(
-			data.target_epoch,
-			parent_crosslink.end_epoch + self.config.max_epochs_per_crosslink()
-		) {
-			return Err(Error::AttestationIncorrectCrosslinkData)
-		}
-
-		if data.crosslink.parent_root != H256::from_slice(Digestible::<C::Digest>::hash(
-			&parent_crosslink
-		).as_slice()) {
-			return Err(Error::AttestationIncorrectCrosslinkData)
-		}
-
-		if data.crosslink.data_root != H256::default() {
-			return Err(Error::AttestationIncorrectCrosslinkData)
-		}
-
-		self.validate_indexed_attestation(&self.convert_to_indexed(attestation.clone())?)?;
 
 		if push_current {
-			self.state.current_epoch_attestations.push(pending_attestation);
+			self.current_epoch_attestations.push(pending_attestation);
 		} else {
-			self.state.previous_epoch_attestations.push(pending_attestation);
+			self.previous_epoch_attestations.push(pending_attestation);
 		}
 
 		Ok(())

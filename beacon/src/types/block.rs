@@ -16,22 +16,21 @@
 
 //! Beacon blocks
 
-use ssz_derive::Ssz;
 #[cfg(feature = "serde")]
-use serde_derive::{Serialize, Deserialize};
-#[cfg(feature = "parity-codec")]
-use codec::{Encode, Decode};
+use serde::{Serialize, Deserialize, de::DeserializeOwned};
+use ssz::{Codec, Encode, Decode};
+use bm_le::{IntoTree, FromTree, MaxVec};
+use crate::*;
+use crate::primitives::*;
+use crate::types::*;
 
-use crate::primitives::{Uint, Signature, H256, H768};
-use crate::types::{VoluntaryExit, Transfer, Deposit, Attestation, Eth1Data, ProposerSlashing, AttesterSlashing};
-
-#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static"))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[ssz(no_decode)]
 /// Beacon block body.
-pub struct BeaconBlockBody {
+pub struct BeaconBlockBody<C: Config> {
 	/// Randao reveal.
 	pub randao_reveal: H768,
 	/// Eth1 data.
@@ -39,21 +38,23 @@ pub struct BeaconBlockBody {
 	/// Graffiti.
 	pub graffiti: H256,
 	/// Proposer slashings.
-	pub proposer_slashings: Vec<ProposerSlashing>,
+	pub proposer_slashings: MaxVec<ProposerSlashing, C::MaxProposerSlashings>,
 	/// Attester slashings.
-	pub attester_slashings: Vec<AttesterSlashing>,
+	pub attester_slashings: MaxVec<AttesterSlashing<C>, C::MaxAttesterSlashings>,
 	/// Attestations.
-	pub attestations: Vec<Attestation>,
+	pub attestations: MaxVec<Attestation<C>, C::MaxAttestations>,
 	/// Deposits.
-	pub deposits: Vec<Deposit>,
+	pub deposits: MaxVec<Deposit, C::MaxDeposits>,
 	/// Voluntary exits.
-	pub voluntary_exits: Vec<VoluntaryExit>,
+	pub voluntary_exits: MaxVec<VoluntaryExit, C::MaxVoluntaryExits>,
 	/// Transfer.
-	pub transfers: Vec<Transfer>,
+	pub transfers: MaxVec<Transfer, C::MaxTransfers>,
 }
 
 /// Sealed or unsealed block.
 pub trait Block {
+	type Config: Config;
+
 	/// Slot of the block.
 	fn slot(&self) -> u64;
 	/// Previous block root.
@@ -61,18 +62,18 @@ pub trait Block {
 	/// State root.
 	fn state_root(&self) -> &H256;
 	/// Body.
-	fn body(&self) -> &BeaconBlockBody;
+	fn body(&self) -> &BeaconBlockBody<Self::Config>;
 	/// Signature of the block. None for unsealed block.
 	fn signature(&self) -> Option<&Signature>;
 }
 
-#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static"))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[ssz(no_decode)]
 /// Beacon block.
-pub struct BeaconBlock {
+pub struct BeaconBlock<C: Config> {
 	/// Slot of the block.
 	pub slot: Uint,
 	/// Previous block root.
@@ -80,27 +81,39 @@ pub struct BeaconBlock {
 	/// State root.
 	pub state_root: H256,
 	/// Body.
-	pub body: BeaconBlockBody,
-	#[ssz(truncate)]
+	pub body: BeaconBlockBody<C>,
 	/// Signature.
 	pub signature: Signature,
 }
 
-impl Block for BeaconBlock {
+impl<C: Config> Block for BeaconBlock<C> {
+	type Config = C;
+
 	fn slot(&self) -> u64 { self.slot }
 	fn parent_root(&self) -> &H256 { &self.parent_root }
 	fn state_root(&self) -> &H256 { &self.state_root }
-	fn body(&self) -> &BeaconBlockBody { &self.body }
+	fn body(&self) -> &BeaconBlockBody<C> { &self.body }
 	fn signature(&self) -> Option<&Signature> { Some(&self.signature) }
 }
 
-#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+impl<'a, C: Config, T: Block<Config=C>> From<&'a T> for UnsealedBeaconBlock<C> {
+	fn from(t: &'a T) -> UnsealedBeaconBlock<C> {
+		UnsealedBeaconBlock {
+			slot: t.slot(),
+			parent_root: t.parent_root().clone(),
+			state_root: t.state_root().clone(),
+			body: t.body().clone(),
+		}
+	}
+}
+
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static"))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
-#[ssz(no_decode)]
 /// Unsealed Beacon block.
-pub struct UnsealedBeaconBlock {
+pub struct UnsealedBeaconBlock<C: Config> {
 	/// Slot of the block.
 	pub slot: Uint,
 	/// Previous block root.
@@ -108,20 +121,22 @@ pub struct UnsealedBeaconBlock {
 	/// State root.
 	pub state_root: H256,
 	/// Body.
-	pub body: BeaconBlockBody,
+	pub body: BeaconBlockBody<C>,
 }
 
-impl Block for UnsealedBeaconBlock {
+impl<C: Config> Block for UnsealedBeaconBlock<C> {
+	type Config = C;
+
 	fn slot(&self) -> u64 { self.slot }
 	fn parent_root(&self) -> &H256 { &self.parent_root }
 	fn state_root(&self) -> &H256 { &self.state_root }
-	fn body(&self) -> &BeaconBlockBody { &self.body }
+	fn body(&self) -> &BeaconBlockBody<C> { &self.body }
 	fn signature(&self) -> Option<&Signature> { None }
 }
 
-impl UnsealedBeaconBlock {
+impl<C: Config> UnsealedBeaconBlock<C> {
 	/// Fake sealing a beacon block, with empty signature.
-	pub fn fake_seal(self) -> BeaconBlock {
+	pub fn fake_seal(self) -> BeaconBlock<C> {
 		BeaconBlock {
 			slot: self.slot,
 			parent_root: self.parent_root,

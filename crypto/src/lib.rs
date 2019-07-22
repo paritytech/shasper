@@ -39,17 +39,17 @@ pub mod bls {
 	pub type Signature = bls_crate::Signature;
 	pub type AggregatePublic = bls_crate::AggregatePublicKey;
 	pub type AggregateSignature = bls_crate::AggregateSignature;
-	pub use self::verification::Verification;
+	pub use self::verification::BLSVerification;
 
 	mod verification {
 		use crate::bls;
 		use beacon::primitives::{H256, Signature, ValidatorId};
-		use beacon::BLSVerification;
+		use beacon::BLSConfig;
 
-		#[derive(Clone, PartialEq, Eq, Debug)]
-		pub struct Verification;
+		#[derive(Clone, PartialEq, Eq, Debug, Default)]
+		pub struct BLSVerification;
 
-		impl BLSVerification for Verification {
+		impl BLSConfig for BLSVerification {
 			fn verify(pubkey: &ValidatorId, message: &H256, signature: &Signature, domain: u64) -> bool {
 				let pubkey = match bls::AggregatePublic::from_bytes(&pubkey[..]) {
 					Ok(value) => value,

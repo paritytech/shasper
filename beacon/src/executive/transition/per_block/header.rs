@@ -1,49 +1,32 @@
-// Copyright 2018 Parity Technologies (UK) Ltd.
-// This file is part of Substrate Shasper.
+use crate::types::*;
+use crate::{Config, BeaconState, Error, BLSConfig};
+use bm_le::tree_root;
 
-// Substrate is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Substrate is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
-
-use ssz::Digestible;
-use crate::primitives::H256;
-use crate::types::{Block, BeaconBlockHeader};
-use crate::{Config, Executive, Error};
-
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
-	/// Process a block header.
-	pub fn process_block_header<B: Block + Digestible<C::Digest>>(&mut self, block: &B) -> Result<(), Error> {
-		if block.slot() != self.state.slot {
+impl<C: Config> BeaconState<C> {
+	pub fn process_block_header<'a, 'b, B: Block, BLS: BLSConfig>(
+		&'a mut self,
+		block: &'b B
+	) -> Result<(), Error> where
+		UnsealedBeaconBlock<C>: From<&'b B>,
+	{
+		if block.slot() != self.slot {
 			return Err(Error::BlockSlotInvalid)
 		}
 
-		if block.parent_root() != &H256::from_slice(
-			Digestible::<C::Digest>::truncated_hash(
-				&self.state.latest_block_header
-			).as_slice())
-		{
+		if block.parent_root() != &tree_root::<C::Digest, _>(
+			&SigningBeaconBlockHeader::from(self.latest_block_header.clone())
+		) {
 			return Err(Error::BlockPreviousRootInvalid)
 		}
 
-		self.state.latest_block_header = BeaconBlockHeader {
+		self.latest_block_header = BeaconBlockHeader {
 			slot: block.slot(),
 			parent_root: *block.parent_root(),
-			body_root: H256::from_slice(
-				Digestible::<C::Digest>::hash(block.body()).as_slice()
-			),
+			body_root: tree_root::<C::Digest, _>(block.body()),
 			..Default::default()
 		};
 
-		let proposer = &self.state.validator_registry[
+		let proposer = &self.validators[
 			self.beacon_proposer_index()? as usize
 		];
 		if proposer.slashed {
@@ -51,13 +34,11 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		if let Some(signature) = block.signature() {
-			if !self.config.bls_verify(
+			if !BLS::verify(
 				&proposer.pubkey,
-				&H256::from_slice(
-					Digestible::<C::Digest>::truncated_hash(block).as_slice()
-				),
+				&tree_root::<C::Digest, _>(&UnsealedBeaconBlock::from(block)),
 				signature,
-				self.domain(self.config.domain_beacon_proposer(), None)
+				self.domain(C::domain_beacon_proposer(), None)
 			) {
 				return Err(Error::BlockSignatureInvalid)
 			}

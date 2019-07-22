@@ -1,43 +1,26 @@
-// Copyright 2018 Parity Technologies (UK) Ltd.
-// This file is part of Substrate Shasper.
+use crate::primitives::*;
+use crate::{Config, BeaconState, Error, utils, consts};
 
-// Substrate is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Substrate is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
-
-use crate::primitives::{ValidatorIndex, Gwei};
-use crate::utils::integer_squareroot;
-use crate::{Config, Executive, Error};
-
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<C: Config> BeaconState<C> {
 	fn base_reward(&self, index: ValidatorIndex) -> Gwei {
 		let total_balance = self.total_active_balance();
 
 		let effective_balance =
-			self.state.validator_registry[index as usize].effective_balance;
+			self.validators[index as usize].effective_balance;
 
-		effective_balance * self.config.base_reward_factor() /
-			integer_squareroot(total_balance) /
-			self.config.base_rewards_per_epoch()
+		effective_balance * C::base_reward_factor() /
+			utils::integer_squareroot(total_balance) /
+			consts::BASE_REWARDS_PER_EPOCH
 	}
 
 	fn attestation_deltas(&self) -> Result<(Vec<Gwei>, Vec<Gwei>), Error> {
 		let previous_epoch = self.previous_epoch();
 		let total_balance = self.total_active_balance();
-		let mut rewards = (0..self.state.validator_registry.len())
+		let mut rewards = (0..self.validators.len())
 			.map(|_| 0).collect::<Vec<_>>();
-		let mut penalties = (0..self.state.validator_registry.len())
+		let mut penalties = (0..self.validators.len())
 			.map(|_| 0).collect::<Vec<_>>();
-		let eligible_validator_indices = self.state.validator_registry.iter()
+		let eligible_validator_indices = self.validators.iter()
 			.enumerate()
 			.filter(|(_, v)| {
 				v.is_active(previous_epoch) ||
@@ -75,7 +58,7 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			let attestation = matching_source_attestations.iter()
 				.map(|a| Ok((
 					a,
-					self.attesting_indices(&a.data, &a.aggregation_bitfield)?
+					self.attesting_indices(&a.data, &a.aggregation_bits)?
 						.contains(&index)
 				)))
 				.collect::<Result<Vec<_>, _>>()?
@@ -86,25 +69,27 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 					if a.inclusion_delay < b.inclusion_delay { a } else { b.clone() }
 				});
 
-			rewards[attestation.proposer_index as usize] +=
-				self.base_reward(index) / self.config.proposer_reward_quotient();
-			rewards[index as usize] += self.base_reward(index) *
-				self.config.min_attestation_inclusion_delay() /
-				attestation.inclusion_delay;
+			let proposer_reward = self.base_reward(index) / C::proposer_reward_quotient();
+			rewards[attestation.proposer_index as usize] += proposer_reward;
+			let max_attester_reward = self.base_reward(index) - proposer_reward;
+			rewards[index as usize] += max_attester_reward *
+				(C::slots_per_epoch() + C::min_attestation_inclusion_delay() -
+				 attestation.inclusion_delay) /
+				C::slots_per_epoch();
 		}
 
 		// Inactivity penalty
-		let finality_delay = previous_epoch - self.state.finalized_epoch;
-		if finality_delay > self.config.min_epochs_to_inactivity_penalty() {
+		let finality_delay = previous_epoch - self.finalized_checkpoint.epoch;
+		if finality_delay > C::min_epochs_to_inactivity_penalty() {
 			let matching_target_attesting_indices =
 				self.unslashed_attesting_indices(&matching_target_attestations)?;
 			for index in &eligible_validator_indices {
-				penalties[*index as usize] += self.config.base_rewards_per_epoch() *
+				penalties[*index as usize] += consts::BASE_REWARDS_PER_EPOCH *
 					self.base_reward(*index);
 				if !matching_target_attesting_indices.contains(index) {
 					penalties[*index as usize] +=
-						self.state.validator_registry[*index as usize].effective_balance *
-						finality_delay / self.config.inactivity_penalty_quotient();
+						self.validators[*index as usize].effective_balance *
+						finality_delay / C::inactivity_penalty_quotient();
 				}
 			}
 		}
@@ -113,15 +98,14 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 	}
 
 	fn crosslink_deltas(&self) -> Result<(Vec<Gwei>, Vec<Gwei>), Error> {
-		let mut rewards = (0..self.state.validator_registry.len())
+		let mut rewards = (0..self.validators.len())
 			.map(|_| 0).collect::<Vec<_>>();
-		let mut penalties = (0..self.state.validator_registry.len())
+		let mut penalties = (0..self.validators.len())
 			.map(|_| 0).collect::<Vec<_>>();
 		let epoch = self.previous_epoch();
 
-		for offset in 0..self.epoch_committee_count(epoch) {
-			let shard = (self.epoch_start_shard(epoch)? + offset) %
-				self.config.shard_count();
+		for offset in 0..self.committee_count(epoch) {
+			let shard = (self.start_shard(epoch)? + offset) % C::shard_count();
 			let crosslink_committee = self.crosslink_committee(epoch, shard)?;
 			let (_winning_crosslink, attesting_indices) =
 				self.winning_crosslink_and_attesting_indices(epoch, shard)?;
@@ -143,13 +127,13 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 
 	/// Process rewards and penalties
 	pub fn process_rewards_and_penalties(&mut self) -> Result<(), Error> {
-		if self.current_epoch() == self.config.genesis_epoch() {
+		if self.current_epoch() == C::genesis_epoch() {
 			return Ok(())
 		}
 
 		let (rewards1, penalties1) = self.attestation_deltas()?;
 		let (rewards2, penalties2) = self.crosslink_deltas()?;
-		for i in 0..self.state.validator_registry.len() {
+		for i in 0..self.validators.len() {
 			self.increase_balance(i as u64, rewards1[i] + rewards2[i]);
 			self.decrease_balance(i as u64, penalties1[i] + penalties2[i]);
 		}

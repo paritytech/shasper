@@ -16,20 +16,18 @@
 
 //! Beacon operations
 
-use ssz_derive::Ssz;
 #[cfg(feature = "serde")]
-use serde_derive::{Serialize, Deserialize};
-#[cfg(feature = "parity-codec")]
-use codec::{Encode, Decode};
+use serde::{Serialize, Deserialize};
+use ssz::{Codec, Encode, Decode};
+use bm_le::{IntoTree, FromTree, MaxVec};
+use vecarray::VecArray;
+use crate::*;
+use crate::primitives::*;
+use crate::types::*;
 
-use crate::primitives::{Uint, BitField, Signature, H256, ValidatorId};
-use crate::types::{BeaconBlockHeader, IndexedAttestation, AttestationData, DepositData};
-use crate::utils::fixed_vec;
-use crate::Config;
-
-#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Block proposer slashing.
 pub struct ProposerSlashing {
@@ -41,62 +39,84 @@ pub struct ProposerSlashing {
 	pub header_2: BeaconBlockHeader,
 }
 
-#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Block attester slashing.
-pub struct AttesterSlashing {
+pub struct AttesterSlashing<C: Config> {
 	/// First slashable attestation
-	pub attestation_1: IndexedAttestation,
+	pub attestation_1: IndexedAttestation<C>,
 	/// Second slashable attestation
-	pub attestation_2: IndexedAttestation,
+	pub attestation_2: IndexedAttestation<C>,
 }
 
-#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Attestation.
-pub struct Attestation {
+pub struct Attestation<C: Config> {
 	/// Attester aggregation bitfield
-	pub aggregation_bitfield: BitField,
+	#[bm(compact)]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "crate::utils::serialize_bitlist"))]
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_bitlist"))]
+	pub aggregation_bits: MaxVec<bool, C::MaxValidatorsPerCommittee>,
 	/// Attestation data
 	pub data: AttestationData,
 	/// Custody bitfield
-	pub custody_bitfield: BitField,
-	#[ssz(truncate)]
+	#[bm(compact)]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "crate::utils::serialize_bitlist"))]
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_bitlist"))]
+	pub custody_bits: MaxVec<bool, C::MaxValidatorsPerCommittee>,
 	/// BLS aggregate signature
 	pub signature: Signature,
 }
 
-#[derive(Ssz, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
-#[ssz(no_decode)]
-/// Block deposit.
-pub struct Deposit {
-	/// Branch in the deposit tree
-	#[ssz(use_fixed)]
-	pub proof: Vec<H256>,
-	/// Data
-	pub data: DepositData,
-}
-
-impl Deposit {
-	/// Default deposit from config.
-	pub fn default_with_config<C: Config>(config: &C) -> Self {
+impl<C: Config> From<Attestation<C>> for SigningAttestation<C> {
+	fn from(a: Attestation<C>) -> Self {
 		Self {
-			proof: fixed_vec(config.deposit_contract_tree_depth()),
-			data: Default::default(),
+			aggregation_bits: a.aggregation_bits,
+			data: a.data,
+			custody_bits: a.custody_bits,
 		}
 	}
 }
 
-#[derive(Ssz, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct SigningAttestation<C: Config> {
+	/// Attester aggregation bitfield
+	#[bm(compact)]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "crate::utils::serialize_bitlist"))]
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_bitlist"))]
+	pub aggregation_bits: MaxVec<bool, C::MaxValidatorsPerCommittee>,
+	/// Attestation data
+	pub data: AttestationData,
+	/// Custody bitfield
+	#[bm(compact)]
+	#[cfg_attr(feature = "serde", serde(serialize_with = "crate::utils::serialize_bitlist"))]
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_bitlist"))]
+	pub custody_bits: MaxVec<bool, C::MaxValidatorsPerCommittee>,
+}
+
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
+/// Block deposit.
+pub struct Deposit {
+	/// Branch in the deposit tree
+	pub proof: VecArray<H256, typenum::Sum<consts::DepositContractTreeDepth, typenum::U1>>,
+	/// Data
+	pub data: DepositData,
+}
+
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Block voluntary exit.
 pub struct VoluntaryExit {
@@ -105,13 +125,32 @@ pub struct VoluntaryExit {
 	/// Index of the exiting validator
 	pub validator_index: Uint,
 	/// Validator signature
-	#[ssz(truncate)]
 	pub signature: Signature,
 }
 
-#[derive(Ssz, Clone, PartialEq, Eq)]
+impl From<VoluntaryExit> for SigningVoluntaryExit {
+	fn from(v: VoluntaryExit) -> Self {
+		Self {
+			epoch: v.epoch,
+			validator_index: v.validator_index,
+		}
+	}
+}
+
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(Encode, Decode))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct SigningVoluntaryExit {
+	/// Minimum epoch for processing exit
+	pub epoch: Uint,
+	/// Index of the exiting validator
+	pub validator_index: Uint,
+}
+
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
 /// Block transfer.
 pub struct Transfer {
@@ -128,6 +167,37 @@ pub struct Transfer {
 	/// Sender withdrawal pubkey
 	pub pubkey: ValidatorId,
 	/// Sender signature
-	#[ssz(truncate)]
 	pub signature: Signature,
+}
+
+impl From<Transfer> for SigningTransfer {
+	fn from(t: Transfer) -> Self {
+		Self {
+			sender: t.sender,
+			recipient: t.recipient,
+			amount: t.amount,
+			fee: t.fee,
+			slot: t.slot,
+			pubkey: t.pubkey,
+		}
+	}
+}
+
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct SigningTransfer {
+	/// Sender index
+	pub sender: Uint,
+	/// Recipient index
+	pub recipient: Uint,
+	/// Amount in Gwei
+	pub amount: Uint,
+	/// Fee in Gwei for block proposer
+	pub fee: Uint,
+	/// Inclusion slot
+	pub slot: Uint,
+	/// Sender withdrawal pubkey
+	pub pubkey: ValidatorId,
 }

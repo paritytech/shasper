@@ -16,51 +16,64 @@
 
 //! SimpleSerialization crate written in Rust.
 
-#![cfg_attr(not(feature = "std"), no_std, feature(alloc), feature(alloc_prelude), feature(prelude_import))]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-#![warn(missing_docs)]
-
-#[cfg(not(feature = "std"))]
-#[macro_use]
 extern crate alloc;
 
-#[cfg(not(feature = "std"))]
-#[doc(hidden)]
-pub mod prelude {
-	pub use core::prelude::v1::*;
-	pub use alloc::prelude::v1::*;
+mod utils;
+mod basic;
+mod series;
+mod size;
+mod fixed;
+mod variable;
+
+pub use bm_le::{Compact, CompactRef, MaxVec};
+pub use series::{Series, SeriesItem};
+pub use ssz_derive::{Codec, Encode, Decode};
+
+pub use crate::size::{Size, VariableSize, Add, Mul, Div};
+
+use alloc::vec::Vec;
+
+#[derive(Debug)]
+/// Error type for encoding and decoding.
+pub enum Error {
+	/// Incorrect size.
+	IncorrectSize,
+	/// Invalid type.
+	InvalidType,
+	/// Vector length is incorrect.
+	InvalidLength,
+	/// List length is too large.
+	ListTooLarge,
 }
 
-#[cfg(feature = "std")]
-#[doc(hidden)]
-pub mod prelude {
-	pub use std::prelude::v1::*;
+pub trait Codec {
+	type Size: Size;
 }
 
-#[doc(hidden)]
-pub use hash_db;
+/// Trait that allows zero-copy write of value-references to slices in ssz format.
+///
+/// Implementations should override `using_encoded` for value types and `encode_to` and `size_hint` for allocating types.
+/// Wrapper types should override all methods.
+pub trait Encode: Codec {
+	/// Convert self to an owned vector.
+	fn encode(&self) -> Vec<u8> {
+		let mut r = Vec::new();
+		self.using_encoded(|buf| r.extend_from_slice(buf));
+		r
+	}
 
-#[doc(hidden)]
-pub use digest;
+	/// Convert self to a slice and then invoke the given closure with it.
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		f(&self.encode())
+	}
+}
 
-#[doc(hidden)]
-pub use generic_array;
+/// Trait that allows zero-copy read of value-references from slices in ssz format.
+pub trait Decode: Codec + Sized {
+	/// Attempt to deserialise the value from input.
+	fn decode(value: &[u8]) -> Result<Self, Error>;
+}
 
-#[cfg(not(feature = "std"))]
-#[allow(unused)]
-#[prelude_import]
-use crate::prelude::*;
-
-mod codec;
-#[doc(hidden)]
-pub mod hash;
-#[cfg(test)]
-mod tests;
-
-pub use self::codec::{Input, Output, Encode, Decode, Prefixable, Fixed};
-pub use self::hash::{Hashable, Digestible, Composite, RawDigestible, RawHashable};
-
-/// Trait that allows zero-copy read/write of value-references to/from slices in LE format.
-pub trait Ssz: Decode + Encode {}
-
-impl<S: Encode + Decode> Ssz for S {}
+pub type LengthOffset = u32;

@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-#[derive(Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(Clone, PartialEq, Eq, Debug)]
 /// Error type for beacon chain.
 pub enum Error {
 	/// Deposit index mismatch.

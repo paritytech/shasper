@@ -2,19 +2,14 @@
 members = [
 	"crypto",
 	"beacon",
-	"yamltests",
-	"substrate",
-	"substrate/runtime",
-	"substrate/primitives",
-	"substrate/consensus",
-	"substrate/casper",
 	"blockchain",
 	"blockchain/common/rocksdb",
 	"blockchain/lmd-ghost",
 	"utils/ssz",
-	"utils/ssz-derive",
-	"utils/ssz-merkle",
+	"utils/ssz/derive",
 	"utils/keccak-hasher",
+	"yamltests/ssztests",
+	"yamltests/transitiontests",
 ]
 exclude = [
 	"substrate/runtime/wasm",

@@ -1,20 +1,5 @@
-// Copyright 2018 Parity Technologies (UK) Ltd.
-// This file is part of Substrate Shasper.
-
-// Substrate is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// Substrate is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
-
-use crate::{Executive, Error, Config};
+use crate::primitives::*;
+use crate::{Config, BeaconState, Error, utils};
 
 /// Committee assignment.
 pub struct CommitteeAssignment {
@@ -26,7 +11,7 @@ pub struct CommitteeAssignment {
 	pub slot: u64,
 }
 
-impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
+impl<C: Config> BeaconState<C> {
 	/// Find committee assignment at slot.
 	pub fn committee_assignment(
 		&self,
@@ -39,15 +24,15 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 		}
 
 		let committees_per_slot =
-			self.epoch_committee_count(epoch) / self.config.slots_per_epoch();
-		let epoch_start_slot = self.config.epoch_start_slot(epoch);
-		for slot in epoch_start_slot..(epoch_start_slot + self.config.slots_per_epoch()) {
+			self.committee_count(epoch) / C::slots_per_epoch();
+		let epoch_start_slot = utils::start_slot_of_epoch::<C>(epoch);
+		for slot in epoch_start_slot..(epoch_start_slot + C::slots_per_epoch()) {
 			let offset = committees_per_slot *
-				(slot % self.config.slots_per_epoch());
+				(slot % C::slots_per_epoch());
 			let slot_start_shard =
-				(self.epoch_start_shard(epoch)? + offset) % self.config.shard_count();
+				(self.start_shard(epoch)? + offset) % C::shard_count();
 			for i in 0..committees_per_slot {
-				let shard = (slot_start_shard + i) % self.config.shard_count();
+				let shard = (slot_start_shard + i) % C::shard_count();
 				let committee = self.crosslink_committee(epoch, shard)?;
 				if committee.contains(&validator_index) {
 					return Ok(Some(CommitteeAssignment {
@@ -58,5 +43,22 @@ impl<'state, 'config, C: Config> Executive<'state, 'config, C> {
 			}
 		}
 		Ok(None)
+	}
+
+	/// Get validator public key.
+	pub fn validator_pubkey(&self, index: u64) -> Option<ValidatorId> {
+		if index as usize >= self.validators.len() {
+			return None
+		}
+
+		let validator = &self.validators[index as usize];
+		Some(validator.pubkey.clone())
+	}
+
+	/// Get validator index from public key.
+	pub fn validator_index(&self, pubkey: &ValidatorId) -> Option<u64> {
+		let validator_pubkeys = self.validators.iter()
+			.map(|v| v.pubkey.clone()).collect::<Vec<_>>();
+		validator_pubkeys.iter().position(|v| v == pubkey).map(|v| v as u64)
 	}
 }
