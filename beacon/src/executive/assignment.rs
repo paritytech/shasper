@@ -1,3 +1,4 @@
+use crate::primitives::*;
 use crate::{Config, BeaconState, Error, utils};
 
 /// Committee assignment.
@@ -42,5 +43,22 @@ impl<C: Config> BeaconState<C> {
 			}
 		}
 		Ok(None)
+	}
+
+	/// Get validator public key.
+	pub fn validator_pubkey(&self, index: u64) -> Option<ValidatorId> {
+		if index as usize >= self.validators.len() {
+			return None
+		}
+
+		let validator = &self.validators[index as usize];
+		Some(validator.pubkey.clone())
+	}
+
+	/// Get validator index from public key.
+	pub fn validator_index(&self, pubkey: &ValidatorId) -> Option<u64> {
+		let validator_pubkeys = self.validators.iter()
+			.map(|v| v.pubkey.clone()).collect::<Vec<_>>();
+		validator_pubkeys.iter().position(|v| v == pubkey).map(|v| v as u64)
 	}
 }

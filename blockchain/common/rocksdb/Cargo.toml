@@ -9,4 +9,4 @@ edition = "2018"
 [dependencies]
 blockchain = "0.8"
 rocksdb = "0.12"
-parity-codec = { version = "3.0", features = ["derive"] }
+parity-codec = { version = "4.0", features = ["derive"] }

@@ -5,13 +5,13 @@ pub use pool::AttestationPool;
 
 use beacon::primitives::H256;
 use beacon::types::*;
-use beacon::{Error as BeaconError, BeaconState, Config, BLSConfig, MinimalConfig, Inherent, Transaction};
+use beacon::{Error as BeaconError, BeaconState, Config, BLSConfig, Inherent, Transaction};
 use std::sync::Arc;
 use blockchain::traits::{Block as BlockT, BlockExecutor, AsExternalities};
 use lmd_ghost::JustifiableExecutor;
 use parity_codec::{Encode, Decode};
 use bm_le::tree_root;
-use crypto::bls::BLSVerification;
+use core::marker::PhantomData;
 
 use blockchain_rocksdb::RocksState as RocksStateT;
 
@@ -202,7 +202,7 @@ impl<C: Config, BLS: BLSConfig> BlockExecutor for Executor<C, BLS> {
 		block: &Block<C>,
 		state: &mut Self::Externalities,
 	) -> Result<(), Error> {
-		Ok(beacon::execute_block::<C, BLS>(&block.0, state.state(), &self.config)?)
+		Ok(beacon::execute_block::<C, BLS>(&block.0, state.state())?)
 	}
 }
 
@@ -213,14 +213,14 @@ impl<C: Config, BLS: BLSConfig> JustifiableExecutor for Executor<C, BLS> {
 		&self,
 		state: &mut Self::Externalities,
 	) -> Result<Vec<Self::ValidatorIndex>, Self::Error> {
-		Ok(state.justified_active_validators())
+		Ok(state.state().justified_active_validators())
 	}
 
 	fn justified_block_id(
 		&self,
 		state: &mut Self::Externalities,
 	) -> Result<Option<<Self::Block as BlockT>::Identifier>, Self::Error> {
-		let justified_root = state.state().current_justified_root;
+		let justified_root = state.state().current_justified_checkpoint.root;
 		if justified_root == H256::default() {
 			Ok(None)
 		} else {
@@ -233,6 +233,6 @@ impl<C: Config, BLS: BLSConfig> JustifiableExecutor for Executor<C, BLS> {
 		block: &Self::Block,
 		state: &mut Self::Externalities,
 	) -> Result<Vec<(Self::ValidatorIndex, <Self::Block as BlockT>::Identifier)>, Self::Error> {
-		Ok(state.block_vote_targets(&block.0)?)
+		Ok(state.state().block_vote_targets(&block.0)?)
 	}
 }

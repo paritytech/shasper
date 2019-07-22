@@ -6,7 +6,7 @@ pub mod consts;
 
 mod error;
 mod config;
-mod utils;
+pub mod utils;
 mod executive;
 mod genesis;
 

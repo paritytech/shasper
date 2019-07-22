@@ -1,22 +1,25 @@
-use beacon::Config;
+use beacon::{Config, BLSConfig};
 use beacon::primitives::H256;
 use beacon::types::{Attestation, AttestationDataAndCustodyBit};
 use std::collections::HashMap;
+use core::marker::PhantomData;
 use bm_le::tree_root;
 
-pub struct AttestationPool<C: Config> {
+pub struct AttestationPool<C: Config, BLS: BLSConfig> {
 	pool: HashMap<H256, Vec<Attestation<C>>>,
+	_marker: PhantomData<BLS>,
 }
 
-impl<C: Config> AttestationPool<C> {
+impl<C: Config, BLS: BLSConfig> AttestationPool<C, BLS> {
 	pub fn new() -> Self {
 		Self {
 			pool: Default::default(),
+			_marker: PhantomData,
 		}
 	}
 
 	pub fn push(&mut self, attestation: Attestation<C>) {
-		let hash = tree_root::<C::Digest>(&AttestationDataAndCustodyBit {
+		let hash = tree_root::<C::Digest, _>(&AttestationDataAndCustodyBit {
 			data: attestation.data.clone(),
 			custody_bit: false,
 		});
@@ -29,8 +32,8 @@ impl<C: Config> AttestationPool<C> {
 				for existing in existings.iter_mut() {
 					let has_duplicate = {
 						let mut has_duplicate = false;
-						for i in 0..(existing.aggregation_bitfield.0.len() * 8) {
-							if attestation.aggregation_bitfield.get_bit(i) {
+						for i in 0..existing.aggregation_bits.len() {
+							if attestation.aggregation_bits[i] {
 								has_duplicate = true;
 							}
 						}
@@ -41,12 +44,16 @@ impl<C: Config> AttestationPool<C> {
 						continue
 					}
 
-					existing.aggregation_bitfield |= attestation.aggregation_bitfield.clone();
-					for i in 0..attestation.custody_bitfield.0.len() {
-						assert_eq!(attestation.custody_bitfield.0[i], 0);
+					for (i, bit) in attestation.aggregation_bits.iter().cloned().enumerate() {
+						existing.aggregation_bits[i] |= bit;
 					}
-					existing.custody_bitfield |= attestation.custody_bitfield.clone();
-					existing.signature = C::aggregate_signatures(&[
+					for (i, bit) in attestation.custody_bits.iter().cloned().enumerate() {
+						existing.custody_bits[i] |= bit;
+					}
+					for i in 0..existing.custody_bits.len() {
+						assert_eq!(attestation.custody_bits[i], false);
+					}
+					existing.signature = BLS::aggregate_signatures(&[
 						existing.signature, attestation.signature.clone()
 					]);
 
@@ -65,7 +72,7 @@ impl<C: Config> AttestationPool<C> {
 		self.pool.remove(key);
 	}
 
-	pub fn iter(&self) -> impl Iterator<Item=(&H256, &Attestation)> {
+	pub fn iter(&self) -> impl Iterator<Item=(&H256, &Attestation<C>)> {
 		self.pool.iter().flat_map(|(h, ats)| ats.iter().map(move |at| (h, at)))
 	}
 }

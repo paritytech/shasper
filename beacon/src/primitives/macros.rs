@@ -67,18 +67,18 @@ macro_rules! impl_beacon_fixed_hash {
 			}
 		}
 
-		impl<DB> bm_le::IntoTree<DB> for $t where
-			DB: bm_le::Backend<Intermediate=bm_le::Intermediate, End=bm_le::End>
-		{
-			fn into_tree(&self, db: &mut DB) -> Result<bm_le::ValueOf<DB>, bm_le::Error<DB::Error>> {
+		impl bm_le::IntoTree for $t {
+			fn into_tree<DB: bm_le::WriteBackend>(&self, db: &mut DB) -> Result<bm_le::ValueOf<DB::Construct>, bm_le::Error<DB::Error>> where
+				DB::Construct: bm_le::CompatibleConstruct
+			{
 				ElementalFixedVecRef(&self.0.as_ref()).into_compact_vector_tree(db, None)
 			}
 		}
 
-		impl<DB> bm_le::FromTree<DB> for $t where
-			DB: bm_le::Backend<Intermediate=bm_le::Intermediate, End=bm_le::End>
-		{
-			fn from_tree(root: &bm_le::ValueOf<DB>, db: &DB) -> Result<Self, bm_le::Error<DB::Error>> {
+		impl bm_le::FromTree for $t {
+			fn from_tree<DB: bm_le::ReadBackend>(root: &bm_le::ValueOf<DB::Construct>, db: &mut DB) -> Result<Self, bm_le::Error<DB::Error>> where
+				DB::Construct: bm_le::CompatibleConstruct
+			{
 				let value = ElementalFixedVec::<u8>::from_compact_vector_tree(root, db, SIZE, None)?;
 				Ok(Self::from_slice(value.0.as_ref()))
 			}
