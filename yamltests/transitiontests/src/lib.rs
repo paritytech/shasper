@@ -81,12 +81,11 @@ pub fn run_collection<T: Test>(coll: Collection<T>) {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use beacon::NoVerificationConfig;
+	use beacon::MinimalConfig;
 
 	#[test]
 	fn deposit_small() {
-		let config = NoVerificationConfig::small();
-		let coll = serde_yaml::from_str(&include_str!("../res/spectests/tests/operations/deposit/deposit_minimal.yaml")).unwrap();
-		run_collection::<DepositTest, _>(coll, &config);
+		let coll = serde_yaml::from_str(&include_str!("../../spectests/tests/operations/deposit/deposit_minimal.yaml")).unwrap();
+		run_collection::<DepositTest<MinimalConfig>>(coll);
 	}
 }

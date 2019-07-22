@@ -22,38 +22,12 @@ installed. Other dependencies required including `pkgconfig`, `libudev`,
 
 ## `substrate` client
 
-The `substrate` client uses LMD-GHOST consensus and Casper state transition with
-attestations based on a relatively old specification. The client also inherents
-the complete networking stack from Substrate. Note that it is an issue that
-we're addressing that this currently diverges a lot from the actual Serenity
-specification. If you are interested in following Serenity's newest
-specification development, it is recommended that you use the `blockchain`
-client in the next section.
-
-To build the `blockchain` client, it is recommended that you use
-[rustup](https://rustup.rs) as we need both stable and nightly Rust to build the
-project. In addition, you need to have
-[wasm-gc](https://github.com/alexcrichton/wasm-gc) installed for the WebAssembly
-runtime.
-
-```bash
-rustup update stable
-rustup update nightly
-rustup target add wasm32-unknown-unknown --toolchain nightly
-cargo +nightly install --git https://github.com/alexcrichton/wasm-gc
-```
-
-To compile the WebAssembly runtime and run the client:
-
-```bash
-cd ./substrate && ./build.sh
-cargo run --release -- --dev -k Alice
-```
+The `substrate` client is currently being reworked at this moment. Stay tuned!
 
 ## `blockchain` client
 
 The `blockchain` client uses spec archive LMD-GHOST consensus and Serenity
-`beacon` v0.6 runtime. The client implements a basic in-memory backend and
+`beacon` v0.8 runtime. The client implements a basic in-memory backend and
 networking stack based on `libp2p`. It also contains basic validator logic and
 can participate in beacon chain proposing and attestation.
 

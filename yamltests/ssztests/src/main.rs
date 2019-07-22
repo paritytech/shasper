@@ -2,12 +2,12 @@ use std::fs::File;
 use std::io::{BufReader, Write};
 
 use clap::{App, Arg};
-use beacon::{Config, BLSNoVerification, MinimalConfig, MainnetConfig};
+use beacon::{Config, MinimalConfig, MainnetConfig, BeaconState};
 use beacon::primitives::*;
 use beacon::types::*;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use ssz::{Encode, Decode};
-use bm_le::{IntoTree, FromTree, InMemoryBackend, End};
+use bm_le::{IntoTree, FromTree, InMemoryBackend, DigestConstruct};
 use sha2::Sha256;
 
 #[derive(Deserialize, Debug)]
@@ -81,7 +81,7 @@ pub struct TestItem<T> {
 	signing_root: Option<H256>,
 }
 
-impl<T: core::fmt::Debug + PartialEq + Encode + Decode + IntoTree<InMemoryBackend<Sha256, End>> + FromTree<InMemoryBackend<Sha256, End>>> TestItem<T> {
+impl<T: core::fmt::Debug + PartialEq + Encode + Decode + IntoTree + FromTree> TestItem<T> {
 	pub fn test(&self) {
 		print!("Testing {} ...", self.serialized);
 		std::io::stdout().flush().ok().expect("Could not flush stdout");
@@ -91,10 +91,10 @@ impl<T: core::fmt::Debug + PartialEq + Encode + Decode + IntoTree<InMemoryBacken
 		assert_eq!(encoded, expected);
 		let decoded = T::decode(&encoded).unwrap();
 		assert_eq!(decoded, self.value);
-		let mut db = InMemoryBackend::new_with_inherited_empty();
+		let mut db = InMemoryBackend::<DigestConstruct<Sha256>>::default();
 		let encoded_root = self.value.into_tree(&mut db).unwrap();
 		assert_eq!(H256::from_slice(encoded_root.as_ref()), self.root);
-		let decoded_root = T::from_tree(&encoded_root, &db).unwrap();
+		let decoded_root = T::from_tree(&encoded_root, &mut db).unwrap();
 		assert_eq!(decoded_root, self.value);
 
 		println!(" passed");
@@ -120,14 +120,14 @@ fn main() {
 
 	match matches.value_of("CONFIG") {
 		Some("small") | None => {
-			let coll = serde_yaml::from_reader::<_, Collection<MinimalConfig<BLSNoVerification>>>(reader)
+			let coll = serde_yaml::from_reader::<_, Collection<MinimalConfig>>(reader)
 				.expect("Parse test cases failed");
 			for test in coll.test_cases {
 				test.test()
 			}
 		},
 		Some("full") => {
-			let coll = serde_yaml::from_reader::<_, Collection<MainnetConfig<BLSNoVerification>>>(reader)
+			let coll = serde_yaml::from_reader::<_, Collection<MainnetConfig>>(reader)
 				.expect("Parse test cases failed");
 			for test in coll.test_cases {
 				test.test()

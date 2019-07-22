@@ -2,11 +2,6 @@
 members = [
 	"crypto",
 	"beacon",
-	"substrate",
-	"substrate/runtime",
-	"substrate/primitives",
-	"substrate/consensus",
-	"substrate/casper",
 	"blockchain",
 	"blockchain/common/rocksdb",
 	"blockchain/lmd-ghost",
