@@ -31,9 +31,9 @@ pub trait BLSConfig: Default + Clone + 'static {
 	fn verify_multiple(pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool;
 }
 
-/// Run bls without any verification.
 #[derive(Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Run bls without any verification.
 pub struct BLSNoVerification;
 
 impl BLSConfig for BLSNoVerification {
@@ -55,21 +55,37 @@ impl BLSConfig for BLSNoVerification {
 pub trait Config: Default + Clone + PartialEq + Eq + core::fmt::Debug + 'static {
 	/// Digest hash function.
 	type Digest: Digest<OutputSize=typenum::U32>;
+	/// Max validators per committee.
 	type MaxValidatorsPerCommittee: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Slots per historical root.
 	type SlotsPerHistoricalRoot: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Maximum proposer slashings.
 	type MaxProposerSlashings: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Maximum attester slashings.
 	type MaxAttesterSlashings: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Maximum attestations in a given block.
 	type MaxAttestations: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Maximum deposits in a given block.
 	type MaxDeposits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Maximum voluntary exists in a given block.
 	type MaxVoluntaryExits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Maximum transfers in a given block.
 	type MaxTransfers: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Limit of historical roots.
 	type HistoricalRootsLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Shard count.
 	type ShardCount: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Slots per epoch.
 	type SlotsPerEpoch: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Slots per eth1 voting period.
 	type SlotsPerEth1VotingPeriod: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Validator registry limit.
 	type ValidatorRegistryLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Epochs per historical vector.
 	type EpochsPerHistoricalVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Epochs per slashings vector.
 	type EpochsPerSlashingsVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	/// Maximum attestations per epoch.
 	type MaxAttestationsPerEpoch: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
 
 	// === Misc ===
@@ -197,6 +213,7 @@ pub trait Config: Default + Clone + PartialEq + Eq + core::fmt::Debug + 'static 
 #[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
+/// Minimal config.
 pub struct MinimalConfig;
 
 impl Config for MinimalConfig {
@@ -266,6 +283,7 @@ impl Config for MinimalConfig {
 #[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
+/// Mainnet config.
 pub struct MainnetConfig;
 
 impl Config for MainnetConfig {

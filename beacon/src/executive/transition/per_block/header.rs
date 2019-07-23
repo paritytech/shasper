@@ -3,6 +3,7 @@ use crate::{Config, BeaconState, Error, BLSConfig};
 use bm_le::tree_root;
 
 impl<C: Config> BeaconState<C> {
+	/// Process a block header.
 	pub fn process_block_header<'a, 'b, B: Block, BLS: BLSConfig>(
 		&'a mut self,
 		block: &'b B

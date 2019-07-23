@@ -5,6 +5,7 @@ use bm_le::tree_root;
 use core::cmp::Ordering;
 
 impl<C: Config> BeaconState<C> {
+	/// Get attestations with matching source at given epoch.
 	pub fn matching_source_attestations(
 		&self,
 		epoch: Epoch
@@ -18,6 +19,7 @@ impl<C: Config> BeaconState<C> {
 		}
 	}
 
+	/// Get attestations with matching target at given epoch.
 	pub fn matching_target_attestations(
 		&self,
 		epoch: Epoch
@@ -28,6 +30,7 @@ impl<C: Config> BeaconState<C> {
 		   .collect())
 	}
 
+	/// Get attestations with matching head at given epoch.
 	pub fn matching_head_attestations(
 		&self,
 		epoch: Epoch
@@ -47,6 +50,7 @@ impl<C: Config> BeaconState<C> {
 			})
 	}
 
+	/// Get indices of all unslashed validators within attestations.
 	pub fn unslashed_attesting_indices(
 		&self, attestations: &[PendingAttestation<C>]
 	) -> Result<Vec<ValidatorIndex>, Error> {
@@ -65,12 +69,14 @@ impl<C: Config> BeaconState<C> {
 		Ok(ret)
 	}
 
+	/// Get the total attesting balance given a list of attestations.
 	pub fn attesting_balance(
 		&self, attestations: &[PendingAttestation<C>]
 	) -> Result<Gwei, Error> {
 		Ok(self.total_balance(&self.unslashed_attesting_indices(attestations)?))
 	}
 
+	/// Get the winning crosslink and attesting indices.
 	pub fn winning_crosslink_and_attesting_indices(
 		&self, epoch: Epoch, shard: Shard
 	) -> Result<(Crosslink, Vec<ValidatorIndex>), Error> {

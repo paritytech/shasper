@@ -3,15 +3,21 @@ use alloc::vec::Vec;
 use alloc::collections::VecDeque;
 
 #[derive(Eq, PartialEq, Clone, Debug)]
+/// Item in a ssz series.
 pub enum SeriesItem {
+	/// Fixed-sized item.
 	Fixed(Vec<u8>),
+	/// Variable-sized item.
 	Variable(Vec<u8>),
 }
 
 #[derive(Default, Eq, PartialEq, Clone, Debug)]
+/// Represents a ssz series. Items in it can either be fixed-sized or
+/// variable-sized.
 pub struct Series(pub Vec<SeriesItem>);
 
 impl Series {
+	/// Encode the current series into raw bytes.
 	pub fn encode(&self) -> Vec<u8> {
 		let mut ret = Vec::new();
 
@@ -49,6 +55,8 @@ impl Series {
 		ret
 	}
 
+	/// Decode raw bytes as a ssz vector, with given types. The length of types
+	/// must equal to the length of values in the vector.
 	pub fn decode_vector(value: &[u8], typs: &[Option<usize>]) -> Result<Self, Error> {
 		let mut ret = Vec::new();
 		let mut variable_offsets = VecDeque::new();
@@ -89,6 +97,7 @@ impl Series {
 		Ok(Self(ret))
 	}
 
+	/// Decode raw bytes as a ssz list, with the given type.
 	pub fn decode_list(value: &[u8], typ: Option<usize>) -> Result<Self, Error> {
 		let mut ret = Vec::new();
 

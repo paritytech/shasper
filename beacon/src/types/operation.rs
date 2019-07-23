@@ -87,6 +87,7 @@ impl<C: Config> From<Attestation<C>> for SigningAttestation<C> {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Unsealed attestation.
 pub struct SigningAttestation<C: Config> {
 	/// Attester aggregation bitfield
 	#[bm(compact)]
@@ -141,6 +142,7 @@ impl From<VoluntaryExit> for SigningVoluntaryExit {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Unsealed voluntary exit transaction.
 pub struct SigningVoluntaryExit {
 	/// Minimum epoch for processing exit
 	pub epoch: Uint,
@@ -187,6 +189,7 @@ impl From<Transfer> for SigningTransfer {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
+/// Unsealed transfer transaction.
 pub struct SigningTransfer {
 	/// Sender index
 	pub sender: Uint,

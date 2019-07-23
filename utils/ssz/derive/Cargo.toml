@@ -1,6 +1,6 @@
 [package]
 name = "ssz-derive"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 license = "Apache-2.0"
 description = "Derive function for simple serialization"
@@ -16,6 +16,6 @@ quote = "0.6"
 deriving = "0.1"
 
 [dev-dependencies]
-ssz = { version = "0.1", path = ".." }
+ssz = { version = "0.2", path = ".." }
 generic-array = "0.12"
 typenum = "1.10"
