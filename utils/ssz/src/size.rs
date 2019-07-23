@@ -27,6 +27,7 @@ impl Size for VariableSize {
 // unless we have const generics, this is probably the most efficient we can
 // get.
 
+/// Add `A` and `B`, where `A` and `B` are both `Size`.
 pub struct Add<A: Size, B: Size>(PhantomData<(A, B)>);
 
 impl<A: Size, B: Size> Size for Add<A, B> {
@@ -38,6 +39,7 @@ impl<A: Size, B: Size> Size for Add<A, B> {
 	}
 }
 
+/// Multiply `A` and `B`, where `A` and `B` are both `Size`.
 pub struct Mul<A: Size, B: Size>(PhantomData<(A, B)>);
 
 impl<A: Size, B: Size> Size for Mul<A, B> {
@@ -49,6 +51,7 @@ impl<A: Size, B: Size> Size for Mul<A, B> {
 	}
 }
 
+/// Divide `A` by `B`, where `A` and `B` are both `Size`.
 pub struct Div<A: Size, B: Size>(PhantomData<(A, B)>);
 
 impl<A: Size, B: Size> Size for Div<A, B> {
@@ -61,6 +64,7 @@ impl<A: Size, B: Size> Size for Div<A, B> {
 }
 
 #[macro_export]
+/// Shortcut for adding more than two sizes together.
 macro_rules! sum {
 	( $one:ty ) => ( $one );
 	( $first:ty, $( $rest:ty ),* ) => (

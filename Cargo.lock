@@ -172,7 +172,7 @@ dependencies = [
 
 [[package]]
 name = "beacon"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "bm-le 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -183,7 +183,7 @@ dependencies = [
  "primitive-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ssz 0.1.2",
+ "ssz 0.2.0",
  "typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "vecarray 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2258,7 +2258,7 @@ dependencies = [
 name = "shasper-blockchain"
 version = "0.1.0"
 dependencies = [
- "beacon 0.1.2",
+ "beacon 0.2.0",
  "blockchain 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "blockchain-network-simple 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "blockchain-rocksdb 0.1.0",
@@ -2271,14 +2271,14 @@ dependencies = [
  "rocksdb 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "shasper-crypto 0.1.0",
- "ssz 0.1.2",
+ "ssz 0.2.0",
 ]
 
 [[package]]
 name = "shasper-crypto"
 version = "0.1.0"
 dependencies = [
- "beacon 0.1.2",
+ "beacon 0.2.0",
  "milagro_bls 0.9.0 (git+https://github.com/sigp/milagro_bls)",
 ]
 
@@ -2324,27 +2324,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "ssz"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "bm-le 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitive-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ssz-derive 0.1.2",
+ "ssz-derive 0.2.0",
  "typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "vecarray 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "ssz-derive"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "deriving 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc-macro2 0.4.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)",
- "ssz 0.1.2",
+ "ssz 0.2.0",
  "syn 0.15.31 (registry+https://github.com/rust-lang/crates.io-index)",
  "typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2353,7 +2353,7 @@ dependencies = [
 name = "ssztests"
 version = "0.1.0"
 dependencies = [
- "beacon 0.1.2",
+ "beacon 0.2.0",
  "bm-le 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2361,7 +2361,7 @@ dependencies = [
  "serde_yaml 0.8.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "shasper-crypto 0.1.0",
- "ssz 0.1.2",
+ "ssz 0.2.0",
 ]
 
 [[package]]
@@ -2749,13 +2749,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "transitiontests"
 version = "0.1.0"
 dependencies = [
- "beacon 0.1.2",
+ "beacon 0.2.0",
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.8.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "shasper-crypto 0.1.0",
- "ssz 0.1.2",
+ "ssz 0.2.0",
 ]
 
 [[package]]

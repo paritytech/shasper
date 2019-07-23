@@ -16,6 +16,7 @@
 
 //! SimpleSerialization crate written in Rust.
 
+#![warn(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -48,7 +49,10 @@ pub enum Error {
 	ListTooLarge,
 }
 
+/// Base trait for ssz encoding and decoding.
 pub trait Codec {
+	/// Size of the current type, also indicates whether it is fixed-sized or
+	/// variable-sized.
 	type Size: Size;
 }
 
@@ -76,4 +80,5 @@ pub trait Decode: Codec + Sized {
 	fn decode(value: &[u8]) -> Result<Self, Error>;
 }
 
+/// Type for length offset used for variable-sized item placeholder.
 pub type LengthOffset = u32;
