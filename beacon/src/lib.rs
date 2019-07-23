@@ -1,12 +1,19 @@
+//! Ethereum 2.0 (Serenity) beacon chain state transition implementation.
+
+#![warn(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+/// Primitive types for integer and bytes.
 pub mod primitives;
+/// Types for operations and blocks.
 pub mod types;
+/// Constants used in beacon chain.
 pub mod consts;
+/// Exported beacon chain utilities.
+pub mod utils;
 
 mod error;
 mod config;
-pub mod utils;
 mod executive;
 mod genesis;
 

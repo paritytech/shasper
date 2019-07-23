@@ -2,7 +2,7 @@ use serde::{Serializer, Deserializer, de::Error as _};
 use impl_serde::serialize;
 use core::convert::TryFrom;
 
-pub fn serialize_bitseq<T: AsRef<[bool]>, S: Serializer>(
+fn serialize_bitseq<T: AsRef<[bool]>, S: Serializer>(
 	value: &T,
 	serializer: S,
 	is_list: bool,
@@ -20,17 +20,19 @@ pub fn serialize_bitseq<T: AsRef<[bool]>, S: Serializer>(
 	serialize::serialize(&bytes, serializer)
 }
 
+/// Serialize a serde bitlist.
 pub fn serialize_bitlist<ML, S: Serializer>(
 	value: &bm_le::MaxVec<bool, ML>,
 	serializer: S
 ) -> Result<S::Ok, S::Error> { serialize_bitseq(value, serializer, true) }
 
+/// Serialize a serde bitvector.
 pub fn serialize_bitvector<L: typenum::Unsigned, S: Serializer>(
 	value: &vecarray::VecArray<bool, L>,
 	serializer: S
 ) -> Result<S::Ok, S::Error> { serialize_bitseq(value, serializer, false) }
 
-pub fn deserialize_bitseq<'a, 'de, D: Deserializer<'de>>(
+fn deserialize_bitseq<'a, 'de, D: Deserializer<'de>>(
 	deserializer: D,
 	is_list: bool,
 ) -> Result<Vec<bool>, D::Error> {
@@ -45,12 +47,14 @@ pub fn deserialize_bitseq<'a, 'de, D: Deserializer<'de>>(
 	Ok(ret)
 }
 
+/// Deserialize a serde bitlist.
 pub fn deserialize_bitlist<'a, 'de, ML, D: Deserializer<'de>>(
 	deserializer: D
 ) -> Result<bm_le::MaxVec<bool, ML>, D::Error> {
 	Ok(bm_le::MaxVec::from(deserialize_bitseq(deserializer, true)?))
 }
 
+/// Deserialize a serde bitvector.
 pub fn deserialize_bitvector<'a, 'de, L: typenum::Unsigned, D: Deserializer<'de>>(
 	deserializer: D
 ) -> Result<vecarray::VecArray<bool, L>, D::Error> {

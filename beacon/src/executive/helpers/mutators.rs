@@ -3,15 +3,18 @@ use crate::{BeaconState, Config, Error, utils, consts};
 use core::cmp::max;
 
 impl<C: Config> BeaconState<C> {
+	/// Increase validator balance.
 	pub fn increase_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
 		self.balances[index as usize] += delta;
 	}
 
+	/// Decrease validator balance.
 	pub fn decrease_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
 		self.balances[index as usize] =
 			self.balances[index as usize].saturating_sub(delta);
 	}
 
+	/// Initiate validator exit.
 	pub fn initiate_validator_exit(&mut self, index: ValidatorIndex) {
 		if self.validators[index as usize].exit_epoch !=
 			consts::FAR_FUTURE_EPOCH
@@ -41,6 +44,7 @@ impl<C: Config> BeaconState<C> {
 			C::min_validator_withdrawability_delay();
 	}
 
+	/// Slash validator.
 	pub fn slash_validator(
 		&mut self,
 		slashed_index: ValidatorIndex,

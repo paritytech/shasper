@@ -53,6 +53,7 @@ pub struct BeaconBlockBody<C: Config> {
 
 /// Sealed or unsealed block.
 pub trait Block {
+	/// Configuration of the block.
 	type Config: Config;
 
 	/// Slot of the block.

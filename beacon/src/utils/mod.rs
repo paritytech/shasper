@@ -9,6 +9,7 @@ use crate::primitives::*;
 use core::cmp::max;
 use primitive_types::H256;
 
+/// Convert integer to bytes.
 pub fn to_bytes(v: Uint) -> H256 {
 	let bytes = v.to_le_bytes();
 	let mut ret = H256::default();
@@ -16,12 +17,14 @@ pub fn to_bytes(v: Uint) -> H256 {
 	ret
 }
 
+/// Convert byte to integer.
 pub fn to_uint(v: &[u8]) -> Uint {
 	let mut ret = 0u64.to_le_bytes();
 	(&mut ret[..]).copy_from_slice(&v[..v.len()]);
 	u64::from_le_bytes(ret)
 }
 
+/// Get integer squareroot.
 pub fn integer_squareroot(n: Uint) -> Uint {
 	let mut x = n;
 	let mut y = (x + 1) / 2;
@@ -32,6 +35,7 @@ pub fn integer_squareroot(n: Uint) -> Uint {
 	x
 }
 
+/// Compare hash.
 pub fn compare_hash(a: &H256, b: &H256) -> core::cmp::Ordering {
 	for i in 0..32 {
 		if a[i] > b[i] {
@@ -43,6 +47,7 @@ pub fn compare_hash(a: &H256, b: &H256) -> core::cmp::Ordering {
 	core::cmp::Ordering::Equal
 }
 
+/// Compute shuffled index.
 pub fn shuffled_index<C: Config>(
 	mut index: Uint,
 	index_count: Uint,
@@ -78,6 +83,7 @@ pub fn shuffled_index<C: Config>(
 	Ok(index)
 }
 
+/// Compute committee indices.
 pub fn compute_committee<C: Config>(
 	indices: &[ValidatorIndex],
 	seed: H256,
@@ -94,18 +100,22 @@ pub fn compute_committee<C: Config>(
 	}).collect::<Result<Vec<_>, Error>>()
 }
 
+/// Get epoch of slot.
 pub fn epoch_of_slot<C: Config>(slot: Uint) -> Uint {
 	slot / C::slots_per_epoch()
 }
 
+/// Get start slot of epoch.
 pub fn start_slot_of_epoch<C: Config>(epoch: Uint) -> Uint {
 	epoch * C::slots_per_epoch()
 }
 
+/// Get activation exit epoch.
 pub fn activation_exit_epoch<C: Config>(epoch: Uint) -> Uint {
 	epoch + 1 + C::activation_exit_delay()
 }
 
+/// Check whether given proof is valid merkle branch.
 pub fn is_valid_merkle_branch<C: Config>(
 	leaf: H256, proof: &[H256], depth: u64, index: u64, root: H256
 ) -> bool {
@@ -125,6 +135,7 @@ pub fn is_valid_merkle_branch<C: Config>(
 	value == root
 }
 
+/// BLS signing domain given a domain type and fork version.
 pub fn bls_domain(domain_type: u64, fork_version: Version) -> u64 {
 	let mut bytes = [0u8; 8];
 	(&mut bytes[0..4]).copy_from_slice(&domain_type.to_le_bytes()[0..4]);

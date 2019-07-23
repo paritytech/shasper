@@ -6,10 +6,12 @@ use bm_le::tree_root;
 use core::cmp::{max, min};
 
 impl<C: Config> BeaconState<C> {
+	/// Get current epoch.
 	pub fn current_epoch(&self) -> Epoch {
 		utils::epoch_of_slot::<C>(self.slot)
 	}
 
+	/// Get previous epoch.
 	pub fn previous_epoch(&self) -> Epoch {
 		let current_epoch = self.current_epoch();
 		if current_epoch == C::genesis_epoch() {
@@ -19,10 +21,12 @@ impl<C: Config> BeaconState<C> {
 		}
 	}
 
+	/// Get block root of the start slot of an epoch.
 	pub fn block_root(&self, epoch: Epoch) -> Result<H256, Error> {
 		self.block_root_at_slot(utils::start_slot_of_epoch::<C>(epoch))
 	}
 
+	/// Get block root at slot.
 	pub fn block_root_at_slot(&self, slot: Slot) -> Result<H256, Error> {
 		if !(slot < self.slot &&
 			 self.slot <= slot + C::slots_per_historical_root())
@@ -35,12 +39,14 @@ impl<C: Config> BeaconState<C> {
 		])
 	}
 
+	/// Get the randao mix at epoch.
 	pub fn randao_mix(&self, epoch: Epoch) -> H256 {
 		self.randao_mixes[
 			(epoch % C::epochs_per_historical_vector()) as usize
 		]
 	}
 
+	/// Get active validator indices at epoch.
 	pub fn active_validator_indices(&self, epoch: Uint) -> Vec<ValidatorIndex> {
 		self.validators
 			.iter()
@@ -50,6 +56,7 @@ impl<C: Config> BeaconState<C> {
 			.collect()
 	}
 
+	/// Get churn limit for validator exits.
 	pub fn validator_churn_limit(&self) -> Uint {
 		max(
 			C::min_per_epoch_churn_limit(),
@@ -58,6 +65,7 @@ impl<C: Config> BeaconState<C> {
 		)
 	}
 
+	/// Get the random seed for epoch.
 	pub fn seed(&self, epoch: Epoch) -> H256 {
 		C::hash(&[
 			&self.randao_mix(epoch +
@@ -68,7 +76,7 @@ impl<C: Config> BeaconState<C> {
 		])
 	}
 
-
+	/// Get committee count for epoch.
 	pub fn committee_count(&self, epoch: Epoch) -> Uint {
 		let active_validator_indices = self.active_validator_indices(epoch);
 		max(
@@ -82,7 +90,7 @@ impl<C: Config> BeaconState<C> {
 		) * C::slots_per_epoch()
 	}
 
-
+	/// Get the crosslink committee.
 	pub fn crosslink_committee(
 		&self, epoch: Epoch, shard: Shard
 	) -> Result<Vec<ValidatorIndex>, Error> {
@@ -96,6 +104,7 @@ impl<C: Config> BeaconState<C> {
 		utils::compute_committee::<C>(&indices, seed, index, count)
 	}
 
+	/// Get start shard for shuffling at epoch.
 	pub fn start_shard(&self, epoch: Epoch) -> Result<Shard, Error> {
 		if !(epoch <= self.current_epoch() + 1) {
 			return Err(Error::EpochOutOfRange)
@@ -116,6 +125,7 @@ impl<C: Config> BeaconState<C> {
 		Ok(shard)
 	}
 
+	/// Get shard delta for epoch.
 	pub fn shard_delta(&self, epoch: Epoch) -> Uint {
 		min(
 			self.committee_count(epoch),
@@ -124,6 +134,7 @@ impl<C: Config> BeaconState<C> {
 		)
 	}
 
+	/// Get the current beacon proposer index.
 	pub fn beacon_proposer_index(&self) -> Result<ValidatorIndex, Error> {
 		let epoch = self.current_epoch();
 		let committees_per_slot =
@@ -155,6 +166,7 @@ impl<C: Config> BeaconState<C> {
 		}
 	}
 
+	/// Get attestation data slot.
 	pub fn attestation_data_slot(&self, attestation: &AttestationData) -> Result<Slot, Error> {
 		let committee_count = self.committee_count(
 			attestation.target.epoch
@@ -167,6 +179,7 @@ impl<C: Config> BeaconState<C> {
 		   offset / (committee_count / C::slots_per_epoch()))
 	}
 
+	/// Get compact committees root at epoch.
 	pub fn compact_committees_root(&self, epoch: Uint) -> Result<H256, Error> {
 		let mut committees = VecArray::<CompactCommittee<C>, C::ShardCount>::default();
 		let start_shard = self.start_shard(epoch)?;
@@ -186,6 +199,7 @@ impl<C: Config> BeaconState<C> {
 		Ok(tree_root::<C::Digest, _>(&committees))
 	}
 
+	/// Get total balance of validator indices.
 	pub fn total_balance(&self, indices: &[ValidatorIndex]) -> Gwei {
 		max(
 			indices.iter().fold(0, |sum, index| {
@@ -195,10 +209,12 @@ impl<C: Config> BeaconState<C> {
 		)
 	}
 
+	/// Get total balance of active validators.
 	pub fn total_active_balance(&self) -> Gwei {
 		self.total_balance(&self.active_validator_indices(self.current_epoch()))
 	}
 
+	/// Get signing domain, given domain type and message epoch.
 	pub fn domain(&self, domain_type: Uint, message_epoch: Option<Uint>) -> Uint {
 		let epoch = message_epoch.unwrap_or(self.current_epoch());
 		let fork_version = if epoch < self.fork.epoch {
@@ -210,6 +226,7 @@ impl<C: Config> BeaconState<C> {
 		utils::bls_domain(domain_type, fork_version)
 	}
 
+	/// Convert an attestation to indexed attestation.
 	pub fn indexed_attestation(
 		&self,
 		attestation: Attestation<C>
@@ -233,6 +250,7 @@ impl<C: Config> BeaconState<C> {
 		})
 	}
 
+	/// Get attesting indices of given attestation.
 	pub fn attesting_indices(
 		&self, attestation_data: &AttestationData, bitfield: &[bool],
 	) -> Result<Vec<ValidatorIndex>, Error> {
