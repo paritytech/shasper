@@ -62,3 +62,94 @@ fn run<T: Test + DeserializeOwned>(file: File) {
 
 	run_collection(coll);
 }
+
+#[cfg(test)]
+mod spectests {
+	use super::*;
+	use std::path::PathBuf;
+
+	macro_rules! run {
+		( $name:ident, $typ:ty, $path:expr ) => {
+			#[test]
+			fn $name() {
+				let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+				d.push("..");
+				d.push($path);
+				let file = File::open(d).unwrap();
+				let reader = BufReader::new(file);
+				let coll = serde_yaml::from_reader::<_, Collection<$typ>>(reader)
+					.expect("Parse test cases failed");
+
+				run_collection(coll)
+			}
+		}
+	}
+
+	run!(attestation_mainnet, AttestationTest<MainnetConfig>,
+		 "spectests/tests/operations/attestation/attestation_mainnet.yaml");
+	run!(attestation_minimal, AttestationTest<MinimalConfig>,
+		 "spectests/tests/operations/attestation/attestation_minimal.yaml");
+
+	run!(attester_slashing_mainnet, AttesterSlashingTest<MainnetConfig>,
+		 "spectests/tests/operations/attester_slashing/attester_slashing_mainnet.yaml");
+	run!(attester_slashing_minimal, AttesterSlashingTest<MinimalConfig>,
+		 "spectests/tests/operations/attester_slashing/attester_slashing_minimal.yaml");
+
+	run!(block_header_mainnet, BlockHeaderTest<MainnetConfig>,
+		 "spectests/tests/operations/block_header/block_header_mainnet.yaml");
+	run!(block_header_minimal, BlockHeaderTest<MinimalConfig>,
+		 "spectests/tests/operations/block_header/block_header_minimal.yaml");
+
+	run!(deposit_mainnet, DepositTest<MainnetConfig>,
+		 "spectests/tests/operations/deposit/deposit_mainnet.yaml");
+	run!(deposit_minimal, DepositTest<MinimalConfig>,
+		 "spectests/tests/operations/deposit/deposit_minimal.yaml");
+
+	run!(proposer_slashing_mainnet, ProposerSlashingTest<MainnetConfig>,
+		 "spectests/tests/operations/proposer_slashing/proposer_slashing_mainnet.yaml");
+	run!(proposer_slashing_minimal, ProposerSlashingTest<MinimalConfig>,
+		 "spectests/tests/operations/proposer_slashing/proposer_slashing_minimal.yaml");
+
+	run!(transfer_minimal, TransferTest<MinimalConfig>,
+		 "spectests/tests/operations/transfer/transfer_minimal.yaml");
+
+	run!(voluntary_exit_mainnet, VoluntaryExitTest<MainnetConfig>,
+		 "spectests/tests/operations/voluntary_exit/voluntary_exit_mainnet.yaml");
+	run!(voluntary_exit_minimal, VoluntaryExitTest<MinimalConfig>,
+		 "spectests/tests/operations/voluntary_exit/voluntary_exit_minimal.yaml");
+
+	run!(crosslinks_mainnet, CrosslinksTest<MainnetConfig>,
+		 "spectests/tests/epoch_processing/crosslinks/crosslinks_mainnet.yaml");
+	run!(crosslinks_minimal, CrosslinksTest<MinimalConfig>,
+		 "spectests/tests/epoch_processing/crosslinks/crosslinks_minimal.yaml");
+
+	run!(final_updates_mainnet, FinalUpdatesTest<MainnetConfig>,
+		 "spectests/tests/epoch_processing/final_updates/final_updates_mainnet.yaml");
+	run!(final_updates_minimal, FinalUpdatesTest<MinimalConfig>,
+		 "spectests/tests/epoch_processing/final_updates/final_updates_minimal.yaml");
+
+	run!(justification_and_finalization_mainnet, JustificationAndFinalizationTest<MainnetConfig>,
+		 "spectests/tests/epoch_processing/justification_and_finalization/justification_and_finalization_mainnet.yaml");
+	run!(justification_and_finalization_minimal, JustificationAndFinalizationTest<MinimalConfig>,
+		 "spectests/tests/epoch_processing/justification_and_finalization/justification_and_finalization_minimal.yaml");
+
+	run!(registry_updates_mainnet, RegistryUpdatesTest<MainnetConfig>,
+		 "spectests/tests/epoch_processing/registry_updates/registry_updates_mainnet.yaml");
+	run!(registry_updates_minimal, RegistryUpdatesTest<MinimalConfig>,
+		 "spectests/tests/epoch_processing/registry_updates/registry_updates_minimal.yaml");
+
+	run!(slashings_mainnet, SlashingsTest<MainnetConfig>,
+		 "spectests/tests/epoch_processing/slashings/slashings_mainnet.yaml");
+	run!(slashings_minimal, SlashingsTest<MinimalConfig>,
+		 "spectests/tests/epoch_processing/slashings/slashings_minimal.yaml");
+
+	run!(sanity_blocks_mainnet, BlocksTest<MainnetConfig>,
+		 "spectests/tests/sanity/blocks/sanity_blocks_mainnet.yaml");
+	run!(sanity_blocks_minimal, BlocksTest<MinimalConfig>,
+		 "spectests/tests/sanity/blocks/sanity_blocks_minimal.yaml");
+
+	run!(sanity_slots_mainnet, SlotsTest<MainnetConfig>,
+		 "spectests/tests/sanity/slots/sanity_slots_mainnet.yaml");
+	run!(sanity_slots_minimal, SlotsTest<MinimalConfig>,
+		 "spectests/tests/sanity/slots/sanity_slots_minimal.yaml");
+}
