@@ -12,6 +12,3 @@ clap = "2.32"
 ssz = { path = "../../utils/ssz" }
 beacon = { path = "../../beacon" }
 crypto = { package = "shasper-crypto", path = "../../crypto" }
-
-[features]
-spectests = []

@@ -137,7 +137,7 @@ fn main() {
 	}
 }
 
-#[cfg(all(test, feature = "spectests"))]
+#[cfg(test)]
 mod spectests {
 	use super::*;
 	use std::path::PathBuf;

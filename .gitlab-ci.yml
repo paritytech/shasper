@@ -26,7 +26,7 @@ test-rust-stable:
   script:
     - ./scripts/init.sh
     - ./scripts/build.sh
-    - time cargo test --all --release --features spectests --locked
+    - time cargo test --all --release --locked
     - sccache -s
   only:
     - triggers

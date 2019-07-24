@@ -63,7 +63,7 @@ fn run<T: Test + DeserializeOwned>(file: File) {
 	run_collection(coll);
 }
 
-#[cfg(all(test, feature = "spectests"))]
+#[cfg(test)]
 mod spectests {
 	use super::*;
 	use std::path::PathBuf;

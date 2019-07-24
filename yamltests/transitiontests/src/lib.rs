@@ -77,15 +77,3 @@ pub fn run_collection<T: Test>(coll: Collection<T>) {
 		test.run();
 	}
 }
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use beacon::MinimalConfig;
-
-	#[test]
-	fn deposit_small() {
-		let coll = serde_yaml::from_str(&include_str!("../../spectests/tests/operations/deposit/deposit_minimal.yaml")).unwrap();
-		run_collection::<DepositTest<MinimalConfig>>(coll);
-	}
-}
