@@ -140,12 +140,17 @@ fn main() {
 #[cfg(all(test, feature = "spectests"))]
 mod spectests {
 	use super::*;
+	use std::path::PathBuf;
 
 	macro_rules! run {
 		( $name:ident, $config:ty, $path:expr ) => {
 			#[test]
 			fn $name() {
-				let reader = BufReader::new(include_bytes!($path).as_ref());
+				let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+				d.push("..");
+				d.push($path);
+				let file = File::open(d).unwrap();
+				let reader = BufReader::new(file);
 				let coll = serde_yaml::from_reader::<_, Collection<$config>>(reader)
 					.expect("parse test cases failed");
 				for test in coll.test_cases {
@@ -156,19 +161,19 @@ mod spectests {
 	}
 
 	run!(ssz_mainnet_random, MainnetConfig,
-		 "../../spectests/tests/ssz_static/core/ssz_mainnet_random.yaml");
+		 "spectests/tests/ssz_static/core/ssz_mainnet_random.yaml");
 	run!(ssz_minimal_lengthy, MinimalConfig,
-		 "../../spectests/tests/ssz_static/core/ssz_minimal_lengthy.yaml");
+		 "spectests/tests/ssz_static/core/ssz_minimal_lengthy.yaml");
 	run!(ssz_minimal_max, MinimalConfig,
-		 "../../spectests/tests/ssz_static/core/ssz_minimal_max.yaml");
+		 "spectests/tests/ssz_static/core/ssz_minimal_max.yaml");
 	run!(ssz_minimal_nil, MinimalConfig,
-		 "../../spectests/tests/ssz_static/core/ssz_minimal_nil.yaml");
+		 "spectests/tests/ssz_static/core/ssz_minimal_nil.yaml");
 	run!(ssz_minimal_one, MinimalConfig,
-		 "../../spectests/tests/ssz_static/core/ssz_minimal_one.yaml");
+		 "spectests/tests/ssz_static/core/ssz_minimal_one.yaml");
 	run!(ssz_minimal_random_chaos, MinimalConfig,
-		 "../../spectests/tests/ssz_static/core/ssz_minimal_random_chaos.yaml");
+		 "spectests/tests/ssz_static/core/ssz_minimal_random_chaos.yaml");
 	run!(ssz_minimal_random, MinimalConfig,
-		 "../../spectests/tests/ssz_static/core/ssz_minimal_random.yaml");
+		 "spectests/tests/ssz_static/core/ssz_minimal_random.yaml");
 	run!(ssz_minimal_zero, MinimalConfig,
-		 "../../spectests/tests/ssz_static/core/ssz_minimal_zero.yaml");
+		 "spectests/tests/ssz_static/core/ssz_minimal_zero.yaml");
 }
