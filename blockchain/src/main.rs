@@ -30,6 +30,7 @@ fn deposit_tree<C: Config>(deposits: &[DepositData]) -> Vec<Vec<H256>> {
 	let mut values = deposits.iter().map(|d| {
 		tree_root::<C::Digest, _>(d)
 	}).collect::<Vec<_>>();
+	let values_len = values.len();
 	let mut tree = vec![values.clone()];
 
 	for h in 0..(beacon::consts::DEPOSIT_CONTRACT_TREE_DEPTH as usize) {
@@ -46,6 +47,20 @@ fn deposit_tree<C: Config>(deposits: &[DepositData]) -> Vec<Vec<H256>> {
 		values = new_values;
 		tree.push(values.clone());
 	}
+	assert!(values.len() == 1);
+	values.push({
+		let mut ret = values_len.to_le_bytes().to_vec();
+		while ret.len() < 32 {
+			ret.push(0);
+		}
+		H256::from_slice(&ret[..])
+	});
+	tree[32].push(values[1]);
+	tree.push(vec![C::hash(&[
+		values[0].as_ref(),
+		values[1].as_ref(),
+	])]);
+	assert!(tree.len() == 34);
 
 	tree
 }
@@ -72,6 +87,7 @@ fn deposit_proof<C: Config>(tree: &Vec<Vec<H256>>, item_index: usize) -> Vec<H25
 			proof.push(zerohashes[i]);
 		}
 	}
+	proof.push(tree[32][1]);
 	proof
 }
 
