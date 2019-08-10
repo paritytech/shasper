@@ -1,0 +1,14 @@
+[package]
+name = "substrate-casper-primitives"
+version = "0.1.0"
+authors = ["Wei Tang <hi@that.world>"]
+edition = "2018"
+
+[dependencies]
+primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate", default-features = false }
+app-crypto = { package = "substrate-application-crypto", git = "https://github.com/paritytech/substrate", default-features = false }
+parity-scale-codec = { version = "1.0", default-features = false }
+
+[features]
+std = ["primitives/std", "app-crypto/std", "parity-scale-codec/std"]
+default = ["std"]

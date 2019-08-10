@@ -8,7 +8,9 @@ members = [
 	"utils/ssz",
 	"utils/ssz/derive",
 	"utils/keccak-hasher",
-	"srml/casper",
+	"substrate/casper/srml",
+	"substrate/casper/consensus",
+	"substrate/casper/primitives",
 	"yamltests/ssztests",
 	"yamltests/transitiontests",
 ]
