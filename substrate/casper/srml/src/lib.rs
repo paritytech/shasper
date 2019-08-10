@@ -26,7 +26,7 @@ use casper_primitives::{ValidatorId, ValidatorWeight};
 /// Casper module's configuration trait.
 pub trait Trait: system::Trait {
 	/// The overarching event type.
-	type Event: From<Event> + Into<<Self as system::Trait>::Event>;
+	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
 decl_storage! {
@@ -37,16 +37,17 @@ decl_storage! {
 
 decl_event!(
 	/// Casper events.
-	pub enum Event {
-		// Just a normal `enum`, here's a dummy event to ensure it compiles.
-		/// Dummy event, just here so there's a generic type that's used.
-		Dummy,
+	pub enum Event<T> where H = <T as system::Trait>::Hash {
+		/// On Casper justification happens.
+		OnJustified(H),
+		/// On Casper finalization happens.
+		OnFinalized(H),
 	}
 );
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		fn deposit_event() = default;
+		fn deposit_event<T>() = default;
 
 		// The signature could also look like: `fn on_initialize()`
 		fn on_initialize(_n: T::BlockNumber) {
