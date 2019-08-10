@@ -38,6 +38,8 @@ pub type AuraSignature = consensus_aura::sr25519::AuthoritySignature;
 /// The Ed25519 pub key of an session that belongs to an Aura authority of the chain.
 pub type AuraId = consensus_aura::sr25519::AuthorityId;
 
+pub type CasperId = casper_primitives::ValidatorId;
+
 /// Alias to pubkey that identifies an account on the chain.
 pub type AccountId = <AccountSignature as Verify>::Signer;
 
@@ -159,6 +161,10 @@ impl indices::Trait for Runtime {
 	type Event = Event;
 }
 
+impl casper::Trait for Runtime {
+	type Event = Event;
+}
+
 parameter_types! {
 	pub const MinimumPeriod: u64 = 5000;
 }
@@ -220,6 +226,7 @@ construct_runtime!(
 		Timestamp: timestamp::{Module, Call, Storage, Inherent},
 		Aura: aura::{Module, Config<T>, Inherent(Timestamp)},
 		Indices: indices::{default, Config<T>},
+		Casper: casper::{Module, Call, Storage, Config, Event<T>},
 		Balances: balances,
 		Sudo: sudo,
 		// Used for the module template in `./template.rs`

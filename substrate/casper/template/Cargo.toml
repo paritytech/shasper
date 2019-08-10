@@ -33,6 +33,7 @@ grandpa-primitives = { package = "substrate-finality-grandpa-primitives", git = 
 substrate-client = { git = "https://github.com/paritytech/substrate" }
 basic-authorship = { package = "substrate-basic-authorship", git = "https://github.com/paritytech/substrate" }
 runtime = { package = "substrate-casper-node-template-runtime", path = "runtime" }
+casper-primitives = { package = "substrate-casper-primitives", path = "../primitives" }
 
 [build-dependencies]
 vergen = "3"

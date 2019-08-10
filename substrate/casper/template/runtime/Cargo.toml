@@ -25,6 +25,8 @@ sr-primitives = { git = "https://github.com/paritytech/substrate", default_featu
 client = { package = "substrate-client", git = "https://github.com/paritytech/substrate", default_features = false }
 consensus-aura = { package = "substrate-consensus-aura-primitives", git = "https://github.com/paritytech/substrate", default_features = false }
 offchain-primitives = { package = "substrate-offchain-primitives", git = "https://github.com/paritytech/substrate", default-features = false }
+casper = { package = "srml-casper", path = "../../srml", default-features = false }
+casper-primitives = { package = "substrate-casper-primitives", path = "../../primitives", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.2" }
@@ -52,5 +54,7 @@ std = [
 	"consensus-aura/std",
 	"offchain-primitives/std",
 	"substrate-session/std",
+	"casper/std",
+	"casper-primitives/std",
 ]
 no_std = []

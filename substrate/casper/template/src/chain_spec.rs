@@ -1,9 +1,10 @@
 use primitives::{sr25519, Pair};
 use runtime::{
-	AccountId, GenesisConfig, AuraConfig, BalancesConfig,
-	SudoConfig, IndicesConfig, SystemConfig, WASM_BINARY, AuraId
+	AccountId, GenesisConfig, AuraConfig, BalancesConfig, CasperConfig,
+	SudoConfig, IndicesConfig, SystemConfig, WASM_BINARY, AuraId, CasperId,
 };
 use aura_primitives::sr25519::AuthorityPair as AuraPair;
+use casper_primitives::ValidatorPair as CasperPair;
 use substrate_service;
 
 // Note this is the URL for the telemetry server
@@ -23,10 +24,13 @@ pub enum Alternative {
 	LocalTestnet,
 }
 
-fn authority_key(s: &str) -> AuraId {
-	AuraPair::from_string(&format!("//{}", s), None)
-		.expect("static values are valid; qed")
-		.public()
+fn authority_key(s: &str) -> (AuraId, CasperId) {
+	(AuraPair::from_string(&format!("//{}", s), None)
+	 .expect("static values are valid; qed")
+	 .public(),
+	 CasperPair::from_string(&format!("//{}", s), None)
+	 .expect("static values are valid; qed")
+	 .public())
 }
 
 fn account_key(s: &str) -> AccountId {
@@ -89,14 +93,14 @@ impl Alternative {
 	}
 }
 
-fn testnet_genesis(initial_authorities: Vec<AuraId>, endowed_accounts: Vec<AccountId>, root_key: AccountId) -> GenesisConfig {
+fn testnet_genesis(initial_authorities: Vec<(AuraId, CasperId)>, endowed_accounts: Vec<AccountId>, root_key: AccountId) -> GenesisConfig {
 	GenesisConfig {
 		system: Some(SystemConfig {
 			code: WASM_BINARY.to_vec(),
 			changes_trie_config: Default::default(),
 		}),
 		aura: Some(AuraConfig {
-			authorities: initial_authorities.clone(),
+			authorities: initial_authorities.iter().map(|x| x.0.clone()).collect(),
 		}),
 		indices: Some(IndicesConfig {
 			ids: endowed_accounts.clone(),
@@ -107,6 +111,9 @@ fn testnet_genesis(initial_authorities: Vec<AuraId>, endowed_accounts: Vec<Accou
 		}),
 		sudo: Some(SudoConfig {
 			key: root_key,
+		}),
+		casper: Some(CasperConfig {
+			validators: initial_authorities.iter().map(|x| (x.1.clone().into(), 1)).collect(),
 		}),
 	}
 }

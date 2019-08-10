@@ -22,6 +22,7 @@ use srml_support::{StorageValue, dispatch::Result, decl_module, decl_storage, de
 use system::{ensure_signed, ensure_root};
 use sr_primitives::weights::SimpleDispatchInfo;
 use casper_primitives::{ValidatorId, ValidatorWeight};
+use rstd::prelude::*;
 
 /// Casper module's configuration trait.
 pub trait Trait: system::Trait {
