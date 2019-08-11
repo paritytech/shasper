@@ -12,10 +12,11 @@ system = { package = "srml-system", git = "https://github.com/paritytech/substra
 session = { package = "srml-session", git = "https://github.com/paritytech/substrate", default-features = false }
 sr-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
 casper-primitives = { package = "substrate-casper-primitives", path = "../primitives", default-features = false }
-rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate", default_features = false }
+rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate", default-features = false }
+sr-io = { git = "https://github.com/paritytech/substrate", default-features = false }
+app-crypto = { package = "substrate-application-crypto", git = "https://github.com/paritytech/substrate", default-features = false }
 
 [dev-dependencies]
-sr-io = { git = "https://github.com/paritytech/substrate" }
 primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate" }
 
 [features]
@@ -29,4 +30,6 @@ std = [
 	"system/std",
 	"session/std",
 	"rstd/std",
+	"sr-io/std",
+	"app-crypto/std",
 ]

@@ -66,6 +66,15 @@ construct_service_factory! {
 		AuthoritySetup = {
 			|service: Self::FullService| {
 				if service.config().roles.is_authority() {
+					{
+						use primitives::traits::BareCryptoStore;
+						use primitives::crypto::KeyTypeId;
+
+						service.keystore().write().ed25519_generate_new(
+							KeyTypeId(*b"casp"), Some("//Alice")
+						).expect("Authority key insertion failed");
+					}
+
 					let proposer = ProposerFactory {
 						client: service.client(),
 						transaction_pool: service.transaction_pool(),

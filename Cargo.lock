@@ -3914,6 +3914,7 @@ dependencies = [
  "srml-session 2.0.0 (git+https://github.com/paritytech/substrate)",
  "srml-support 2.0.0 (git+https://github.com/paritytech/substrate)",
  "srml-system 2.0.0 (git+https://github.com/paritytech/substrate)",
+ "substrate-application-crypto 2.0.0 (git+https://github.com/paritytech/substrate)",
  "substrate-casper-primitives 0.1.0",
  "substrate-primitives 2.0.0 (git+https://github.com/paritytech/substrate)",
 ]
@@ -4342,6 +4343,8 @@ dependencies = [
  "srml-casper 0.1.0",
  "srml-executive 2.0.0 (git+https://github.com/paritytech/substrate)",
  "srml-indices 2.0.0 (git+https://github.com/paritytech/substrate)",
+ "srml-session 2.0.0 (git+https://github.com/paritytech/substrate)",
+ "srml-staking 2.0.0 (git+https://github.com/paritytech/substrate)",
  "srml-sudo 2.0.0 (git+https://github.com/paritytech/substrate)",
  "srml-support 2.0.0 (git+https://github.com/paritytech/substrate)",
  "srml-system 2.0.0 (git+https://github.com/paritytech/substrate)",

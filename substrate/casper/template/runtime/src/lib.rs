@@ -163,10 +163,12 @@ impl indices::Trait for Runtime {
 
 impl casper::Trait for Runtime {
 	type Event = Event;
+	type Call = Call;
+	type UncheckedExtrinsic = UncheckedExtrinsic;
 }
 
 parameter_types! {
-	pub const MinimumPeriod: u64 = 5000;
+	pub const MinimumPeriod: u64 = 1000;
 }
 
 impl timestamp::Trait for Runtime {
@@ -205,6 +207,17 @@ impl balances::Trait for Runtime {
 	type WeightToFee = ConvertInto;
 }
 
+impl session::Trait for Runtime {
+	type OnSessionEnding = ();
+	type SessionHandler = SessionHandlers;
+	type ShouldEndSession = session::PeriodicSessions<Period, Offset>;
+	type Event = Event;
+	type Keys = SessionKeys;
+	type SelectInitialValidators = ();
+	type ValidatorId = AccountId;
+	type ValidatorIdOf = ();
+}
+
 impl sudo::Trait for Runtime {
 	/// The ubiquitous event type.
 	type Event = Event;
@@ -226,7 +239,8 @@ construct_runtime!(
 		Timestamp: timestamp::{Module, Call, Storage, Inherent},
 		Aura: aura::{Module, Config<T>, Inherent(Timestamp)},
 		Indices: indices::{default, Config<T>},
-		Casper: casper::{Module, Call, Storage, Config, Event<T>},
+		Casper: casper::{Module, Call, Storage, Config, Event<T>, ValidateUnsigned},
+		Session: session::{Module, Call, Storage, Event, Config<T>},
 		Balances: balances,
 		Sudo: sudo,
 		// Used for the module template in `./template.rs`
@@ -252,6 +266,19 @@ pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Account
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
 pub type Executive = executive::Executive<Runtime, Block, Context, Runtime, AllModules>;
+
+parameter_types! {
+	pub const Period: BlockNumber = 4;
+	pub const Offset: BlockNumber = 0;
+}
+
+type SessionHandlers = (Casper, Aura);
+impl_opaque_keys! {
+	pub struct SessionKeys {
+		#[id(key_types::ED25519)]
+		pub ed25519: CasperId,
+	}
+}
 
 // Implement our runtime API endpoints. This is just a bunch of proxying.
 impl_runtime_apis! {
