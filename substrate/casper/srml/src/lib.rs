@@ -206,6 +206,18 @@ impl<T: Trait> Module<T> {
 
 		Ok(())
 	}
+
+	pub fn current_justified_block() -> T::Hash {
+		<system::Module<T>>::block_hash(<CurrentJustifiedEpochNumber<T>>::get())
+	}
+
+	pub fn previous_justified_block() -> T::Hash {
+		<system::Module<T>>::block_hash(<PreviousJustifiedEpochNumber<T>>::get())
+	}
+
+	pub fn finalized_block() -> T::Hash {
+		<system::Module<T>>::block_hash(<FinalizedEpochNumber<T>>::get())
+	}
 }
 
 impl<T: Trait> session::OneSessionHandler<T::AccountId> for Module<T> {

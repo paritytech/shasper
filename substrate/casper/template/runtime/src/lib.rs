@@ -351,4 +351,18 @@ impl_runtime_apis! {
 			opaque::SessionKeys::generate(seed)
 		}
 	}
+
+	impl casper_primitives::CasperApi<Block> for Runtime {
+		fn current_justified_block() -> Hash {
+			Casper::current_justified_block()
+		}
+
+		fn previous_justified_block() -> Hash {
+			Casper::previous_justified_block()
+		}
+
+		fn finalized_block() -> Hash {
+			Casper::finalized_block()
+		}
+	}
 }

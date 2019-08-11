@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Wei Tang <hi@that.world>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate" }
+sr-primitives = { git = "https://github.com/paritytech/substrate" }
+consensus-common = { package = "substrate-consensus-common", git = "https://github.com/paritytech/substrate" }
+client = { package = "substrate-client", git = "https://github.com/paritytech/substrate" }
+casper-primitives = { package = "substrate-casper-primitives", path = "../primitives" }
+log = { version = "0.4" }

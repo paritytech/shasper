@@ -86,7 +86,7 @@ construct_service_factory! {
 						SlotDuration::get_or_compute(&*client)?,
 						client.clone(),
 						select_chain,
-						client,
+						casper_consensus::CasperBlockImport::new(client.clone(), client),
 						proposer,
 						service.network(),
 						service.config().custom.inherent_data_providers.clone(),

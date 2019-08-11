@@ -8,7 +8,10 @@ edition = "2018"
 primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate", default-features = false }
 app-crypto = { package = "substrate-application-crypto", git = "https://github.com/paritytech/substrate", default-features = false }
 parity-scale-codec = { version = "1.0", default-features = false }
+sr-api-macros = { git = "https://github.com/paritytech/substrate" }
+sr-primitives = { git = "https://github.com/paritytech/substrate", default-features = false }
+substrate-client = { git = "https://github.com/paritytech/substrate", default-features = false }
 
 [features]
-std = ["primitives/std", "app-crypto/std", "parity-scale-codec/std"]
+std = ["primitives/std", "app-crypto/std", "parity-scale-codec/std", "sr-primitives/std", "substrate-client/std"]
 default = ["std"]
