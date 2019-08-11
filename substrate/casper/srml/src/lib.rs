@@ -56,21 +56,40 @@ pub trait Trait: session::Trait + MaybeDebug {
 decl_storage! {
 	trait Store for Module<T: Trait> as Casper {
 		Validators get(validators) config(): Vec<(ValidatorId, ValidatorWeight)>;
+		CurrentEpochNumber get(current_epoch_number) build(|_| 0.into()): T::BlockNumber;
 		PreviousEpochNumber get(previous_epoch_number) build(|_| 0.into()): T::BlockNumber;
 		PreviousJustifiedEpochNumber get(previous_justified_epoch_number)
 			build(|_| 0.into()): T::BlockNumber;
-		PreviousFinalizedEpochNumber get(previous_finalized_epoch_number)
+		CurrentJustifiedEpochNumber get(current_justified_epoch_number)
 			build(|_| 0.into()): T::BlockNumber;
+		FinalizedEpochNumber get(finalized_epoch_number)
+			build(|_| 0.into()): T::BlockNumber;
+
+		CurrentEpochAttestations get(current_epoch_attestations)
+			build(|_| Vec::new()): Vec<Attestation<T>>;
+		CurrentEpochAttestationsCount get(current_epoch_attestations_count)
+			build(|_| 0u32): u32;
+		PreviousEpochAttestations get(previous_epoch_attestations)
+			build(|_| Vec::new()): Vec<Attestation<T>>;
+		PreviousEpochAttestationsCount get(previous_epoch_attestations_count)
+			build(|_| 0u32): u32;
 	}
 }
 
 decl_event!(
 	/// Casper events.
-	pub enum Event<T> where H = <T as system::Trait>::Hash {
+	pub enum Event<T> where
+		H = <T as system::Trait>::Hash,
+		A = Attestation<T>,
+	{
 		/// On Casper justification happens.
 		OnJustified(H),
 		/// On Casper finalization happens.
 		OnFinalized(H),
+		/// On new previous attestation happens.
+		OnNewPreviousEpochAttestation(A),
+		/// On new current attestation happens.
+		OnNewCurrentEpochAttestation(A),
 	}
 );
 
@@ -86,6 +105,41 @@ decl_module! {
 			let validator_id = validators[attestation.validator_index as usize].0.clone();
 			if !validator_id.verify(&attestation.encode(), &signature) {
 				return Err("invalid attestation signature")
+			}
+
+			let previous_epoch_number = <PreviousEpochNumber<T>>::get();
+			let previous_epoch_hash = <system::Module<T>>::block_hash(previous_epoch_number);
+			let current_epoch_number = <CurrentEpochNumber<T>>::get();
+			let current_epoch_hash = <system::Module<T>>::block_hash(current_epoch_number);
+			let previous_justified_epoch_number = <PreviousJustifiedEpochNumber<T>>::get();
+			let previous_justified_epoch_hash =
+				<system::Module<T>>::block_hash(previous_justified_epoch_number);
+			let current_justified_epoch_number = <CurrentJustifiedEpochNumber<T>>::get();
+			let current_justified_epoch_hash =
+				<system::Module<T>>::block_hash(current_justified_epoch_number);
+
+			if attestation.source.number == previous_justified_epoch_number &&
+				attestation.source.hash == previous_justified_epoch_hash &&
+				attestation.target.number == previous_epoch_number &&
+				attestation.target.hash == previous_epoch_hash
+			{
+				let mut previous_epoch_attestations = <PreviousEpochAttestations<T>>::get();
+				previous_epoch_attestations.push(attestation.clone());
+				<PreviousEpochAttestationsCount>::put(previous_epoch_attestations.len() as u32);
+				<PreviousEpochAttestations<T>>::put(previous_epoch_attestations);
+				Self::deposit_event(RawEvent::OnNewPreviousEpochAttestation(attestation));
+			} else if attestation.source.number == current_justified_epoch_number &&
+				attestation.source.hash == current_justified_epoch_hash &&
+				attestation.target.number == current_epoch_number &&
+				attestation.target.hash == current_epoch_hash
+			{
+				let mut current_epoch_attestations = <CurrentEpochAttestations<T>>::get();
+				current_epoch_attestations.push(attestation.clone());
+				<CurrentEpochAttestationsCount>::put(current_epoch_attestations.len() as u32);
+				<CurrentEpochAttestations<T>>::put(current_epoch_attestations);
+				Self::deposit_event(RawEvent::OnNewCurrentEpochAttestation(attestation));
+			} else {
+				return Err("invalid attestation source or target")
 			}
 
 			Ok(())
@@ -108,7 +162,7 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 	fn offchain(n: T::BlockNumber) -> Result {
-		if n == (<PreviousEpochNumber<T>>::get() + One::one()) {
+		if n == (<CurrentEpochNumber<T>>::get() + One::one()) {
 			let validators = Validators::get();
 			let mut local_keys = ValidatorId::all();
 			local_keys.sort();
@@ -121,8 +175,8 @@ impl<T: Trait> Module<T> {
 						.map(|location| (index as u32, &local_keys[location]))
 				})
 			{
-				let source_number = <PreviousJustifiedEpochNumber<T>>::get();
-				let target_number = n;
+				let source_number = <CurrentJustifiedEpochNumber<T>>::get();
+				let target_number = <CurrentEpochNumber<T>>::get();
 
 				let source = Checkpoint::<T> {
 					number: source_number,
@@ -160,7 +214,8 @@ impl<T: Trait> session::OneSessionHandler<T::AccountId> for Module<T> {
 		if changed {
 			<Validators>::put(validators.map(|(_, k)| (k, 1u64)).collect::<Vec<_>>());
 		}
-		<PreviousEpochNumber<T>>::put(<system::Module<T>>::block_number());
+		<PreviousEpochNumber<T>>::put(<CurrentEpochNumber<T>>::get());
+		<CurrentEpochNumber<T>>::put(<system::Module<T>>::block_number());
 	}
 
 	fn on_disabled(i: usize) {
