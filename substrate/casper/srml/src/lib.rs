@@ -73,6 +73,9 @@ decl_storage! {
 			build(|_| Vec::new()): Vec<Attestation<T>>;
 		PreviousEpochAttestationsCount get(previous_epoch_attestations_count)
 			build(|_| 0u32): u32;
+
+		JustificationBits get(justification_bits)
+			build(|_| [false, false, false, false]): [bool; 4]
 	}
 }
 
@@ -208,11 +211,48 @@ impl<T: Trait> Module<T> {
 impl<T: Trait> session::OneSessionHandler<T::AccountId> for Module<T> {
 	type Key = ValidatorId;
 
-	fn on_new_session<'a, I: 'a>(changed: bool, validators: I, _queued_validators: I) where
+	fn on_new_session<'a, I: 'a>(changed: bool, new_validators: I, _queued_validators: I) where
 		I: Iterator<Item=(&'a T::AccountId, ValidatorId)>
 	{
+		let validators = <Validators>::get();
+		let total_balance = validators.iter().fold(0, |acc, v| acc + v.1);
+		let previous_matching_target_balance = <PreviousEpochAttestations<T>>::get().iter()
+			.fold(0, |acc, attestation| acc + validators[attestation.validator_index as usize].1);
+		let current_matching_target_balance = <CurrentEpochAttestations<T>>::get().iter()
+			.fold(0, |acc, attestation| acc + validators[attestation.validator_index as usize].1);
+
+		let mut justification_bits = <JustificationBits>::get();
+		let old_justification_bits = justification_bits.clone();
+		justification_bits[1..].copy_from_slice(
+			&old_justification_bits[0..3]
+		);
+		let old_previous_justified_epoch_number = <PreviousJustifiedEpochNumber<T>>::get();
+		let old_current_justified_epoch_number = <CurrentJustifiedEpochNumber<T>>::get();
+		<PreviousJustifiedEpochNumber<T>>::put(<CurrentJustifiedEpochNumber<T>>::get());
+
+		if previous_matching_target_balance * 3 >= total_balance * 2 {
+			<CurrentJustifiedEpochNumber<T>>::put(<PreviousEpochNumber<T>>::get());
+			justification_bits[1] = true;
+		}
+		if current_matching_target_balance * 3 >= total_balance * 2 {
+			<CurrentJustifiedEpochNumber<T>>::put(<CurrentEpochNumber<T>>::get());
+			justification_bits[0] = true;
+		}
+
+		if justification_bits[1..3].iter().all(|v| *v) {
+			<FinalizedEpochNumber<T>>::put(old_previous_justified_epoch_number);
+		}
+
+		if justification_bits[0..2].iter().all(|v| *v) {
+			<FinalizedEpochNumber<T>>::put(old_current_justified_epoch_number);
+		}
+
+		<JustificationBits>::put(justification_bits);
+		<PreviousEpochAttestations<T>>::put(Vec::new());
+		<CurrentEpochAttestations<T>>::put(Vec::new());
+
 		if changed {
-			<Validators>::put(validators.map(|(_, k)| (k, 1u64)).collect::<Vec<_>>());
+			<Validators>::put(new_validators.map(|(_, k)| (k, 1u64)).collect::<Vec<_>>());
 		}
 		<PreviousEpochNumber<T>>::put(<CurrentEpochNumber<T>>::get());
 		<CurrentEpochNumber<T>>::put(<system::Module<T>>::block_number());
