@@ -13,13 +13,6 @@
 
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
-
-
-
-
-
-
-
 use beacon::{Config, BLSConfig};
 use beacon::primitives::H256;
 use beacon::types::{Attestation, AttestationDataAndCustodyBit};

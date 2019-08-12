@@ -14,15 +14,6 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
-
-
-
-
-
-
-
 use digest::Digest;
 use typenum::Unsigned;
 use serde::{Serialize, Deserialize};

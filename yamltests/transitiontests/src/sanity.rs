@@ -14,15 +14,6 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
-
-
-
-
-
-
-
 use serde::{Serialize, Deserialize};
 use beacon::types::*;
 use beacon::{BeaconState, Config, BLSConfig};

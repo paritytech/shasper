@@ -14,15 +14,6 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
-
-
-
-
-
-
-
 use crate::types::*;
 use crate::{Config, BeaconState, Error, BLSConfig, utils};
 use bm_le::tree_root;

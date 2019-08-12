@@ -13,13 +13,6 @@
 
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
-
-
-
-
-
-
-
 use beacon::{genesis, Config, MinimalConfig, Inherent, Transaction};
 use beacon::primitives::*;
 use beacon::types::*;

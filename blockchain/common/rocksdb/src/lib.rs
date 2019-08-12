@@ -13,13 +13,6 @@
 
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
-
-
-
-
-
-
-
 mod utils;
 mod settlement;
 mod backend;

@@ -14,15 +14,6 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
-
-
-
-
-
-
-
 use primitives::{sr25519, ed25519, Pair};
 use runtime::{
 	AccountId, GenesisConfig, AuraConfig, BalancesConfig, CasperConfig,

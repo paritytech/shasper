@@ -14,15 +14,6 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-
-
-
-
-
-
-
-
-
 use wasm_builder_runner::{build_current_project_with_rustflags, WasmBuilderSource};
 
 fn main() {

@@ -15,15 +15,6 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
 
-
-
-
-
-
-
-
-
-
 use blake2::Blake2s;
 use blake2::crypto_mac::{Mac, MacResult};
 use blake2::digest::generic_array::typenum::U32;
