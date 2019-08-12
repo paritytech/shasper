@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-//! # Casper Consensus Module
+//! # Casper FFG Consensus Module
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
