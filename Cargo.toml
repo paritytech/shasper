@@ -8,11 +8,12 @@ members = [
 	"utils/ssz",
 	"utils/ssz/derive",
 	"utils/keccak-hasher",
+	"substrate/casper/srml",
+	"substrate/casper/consensus",
+	"substrate/casper/primitives",
+	"substrate/casper/template",
 	"yamltests/ssztests",
 	"yamltests/transitiontests",
-]
-exclude = [
-	"substrate/runtime/wasm",
 ]
 
 [profile.release]
