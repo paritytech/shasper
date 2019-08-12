@@ -22,10 +22,18 @@ use srml_support::{StorageValue, dispatch::Result, decl_module, decl_storage, de
 use system::ensure_none;
 use sr_primitives::{traits::{One, MaybeDebug, Extrinsic as ExtrinsicT, ValidateUnsigned}, weights::SimpleDispatchInfo};
 use sr_primitives::transaction_validity::{TransactionValidity, TransactionLongevity, ValidTransaction};
-use casper_primitives::{ValidatorId, ValidatorSignature, ValidatorWeight, ValidatorIndex};
+use casper_primitives::{ValidatorId, ValidatorSignature, ValidatorWeight};
 use codec::{Encode, Decode};
 use app_crypto::RuntimeAppPublic;
 use rstd::prelude::*;
+
+pub trait OnSlashing {
+	fn on_slashing(validator_id: &ValidatorId);
+}
+
+impl OnSlashing for () {
+	fn on_slashing(_validator_id: &ValidatorId) { }
+}
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -37,7 +45,7 @@ pub struct Checkpoint<T: Trait> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Attestation<T: Trait> {
-	pub validator_index: ValidatorIndex,
+	pub validator_id: ValidatorId,
 	pub source: Checkpoint<T>,
 	pub target: Checkpoint<T>,
 }
@@ -51,6 +59,8 @@ pub trait Trait: session::Trait + MaybeDebug {
 	/// A extrinsic right from the external world. This is unchecked and so
 	/// can contain a signature.
 	type UncheckedExtrinsic: ExtrinsicT<Call=<Self as Trait>::Call> + Encode + Decode + MaybeDebug;
+	/// Triggers when slashing happens.
+	type OnSlashing: OnSlashing;
 }
 
 decl_storage! {
@@ -100,12 +110,52 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event<T>() = default;
 
+		#[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+		fn slash(
+			origin,
+			attestation_1: Attestation<T>, signature_1: ValidatorSignature,
+			attestation_2: Attestation<T>, signature_2: ValidatorSignature
+		) -> Result {
+			ensure_none(origin)?;
+
+			if attestation_1 == attestation_2 {
+				return Err("not slashable because it's the same attestation")
+			}
+
+			if !attestation_1.validator_id.verify(&attestation_1.encode(), &signature_1) {
+				return Err("not slashable because attestation 1's signature is invalid")
+			}
+
+			if !attestation_2.validator_id.verify(&attestation_2.encode(), &signature_2) {
+				return Err("not slashable because attestation 2's signature is invalid")
+			}
+
+			if attestation_1.validator_id != attestation_2.validator_id {
+				return Err("not slashable because attestation not signed by the same validator")
+			}
+
+			let slashable_cond = attestation_1.target.number == attestation_2.target.number ||
+				(attestation_1.source.number < attestation_2.source.number &&
+				 attestation_2.target.number < attestation_1.target.number);
+
+			if !slashable_cond {
+				return Err("not slashable because it does not satisfy FFG's slashing conditions")
+			}
+
+			<T::OnSlashing>::on_slashing(&attestation_1.validator_id);
+
+			Ok(())
+		}
+
 		#[weight = SimpleDispatchInfo::FixedNormal(5_000_000)]
 		fn attest(origin, attestation: Attestation<T>, signature: ValidatorSignature) -> Result {
 			ensure_none(origin)?;
 
 			let validators = Validators::get();
-			let validator_id = validators[attestation.validator_index as usize].0.clone();
+			let validator_id = attestation.validator_id.clone();
+			if !validators.iter().any(|v| v.0 == validator_id) {
+				return Err("validator not in session")
+			}
 			if !validator_id.verify(&attestation.encode(), &signature) {
 				return Err("invalid attestation signature")
 			}
@@ -170,7 +220,7 @@ impl<T: Trait> Module<T> {
 			let mut local_keys = ValidatorId::all();
 			local_keys.sort();
 
-			for (validator_index, key) in validators.into_iter()
+			for (_validator_index, key) in validators.into_iter()
 				.enumerate()
 				.filter_map(|(index, validator)| {
 					local_keys.binary_search(&validator.0)
@@ -190,7 +240,7 @@ impl<T: Trait> Module<T> {
 					hash: <system::Module<T>>::block_hash(target_number),
 				};
 				let attestation = Attestation::<T> {
-					validator_index: validator_index as u64,
+					validator_id: key.clone(),
 					source, target
 				};
 				let signature = key.sign(&attestation.encode())
@@ -229,9 +279,23 @@ impl<T: Trait> session::OneSessionHandler<T::AccountId> for Module<T> {
 		let validators = <Validators>::get();
 		let total_balance = validators.iter().fold(0, |acc, v| acc + v.1);
 		let previous_matching_target_balance = <PreviousEpochAttestations<T>>::get().iter()
-			.fold(0, |acc, attestation| acc + validators[attestation.validator_index as usize].1);
+			.fold(0, |acc, attestation| {
+				let validator_weight = validators.iter()
+					.find(|v| v.0 == attestation.validator_id)
+					.map(|v| v.1)
+					.unwrap_or(0);
+
+				acc + validator_weight
+			});
 		let current_matching_target_balance = <CurrentEpochAttestations<T>>::get().iter()
-			.fold(0, |acc, attestation| acc + validators[attestation.validator_index as usize].1);
+			.fold(0, |acc, attestation| {
+				let validator_weight = validators.iter()
+					.find(|v| v.0 == attestation.validator_id)
+					.map(|v| v.1)
+					.unwrap_or(0);
+
+				acc + validator_weight
+			});
 
 		let mut justification_bits = <JustificationBits>::get();
 		let old_justification_bits = justification_bits.clone();
@@ -286,6 +350,13 @@ impl<T: Trait> ValidateUnsigned for Module<T> {
 				priority: 0,
 				requires: vec![],
 				provides: vec![attestation.encode()],
+				longevity: TransactionLongevity::max_value(),
+				propagate: true,
+			}),
+			Call::slash(a1, _, a2, _) => TransactionValidity::Valid(ValidTransaction {
+				priority: 0,
+				requires: vec![],
+				provides: vec![(a1, a2).encode()],
 				longevity: TransactionLongevity::max_value(),
 				propagate: true,
 			}),
