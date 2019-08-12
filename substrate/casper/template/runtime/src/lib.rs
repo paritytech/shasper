@@ -181,6 +181,7 @@ impl casper::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type UncheckedExtrinsic = UncheckedExtrinsic;
+	type OnSlashing = ();
 }
 
 parameter_types! {
