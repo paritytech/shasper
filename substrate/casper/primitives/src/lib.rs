@@ -42,6 +42,9 @@ pub type ValidatorWeight = u64;
 /// The index of a validator.
 pub type ValidatorIndex = u64;
 
+/// Type of epoch.
+pub type Epoch = u64;
+
 decl_runtime_apis! {
 	/// API necessary for block authorship with aura.
 	pub trait CasperApi {
