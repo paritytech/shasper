@@ -33,6 +33,7 @@ pub struct Fork {
 	/// Current fork version
 	pub current_version: Version,
 	/// Fork epoch number
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub epoch: Uint,
 }
 
@@ -43,6 +44,7 @@ pub struct Fork {
 /// Checkpoint
 pub struct Checkpoint {
 	/// Epoch
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub epoch: Uint,
 	/// Root of the checkpoint
 	pub root: H256,
@@ -59,18 +61,23 @@ pub struct Validator {
 	/// Withdrawal credentials
 	pub withdrawal_credentials: H256,
 	/// Effective balance
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub effective_balance: Uint,
 	/// Was the validator slashed
 	pub slashed: bool,
 
 	// == Status epochs ==
 	/// Epoch when became eligible for activation
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub activation_eligibility_epoch: Uint,
 	/// Epoch when validator activated
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub activation_epoch: Uint,
 	/// Epoch when validator exited
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub exit_epoch: Uint,
 	/// Epoch when validator is eligible to withdraw
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub withdrawable_epoch: Uint,
 }
 
@@ -94,14 +101,17 @@ impl Validator {
 /// Crosslink.
 pub struct Crosslink {
 	/// Shard number
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub shard: Uint,
 	/// Root of the previous crosslink
 	pub parent_root: H256,
 
 	// == Crosslinking data ==
 	/// Crosslinking data from epoch start
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub start_epoch: Uint,
 	/// Crosslinking data to epoch end
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub end_epoch: Uint,
 	/// Root of the crosslinked shard data since the previous crosslink
 	pub data_root: H256,
@@ -206,8 +216,10 @@ pub struct PendingAttestation<C: Config> {
 	/// Attestation data
 	pub data: AttestationData,
 	/// Inclusion delay
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub inclusion_delay: Uint,
 	/// Proposer index
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub proposer_index: Uint,
 }
 
@@ -220,6 +232,7 @@ pub struct Eth1Data {
 	/// Root of the deposit tree
 	pub deposit_root: H256,
 	/// Total number of deposits
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub deposit_count: Uint,
 	/// Block hash
 	pub block_hash: H256,
@@ -248,6 +261,7 @@ pub struct DepositData {
 	/// Withdrawal credentials
 	pub withdrawal_credentials: H256,
 	/// Amount in Gwei
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub amount: Uint,
 	/// Container self-signature
 	pub signature: Signature,
@@ -274,6 +288,7 @@ pub struct SigningDepositData {
 	/// Withdrawal credentials
 	pub withdrawal_credentials: H256,
 	/// Amount in Gwei
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub amount: Uint,
 }
 
@@ -297,6 +312,7 @@ pub struct CompactCommittee<C: Config> {
 /// Beacon block header.
 pub struct BeaconBlockHeader {
 	/// Slot of the block.
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
     pub slot: Uint,
 	/// Previous block root.
     pub parent_root: H256,
@@ -326,6 +342,7 @@ impl From<BeaconBlockHeader> for SigningBeaconBlockHeader {
 /// Beacon block header.
 pub struct SigningBeaconBlockHeader {
 	/// Slot of the block.
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
     pub slot: Uint,
 	/// Previous block root.
     pub parent_root: H256,

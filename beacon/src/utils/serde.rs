@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use serde::{Serializer, Deserializer, de::Error as _};
+use serde::{Serializer, Deserializer};
+use serde::de::{Error, Visitor};
 use impl_serde::serialize;
+use core::fmt;
 use core::convert::TryFrom;
 
 fn serialize_bitseq<T: AsRef<[bool]>, S: Serializer>(
@@ -80,4 +82,48 @@ pub fn deserialize_bitvector<'a, 'de, L: typenum::Unsigned, D: Deserializer<'de>
 	}
 
 	vecarray::VecArray::try_from(seq).map_err(|_| D::Error::custom("Invalid bitlist"))
+}
+
+/// Deserialize u64 or string.
+pub fn deserialize_uint<'a, 'de, D: Deserializer<'de>>(
+	deserializer: D
+) -> Result<u64, D::Error> {
+	struct UintVisitor;
+
+	impl<'a> Visitor<'a> for UintVisitor {
+		type Value = u64;
+
+		fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+			write!(formatter, "a hex encoded or decimal uint")
+		}
+
+		fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E> where E: Error {
+			Ok(value)
+		}
+
+		fn visit_str<E>(self, value: &str) -> Result<Self::Value, E> where E: Error {
+			let value = match value.len() {
+				0 => 0,
+				2 if value.starts_with("0x") => 0,
+				_ if value.starts_with("0x") => u64::from_str_radix(&value[2..], 16).map_err(|e| {
+					Error::custom(format!("Invalid hex value {}: {}", value, e).as_str())
+				})?,
+				_ => u64::from_str_radix(value, 10).map_err(|e| {
+					Error::custom(format!("Invalid decimal value {}: {:?}", value, e).as_str())
+				})?
+			};
+
+			Ok(value)
+		}
+
+		fn visit_string<E>(self, value: String) -> Result<Self::Value, E> where E: Error {
+			self.visit_str(value.as_ref())
+		}
+
+		fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E> where E: Error {
+			Ok(value as u64)
+		}
+	}
+
+	deserializer.deserialize_any(UintVisitor)
 }
