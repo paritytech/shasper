@@ -15,6 +15,9 @@ members = [
 	"yamltests/ssztests",
 	"yamltests/transitiontests",
 ]
+exclude = [
+	"beacon/wasm"
+]
 
 [profile.release]
 # Substrate runtime requires unwinding.
