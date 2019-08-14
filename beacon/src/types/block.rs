@@ -76,6 +76,7 @@ pub trait Block {
 /// Beacon block.
 pub struct BeaconBlock<C: Config> {
 	/// Slot of the block.
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub slot: Uint,
 	/// Previous block root.
 	pub parent_root: H256,
@@ -116,6 +117,7 @@ impl<'a, C: Config, T: Block<Config=C>> From<&'a T> for UnsealedBeaconBlock<C> {
 /// Unsealed Beacon block.
 pub struct UnsealedBeaconBlock<C: Config> {
 	/// Slot of the block.
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub slot: Uint,
 	/// Previous block root.
 	pub parent_root: H256,

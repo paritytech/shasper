@@ -32,6 +32,7 @@ use crate::types::*;
 /// Block proposer slashing.
 pub struct ProposerSlashing {
 	/// Proposer index
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub proposer_index: Uint,
 	/// First proposal
 	pub header_1: BeaconBlockHeader,
@@ -122,8 +123,10 @@ pub struct Deposit {
 /// Block voluntary exit.
 pub struct VoluntaryExit {
 	/// Minimum epoch for processing exit
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub epoch: Uint,
 	/// Index of the exiting validator
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub validator_index: Uint,
 	/// Validator signature
 	pub signature: Signature,
@@ -145,8 +148,10 @@ impl From<VoluntaryExit> for SigningVoluntaryExit {
 /// Unsealed voluntary exit transaction.
 pub struct SigningVoluntaryExit {
 	/// Minimum epoch for processing exit
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub epoch: Uint,
 	/// Index of the exiting validator
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub validator_index: Uint,
 }
 
@@ -157,14 +162,19 @@ pub struct SigningVoluntaryExit {
 /// Block transfer.
 pub struct Transfer {
 	/// Sender index
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub sender: Uint,
 	/// Recipient index
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub recipient: Uint,
 	/// Amount in Gwei
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub amount: Uint,
 	/// Fee in Gwei for block proposer
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub fee: Uint,
 	/// Inclusion slot
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub slot: Uint,
 	/// Sender withdrawal pubkey
 	pub pubkey: ValidatorId,
@@ -192,14 +202,19 @@ impl From<Transfer> for SigningTransfer {
 /// Unsealed transfer transaction.
 pub struct SigningTransfer {
 	/// Sender index
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub sender: Uint,
 	/// Recipient index
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub recipient: Uint,
 	/// Amount in Gwei
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub amount: Uint,
 	/// Fee in Gwei for block proposer
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub fee: Uint,
 	/// Inclusion slot
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub slot: Uint,
 	/// Sender withdrawal pubkey
 	pub pubkey: ValidatorId,

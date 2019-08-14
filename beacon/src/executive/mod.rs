@@ -39,8 +39,10 @@ use crate::consts;
 pub struct BeaconState<C: Config> {
 	// == Versioning ==
 	/// Genesis time as Unix timestamp.
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub genesis_time: Uint,
 	/// Current slot.
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub slot: Uint,
 	/// Fork version.
 	pub fork: Fork,
@@ -61,6 +63,7 @@ pub struct BeaconState<C: Config> {
 	/// Votes on eth1 data.
 	pub eth1_data_votes: MaxVec<Eth1Data, C::SlotsPerEth1VotingPeriod>,
 	/// Eth1 data deposit index.
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub eth1_deposit_index: Uint,
 
 	// == Registry ==
@@ -72,6 +75,7 @@ pub struct BeaconState<C: Config> {
 
 	// == Shuffling ==
 	/// Start shard for shuffling.
+	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub start_shard: Uint,
 	/// Past randao mixes.
 	pub randao_mixes: VecArray<H256, C::EpochsPerHistoricalVector>,
