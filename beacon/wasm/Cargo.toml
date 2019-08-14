@@ -1,5 +1,5 @@
 [package]
-name = "beacon-wasm"
+name = "eth2"
 version = "0.2.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 description = "Minimal Serenity beacon chain implementation compiled to WebAssembly"
