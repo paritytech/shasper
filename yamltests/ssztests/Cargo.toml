@@ -9,7 +9,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8"
 clap = "2.32"
 ssz = { path = "../../utils/ssz" }
-bm-le = "0.8"
+bm-le = "0.10"
 beacon = { path = "../../beacon" }
 crypto = { package = "shasper-crypto", path = "../../crypto" }
 hex = "0.3"
