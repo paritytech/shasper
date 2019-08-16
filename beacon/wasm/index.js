@@ -166,8 +166,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xa572cbea904d67468808c8eb50a9450c9721db309128012543902d0ac358a62ae28f75bb8f1c7c42c39a8c5529bf0f4e",
@@ -176,8 +176,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x89ece308f9d1f0131765212deca99697b112d61f9be9a5f1f3780a51335b3ff981747a0b2ca2179b96d2c0c9024e5224",
@@ -186,8 +186,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xac9b60d5afcbd5663a8a44b7c5a02f19e9a77ab0a35bd65809bb5c67ec582c897feb04decc694b13e08587f3ff9b5b60",
@@ -196,8 +196,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xb0e7791fb972fe014159aa33a98622da3cdc98ff707965e536d8636b5fcc5ac7a91a8c46e59a00dca575af0f18fb13dc",
@@ -206,8 +206,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xa6e82f6da4520f85c5d27d8f329eccfa05944fd1096b20734c894966d12a9e2a9a9744529d7212d33883113a0cadb909",
@@ -216,8 +216,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xb928f3beb93519eecf0145da903b40a4c97dca00b21f12ac0df3be9116ef2ef27b2ae6bcd4c5bc2d54ef5a70627efcb7",
@@ -226,8 +226,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xa85ae765588126f5e860d019c0e26235f567a9c0c0b2d8ff30f3e8d436b1082596e5e7462d20f5be3764fd473e57f9cf",
@@ -236,8 +236,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x99cdf3807146e68e041314ca93e1fee0991224ec2a74beb2866816fd0826ce7b6263ee31e953a86d1b72cc2215a57793",
@@ -246,8 +246,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xaf81da25ecf1c84b577fefbedd61077a81dc43b00304015b2b596ab67f00e41c86bb00ebd0f90d4b125eb0539891aeed",
@@ -256,8 +256,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x80fd75ebcc0a21649e3177bcce15426da0e4f25d6828fbf4038d4d7ed3bd4421de3ef61d70f794687b12b2d571971a55",
@@ -266,8 +266,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8345dd80ffef0eaec8920e39ebb7f5e9ae9c1d6179e9129b705923df7830c67f3690cbc48649d4079eadf5397339580c",
@@ -276,8 +276,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x851f8a0b82a6d86202a61cbc3b0f3db7d19650b914587bde4715ccd372e1e40cab95517779d840416e1679c84a6db24e",
@@ -286,8 +286,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x99bef05aaba1ea467fcbc9c420f5e3153c9d2b5f9bf2c7e2e7f6946f854043627b45b008607b9a9108bb96f3c1c089d3",
@@ -296,8 +296,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8d9e19b3f4c7c233a6112e5397309f9812a4f61f754f11dd3dcb8b07d55a7b1dfea65f19a1488a14fef9a41495083582",
@@ -306,8 +306,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xa73eb991aa22cdb794da6fcde55a427f0a4df5a4a70de23a988b5e5fc8c4d844f66d990273267a54dd21579b7ba6a086",
@@ -316,8 +316,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xb098f178f84fc753a76bb63709e9be91eec3ff5f7f3a5f4836f34fe8a1a6d6c5578d8fd820573cef3a01e2bfef3eaf3a",
@@ -326,8 +326,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x9252a4ac3529f8b2b6e8189b95a60b8865f07f9a9b73f98d5df708511d3f68632c4c7d1e2b03e6b1d1e2c01839752ada",
@@ -336,8 +336,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xb271205227c7aa27f45f20b3ba380dfea8b51efae91fd32e552774c99e2a1237aa59c0c43f52aad99bba3783ea2f36a4",
@@ -346,8 +346,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xa272e9d1d50a4aea7d8f0583948090d0888be5777f2846800b8281139cd4aa9eee05f89b069857a3e77ccfaae1615f9c",
@@ -356,8 +356,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x9780e853f8ce7eda772c6691d25e220ca1d2ab0db51a7824b700620f7ac94c06639e91c98bb6abd78128f0ec845df8ef",
@@ -366,8 +366,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xab48aa2cc6f4a0bb63b5d67be54ac3aed10326dda304c5aeb9e942b40d6e7610478377680ab90e092ef1895e62786008",
@@ -376,8 +376,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8c8b694b04d98a749a0763c72fc020ef61b2bb3f63ebb182cb2e568f6a8b9ca3ae013ae78317599e7e7ba2a528ec754a",
@@ -386,8 +386,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x9717182463fbe215168e6762abcbb55c5c65290f2b5a2af616f8a6f50d625b46164178a11622d21913efdfa4b800648d",
@@ -396,8 +396,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xacb58c81ae0cae2e9d4d446b730922239923c345744eee58efaadb36e9a0925545b18a987acf0bad469035b291e37269",
@@ -406,8 +406,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x81ccc19e3b938ec2405099e90022a4218baa5082a3ca0974b24be0bc8b07e5fffaed64bef0d02c4dbfb6a307829afc5c",
@@ -416,8 +416,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xab83dfefb120fab7665a607d749ef1765fbb3cc0ba5827a20a135402c09d987c701ddb5b60f0f5495026817e8ab6ea2e",
@@ -426,8 +426,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xb6ad11e5d15f77c1143b1697344911b9c590110fdd8dd09df2e58bfd757269169deefe8be3544d4e049fb3776fb0bcfb",
@@ -436,8 +436,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8515e7f61ca0470e165a44d247a23f17f24bf6e37185467bedb7981c1003ea70bbec875703f793dd8d11e56afa7f74ba",
@@ -446,8 +446,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xad84464b3966ec5bede84aa487facfca7823af383715078da03b387cc2f5d5597cdd7d025aa07db00a38b953bdeb6e3f",
@@ -456,8 +456,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xb29043a7273d0a2dbc2b747dcf6a5eccbd7ccb44b2d72e985537b117929bc3fd3a99001481327788ad040b4077c47c0d",
@@ -466,8 +466,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xa72841987e4f219d54f2b6a9eac5fe6e78704644753c3579e776a3691bc123743f8c63770ed0f72a71e9e964dbf58f43",
@@ -476,8 +476,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xaed3e9f4bb4553952b687ba7bcac3a5324f0cceecc83458dcb45d73073fb20cef4f9f0c64558a527ec26bad9a42e6c4c",
@@ -486,8 +486,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x9446407bcd8e5efe9f2ac0efbfa9e07d136e68b03c5ebc5bde43db3b94773de8605c30419eb2596513707e4e7448bb50",
@@ -496,8 +496,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xa60d5589316a5e16e1d9bb03db45136afb9a3d6e97d350256129ee32a8e33396907dc44d2211762967d88d3e2840f71b",
@@ -506,8 +506,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x90c0c1f774e77d9fad044aa06009a15e33941477b4b9a79fa43f327608a0a54524b3fcef0a896cb0df790e9995b6ebf1",
@@ -516,8 +516,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8f207bd83dad262dd9de867748094f7141dade78704eca74a71fd9cfc9136b5278d934db83f4f3908d7a3de84d583fc9",
@@ -526,8 +526,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x82d333a47c24d4958e5b07be4abe85234c5ad1b685719a1f02131a612022ce0c726e58d52a53cf80b4a8afb21667dee1",
@@ -536,8 +536,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8e04ad5641cc0c949935785184c0b0237977e2282742bc0f81e58a7aa9bfee694027b60de0db0de0539a63d72fd57760",
@@ -546,8 +546,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x96413b2d61a9fc6a545b40e5c2e0064c53418f491a25994f270af1b79c59d5cf21d2e8c58785a8df09e7265ac975cb28",
@@ -556,8 +556,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xae5163dc807af48bc827d2fd86b7c37de5a364d0d504c2c29a1b0a243601016b21c0fda5d0a446b9cb2a333f0c08ab20",
@@ -566,8 +566,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8ce3b57b791798433fd323753489cac9bca43b98deaafaed91f4cb010730ae1e38b186ccd37a09b8aed62ce23b699c48",
@@ -576,8 +576,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8f81b19ee2e4d4d0ff6384c63bacb785bc05c4fc22e6f553079cc4ff7e0270d458951533458a01d160b22d59a8bd9ab5",
@@ -586,8 +586,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x95fa3538b8379ff2423656ab436df1632b74311aaef49bc9a3cbd70b1b01febaf2f869b4127d0e8e6d18d7d919f1f6d8",
@@ -596,8 +596,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xa65a82f7b291d33e28dd59d614657ac5871c3c60d1fb89c41dd873e41c30e0a7bc8d57b91fe50a4c96490ebf5769cb6b",
@@ -606,8 +606,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xb2a3cedd685176071a98ab100494628c989d65e4578eec9c5919f2c0321c3fc3f573b71ef81a76501d88ed9ed6c68e13",
@@ -616,8 +616,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8fc502abb5d8bdd747f8faf599b0f62b1c41145d30ee3b6ff1e52f9370240758eac4fdb6d7fb45ed258a43edebf63e96",
@@ -626,8 +626,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x931bea4bc76fad23ba9c339622ddc0e7d28904a71353c715363aa9e038f64e990ef6ef76fc1fc431b9c73036dd07b86c",
@@ -636,8 +636,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xa3caedb9c2a5d8e922359ef69f9c35b8c819bcb081610343148dc3a2c50255c9caa6090f49f890ca31d853384fc80d00",
@@ -646,8 +646,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xaf3dc44695d2a7f45dbe8b21939d5b4015ed1697131184ce19fc6bb8ff6bbc23882348b4c86278282dddf7d718e72e2b",
@@ -656,8 +656,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8aea7d8eb22063bcfe882e2b7efc0b3713e1a48dd8343bed523b1ab4546114be84d00f896d33c605d1f67456e8e2ed93",
@@ -666,8 +666,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8fbdab59d6171f31107ff330af9f2c1a8078bb630abe379868670c61f8fa5f05a27c78f6a1fd80cde658417ef5d6a951",
@@ -676,8 +676,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x83798f4dcc27c08dcd23315bee084a9821f39eed4c35ef45ba5079de93e7cf49633eea6d0f30b20c252c941f615f6ccb",
@@ -686,8 +686,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8f021f52cbd6c46979619100350a397154df00cae2efe72b22ad0dd66747d7de4beecd9b194d0f7016e4df460a63a8ea",
@@ -696,8 +696,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x89db41a6183c2fe47cf54d1e00c3cfaae53df634a32cccd5cf0c0a73e95ee0450fc3d060bb6878780fbf5f30d9e29aac",
@@ -706,8 +706,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x951f3707389db5012848b67ab77b63da2a73118b7df60f087fa9972d8f7fef33ed93e5f25268d4237c2987f032cd613f",
@@ -716,8 +716,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xb57520f5150ed646e8c26a01bf0bd15a324cc66fa8903f33fa26c3b4dd16b9a7c5118fdac9ee3eceba5ff2138cdce8f0",
@@ -726,8 +726,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xaa14e001d092db9dc99746fcfc22cd84a74adaa8fc483e6abf697bd8a93bda2ee9a075aca303f97f59615ed4e8709583",
@@ -736,8 +736,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x98536b398e5b7f1276f7cb426fba0ec2b8b0b64fba7785ea528bebed6ae56c0dee59f5d295fa4c97a1c621ecacfc4ec3",
@@ -746,8 +746,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0xb783a70a1cf9f53e7d2ddf386bea81a947e5360c5f1e0bf004fceedb2073e4dd180ef3d2d91bee7b1c5a88d1afd11c49",
@@ -756,8 +756,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x912b440c4d3c8177a012cea1cc58115cbc6795afc389363c7769bf419b9451bcde764586cf26c15e9906ea54837d031a",
@@ -766,8 +766,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x8d8be92bde8af1b9df13d5a8ed8a3a01eab6ee4cf883d7987c1d78c0d7d9b53a8630541fddf5e324b6cf4900435b1df8",
@@ -776,8 +776,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x86d386aaf3dff5b9331ace79f6e24cff8759e7e002bbe9af91c6de91ab693f6477551e7ee0a1e675d0fc614814d8a8aa",
@@ -786,8 +786,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		},
 		{
 			"pubkey": "0x911bb496153aa457e3302ea8e74427962c6eb57e97096f65cafe45a238f739b86d4b790debd5c7359f18f3642d7d774c",
@@ -796,8 +796,8 @@ const state = {
 			"slashed": false,
 			"activation_eligibility_epoch": 0,
 			"activation_epoch": 0,
-			"exit_epoch": 18446744073709552000,
-			"withdrawable_epoch": 18446744073709552000
+			"exit_epoch": "18446744073709551615",
+			"withdrawable_epoch": "18446744073709551615"
 		}
 	],
 	"balances": [
