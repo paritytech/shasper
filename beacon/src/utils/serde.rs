@@ -119,10 +119,6 @@ pub fn deserialize_uint<'a, 'de, D: Deserializer<'de>>(
 		fn visit_string<E>(self, value: String) -> Result<Self::Value, E> where E: Error {
 			self.visit_str(value.as_ref())
 		}
-
-		fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E> where E: Error {
-			Ok(value as u64)
-		}
 	}
 
 	deserializer.deserialize_any(UintVisitor)
