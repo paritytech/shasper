@@ -1,3 +1,6 @@
 [submodule "yamltests/res/spectests"]
 	path = yamltests/spectests
 	url = https://github.com/ethereum/eth2.0-spec-tests
+[submodule "vendor/bm"]
+	path = vendor/bm
+	url = https://github.com/sorpaas/bm
