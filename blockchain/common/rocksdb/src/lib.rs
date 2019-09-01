@@ -64,15 +64,6 @@ impl fmt::Display for Error {
 
 impl stderror::Error for Error { }
 
-impl From<Error> for blockchain::import::Error {
-	fn from(error: Error) -> Self {
-		match error {
-			Error::IsGenesis => blockchain::import::Error::IsGenesis,
-			error => blockchain::import::Error::Backend(Box::new(error)),
-		}
-	}
-}
-
 pub trait RocksState {
 	type Raw: Encode + Decode;
 

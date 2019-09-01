@@ -22,7 +22,7 @@ use beacon::primitives::H256;
 use beacon::types::*;
 use beacon::{Error as BeaconError, BeaconState, Config, BLSConfig, Inherent, Transaction};
 use std::sync::Arc;
-use blockchain::traits::{Block as BlockT, BlockExecutor, AsExternalities};
+use blockchain::{Block as BlockT, BlockExecutor, AsExternalities};
 use lmd_ghost::JustifiableExecutor;
 use parity_codec::{Encode, Decode};
 use bm_le::tree_root;
@@ -153,12 +153,6 @@ impl std::error::Error for Error { }
 impl From<BeaconError> for Error {
 	fn from(error: BeaconError) -> Error {
 		Error::Beacon(error)
-	}
-}
-
-impl From<Error> for blockchain::import::Error {
-	fn from(error: Error) -> blockchain::import::Error {
-		blockchain::import::Error::Executor(Box::new(error))
 	}
 }
 

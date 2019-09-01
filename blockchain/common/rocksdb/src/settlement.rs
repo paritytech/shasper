@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 use std::collections::HashMap;
-use blockchain::traits::{Block, Auxiliary};
+use blockchain::{Block, Auxiliary};
 use blockchain::backend::{Store, ChainQuery, ChainSettlement};
 use parity_codec::{Encode, Decode};
 use rocksdb::WriteBatch;
@@ -228,7 +228,7 @@ impl<'a, B: Block, A: Auxiliary<B>, S: RocksState> ChainSettlement for RocksSett
 			return
 		}
 
-		self.new_head = Some(head);
+		self.new_head = Some(head.clone());
 		self.changes.insert((COLUMN_INFO, KEY_HEAD.encode()), Some(head.encode()));
 	}
 }

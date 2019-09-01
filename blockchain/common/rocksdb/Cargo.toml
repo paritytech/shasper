@@ -7,6 +7,6 @@ authors = ["Wei Tang <hi@that.world>"]
 edition = "2018"
 
 [dependencies]
-blockchain = "0.8"
+blockchain = { version = "0.9", path = "../../../vendor/blockchain" }
 rocksdb = "0.12"
 parity-codec = { version = "4.0", features = ["derive"] }

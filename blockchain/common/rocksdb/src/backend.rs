@@ -16,7 +16,7 @@
 use core::marker::PhantomData;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
-use blockchain::traits::{Block, Auxiliary};
+use blockchain::{Block, Auxiliary};
 use blockchain::backend::{Store, ChainQuery, SharedCommittable, ChainSettlement, Operation};
 use parity_codec::{Encode, Decode};
 use rocksdb::{DB, Options};
@@ -69,11 +69,11 @@ impl<B: Block, A: Auxiliary<B>, S: RocksState> ChainQuery for RocksBackend<B, A,
 	A::Key: Encode + Decode,
 {
 	fn head(&self) -> B::Identifier {
-		*self.head.read().expect("Lock is poisoned")
+		self.head.read().expect("Lock is poisoned").clone()
 	}
 
 	fn genesis(&self) -> B::Identifier {
-		*self.genesis.as_ref()
+		self.genesis.as_ref().clone()
 	}
 
 	fn contains(
@@ -204,27 +204,27 @@ impl<B: Block, A: Auxiliary<B>, S: RocksState> RocksBackend<B, A, S> where
 						"with_genesis must be provided with a genesis block");
 
 				let head = block.id();
-				let genesis = head;
+				let genesis = head.clone();
 
 				let backend = Self {
 					db: db,
-					head: Arc::new(RwLock::new(head)),
-					genesis: Arc::new(genesis),
+					head: Arc::new(RwLock::new(head.clone())),
+					genesis: Arc::new(genesis.clone()),
 					_marker: PhantomData,
 				};
 
 				let mut settlement = RocksSettlement::new(&backend);
 				settlement.insert_block(
-					genesis,
+					genesis.clone(),
 					block,
 					state,
 					0,
 					Vec::new(),
 					true
 				);
-				settlement.insert_canon_depth_mapping(0, genesis);
-				settlement.set_genesis(genesis);
-				settlement.set_head(genesis);
+				settlement.insert_canon_depth_mapping(0, genesis.clone());
+				settlement.set_genesis(genesis.clone());
+				settlement.set_head(genesis.clone());
 				settlement.commit()?;
 
 				Ok(backend)

@@ -15,7 +15,7 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 pub mod archive;
 
-use blockchain::traits::{Block, BlockExecutor};
+use blockchain::{Block, BlockExecutor};
 use core::hash::Hash;
 
 pub trait JustifiableExecutor: BlockExecutor {

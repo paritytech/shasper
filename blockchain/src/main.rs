@@ -17,10 +17,10 @@ use beacon::{genesis, Config, MinimalConfig, Inherent, Transaction};
 use beacon::primitives::*;
 use beacon::types::*;
 use core::cmp::min;
+use blockchain::{AsExternalities, Auxiliary, Block as BlockT};
 use blockchain::backend::{SharedMemoryBackend, SharedCommittable, ChainQuery, Store, ImportLock, Operation};
 use blockchain::import::{SharedBlockImporter, MutexImporter};
-use blockchain::traits::{AsExternalities, Auxiliary, Block as BlockT};
-use blockchain_network_simple::BestDepthStatusProducer;
+use blockchain_network::sync::BestDepthStatusProducer;
 use blockchain_rocksdb::RocksBackend;
 use shasper_blockchain::{Block, Executor, MemoryState, RocksState, Error, StateExternalities, AttestationPool};
 use shasper_blockchain::backend::ShasperBackend;
@@ -214,7 +214,6 @@ fn run<B, C: Config>(
 	B: SharedCommittable<Operation=Operation<<B as Store>::Block, <B as Store>::State, <B as Store>::Auxiliary>>,
 	B: Send + Sync + 'static,
 	C: Clone + Send + Sync + 'static,
-	blockchain::import::Error: From<B::Error>,
 {
 	let executor = Executor::<C, BLSVerification>::new();
 	let importer = MutexImporter::new(
@@ -230,7 +229,7 @@ fn run<B, C: Config>(
 		});
 	}
 
-	blockchain_network_simple::libp2p::start_network_simple_sync(port, backend, import_lock, importer, status);
+	blockchain_network_libp2p::start_network_simple_sync(port, backend, import_lock, importer, status);
 }
 
 fn builder_thread<B, I, C: Config + Clone>(
