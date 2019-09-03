@@ -7,3 +7,6 @@
 [submodule "vendor/blockchain"]
 	path = vendor/blockchain
 	url = https://github.com/rust-blockchain/blockchain
+[submodule "vendor/libp2p"]
+	path = vendor/libp2p
+	url = https://github.com/sorpaas/rust-libp2p

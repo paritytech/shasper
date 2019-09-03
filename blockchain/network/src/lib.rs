@@ -5,8 +5,8 @@ use parity_codec::{Encode, Decode};
 use libp2p::{identity, NetworkBehaviour, PeerId};
 use libp2p::mdns::Mdns;
 use libp2p::floodsub::{Floodsub, Topic, TopicBuilder};
-use libp2p::kad::Kademlia;
-use libp2p::core::swarm::{NetworkBehaviourEventProcess, NetworkBehaviourAction};
+use libp2p::kad::{Kademlia, record::store::MemoryStore};
+use libp2p::swarm::{NetworkBehaviourEventProcess, NetworkBehaviourAction};
 use futures::{Async, stream::Stream};
 use tokio_io::{AsyncRead, AsyncWrite};
 use tokio_timer::Interval;
@@ -19,7 +19,7 @@ use blockchain_network::sync::{NetworkSyncMessage, NetworkSync, StatusProducer};
 #[behaviour(out_event = "(PeerId, NetworkSyncMessage<B, S>)", poll_method = "poll")]
 struct Behaviour<TSubstream: AsyncRead + AsyncWrite, B, S> {
 	floodsub: Floodsub<TSubstream>,
-	kademlia: Kademlia<TSubstream>,
+	kademlia: Kademlia<TSubstream, MemoryStore>,
 	mdns: Mdns<TSubstream>,
 
 	#[behaviour(ignore)]
@@ -70,9 +70,9 @@ impl<TSubstream: AsyncRead + AsyncWrite, B, S> NetworkBehaviourEventProcess<libp
 }
 
 
-impl<TSubstream: AsyncRead + AsyncWrite, B, S> NetworkBehaviourEventProcess<libp2p::kad::KademliaOut> for Behaviour<TSubstream, B, S> {
-	fn inject_event(&mut self, message: libp2p::kad::KademliaOut) {
-		if let libp2p::kad::KademliaOut::Discovered { peer_id, .. } = message {
+impl<TSubstream: AsyncRead + AsyncWrite, B, S> NetworkBehaviourEventProcess<libp2p::kad::KademliaEvent> for Behaviour<TSubstream, B, S> {
+	fn inject_event(&mut self, message: libp2p::kad::KademliaEvent) {
+		if let libp2p::kad::KademliaEvent::Discovered { peer_id, .. } = message {
 			println!("Discovered via Kademlia {:?}", peer_id);
 			self.floodsub.add_node_to_partial_view(peer_id);
 		}
@@ -124,7 +124,7 @@ pub fn start_network_simple_sync<Ba, I, St>(
 	let mut swarm = {
 		let mut behaviour = Behaviour {
 			floodsub: Floodsub::new(local_peer_id.clone()),
-			kademlia: Kademlia::new(local_peer_id.clone()),
+			kademlia: Kademlia::new(local_peer_id.clone(), MemoryStore::new(local_peer_id.clone())),
 			mdns: libp2p::mdns::Mdns::new().expect("Failed to create mDNS service"),
 
 			topic: topic.clone(),
