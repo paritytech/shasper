@@ -5,6 +5,7 @@ members = [
 	"blockchain",
 	"blockchain/common/rocksdb",
 	"blockchain/lmd-ghost",
+	"blockchain/network",
 	"utils/ssz",
 	"utils/ssz/derive",
 	"utils/keccak-hasher",

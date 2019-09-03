@@ -1,0 +1,15 @@
+[package]
+name = "shasper-network"
+version = "0.1.0"
+authors = ["Wei Tang <hi@that.world>"]
+edition = "2018"
+
+[dependencies]
+libp2p = "0.8"
+blockchain-network = { version = "0.1", path = "../../vendor/blockchain/network" }
+blockchain = { version = "0.9", path = "../../vendor/blockchain" }
+parity-codec = { version = "4.0", features = ["derive"] }
+futures = "0.1"
+tokio = "0.1"
+tokio-io = "0.1"
+tokio-timer = "0.2"
