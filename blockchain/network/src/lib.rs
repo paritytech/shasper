@@ -1,3 +1,5 @@
+mod rpc;
+
 use core::fmt::Debug;
 use core::time::Duration;
 use core::ops::DerefMut;
