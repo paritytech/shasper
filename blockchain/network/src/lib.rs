@@ -1,12 +1,34 @@
-mod rpc;
+pub mod behaviour;
+mod config;
+mod discovery;
+mod error;
+pub mod rpc;
+mod service;
+
+pub use behaviour::PubsubMessage;
+pub use config::{
+    Config as NetworkConfig, BEACON_ATTESTATION_TOPIC, BEACON_BLOCK_TOPIC, SHARD_TOPIC_PREFIX,
+    TOPIC_ENCODING_POSTFIX, TOPIC_PREFIX,
+};
+pub use libp2p::enr::Enr;
+pub use libp2p::multiaddr;
+pub use libp2p::Multiaddr;
+pub use libp2p::{
+    gossipsub::{GossipsubConfig, GossipsubConfigBuilder},
+    PeerId, Swarm,
+};
+pub use error::Error;
+pub use rpc::RPCEvent;
+pub use service::Libp2pEvent;
+pub use service::Service;
 
 use core::fmt::Debug;
 use core::time::Duration;
 use core::ops::DerefMut;
 use parity_codec::{Encode, Decode};
-use libp2p::{identity, NetworkBehaviour, PeerId};
+use libp2p::{identity, NetworkBehaviour};
 use libp2p::mdns::Mdns;
-use libp2p::floodsub::{Floodsub, Topic, TopicBuilder};
+use libp2p::floodsub::{self, Floodsub};
 use libp2p::kad::{Kademlia, record::store::MemoryStore};
 use libp2p::swarm::{NetworkBehaviourEventProcess, NetworkBehaviourAction};
 use futures::{Async, stream::Stream};
@@ -17,6 +39,8 @@ use blockchain::import::BlockImporter;
 use blockchain_network::{NetworkEnvironment, NetworkHandle, NetworkEvent};
 use blockchain_network::sync::{NetworkSyncMessage, NetworkSync, StatusProducer};
 
+pub const VERSION: &str = "v0.1";
+
 #[derive(NetworkBehaviour)]
 #[behaviour(out_event = "(PeerId, NetworkSyncMessage<B, S>)", poll_method = "poll")]
 struct Behaviour<TSubstream: AsyncRead + AsyncWrite, B, S> {
@@ -25,7 +49,7 @@ struct Behaviour<TSubstream: AsyncRead + AsyncWrite, B, S> {
 	mdns: Mdns<TSubstream>,
 
 	#[behaviour(ignore)]
-	topic: Topic,
+	topic: floodsub::Topic,
 	#[behaviour(ignore)]
 	events: Vec<(PeerId, NetworkSyncMessage<B, S>)>,
 }
@@ -119,7 +143,7 @@ pub fn start_network_simple_sync<Ba, I, St>(
 	println!("Local peer id: {:?}", local_peer_id);
 
 	let transport = libp2p::build_tcp_ws_secio_mplex_yamux(local_key);
-	let topic = TopicBuilder::new("blocks").build();
+	let topic = floodsub::TopicBuilder::new("blocks").build();
 
 	let mut sync = NetworkSync::new(backend, import_lock, importer, status);
 
