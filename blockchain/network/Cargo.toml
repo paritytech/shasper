@@ -1,7 +1,7 @@
 [package]
 name = "shasper-network"
 version = "0.1.0"
-authors = ["Wei Tang <hi@that.world>"]
+authors = ["Parity Technologies <admin@parity.io>", "Wei Tang <hi@that.world>", "Age Manning <Age@AgeManning.com>"]
 edition = "2018"
 
 [dependencies]
