@@ -11,6 +11,7 @@ lmd-ghost = { path = "lmd-ghost" }
 beacon = { path = "../beacon" }
 parity-codec = { version = "4.0", features = ["derive"] }
 crypto = { package = "shasper-crypto", path = "../crypto" }
+shasper-network = { path = "network" }
 blockchain = { version = "0.9", path = "../vendor/blockchain" }
 blockchain-network = { version = "0.1", path = "../vendor/blockchain/network" }
 blockchain-network-libp2p = { version = "0.1", path = "../vendor/blockchain/network/libp2p" }

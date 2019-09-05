@@ -25,7 +25,6 @@ type Libp2pBehaviour = Behaviour<Substream<StreamMuxerBox>>;
 /// The configuration and state of the libp2p components for the beacon node.
 pub struct Service {
     /// The libp2p Swarm handler.
-    //TODO: Make this private
     pub swarm: Swarm<Libp2pStream, Libp2pBehaviour>,
     /// This node's PeerId.
     pub local_peer_id: PeerId,
@@ -204,6 +203,7 @@ fn build_transport(local_private_key: Keypair) -> Boxed<(PeerId, StreamMuxerBox)
 }
 
 /// Events that can be obtained from polling the Libp2p Service.
+#[derive(Debug)]
 pub enum Libp2pEvent {
     /// An RPC response request has been received on the swarm.
     RPC(PeerId, RPCEvent),

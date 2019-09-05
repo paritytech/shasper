@@ -33,6 +33,22 @@ use blockchain_rocksdb::RocksState as RocksStateT;
 #[derive(Eq, PartialEq, Clone, Debug, Encode, Decode)]
 pub struct Block<C: Config>(pub BeaconBlock<C>);
 
+impl<C: Config> ssz::Codec for Block<C> {
+	type Size = <BeaconBlock<C> as ssz::Codec>::Size;
+}
+
+impl<C: Config> ssz::Encode for Block<C> {
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		ssz::Encode::using_encoded(&self.0, f)
+	}
+}
+
+impl<C: Config> ssz::Decode for Block<C> {
+	fn decode(value: &[u8]) -> Result<Self, ssz::Error> {
+		Ok(Block(ssz::Decode::decode(value)?))
+	}
+}
+
 impl<C: Config> BlockT for Block<C> {
 	type Identifier = H256;
 

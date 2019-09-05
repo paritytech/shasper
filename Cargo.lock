@@ -4277,6 +4277,7 @@ dependencies = [
  "rocksdb 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "shasper-crypto 0.1.0",
+ "shasper-network 0.1.0",
  "ssz 0.2.0",
 ]
 
@@ -4302,6 +4303,7 @@ dependencies = [
  "libp2p 0.12.0",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec 4.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.98 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "ssz 0.2.0",

@@ -121,6 +121,9 @@ fn main() {
 		.arg(Arg::with_name("author")
 			 .long("author")
 			 .help("Whether to author blocks"))
+		.arg(Arg::with_name("gossipsub")
+			 .long("gossipsub")
+			 .help("Use the gossipsub network stack"))
 		.get_matches();
 
 	let mut keys: HashMap<ValidatorId, bls::Secret> = HashMap::new();
@@ -179,7 +182,8 @@ fn main() {
 			backend,
 			lock,
 			eth1_data,
-			keys);
+			keys,
+			matches.is_present("gossipsub"));
 	} else {
 		println!("Using in-memory backend");
 		let backend = ShasperBackend::new(
@@ -195,7 +199,8 @@ fn main() {
 			backend,
 			lock,
 			eth1_data,
-			keys);
+			keys,
+			matches.is_present("gossipsub"));
 	}
 }
 
@@ -206,8 +211,9 @@ fn run<B, C: Config>(
 	import_lock: ImportLock,
 	eth1_data: Eth1Data,
 	keys: HashMap<ValidatorId, bls::Secret>,
+	use_gossipsub: bool,
 ) where
-	Block<C>: Send + Sync,
+	Block<C>: ssz::Encode + ssz::Decode + Send + Sync,
 	B: ChainQuery + AncestorQuery + Store<Block=Block<C>>,
 	B::State: StateExternalities + AsExternalities<dyn StateExternalities<Config=C>>,
 	B::Auxiliary: Auxiliary<Block<C>>,
@@ -229,7 +235,12 @@ fn run<B, C: Config>(
 		});
 	}
 
-	blockchain_network_libp2p::start_network_simple_sync(port, backend, import_lock, importer, status);
+	if use_gossipsub {
+		shasper_network::start_network_simple_sync(backend, import_lock, importer)
+			.expect("Starting networking thread failed");
+	} else {
+		blockchain_network_libp2p::start_network_simple_sync(port, backend, import_lock, importer, status);
+	}
 }
 
 fn builder_thread<B, I, C: Config + Clone>(
