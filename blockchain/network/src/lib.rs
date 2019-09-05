@@ -7,15 +7,15 @@ mod service;
 
 pub use behaviour::{Behaviour, PubsubMessage};
 pub use config::{
-    Config as NetworkConfig, BEACON_ATTESTATION_TOPIC, BEACON_BLOCK_TOPIC, SHARD_TOPIC_PREFIX,
-    TOPIC_ENCODING_POSTFIX, TOPIC_PREFIX,
+	Config as NetworkConfig, BEACON_ATTESTATION_TOPIC, BEACON_BLOCK_TOPIC, SHARD_TOPIC_PREFIX,
+	TOPIC_ENCODING_POSTFIX, TOPIC_PREFIX,
 };
 pub use libp2p::enr::Enr;
 pub use libp2p::multiaddr;
 pub use libp2p::Multiaddr;
 pub use libp2p::{
-    gossipsub::{GossipsubConfig, GossipsubConfigBuilder},
-    PeerId, Swarm,
+	gossipsub::{GossipsubConfig, GossipsubConfigBuilder},
+	PeerId, Swarm,
 };
 pub use error::Error;
 pub use rpc::{RPCEvent, RPCErrorResponse, RPCRequest, RPCResponse, methods::BeaconBlocksRequest};
@@ -44,9 +44,9 @@ pub fn start_network_simple_sync<Ba, I>(
 	Ba::Block: Debug + Encode + Decode + Send + Sync,
 	I: BlockImporter<Block=Ba::Block> + Send + Sync + 'static,
 {
-    // Create a random PeerId
-    let local_key = identity::Keypair::generate_ed25519();
-    let local_peer_id = PeerId::from(local_key.public());
+	// Create a random PeerId
+	let local_key = identity::Keypair::generate_ed25519();
+	let local_peer_id = PeerId::from(local_key.public());
 	info!("Local peer id: {:?}", local_peer_id);
 
 	let config = NetworkConfig::default();
@@ -57,10 +57,10 @@ pub fn start_network_simple_sync<Ba, I>(
 	let mut interval = Interval::new_interval(Duration::new(5, 0));
 	let mut listening = false;
 
-    tokio::run(futures::future::poll_fn(move || -> Result<_, ()> {
-        loop {
-            match interval.poll().expect("Error while polling interval") {
-                Async::Ready(Some(_)) => {
+	tokio::run(futures::future::poll_fn(move || -> Result<_, ()> {
+		loop {
+			match interval.poll().expect("Error while polling interval") {
+				Async::Ready(Some(_)) => {
 					if let Some(peer) = peers.choose(&mut rand::thread_rng()) {
 						let best_depth = {
 							let best_hash = backend.head();
@@ -81,14 +81,14 @@ pub fn start_network_simple_sync<Ba, I>(
 						));
 					}
 				},
-                Async::Ready(None) => panic!("Interval closed"),
-                Async::NotReady => break,
-            };
-        }
+				Async::Ready(None) => panic!("Interval closed"),
+				Async::NotReady => break,
+			};
+		}
 
-        loop {
-            match service.poll().expect("Error while polling swarm") {
-                Async::Ready(Some(message)) => {
+		loop {
+			match service.poll().expect("Error while polling swarm") {
+				Async::Ready(Some(message)) => {
 					match message {
 						Libp2pEvent::PeerDialed(peer) => {
 							peers.push(peer);
@@ -158,19 +158,19 @@ pub fn start_network_simple_sync<Ba, I>(
 						},
 					}
 				},
-                Async::Ready(None) | Async::NotReady => {
-                    if !listening {
-                        if let Some(a) = libp2p::Swarm::listeners(&service.swarm).next() {
-                            info!("Listening on {:?}", a);
-                            listening = true;
-                        }
-                    }
-                    break
-                }
-            }
-        }
+				Async::Ready(None) | Async::NotReady => {
+					if !listening {
+						if let Some(a) = libp2p::Swarm::listeners(&service.swarm).next() {
+							info!("Listening on {:?}", a);
+							listening = true;
+						}
+					}
+					break
+				}
+			}
+		}
 
-        Ok(Async::NotReady)
+		Ok(Async::NotReady)
 	}));
 
 	Err(Error::Other("Shutdown".to_string()))
