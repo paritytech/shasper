@@ -1,5 +1,5 @@
 [package]
-name = "beacon"
+name = "beacon-primitives"
 version = "0.2.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 description = "Minimal Serenity beacon chain implementation"
@@ -8,44 +8,31 @@ edition = "2018"
 
 [dependencies]
 primitive-types = { version = "0.4", default-features = false }
-impl-serde = { version = "0.1", optional = true }
 serde = { version = "1.0", optional = true, features = ["derive"] }
+impl-serde = { version = "0.1", optional = true }
 parity-codec = { version = "4.0", optional = true, features = ["derive"] }
 ssz = { version = "0.2", path = "../utils/ssz", default-features = false, features = ["derive"] }
-bm = { version = "0.11", path = "../vendor/bm", default-features = false }
-bm-le = { version = "0.11", path = "../vendor/bm/le", default-features = false, features = ["derive"] }
 fixed-hash = { version = "0.3.0", default-features = false }
-sha2 = { version = "0.8", default-features = false }
-beacon-primitives = { version = "0.2", path = "../primitives", default-features = false }
-digest = "0.8"
-vecarray = "0.1"
+bm-le = { version = "0.11", path = "../vendor/bm/le", default-features = false, features = ["derive"] }
 generic-array = "0.12"
 typenum = "1.10"
 
 [features]
 default = ["std", "with-serde", "with-codec"]
 std = [
-	"ssz/std",
-	"bm/std",
 	"bm-le/std",
-	"primitive-types/std",
-	"sha2/std",
-	"fixed-hash/std",
-	"vecarray/std",
+	"ssz/std",
 	"parity-codec/std",
-	"beacon-primitives/std",
+	"primitive-types/std",
+	"fixed-hash/std",
 ]
 with-serde = [
 	"serde",
 	"impl-serde",
 	"primitive-types/serde",
-	"vecarray/serde",
 	"bm-le/with-serde",
-	"beacon-primitives/with-serde",
 ]
 with-codec = [
 	"parity-codec",
-	"vecarray/parity-codec",
 	"bm-le/with-codec",
-	"beacon-primitives/with-codec",
 ]

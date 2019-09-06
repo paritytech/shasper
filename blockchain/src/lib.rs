@@ -22,7 +22,7 @@ use beacon::primitives::H256;
 use beacon::types::*;
 use beacon::{Error as BeaconError, BeaconState, Config, BLSConfig, Inherent, Transaction};
 use std::sync::Arc;
-use blockchain::traits::{Block as BlockT, BlockExecutor, AsExternalities};
+use blockchain::{Block as BlockT, BlockExecutor, AsExternalities};
 use lmd_ghost::JustifiableExecutor;
 use parity_codec::{Encode, Decode};
 use bm_le::tree_root;
@@ -32,6 +32,22 @@ use blockchain_rocksdb::RocksState as RocksStateT;
 
 #[derive(Eq, PartialEq, Clone, Debug, Encode, Decode)]
 pub struct Block<C: Config>(pub BeaconBlock<C>);
+
+impl<C: Config> ssz::Codec for Block<C> {
+	type Size = <BeaconBlock<C> as ssz::Codec>::Size;
+}
+
+impl<C: Config> ssz::Encode for Block<C> {
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		ssz::Encode::using_encoded(&self.0, f)
+	}
+}
+
+impl<C: Config> ssz::Decode for Block<C> {
+	fn decode(value: &[u8]) -> Result<Self, ssz::Error> {
+		Ok(Block(ssz::Decode::decode(value)?))
+	}
+}
 
 impl<C: Config> BlockT for Block<C> {
 	type Identifier = H256;
@@ -153,12 +169,6 @@ impl std::error::Error for Error { }
 impl From<BeaconError> for Error {
 	fn from(error: BeaconError) -> Error {
 		Error::Beacon(error)
-	}
-}
-
-impl From<Error> for blockchain::import::Error {
-	fn from(error: Error) -> blockchain::import::Error {
-		blockchain::import::Error::Executor(Box::new(error))
 	}
 }
 

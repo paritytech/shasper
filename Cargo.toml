@@ -5,6 +5,7 @@ members = [
 	"blockchain",
 	"blockchain/common/rocksdb",
 	"blockchain/lmd-ghost",
+	"blockchain/network",
 	"utils/ssz",
 	"utils/ssz/derive",
 	"utils/keccak-hasher",
@@ -16,7 +17,8 @@ members = [
 	"yamltests/transitiontests",
 ]
 exclude = [
-	"beacon/wasm"
+	"beacon/wasm",
+	"vendor"
 ]
 
 [profile.release]

@@ -13,25 +13,30 @@
 
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
-pub mod archive;
 
-use blockchain::{Block, BlockExecutor};
-use core::hash::Hash;
+#[derive(Debug)]
+pub enum Error {
+	IO(std::io::Error),
+	Libp2p(Box<dyn std::error::Error + Sync + Send + 'static>),
+	Other(String),
+}
 
-pub trait JustifiableExecutor: BlockExecutor {
-	type ValidatorIndex: Eq + Hash;
+impl std::fmt::Display for Error {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(f, "{:?}", self)
+	}
+}
 
-	fn justified_active_validators(
-		&self,
-		state: &mut Self::Externalities, // FIXME: replace `&mut` with `&`.
-	) -> Result<Vec<Self::ValidatorIndex>, Self::Error>;
-	fn justified_block_id(
-		&self,
-		state: &mut Self::Externalities, // FIXME: replace `&mut` with `&`.
-	) -> Result<Option<<Self::Block as Block>::Identifier>, Self::Error>;
-	fn votes(
-		&self,
-		block: &Self::Block,
-		state: &mut Self::Externalities, // FIXME: replace `&mut` with `&`.
-	) -> Result<Vec<(Self::ValidatorIndex, <Self::Block as Block>::Identifier)>, Self::Error>;
+impl std::error::Error for Error { }
+
+impl From<std::io::Error> for Error {
+	fn from(err: std::io::Error) -> Error {
+		Error::IO(err)
+	}
+}
+
+impl From<String> for Error {
+	fn from(s: String) -> Error {
+		Error::Other(s)
+	}
 }

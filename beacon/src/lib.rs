@@ -19,8 +19,8 @@
 #![warn(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// Primitive types for integer and bytes.
-pub mod primitives;
+pub use beacon_primitives as primitives;
+
 /// Types for operations and blocks.
 pub mod types;
 /// Constants used in beacon chain.

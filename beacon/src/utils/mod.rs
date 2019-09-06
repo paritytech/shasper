@@ -23,6 +23,7 @@ pub use self::serde::*;
 use crate::{Config, Error};
 use crate::primitives::*;
 use core::cmp::max;
+use core::convert::TryInto;
 use primitive_types::H256;
 
 /// Convert integer to bytes.
@@ -139,16 +140,23 @@ pub fn is_valid_merkle_branch<C: Config>(
 		return false
 	}
 
-	let mut value = leaf;
-	for i in 0..depth {
-		if index / 2u64.pow(i as u32) % 2 != 0 {
-			value = C::hash(&[&proof[i as usize][..], &value[..]]);
-		} else {
-			value = C::hash(&[&value[..], &proof[i as usize][..]]);
-		}
-	}
+	let index = match index.try_into().ok().map(|index: usize| {
+		bm::Index::from_depth(index, depth as usize)
+	}) {
+		Some(index) => index,
+		None => return false,
+	};
 
-	value == root
+	let compact = match bm::CompactValue::from_plain(
+		bm_le::Value(leaf),
+		proof.into_iter().map(|v| bm_le::Value(v.clone())),
+		index,
+	) {
+		Some(compact) => compact,
+		None => return false,
+	};
+
+	compact.root::<bm_le::DigestConstruct<C::Digest>>().0 == root
 }
 
 /// BLS signing domain given a domain type and fork version.

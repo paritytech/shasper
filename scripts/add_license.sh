@@ -3,7 +3,7 @@
 PAT_GPL="^// Copyright.*If not, see <http://www.gnu.org/licenses/>\.$"
 PAT_OTHER="^// Copyright"
 
-for f in $(find . \( -path ./target -o -path ./utils/ssz \) -prune -o -type f | egrep '\.rs$'); do
+for f in $(find . \( -path ./target -o -path ./vendor -o -path ./beacon/wasm/target -o -path ./utils/ssz \) -prune -o -type f | egrep '\.rs$'); do
 	HEADER=$(head -16 $f)
 	if [[ $HEADER =~ $PAT_GPL ]]; then
 		BODY=$(tail -n +17 $f)

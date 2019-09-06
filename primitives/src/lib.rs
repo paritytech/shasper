@@ -14,6 +14,11 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
+//! Primitives for beacon chain.
+
+#![warn(missing_docs)]
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #[macro_use]
 mod macros;
 

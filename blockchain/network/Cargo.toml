@@ -1,0 +1,26 @@
+[package]
+name = "shasper-network"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>", "Wei Tang <hi@that.world>", "Age Manning <Age@AgeManning.com>"]
+edition = "2018"
+
+[dependencies]
+libp2p = { path = "../../vendor/libp2p" }
+enr = { path = "../../vendor/libp2p/misc/enr" }
+blockchain-network = { version = "0.1", path = "../../vendor/blockchain/network" }
+blockchain = { version = "0.9", path = "../../vendor/blockchain" }
+parity-codec = { version = "4.0", features = ["derive"] }
+futures = "0.1"
+tokio = "0.1"
+tokio-io = "0.1"
+tokio-timer = "0.2"
+bytes = "0.4.12"
+fnv = "1.0.6"
+smallvec = "0.6.10"
+unsigned-varint = "0.2.2"
+ssz = { path = "../../utils/ssz" }
+beacon-primitives = { path = "../../primitives" }
+tokio-io-timeout = "0.3.1"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+rand = "0.7"

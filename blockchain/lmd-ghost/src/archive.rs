@@ -16,7 +16,7 @@
 use std::collections::HashMap;
 use core::hash::Hash;
 use core::mem;
-use blockchain::traits::{Block, Auxiliary, BlockExecutor, AsExternalities};
+use blockchain::{Block, Auxiliary, BlockExecutor, AsExternalities};
 use blockchain::import::{BlockImporter, RawImporter, ImportAction};
 use blockchain::backend::{Store, SharedCommittable, ImportOperation, ChainQuery, ImportLock, Operation};
 use crate::JustifiableExecutor;
@@ -134,14 +134,14 @@ impl<Ba: AncestorQuery + ChainQuery, VI: Eq + Hash> ArchiveGhost<Ba, VI> {
 		&self,
 		justified: &<Ba::Block as Block>::Identifier,
 	) -> Result<<Ba::Block as Block>::Identifier, Ba::Error> {
-		let mut head = *justified;
+		let mut head = justified.clone();
 		let mut head_depth = self.backend.depth_at(justified)?;
 		loop {
 			let children = self.backend.children_at(&head)?;
 			if children.len() == 0 {
 				return Ok(head)
 			}
-			let mut best = children[0];
+			let mut best = children[0].clone();
 			let mut best_score = 0;
 			for child in children {
 				let vote_count = self.vote_count(&child, head_depth + 1)?;
@@ -155,6 +155,21 @@ impl<Ba: AncestorQuery + ChainQuery, VI: Eq + Hash> ArchiveGhost<Ba, VI> {
 		}
 	}
 }
+
+#[derive(Debug)]
+pub enum Error {
+	IsGenesis,
+	Backend(Box<dyn std::error::Error>),
+	Executor(Box<dyn std::error::Error>),
+}
+
+impl std::fmt::Display for Error {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(f, "{:?}", self)
+	}
+}
+
+impl std::error::Error for Error { }
 
 pub struct ArchiveGhostImporter<E: BlockExecutor, Ba: Store<Block=E::Block>> where
 	E: JustifiableExecutor,
@@ -184,16 +199,18 @@ impl<E: BlockExecutor, Ba: Store<Block=E::Block>> BlockImporter for ArchiveGhost
 	Ba: SharedCommittable<Operation=Operation<E::Block, <Ba as Store>::State, <Ba as Store>::Auxiliary>>,
 	Ba::Auxiliary: Auxiliary<E::Block>,
 	Ba::State: AsExternalities<E::Externalities>,
-	blockchain::import::Error: From<Ba::Error> + From<E::Error>,
 {
 	type Block = Ba::Block;
-	type Error = blockchain::import::Error;
+	type Error = Error;
 
 	fn import_block(&mut self, block: Ba::Block) -> Result<(), Self::Error> {
-		let mut state = self.ghost.backend.state_at(
-			&block.parent_id().ok_or(blockchain::import::Error::IsGenesis)?
-		)?;
-		self.executor.execute_block(&block, state.as_externalities())?;
+		let mut state = self.ghost.backend
+			.state_at(
+				&block.parent_id().ok_or(Error::IsGenesis)?
+			)
+			.map_err(|e| Error::Backend(Box::new(e)))?;
+		self.executor.execute_block(&block, state.as_externalities())
+			.map_err(|e| Error::Executor(Box::new(e)))?;
 
 		self.import_raw(ImportOperation { block, state })
 	}
@@ -205,10 +222,9 @@ impl<E: BlockExecutor, Ba: Store<Block=E::Block>> RawImporter for ArchiveGhostIm
 	Ba: SharedCommittable<Operation=Operation<E::Block, <Ba as Store>::State, <Ba as Store>::Auxiliary>>,
 	Ba::Auxiliary: Auxiliary<E::Block>,
 	Ba::State: AsExternalities<E::Externalities>,
-	blockchain::import::Error: From<Ba::Error> + From<E::Error>,
 {
 	type Operation = ImportOperation<Ba::Block, Ba::State>;
-	type Error = blockchain::import::Error;
+	type Error = Error;
 
 	fn import_raw(
 		&mut self,
@@ -216,19 +232,25 @@ impl<E: BlockExecutor, Ba: Store<Block=E::Block>> RawImporter for ArchiveGhostIm
 	) -> Result<(), Self::Error> {
 		let (justified_active_validators, justified_block_id, votes) = {
 			let externalities = raw.state.as_externalities();
-			let justified_active_validators =
-				self.executor.justified_active_validators(externalities)?;
-			let justified_block_id = match self.executor.justified_block_id(externalities)? {
+			let justified_active_validators = self.executor
+				.justified_active_validators(externalities)
+				.map_err(|e| Error::Executor(Box::new(e)))?;
+			let justified_block_id = match self.executor
+				.justified_block_id(externalities)
+				.map_err(|e| Error::Executor(Box::new(e)))?
+			{
 				Some(value) => value,
 				None => self.ghost.backend.genesis(),
 			};
-			let votes = self.executor.votes(&raw. block, externalities)?;
+			let votes = self.executor
+				.votes(&raw. block, externalities)
+				.map_err(|e| Error::Executor(Box::new(e)))?;
 
 			let mut importer = ImportAction::new(
-				&self.executor, &self.ghost.backend, self.import_lock.lock()
+				&self.ghost.backend, self.import_lock.lock()
 			);
 			importer.import_raw(raw);
-			importer.commit()?;
+			importer.commit().map_err(|e| Error::Backend(Box::new(e)))?;
 
 			(justified_active_validators, justified_block_id, votes)
 		};
@@ -241,12 +263,12 @@ impl<E: BlockExecutor, Ba: Store<Block=E::Block>> RawImporter for ArchiveGhostIm
 			Ok(value) => value,
 			Err(e) => {
 				self.ghost.reset_overlay();
-				return Err(e.into())
+				return Err(Error::Backend(Box::new(e)))
 			},
 		};
 
 		let mut importer = ImportAction::new(
-			&self.executor, &self.ghost.backend, self.import_lock.lock()
+			&self.ghost.backend, self.import_lock.lock()
 		);
 		importer.set_head(new_head);
 
