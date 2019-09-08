@@ -34,7 +34,8 @@ pub use libp2p::{
 	PeerId, Swarm,
 };
 pub use error::Error;
-pub use rpc::{RPCEvent, RPCErrorResponse, RPCRequest, RPCResponse, methods::BeaconBlocksRequest};
+pub use rpc::{RPCEvent, RPCErrorResponse, RPCRequest, RPCResponse,
+			  methods::{HelloMessage, BeaconBlocksRequest}};
 pub use service::Libp2pEvent;
 pub use service::Service;
 
@@ -44,23 +45,23 @@ use core::time::Duration;
 use ssz::{Encode, Decode};
 use libp2p::identity;
 use futures01::{Async, stream::Stream};
-use futures::Poll;
-use tokio_timer::Interval;
-use rand::seq::SliceRandom;
+use futures::{Poll, StreamExt as _};
+use beacon_primitives::H256;
+use blockchain::Block;
 use blockchain::backend::{SharedCommittable, ChainQuery, ImportLock};
 use blockchain::import::BlockImporter;
-use blockchain_network::sync::NetworkSync;
+use blockchain_network::sync::{NetworkSync, SyncConfig, SyncEvent};
 
 pub const VERSION: &str = "v0.1";
 
 pub fn start_network_simple_sync<Ba, I>(
 	backend: Ba,
 	import_lock: ImportLock,
-	mut importer: I,
+	importer: I,
 ) -> Result<(), Error> where
 	Ba: SharedCommittable + ChainQuery + Send + Sync + 'static,
-	Ba::Block: Debug + Encode + Decode + Send + Sync,
-	I: BlockImporter<Block=Ba::Block> + Send + Sync + 'static,
+	Ba::Block: Block<Identifier=H256> + Debug + Encode + Decode + Unpin + Send + Sync,
+	I: BlockImporter<Block=Ba::Block> + Unpin + Send + Sync + 'static,
 {
 	// Create a random PeerId
 	let local_key = identity::Keypair::generate_ed25519();
@@ -73,51 +74,32 @@ pub fn start_network_simple_sync<Ba, I>(
 		update_frequency: 1,
 		request_timeout: 4,
 	};
+	let best_depth = {
+		let best_hash = backend.head();
+		backend.depth_at(&best_hash)
+			.expect("Best block depth hash cannot fail")
+	};
+	let mut sync = NetworkSync::<PeerId, _, _>::new(
+		best_depth,
+		importer,
+		Duration::new(2, 0),
+		sync_config
+	);
 
 	let mut service = Service::new(config)?;
-	let mut peers = <Vec<PeerId>>::new();
 
-	let mut interval = Interval::new_interval(Duration::new(5, 0));
 	let mut listening = false;
 
-	let poll = futures::future::poll_fn::<(), _>(move |ctx| {
-		loop {
-			match interval.poll().expect("Error while polling interval") {
-				Async::Ready(Some(_)) => {
-					if let Some(peer) = peers.choose(&mut rand::thread_rng()) {
-						let best_depth = {
-							let best_hash = backend.head();
-							backend.depth_at(&best_hash)
-								.expect("Best block depth hash cannot fail")
-						};
-
-						service.swarm.send_rpc(peer.clone(), RPCEvent::Request(
-							0,
-							RPCRequest::BeaconBlocks(
-								BeaconBlocksRequest {
-									head_block_root: Default::default(),
-									start_slot: best_depth as u64,
-									count: 10,
-									step: 1
-								}
-							)
-						));
-					}
-				},
-				Async::Ready(None) => panic!("Interval closed"),
-				Async::NotReady => break,
-			};
-		}
-
+	let poll = futures::future::poll_fn::<Result<(), ()>, _>(move |ctx| {
 		loop {
 			match service.poll().expect("Error while polling swarm") {
 				Async::Ready(Some(message)) => {
 					match message {
 						Libp2pEvent::PeerDialed(peer) => {
-							peers.push(peer);
+							sync.note_connected(peer);
 						},
 						Libp2pEvent::PeerDisconnected(peer) => {
-							peers.retain(|p| p != &peer);
+							sync.note_disconnected(peer);
 						},
 						Libp2pEvent::PubsubMessage {
 							source, topics, message,
@@ -151,6 +133,28 @@ pub fn start_network_simple_sync<Ba, I>(
 										)
 									));
 								},
+								RPCEvent::Request(request_id, RPCRequest::Hello(hello)) => {
+									let best_hash = backend.head();
+									let best_depth = backend.depth_at(&best_hash)
+										.expect("Best block depth hash cannot fail");
+									service.swarm.send_rpc(peer.clone(), RPCEvent::Response(
+										request_id, RPCErrorResponse::Success(
+											RPCResponse::Hello(HelloMessage {
+												fork_version: Default::default(),
+												finalized_root: Default::default(),
+												finalized_epoch: Default::default(),
+												head_root: best_hash,
+												head_slot: best_depth as u64,
+											})
+										)
+									));
+									sync.note_peer_status(peer, hello.head_slot as usize);
+								},
+								RPCEvent::Response(_, RPCErrorResponse::Success(
+									RPCResponse::Hello(hello)
+								)) => {
+									sync.note_peer_status(peer, hello.head_slot as usize);
+								},
 								RPCEvent::Response(_, RPCErrorResponse::Success(
 									RPCResponse::BeaconBlocks(blocks)
 								)) => {
@@ -164,15 +168,7 @@ pub fn start_network_simple_sync<Ba, I>(
 										},
 									};
 
-									for block in blocks {
-										match importer.import_block(block) {
-											Ok(()) => (),
-											Err(_) => {
-												warn!("Error happened on block response message");
-												break
-											},
-										}
-									}
+									sync.note_blocks(blocks, Some(peer));
 								},
 								event => {
 									warn!("Unhandled RPC message {:?}, {:?}", peer, event);
@@ -193,10 +189,53 @@ pub fn start_network_simple_sync<Ba, I>(
 			}
 		}
 
+		loop {
+			match sync.poll_next_unpin(ctx) {
+				Poll::Pending | Poll::Ready(None) => break,
+				Poll::Ready(Some(SyncEvent::QueryStatus)) => {
+					let best_hash = backend.head();
+					let best_depth = backend.depth_at(&best_hash)
+						.expect("Best block depth hash cannot fail");
+					sync.note_status(best_depth);
+				},
+				Poll::Ready(Some(SyncEvent::QueryPeerStatus(peer))) => {
+					let best_hash = backend.head();
+					let best_depth = backend.depth_at(&best_hash)
+						.expect("Best block depth hash cannot fail");
+					service.swarm.send_rpc(peer, RPCEvent::Request(
+						0,
+						RPCRequest::Hello(HelloMessage {
+							fork_version: Default::default(),
+							finalized_root: Default::default(),
+							finalized_epoch: Default::default(),
+							head_root: best_hash,
+							head_slot: best_depth as u64,
+						})
+					));
+				},
+				Poll::Ready(Some(SyncEvent::QueryBlocks(peer))) => {
+					let best_hash = backend.head();
+					let best_depth = backend.depth_at(&best_hash)
+						.expect("Best block depth hash cannot fail");
+					service.swarm.send_rpc(peer, RPCEvent::Request(
+						0,
+						RPCRequest::BeaconBlocks(
+							BeaconBlocksRequest {
+								head_block_root: Default::default(),
+								start_slot: best_depth as u64,
+								count: 10,
+								step: 1
+							}
+						)
+					));
+				},
+			}
+		}
+
 		Poll::Pending
 	});
 
-	// tokio::run(poll);
+	tokio::run(futures::compat::Compat::new(poll));
 
 	Err(Error::Other("Shutdown".to_string()))
 }
