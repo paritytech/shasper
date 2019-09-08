@@ -20,7 +20,6 @@ use core::cmp::min;
 use blockchain::{AsExternalities, Auxiliary, Block as BlockT};
 use blockchain::backend::{SharedMemoryBackend, SharedCommittable, ChainQuery, Store, ImportLock, Operation};
 use blockchain::import::{SharedBlockImporter, MutexImporter};
-use blockchain_network::sync::BestDepthStatusProducer;
 use blockchain_rocksdb::RocksBackend;
 use shasper_blockchain::{Block, Executor, MemoryState, RocksState, Error, StateExternalities, AttestationPool};
 use shasper_blockchain::backend::ShasperBackend;
@@ -213,19 +212,18 @@ fn run<B, C: Config>(
 	keys: HashMap<ValidatorId, bls::Secret>,
 	use_gossipsub: bool,
 ) where
-	Block<C>: ssz::Encode + ssz::Decode + Send + Sync,
+	Block<C>: ssz::Encode + ssz::Decode + Unpin + Send + Sync,
 	B: ChainQuery + AncestorQuery + Store<Block=Block<C>>,
 	B::State: StateExternalities + AsExternalities<dyn StateExternalities<Config=C>>,
 	B::Auxiliary: Auxiliary<Block<C>>,
 	B: SharedCommittable<Operation=Operation<<B as Store>::Block, <B as Store>::State, <B as Store>::Auxiliary>>,
 	B: Send + Sync + 'static,
-	C: Clone + Send + Sync + 'static,
+	C: Unpin + Clone + Send + Sync + 'static,
 {
 	let executor = Executor::<C, BLSVerification>::new();
 	let importer = MutexImporter::new(
 		ArchiveGhostImporter::new(executor, backend.clone(), import_lock.clone())
 	);
-	let status = BestDepthStatusProducer::new(backend.clone());
 
 	if author {
 		let backend_build = backend.clone();
@@ -239,7 +237,7 @@ fn run<B, C: Config>(
 		shasper_network::start_network_simple_sync(backend, import_lock, importer)
 			.expect("Starting networking thread failed");
 	} else {
-		blockchain_network_libp2p::start_network_simple_sync(port, backend, import_lock, importer, status);
+		panic!("Floodsub support is being removed");
 	}
 }
 
