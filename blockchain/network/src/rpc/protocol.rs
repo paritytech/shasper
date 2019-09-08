@@ -21,7 +21,7 @@ use crate::rpc::codec::{
     ssz::{SSZInboundCodec, SSZOutboundCodec},
     InboundCodec, OutboundCodec,
 };
-use futures::{
+use futures01::{
     future::{self, FutureResult},
     sink, stream, Sink, Stream,
 };
@@ -146,8 +146,8 @@ where
                     .map_err(RPCError::from as FnMapErr<TSocket>)
                     .and_then({
                         |(req, stream)| match req {
-                            Some(req) => futures::future::ok((req, stream)),
-                            None => futures::future::err(RPCError::Custom(
+                            Some(req) => futures01::future::ok((req, stream)),
+                            None => futures01::future::err(RPCError::Custom(
                                 "Stream terminated early".into(),
                             )),
                         }

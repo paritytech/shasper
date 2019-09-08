@@ -10,7 +10,8 @@ enr = { path = "../../vendor/libp2p/misc/enr" }
 blockchain-network = { version = "0.1", path = "../../vendor/blockchain/network" }
 blockchain = { version = "0.9", path = "../../vendor/blockchain" }
 parity-codec = { version = "4.0", features = ["derive"] }
-futures = "0.1"
+futures01 = { package = "futures", version = "0.1" }
+futures-preview = { version = "=0.3.0-alpha.18", features = ["compat"] }
 tokio = "0.1"
 tokio-io = "0.1"
 tokio-timer = "0.2"

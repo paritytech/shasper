@@ -43,11 +43,13 @@ use core::fmt::Debug;
 use core::time::Duration;
 use ssz::{Encode, Decode};
 use libp2p::identity;
-use futures::{Async, stream::Stream};
+use futures01::{Async, stream::Stream};
+use futures::Poll;
 use tokio_timer::Interval;
 use rand::seq::SliceRandom;
 use blockchain::backend::{SharedCommittable, ChainQuery, ImportLock};
 use blockchain::import::BlockImporter;
+use blockchain_network::sync::NetworkSync;
 
 pub const VERSION: &str = "v0.1";
 
@@ -66,6 +68,11 @@ pub fn start_network_simple_sync<Ba, I>(
 	info!("Local peer id: {:?}", local_peer_id);
 
 	let config = NetworkConfig::default();
+	let sync_config = SyncConfig {
+		peer_update_frequency: 2,
+		update_frequency: 1,
+		request_timeout: 4,
+	};
 
 	let mut service = Service::new(config)?;
 	let mut peers = <Vec<PeerId>>::new();
@@ -73,7 +80,7 @@ pub fn start_network_simple_sync<Ba, I>(
 	let mut interval = Interval::new_interval(Duration::new(5, 0));
 	let mut listening = false;
 
-	tokio::run(futures::future::poll_fn(move || -> Result<_, ()> {
+	let poll = futures::future::poll_fn::<(), _>(move |ctx| {
 		loop {
 			match interval.poll().expect("Error while polling interval") {
 				Async::Ready(Some(_)) => {
@@ -186,8 +193,10 @@ pub fn start_network_simple_sync<Ba, I>(
 			}
 		}
 
-		Ok(Async::NotReady)
-	}));
+		Poll::Pending
+	});
+
+	// tokio::run(poll);
 
 	Err(Error::Other("Shutdown".to_string()))
 }

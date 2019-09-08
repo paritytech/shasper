@@ -20,7 +20,7 @@ use crate::discovery::Discovery;
 use crate::rpc::{RPCEvent, RPCMessage, RPC};
 use crate::{Error, NetworkConfig};
 use crate::{BEACON_ATTESTATION_TOPIC, BEACON_BLOCK_TOPIC};
-use futures::prelude::*;
+use futures01::prelude::*;
 use libp2p::{
     core::identity::Keypair,
     discv5::Discv5Event,

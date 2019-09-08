@@ -21,8 +21,8 @@ use crate::Error;
 use crate::multiaddr::Protocol;
 use crate::rpc::RPCEvent;
 use crate::NetworkConfig;
-use futures::prelude::*;
-use futures::Stream;
+use futures01::prelude::*;
+use futures01::Stream;
 use libp2p::core::{
     identity::Keypair,
     multiaddr::Multiaddr,

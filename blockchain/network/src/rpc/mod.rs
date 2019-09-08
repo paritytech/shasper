@@ -21,7 +21,7 @@
 //! direct peer-to-peer communication primarily for sending/receiving chain information for
 //! syncing.
 
-use futures::prelude::*;
+use futures01::prelude::*;
 use handler::RPCHandler;
 use libp2p::core::ConnectedPoint;
 use libp2p::swarm::{
