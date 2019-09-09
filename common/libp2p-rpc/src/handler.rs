@@ -293,7 +293,7 @@ impl<P, TSubstream> ProtocolsHandler for RPCHandler<P, TSubstream> where
                             self.substreams
                                 .push(SubstreamState::ResponsePendingSend { substream });
                         }
-                        Err(e) => {
+                        Err(_) => {
                             return Ok(Async::Ready(ProtocolsHandlerEvent::Custom(
                                 RPCEvent::Error(0, RPCError::Codec),
                             )))
@@ -330,7 +330,7 @@ impl<P, TSubstream> ProtocolsHandler for RPCHandler<P, TSubstream> where
                                 });
                         }
                     }
-                    Err(e) => {
+                    Err(_) => {
                         return Ok(Async::Ready(ProtocolsHandlerEvent::Custom(
                             RPCEvent::Error(rpc_event.id(), RPCError::Codec),
                         )))

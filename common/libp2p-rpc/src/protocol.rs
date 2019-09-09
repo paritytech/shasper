@@ -1,4 +1,3 @@
-use core::marker::PhantomData;
 use core::time::Duration;
 use tokio::codec::{Encoder, Decoder, Framed};
 use tokio::io::{AsyncRead, AsyncWrite};
