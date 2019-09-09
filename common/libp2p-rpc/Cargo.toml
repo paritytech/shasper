@@ -1,0 +1,14 @@
+[package]
+name = "libp2p-rpc"
+version = "0.1.0"
+authors = ["Wei Tang <hi@that.world>"]
+edition = "2018"
+
+[dependencies]
+libp2p = { path = "../../vendor/libp2p" }
+smallvec = "0.6.10"
+fnv = "1.0.6"
+tokio = "0.1"
+tokio-io = "0.1"
+tokio-io-timeout = "0.3.1"
+futures = "0.1"

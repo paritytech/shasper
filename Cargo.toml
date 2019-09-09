@@ -2,6 +2,7 @@
 members = [
 	"crypto",
 	"beacon",
+	"common/libp2p-rpc",
 	"blockchain",
 	"blockchain/common/rocksdb",
 	"blockchain/lmd-ghost",
