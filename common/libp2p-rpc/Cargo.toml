@@ -1,11 +1,14 @@
 [package]
 name = "libp2p-rpc"
 version = "0.1.0"
-authors = ["Wei Tang <hi@that.world>"]
+authors = ["Parity Technologies <admin@parity.io>", "Wei Tang <hi@that.world>", "Age Manning <Age@AgeManning.com>"]
+license = "GPL-3.0"
+description = "Generic RPC protocol for libp2p."
 edition = "2018"
 
 [dependencies]
 libp2p = { path = "../../vendor/libp2p" }
+# libp2p = "0.12"
 smallvec = "0.6.10"
 fnv = "1.0.6"
 tokio = "0.1"
