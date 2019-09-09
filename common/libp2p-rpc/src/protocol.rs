@@ -11,7 +11,7 @@ use futures::{
 	future::{self, Future, FutureResult}, stream::{self, Stream},
 	sink::{self, Sink}
 };
-use crate::RPCError;
+use crate::{RPCError, RPCRequest};
 
 /// Time allowed for the first byte of a request to arrive before we time out (Time To First Byte).
 const TTFB_TIMEOUT: u64 = 5;
@@ -20,8 +20,8 @@ const TTFB_TIMEOUT: u64 = 5;
 const REQUEST_TIMEOUT: u64 = 15;
 
 pub trait RPCProtocol: UpgradeInfo {
-	type Request;
-	type Response;
+	type Request: RPCRequest + Clone;
+	type Response: Clone;
 
 	type InboundCodec: Encoder<Item=Self::Response> + Decoder<Item=Self::Request>;
 	fn inbound_codec(&self, protocol: <Self as UpgradeInfo>::Info) -> Self::InboundCodec;
@@ -34,7 +34,8 @@ pub type InboundFramed<P, TSocket> = Framed<TimeoutStream<Negotiated<TSocket>>,
 											<P as RPCProtocol>::InboundCodec>;
 pub type InboundOutput<P, TSocket> = (<P as RPCProtocol>::Request, InboundFramed<P, TSocket>);
 
-pub struct RPCInbound<P>(P);
+#[derive(Default, Clone)]
+pub struct RPCInbound<P>(pub P);
 
 impl<P: RPCProtocol> UpgradeInfo for RPCInbound<P> {
 	type Info = P::Info;
@@ -92,7 +93,7 @@ impl<P, TSocket> InboundUpgrade<TSocket> for RPCInbound<P> where
 pub type OutboundFramed<P, TSocket> = Framed<Negotiated<TSocket>,
 											 <P as RPCProtocol>::OutboundCodec>;
 
-pub struct RPCOutbound<P: RPCProtocol>(P::Request, P);
+pub struct RPCOutbound<P: RPCProtocol>(pub P::Request, pub P);
 
 impl<P: RPCProtocol> UpgradeInfo for RPCOutbound<P> {
 	type Info = P::Info;
