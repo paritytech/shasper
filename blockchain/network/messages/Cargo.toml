@@ -1,0 +1,11 @@
+[package]
+name = "shasper-network-messages"
+version = "0.1.0"
+authors = ["Wei Tang <hi@that.world>"]
+edition = "2018"
+
+[dependencies]
+ssz = { path = "../../../utils/ssz" }
+beacon = { path = "../../../beacon" }
+tokio = "0.1"
+bytes = "0.4"
