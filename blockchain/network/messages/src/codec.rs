@@ -10,6 +10,12 @@ pub struct InboundCodec<C: Config> {
 	_marker: PhantomData<C>,
 }
 
+impl<C: Config> InboundCodec<C> {
+	pub fn new(typ: RPCType) -> Self {
+		Self { typ, _marker: PhantomData }
+	}
+}
+
 impl<C: Config> Encoder for InboundCodec<C> {
 	type Item = RPCResponse<C>;
 	type Error = ssz::Error;
@@ -55,6 +61,12 @@ impl<C: Config> Decoder for InboundCodec<C> {
 pub struct OutboundCodec<C: Config> {
 	typ: RPCType,
 	_marker: PhantomData<C>,
+}
+
+impl<C: Config> OutboundCodec<C> {
+	pub fn new(typ: RPCType) -> Self {
+		Self { typ, _marker: PhantomData }
+	}
 }
 
 impl<C: Config> Encoder for OutboundCodec<C> {

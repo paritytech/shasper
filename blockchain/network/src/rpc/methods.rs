@@ -18,7 +18,7 @@
 //! Available RPC methods types and ids.
 
 use ssz::{Codec, Decode, Encode};
-use beacon_primitives::{Epoch, H256, Slot, Version};
+use beacon::primitives::{Epoch, H256, Slot, Version};
 
 /* Request/Response data structures for RPC methods */
 

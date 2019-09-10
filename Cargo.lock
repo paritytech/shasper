@@ -3781,6 +3781,7 @@ dependencies = [
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "shasper-crypto 0.1.0",
  "shasper-network 0.1.0",
+ "shasper-runtime 0.1.0",
  "ssz 0.2.0",
 ]
 
@@ -3796,7 +3797,7 @@ dependencies = [
 name = "shasper-network"
 version = "0.1.0"
 dependencies = [
- "beacon-primitives 0.2.0",
+ "beacon 0.2.0",
  "blockchain 0.9.2",
  "blockchain-network 0.1.0",
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3809,6 +3810,7 @@ dependencies = [
  "parity-codec 4.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.98 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shasper-runtime 0.1.0",
  "smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "ssz 0.2.0",
  "tokio 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3816,6 +3818,27 @@ dependencies = [
  "tokio-io-timeout 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-timer 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "unsigned-varint 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "shasper-network-messages"
+version = "0.1.0"
+dependencies = [
+ "beacon 0.2.0",
+ "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ssz 0.2.0",
+ "tokio 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "shasper-runtime"
+version = "0.1.0"
+dependencies = [
+ "beacon 0.2.0",
+ "blockchain 0.9.2",
+ "bm-le 0.11.0",
+ "parity-codec 4.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ssz 0.2.0",
 ]
 
 [[package]]

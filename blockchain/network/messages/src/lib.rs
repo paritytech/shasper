@@ -2,6 +2,8 @@ mod items;
 mod codec;
 
 pub use items::{HelloMessage, GoodbyeReason, BeaconBlocksRequest, RecentBeaconBlocksRequest};
+pub use codec::{InboundCodec, OutboundCodec};
+
 use beacon::{Config, types::BeaconBlock};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

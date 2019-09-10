@@ -47,6 +47,15 @@ pub enum Error {
 	InvalidLength,
 	/// List length is too large.
 	ListTooLarge,
+	/// Other errors.
+	Other,
+}
+
+#[cfg(feature = "std")]
+impl From<std::io::Error> for Error {
+	fn from(_: std::io::Error) -> Error {
+		Error::Other
+	}
 }
 
 /// Base trait for ssz encoding and decoding.

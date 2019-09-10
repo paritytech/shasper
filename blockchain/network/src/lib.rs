@@ -40,28 +40,30 @@ pub use service::Libp2pEvent;
 pub use service::Service;
 
 use log::*;
-use core::fmt::Debug;
 use core::time::Duration;
 use ssz::{Encode, Decode};
 use libp2p::identity;
 use futures01::{Async, stream::Stream};
 use futures::{Poll, StreamExt as _};
-use beacon_primitives::H256;
-use blockchain::Block;
-use blockchain::backend::{SharedCommittable, ChainQuery, ImportLock};
+use blockchain::Auxiliary;
+use blockchain::backend::{Store, SharedCommittable, ChainQuery, ImportLock};
 use blockchain::import::BlockImporter;
 use blockchain_network::sync::{NetworkSync, SyncConfig, SyncEvent};
+use beacon::Config;
+use shasper_runtime::Block;
 
 pub const VERSION: &str = "v0.1";
 
-pub fn start_network_simple_sync<Ba, I>(
+pub fn start_network_simple_sync<C, Ba, I>(
 	backend: Ba,
 	import_lock: ImportLock,
 	importer: I,
 ) -> Result<(), Error> where
-	Ba: SharedCommittable + ChainQuery + Send + Sync + 'static,
-	Ba::Block: Block<Identifier=H256> + Debug + Encode + Decode + Unpin + Send + Sync,
-	I: BlockImporter<Block=Ba::Block> + Unpin + Send + Sync + 'static,
+	C: Config,
+	Ba: Store<Block=Block<C>> + SharedCommittable + ChainQuery + Send + Sync + 'static,
+	Ba::Block: Unpin + Send + Sync,
+	Ba::Auxiliary: Auxiliary<Block<C>> + Unpin,
+	I: BlockImporter<Block=Block<C>> + Unpin + Send + Sync + 'static,
 {
 	// Create a random PeerId
 	let local_key = identity::Keypair::generate_ed25519();
