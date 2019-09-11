@@ -21,11 +21,8 @@ mod error;
 mod rpc;
 mod service;
 
-pub use behaviour::{Behaviour, PubsubMessage};
-pub use config::{
-	Config as NetworkConfig, BEACON_ATTESTATION_TOPIC, BEACON_BLOCK_TOPIC, SHARD_TOPIC_PREFIX,
-	TOPIC_ENCODING_POSTFIX, TOPIC_PREFIX,
-};
+pub use behaviour::Behaviour;
+pub use config::Config as NetworkConfig;
 pub use libp2p::enr::Enr;
 pub use libp2p::multiaddr;
 pub use libp2p::Multiaddr;
@@ -34,7 +31,6 @@ pub use libp2p::{
 	PeerId, Swarm,
 };
 pub use error::Error;
-pub use service::Libp2pEvent;
 pub use service::Service;
 
 use log::*;
@@ -48,10 +44,23 @@ use blockchain::import::BlockImporter;
 use blockchain_network::sync::{NetworkSync, SyncConfig, SyncEvent};
 use beacon::Config;
 use shasper_runtime::Block;
-use network_messages::{HelloMessage, BeaconBlocksRequest};
+use network_messages::{HelloMessage, BeaconBlocksRequest, PubsubMessage};
 use crate::rpc::{RPCEvent, RPCRequest, RPCResponse};
 
 pub const VERSION: &str = "v0.1";
+
+/// Events that can be obtained from polling the Libp2p Service.
+#[derive(Debug)]
+pub enum Libp2pEvent<C: Config> {
+    /// An RPC response request has been received on the swarm.
+    RPC(PeerId, RPCEvent<C>),
+    /// Initiated the connection to a new peer.
+    PeerDialed(PeerId),
+    /// A peer has disconnected.
+    PeerDisconnected(PeerId),
+    /// Received pubsub message.
+    Pubsub(PeerId, PubsubMessage<C>),
+}
 
 pub fn start_network_simple_sync<C, Ba, I>(
 	backend: Ba,
@@ -102,11 +111,8 @@ pub fn start_network_simple_sync<C, Ba, I>(
 						Libp2pEvent::PeerDisconnected(peer) => {
 							sync.note_disconnected(peer);
 						},
-						Libp2pEvent::PubsubMessage {
-							source, topics, message,
-						} => {
-							warn!("Unhandled pubsub message {:?}, {:?}, {:?}",
-								  source, topics, message);
+						Libp2pEvent::Pubsub(peer, message) => {
+							warn!("Unhandled pubsub message {:?}, {:?}", peer, message);
 						},
 						Libp2pEvent::RPC(peer, event) => {
 							match event {

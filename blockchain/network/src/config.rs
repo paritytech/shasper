@@ -21,18 +21,6 @@ use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-/// The gossipsub topic names.
-// These constants form a topic name of the form /TOPIC_PREFIX/TOPIC/ENCODING_POSTFIX
-// For example /eth2/beacon_block/ssz
-pub const TOPIC_PREFIX: &str = "eth2";
-pub const TOPIC_ENCODING_POSTFIX: &str = "ssz";
-pub const BEACON_BLOCK_TOPIC: &str = "beacon_block";
-pub const BEACON_ATTESTATION_TOPIC: &str = "beacon_attestation";
-pub const VOLUNTARY_EXIT_TOPIC: &str = "voluntary_exit";
-pub const PROPOSER_SLASHING_TOPIC: &str = "proposer_slashing";
-pub const ATTESTER_SLASHING_TOPIC: &str = "attester_slashing";
-pub const SHARD_TOPIC_PREFIX: &str = "shard";
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 /// Network configuration for lighthouse.
