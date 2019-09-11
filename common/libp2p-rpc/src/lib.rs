@@ -15,7 +15,7 @@ use core::marker::PhantomData;
 
 pub type RequestId = usize;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RPCError {
 	Codec,
 	StreamTimeout,
@@ -45,6 +45,7 @@ pub trait RPCRequest {
 	fn expect_response(&self) -> bool;
 }
 
+#[derive(Debug, Clone)]
 pub enum RPCEvent<Req, Res> {
 	Request(RequestId, Req),
 	Response(RequestId, Res),
@@ -61,6 +62,7 @@ impl<Req, Res> RPCEvent<Req, Res> {
 	}
 }
 
+#[derive(Debug, Clone)]
 pub enum RPCMessage<Req, Res> {
 	Event(PeerId, RPCEvent<Req, Res>),
 	PeerDialed(PeerId),

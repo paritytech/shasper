@@ -49,6 +49,18 @@ impl<C: Config> BlockT for Block<C> {
 	}
 }
 
+impl<C: Config> From<BeaconBlock<C>> for Block<C> {
+	fn from(beacon: BeaconBlock<C>) -> Self {
+		Self(beacon)
+	}
+}
+
+impl<C: Config> Into<BeaconBlock<C>> for Block<C> {
+	fn into(self) -> BeaconBlock<C> {
+		self.0
+	}
+}
+
 pub trait StateExternalities {
 	type Config: Config;
 

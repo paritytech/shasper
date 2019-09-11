@@ -33,21 +33,22 @@ use libp2p::core::{
 };
 use libp2p::{core, secio, PeerId, Swarm, Transport};
 use libp2p::gossipsub::{Topic, TopicHash};
+use beacon::Config;
 use log::*;
 use std::time::Duration;
 
 type Libp2pStream = Boxed<(PeerId, StreamMuxerBox), Error>;
-type Libp2pBehaviour = Behaviour<Substream<StreamMuxerBox>>;
+type Libp2pBehaviour<C> = Behaviour<C, Substream<StreamMuxerBox>>;
 
 /// The configuration and state of the libp2p components for the beacon node.
-pub struct Service {
+pub struct Service<C: Config> {
     /// The libp2p Swarm handler.
-    pub swarm: Swarm<Libp2pStream, Libp2pBehaviour>,
+    pub swarm: Swarm<Libp2pStream, Libp2pBehaviour<C>>,
     /// This node's PeerId.
     pub local_peer_id: PeerId,
 }
 
-impl Service {
+impl<C: Config> Service<C> {
     pub fn new(config: NetworkConfig) -> Result<Self, Error> {
         trace!("Libp2p Service starting");
 
@@ -145,8 +146,8 @@ impl Service {
     }
 }
 
-impl Stream for Service {
-    type Item = Libp2pEvent;
+impl<C: Config> Stream for Service<C> {
+    type Item = Libp2pEvent<C>;
     type Error = crate::error::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
@@ -221,9 +222,9 @@ fn build_transport(local_private_key: Keypair) -> Boxed<(PeerId, StreamMuxerBox)
 
 /// Events that can be obtained from polling the Libp2p Service.
 #[derive(Debug)]
-pub enum Libp2pEvent {
+pub enum Libp2pEvent<C: Config> {
     /// An RPC response request has been received on the swarm.
-    RPC(PeerId, RPCEvent),
+    RPC(PeerId, RPCEvent<C>),
     /// Initiated the connection to a new peer.
     PeerDialed(PeerId),
     /// A peer has disconnected.

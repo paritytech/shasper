@@ -6,6 +6,8 @@ edition = "2018"
 
 [dependencies]
 libp2p = { path = "../../vendor/libp2p" }
+libp2p-rpc = { path = "../../common/libp2p-rpc" }
+network-messages = { package = "shasper-network-messages", path = "messages" }
 enr = { path = "../../vendor/libp2p/misc/enr" }
 blockchain-network = { version = "0.1", path = "../../vendor/blockchain/network" }
 blockchain = { version = "0.9", path = "../../vendor/blockchain" }

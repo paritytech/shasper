@@ -18,7 +18,7 @@ pub mod behaviour;
 mod config;
 mod discovery;
 mod error;
-pub mod rpc;
+mod rpc;
 mod service;
 
 pub use behaviour::{Behaviour, PubsubMessage};
@@ -34,14 +34,11 @@ pub use libp2p::{
 	PeerId, Swarm,
 };
 pub use error::Error;
-pub use rpc::{RPCEvent, RPCErrorResponse, RPCRequest, RPCResponse,
-			  methods::{HelloMessage, BeaconBlocksRequest}};
 pub use service::Libp2pEvent;
 pub use service::Service;
 
 use log::*;
 use core::time::Duration;
-use ssz::{Encode, Decode};
 use libp2p::identity;
 use futures01::{Async, stream::Stream};
 use futures::{Poll, StreamExt as _};
@@ -51,6 +48,8 @@ use blockchain::import::BlockImporter;
 use blockchain_network::sync::{NetworkSync, SyncConfig, SyncEvent};
 use beacon::Config;
 use shasper_runtime::Block;
+use network_messages::{HelloMessage, BeaconBlocksRequest};
+use crate::rpc::{RPCEvent, RPCRequest, RPCResponse};
 
 pub const VERSION: &str = "v0.1";
 
@@ -130,8 +129,8 @@ pub fn start_network_simple_sync<C, Ba, I>(
 										}
 									}
 									service.swarm.send_rpc(peer, RPCEvent::Response(
-										request_id, RPCErrorResponse::Success(
-											RPCResponse::BeaconBlocks(ret.encode())
+										request_id, RPCResponse::BeaconBlocks(
+											ret.into_iter().map(Into::into).collect()
 										)
 									));
 								},
@@ -140,37 +139,24 @@ pub fn start_network_simple_sync<C, Ba, I>(
 									let best_depth = backend.depth_at(&best_hash)
 										.expect("Best block depth hash cannot fail");
 									service.swarm.send_rpc(peer.clone(), RPCEvent::Response(
-										request_id, RPCErrorResponse::Success(
-											RPCResponse::Hello(HelloMessage {
-												fork_version: Default::default(),
-												finalized_root: Default::default(),
-												finalized_epoch: Default::default(),
-												head_root: best_hash,
-												head_slot: best_depth as u64,
-											})
-										)
+										request_id, RPCResponse::Hello(HelloMessage {
+											fork_version: Default::default(),
+											finalized_root: Default::default(),
+											finalized_epoch: Default::default(),
+											head_root: best_hash,
+											head_slot: best_depth as u64,
+										})
 									));
 									sync.note_peer_status(peer, hello.head_slot as usize);
 								},
-								RPCEvent::Response(_, RPCErrorResponse::Success(
-									RPCResponse::Hello(hello)
-								)) => {
+								RPCEvent::Response(_, RPCResponse::Hello(hello)) => {
 									sync.note_peer_status(peer, hello.head_slot as usize);
 								},
-								RPCEvent::Response(_, RPCErrorResponse::Success(
-									RPCResponse::BeaconBlocks(blocks)
-								)) => {
-									let blocks = match <Vec<Ba::Block> as Decode>::decode(
-										&mut &blocks[..]
-									) {
-										Ok(blocks) => blocks,
-										Err(e) => {
-											warn!("Received RPC response error: {:?}", e);
-											Vec::new()
-										},
-									};
-
-									sync.note_blocks(blocks, Some(peer));
+								RPCEvent::Response(_, RPCResponse::BeaconBlocks(blocks)) => {
+									sync.note_blocks(
+										blocks.into_iter().map(Into::into).collect(),
+										Some(peer)
+									);
 								},
 								event => {
 									warn!("Unhandled RPC message {:?}, {:?}", peer, event);
