@@ -23,7 +23,7 @@ use consensus_common::{
 	BlockImportParams, ImportResult, well_known_cache_keys,
 };
 use casper_primitives::CasperApi;
-use client::{Client, CallExecutor, backend::Backend, blockchain::Backend as _};
+use client::{Client, CallExecutor, backend::{Backend, Finalizer}, blockchain::Backend as _};
 use log::warn;
 
 pub struct CasperBlockImport<B, E, Block: BlockT<Hash=H256>, RA, PRA> {
