@@ -23,12 +23,15 @@ use blockchain::import::{SharedBlockImporter, MutexImporter};
 use blockchain_rocksdb::RocksBackend;
 use shasper_blockchain::{Block, Executor, MemoryState, RocksState, Error, StateExternalities, AttestationPool};
 use shasper_blockchain::backend::ShasperBackend;
+use shasper_network::NetworkConfig;
 use lmd_ghost::archive::{ArchiveGhostImporter, AncestorQuery};
 use clap::{App, Arg};
 use std::thread;
+use std::str::FromStr;
 use std::collections::HashMap;
 use core::time::Duration;
 use core::convert::TryInto;
+use log::*;
 use bm_le::tree_root;
 use crypto::bls::{self, BLSVerification};
 
@@ -106,6 +109,8 @@ fn deposit_proof<C: Config>(tree: &Vec<Vec<H256>>, item_index: usize) -> Vec<H25
 }
 
 fn main() {
+	pretty_env_logger::init();
+
 	let matches = App::new("Shasper blockchain client")
 		.arg(Arg::with_name("port")
 			 .short("p")
@@ -117,12 +122,14 @@ fn main() {
 			 .long("data")
 			 .takes_value(true)
 			 .help("Use rocksdb instead of in-memory database"))
+		.arg(Arg::with_name("bootnodes")
+			 .short("b")
+			 .long("bootnodes")
+			 .takes_value(true)
+			 .help("Comma-separated bootnodes"))
 		.arg(Arg::with_name("author")
 			 .long("author")
 			 .help("Whether to author blocks"))
-		.arg(Arg::with_name("gossipsub")
-			 .long("gossipsub")
-			 .help("Use the gossipsub network stack"))
 		.get_matches();
 
 	let mut keys: HashMap<ValidatorId, bls::Secret> = HashMap::new();
@@ -167,8 +174,12 @@ fn main() {
 	).unwrap();
 	let genesis_block = Block(genesis_beacon_block);
 
+	let mut network_config = NetworkConfig::default();
+	network_config.libp2p_port = u16::from_str(matches.value_of("port").unwrap()).unwrap();
+	network_config.discovery_port = u16::from_str(matches.value_of("port").unwrap()).unwrap();
+
 	if let Some(path) = matches.value_of("data") {
-		println!("Using RocksDB backend");
+		info!("Using RocksDB backend");
 		let backend = ShasperBackend::new(
 			RocksBackend::<_, (), RocksState<MinimalConfig>>::open_or_create(path, |_| {
 				Ok((genesis_block.clone(), genesis_state.into()))
@@ -176,15 +187,14 @@ fn main() {
 		);
 		let lock = ImportLock::new();
 
-		run(matches.value_of("port").unwrap_or("37365"),
+		run(network_config,
 			matches.is_present("author"),
 			backend,
 			lock,
 			eth1_data,
-			keys,
-			matches.is_present("gossipsub"));
+			keys);
 	} else {
-		println!("Using in-memory backend");
+		info!("Using in-memory backend");
 		let backend = ShasperBackend::new(
 			SharedMemoryBackend::<_, (), MemoryState<MinimalConfig>>::new_with_genesis(
 				genesis_block.clone(),
@@ -193,24 +203,22 @@ fn main() {
 		);
 		let lock = ImportLock::new();
 
-		run(matches.value_of("port").unwrap_or("37365"),
+		run(network_config,
 			matches.is_present("author"),
 			backend,
 			lock,
 			eth1_data,
-			keys,
-			matches.is_present("gossipsub"));
+			keys);
 	}
 }
 
 fn run<B, C: Config>(
-	port: &str,
+	config: NetworkConfig,
 	author: bool,
 	backend: B,
 	import_lock: ImportLock,
 	eth1_data: Eth1Data,
 	keys: HashMap<ValidatorId, bls::Secret>,
-	use_gossipsub: bool,
 ) where
 	Block<C>: ssz::Encode + ssz::Decode + Unpin + Send + Sync,
 	B: ChainQuery + AncestorQuery + Store<Block=Block<C>>,
@@ -233,12 +241,8 @@ fn run<B, C: Config>(
 		});
 	}
 
-	if use_gossipsub {
-		shasper_network::start_network_simple_sync(backend, import_lock, importer)
-			.expect("Starting networking thread failed");
-	} else {
-		panic!("Floodsub support is being removed");
-	}
+	shasper_network::start_network_simple_sync(backend, import_lock, importer, config)
+		.expect("Starting networking thread failed");
 }
 
 fn builder_thread<B, I, C: Config + Clone>(
@@ -259,14 +263,14 @@ fn builder_thread<B, I, C: Config + Clone>(
 		thread::sleep(Duration::new(1, 0));
 
 		let head = backend.head();
-		println!("Building on top of {}", head);
+		info!("Building on top of {}", head);
 
 		let block = {
 			let head_block = backend.block_at(&head).unwrap();
-			let mut head_state = backend.state_at(&head).unwrap();
-			println!("Justified epoch {}, finalized epoch {}",
-					 { head_state.state().current_justified_checkpoint.epoch },
-					 { head_state.state().finalized_checkpoint.epoch });
+			let head_state = backend.state_at(&head).unwrap();
+			trace!("Justified epoch {}, finalized epoch {}",
+				   { head_state.state().current_justified_checkpoint.epoch },
+				   { head_state.state().finalized_checkpoint.epoch });
 
 			let mut state = backend.state_at(&head).unwrap();
 			let externalities = state.as_externalities();
@@ -289,7 +293,7 @@ fn builder_thread<B, I, C: Config + Clone>(
 						.committee_assignment(current_epoch, validator_index).unwrap();
 					if let Some(committee_assignment) = committee_assignment {
 						if committee_assignment.slot == current_slot {
-							println!(
+							trace!(
 								"Found validator {} attesting slot {} with shard {}",
 								validator_id, current_slot, committee_assignment.shard);
 							let shard = committee_assignment.shard;
@@ -305,7 +309,7 @@ fn builder_thread<B, I, C: Config + Clone>(
 							};
 							let source_epoch = externalities.state().current_justified_checkpoint.epoch;
 							let source_root = externalities.state().current_justified_checkpoint.root;
-							println!(
+							trace!(
 								"Casper source {} ({}) to target {} ({})",
 								source_epoch, source_root, target_epoch, target_root,
 							);
@@ -366,12 +370,12 @@ fn builder_thread<B, I, C: Config + Clone>(
 
 			let proposer_index = externalities.state().beacon_proposer_index().unwrap();
 			let proposer_pubkey = externalities.state().validator_pubkey(proposer_index).unwrap();
-			println!("Current proposer {} ({}) on epoch {}", proposer_index, proposer_pubkey, current_epoch);
+			trace!("Current proposer {} ({}) on epoch {}", proposer_index, proposer_pubkey, current_epoch);
 
 			let seckey = match keys.get(&proposer_pubkey) {
 				Some(value) => value.clone(),
 				None => {
-					println!("No secret key, skip building block.");
+					warn!("No secret key, skip building block.");
 					continue;
 				},
 			};
@@ -400,11 +404,11 @@ fn builder_thread<B, I, C: Config + Clone>(
 					},
 					Err(Error::Beacon(ref err)) if err == &beacon::Error::AttestationSubmittedTooQuickly => {},
 					Err(err) => {
-						println!("Warning: error when submitting an attestation: {}", err);
+						warn!("Error when submitting an attestation: {}", err);
 					},
 				}
 			}
-			println!("Pushed {} attestations", collected_attestations.len());
+			info!("Pushed {} attestations", collected_attestations.len());
 			for hash in collected_attestations {
 				attestations.pop(&hash);
 			}

@@ -68,6 +68,7 @@ pub fn start_network_simple_sync<C, Ba, I>(
 	backend: Ba,
 	import_lock: ImportLock,
 	importer: I,
+	config: NetworkConfig,
 ) -> Result<(), Error> where
 	C: Config,
 	Ba: Store<Block=Block<C>> + SharedCommittable + ChainQuery + Send + Sync + 'static,
@@ -81,7 +82,6 @@ pub fn start_network_simple_sync<C, Ba, I>(
 	let local_peer_id = PeerId::from(local_key.public());
 	info!("Local peer id: {:?}", local_peer_id);
 
-	let config = NetworkConfig::default();
 	let sync_config = SyncConfig {
 		peer_update_frequency: 2,
 		update_frequency: 1,
