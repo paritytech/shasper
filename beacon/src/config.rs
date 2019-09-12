@@ -52,41 +52,41 @@ impl BLSConfig for BLSNoVerification {
 }
 
 /// Constants used in beacon block.
-pub trait Config: Default + Clone + PartialEq + Eq + core::fmt::Debug + 'static {
+pub trait Config: Default + Clone + PartialEq + Eq + core::fmt::Debug + Send + Sync + 'static {
 	/// Digest hash function.
 	type Digest: Digest<OutputSize=typenum::U32>;
 	/// Max validators per committee.
-	type MaxValidatorsPerCommittee: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxValidatorsPerCommittee: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Slots per historical root.
-	type SlotsPerHistoricalRoot: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type SlotsPerHistoricalRoot: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Maximum proposer slashings.
-	type MaxProposerSlashings: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxProposerSlashings: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Maximum attester slashings.
-	type MaxAttesterSlashings: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxAttesterSlashings: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Maximum attestations in a given block.
-	type MaxAttestations: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxAttestations: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Maximum deposits in a given block.
-	type MaxDeposits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxDeposits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Maximum voluntary exists in a given block.
-	type MaxVoluntaryExits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxVoluntaryExits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Maximum transfers in a given block.
-	type MaxTransfers: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxTransfers: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Limit of historical roots.
-	type HistoricalRootsLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type HistoricalRootsLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Shard count.
-	type ShardCount: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type ShardCount: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Slots per epoch.
-	type SlotsPerEpoch: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type SlotsPerEpoch: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Slots per eth1 voting period.
-	type SlotsPerEth1VotingPeriod: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type SlotsPerEth1VotingPeriod: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Validator registry limit.
-	type ValidatorRegistryLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type ValidatorRegistryLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Epochs per historical vector.
-	type EpochsPerHistoricalVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type EpochsPerHistoricalVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Epochs per slashings vector.
-	type EpochsPerSlashingsVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type EpochsPerSlashingsVector: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Maximum attestations per epoch.
-	type MaxAttestationsPerEpoch: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default;
+	type MaxAttestationsPerEpoch: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 
 	// === Misc ===
 	/// Shard count.

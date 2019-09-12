@@ -15,14 +15,12 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::behaviour::{Behaviour, BehaviourEvent, PubsubMessage};
-use crate::config::*;
-use crate::Error;
+use crate::behaviour::Behaviour;
+use crate::{NetworkConfig, Error, Libp2pEvent};
 use crate::multiaddr::Protocol;
-use crate::rpc::RPCEvent;
-use crate::NetworkConfig;
-use futures::prelude::*;
-use futures::Stream;
+use network_messages::PubsubType;
+use futures01::prelude::*;
+use futures01::Stream;
 use libp2p::core::{
     identity::Keypair,
     multiaddr::Multiaddr,
@@ -32,22 +30,23 @@ use libp2p::core::{
     upgrade::{InboundUpgradeExt, OutboundUpgradeExt},
 };
 use libp2p::{core, secio, PeerId, Swarm, Transport};
-use libp2p::gossipsub::{Topic, TopicHash};
+use libp2p::gossipsub::Topic;
+use beacon::Config;
 use log::*;
 use std::time::Duration;
 
 type Libp2pStream = Boxed<(PeerId, StreamMuxerBox), Error>;
-type Libp2pBehaviour = Behaviour<Substream<StreamMuxerBox>>;
+type Libp2pBehaviour<C> = Behaviour<C, Substream<StreamMuxerBox>>;
 
 /// The configuration and state of the libp2p components for the beacon node.
-pub struct Service {
+pub struct Service<C: Config> {
     /// The libp2p Swarm handler.
-    pub swarm: Swarm<Libp2pStream, Libp2pBehaviour>,
+    pub swarm: Swarm<Libp2pStream, Libp2pBehaviour<C>>,
     /// This node's PeerId.
     pub local_peer_id: PeerId,
 }
 
-impl Service {
+impl<C: Config> Service<C> {
     pub fn new(config: NetworkConfig) -> Result<Self, Error> {
         trace!("Libp2p Service starting");
 
@@ -99,23 +98,13 @@ impl Service {
         }
 
         // subscribe to default gossipsub topics
-        let mut topics = vec![];
+        let topics = vec![
+			PubsubType::Block, PubsubType::Attestation,
+			PubsubType::VoluntaryExit, PubsubType::ProposerSlashing,
+			PubsubType::AttesterSlashing,
+		];
 
-        /* Here we subscribe to all the required gossipsub topics required for interop.
-         * The topic builder adds the required prefix and postfix to the hardcoded topics that we
-         * must subscribe to.
-         */
-        let topic_builder = |topic| {
-            Topic::new(format!(
-                "/{}/{}/{}",
-                TOPIC_PREFIX, topic, TOPIC_ENCODING_POSTFIX,
-            ))
-        };
-        topics.push(topic_builder(BEACON_BLOCK_TOPIC));
-        topics.push(topic_builder(BEACON_ATTESTATION_TOPIC));
-        topics.push(topic_builder(VOLUNTARY_EXIT_TOPIC));
-        topics.push(topic_builder(PROPOSER_SLASHING_TOPIC));
-        topics.push(topic_builder(ATTESTER_SLASHING_TOPIC));
+		let mut topics = topics.into_iter().map(|v| v.gossipsub_topic()).collect::<Vec<_>>();
 
         // Add any topics specified by the user
         topics.append(
@@ -145,44 +134,12 @@ impl Service {
     }
 }
 
-impl Stream for Service {
-    type Item = Libp2pEvent;
+impl<C: Config> Stream for Service<C> {
+    type Item = Libp2pEvent<C>;
     type Error = crate::error::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        loop {
-            match self.swarm.poll() {
-                //Behaviour events
-                Ok(Async::Ready(Some(event))) => match event {
-                    // TODO: Stub here for debugging
-                    BehaviourEvent::GossipMessage {
-                        source,
-                        topics,
-                        message,
-                    } => {
-                        trace!("Gossipsub message received (swarm)");
-                        return Ok(Async::Ready(Some(Libp2pEvent::PubsubMessage {
-                            source,
-                            topics,
-                            message,
-                        })));
-                    }
-                    BehaviourEvent::RPC(peer_id, event) => {
-                        return Ok(Async::Ready(Some(Libp2pEvent::RPC(peer_id, event))));
-                    }
-                    BehaviourEvent::PeerDialed(peer_id) => {
-                        return Ok(Async::Ready(Some(Libp2pEvent::PeerDialed(peer_id))));
-                    }
-                    BehaviourEvent::PeerDisconnected(peer_id) => {
-                        return Ok(Async::Ready(Some(Libp2pEvent::PeerDisconnected(peer_id))));
-                    }
-                },
-                Ok(Async::Ready(None)) => unreachable!("Swarm stream shouldn't end"),
-                Ok(Async::NotReady) => break,
-                _ => break,
-            }
-        }
-        Ok(Async::NotReady)
+		self.swarm.poll().map_err(Into::into)
     }
 }
 
@@ -217,23 +174,6 @@ fn build_transport(local_private_key: Keypair) -> Boxed<(PeerId, StreamMuxerBox)
         .with_timeout(Duration::from_secs(20))
         .map_err(|err| Error::Libp2p(Box::new(err)))
         .boxed()
-}
-
-/// Events that can be obtained from polling the Libp2p Service.
-#[derive(Debug)]
-pub enum Libp2pEvent {
-    /// An RPC response request has been received on the swarm.
-    RPC(PeerId, RPCEvent),
-    /// Initiated the connection to a new peer.
-    PeerDialed(PeerId),
-    /// A peer has disconnected.
-    PeerDisconnected(PeerId),
-    /// Received pubsub message.
-    PubsubMessage {
-        source: PeerId,
-        topics: Vec<TopicHash>,
-        message: PubsubMessage,
-    },
 }
 
 /// Loads a private key from disk. If this fails, a new key is

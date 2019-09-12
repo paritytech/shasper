@@ -2,22 +2,22 @@
 members = [
 	"crypto",
 	"beacon",
+	"common/libp2p-rpc",
 	"blockchain",
 	"blockchain/common/rocksdb",
 	"blockchain/lmd-ghost",
 	"blockchain/network",
+	"blockchain/network/messages",
+	"blockchain/runtime",
 	"utils/ssz",
 	"utils/ssz/derive",
 	"utils/keccak-hasher",
-	"substrate/casper/srml",
-	"substrate/casper/consensus",
-	"substrate/casper/primitives",
-	"substrate/casper/template",
 	"yamltests/ssztests",
 	"yamltests/transitiontests",
 ]
 exclude = [
 	"beacon/wasm",
+	"substrate",
 	"vendor"
 ]
 

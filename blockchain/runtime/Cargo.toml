@@ -1,0 +1,12 @@
+[package]
+name = "shasper-runtime"
+version = "0.1.0"
+authors = ["Wei Tang <hi@that.world>"]
+edition = "2018"
+
+[dependencies]
+blockchain = { version = "0.9", path = "../../vendor/blockchain" }
+beacon = { path = "../../beacon" }
+parity-codec = { version = "4.0", features = ["derive"] }
+ssz = { path = "../../utils/ssz" }
+bm-le = { version = "0.11", path = "../../vendor/bm/le", features = ["derive"] }

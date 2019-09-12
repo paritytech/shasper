@@ -1,63 +1,44 @@
-// Copyright 2019 Parity Technologies (UK) Ltd.
-// Copyright 2019 Sigma Prime.
-// This file is part of Parity Shasper.
-
-// Parity Shasper is free software: you can redistribute it and/or modify it
-// under the terms of the GNU General Public License as published by the Free
-// Software Foundation, either version 3 of the License, or (at your option) any
-// later version.
-
-// Parity Shasper is distributed in the hope that it will be useful, but WITHOUT
-// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-// details.
-
-// You should have received a copy of the GNU General Public License along with
-// Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
-
-use super::methods::RequestId;
-use super::protocol::{RPCError, RPCProtocol, RPCRequest};
-use super::RPCEvent;
-use crate::rpc::protocol::{InboundFramed, OutboundFramed};
 use core::marker::PhantomData;
-use fnv::FnvHashMap;
-use futures::prelude::*;
-use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade};
-use libp2p::swarm::protocols_handler::{
-    KeepAlive, ProtocolsHandler, ProtocolsHandlerEvent, ProtocolsHandlerUpgrErr, SubstreamProtocol,
-};
+use std::time::{Instant, Duration};
 use smallvec::SmallVec;
-use std::time::{Duration, Instant};
+use fnv::FnvHashMap;
+use libp2p::{InboundUpgrade, OutboundUpgrade};
+use libp2p::swarm::protocols_handler::{
+	SubstreamProtocol, ProtocolsHandlerUpgrErr, KeepAlive, ProtocolsHandlerEvent,
+	ProtocolsHandler,
+};
+use futures::prelude::*;
 use tokio_io::{AsyncRead, AsyncWrite};
+use crate::{RPCEvent, RPCRequest, RPCError, RequestId};
+use crate::protocol::{InboundFramed, OutboundFramed, RPCProtocol, RPCInbound, RPCOutbound};
 
 /// The time (in seconds) before a substream that is awaiting a response from the user times out.
 pub const RESPONSE_TIMEOUT: u64 = 10;
 
 /// Implementation of `ProtocolsHandler` for the RPC protocol.
-pub struct RPCHandler<TSubstream>
-where
-    TSubstream: AsyncRead + AsyncWrite,
+pub struct RPCHandler<P: RPCProtocol, TSubstream> where
+	TSubstream: AsyncRead + AsyncWrite
 {
-    /// The upgrade for inbound substreams.
-    listen_protocol: SubstreamProtocol<RPCProtocol>,
+	/// The upgrade for inbound substreams.
+	listen_protocol: SubstreamProtocol<RPCInbound<P>>,
 
-    /// If `Some`, something bad happened and we should shut down the handler with an error.
-    pending_error: Option<ProtocolsHandlerUpgrErr<RPCError>>,
+	/// If `Some`, something bad happened and we should shut down the handler with an error.
+	pending_error: Option<ProtocolsHandlerUpgrErr<RPCError>>,
 
     /// Queue of events to produce in `poll()`.
-    events_out: SmallVec<[RPCEvent; 4]>,
+    events_out: SmallVec<[RPCEvent<P::Request, P::Response>; 4]>,
 
     /// Queue of outbound substreams to open.
-    dial_queue: SmallVec<[RPCEvent; 4]>,
+    dial_queue: SmallVec<[RPCEvent<P::Request, P::Response>; 4]>,
 
     /// Current number of concurrent outbound substreams being opened.
     dial_negotiated: u32,
 
     /// Map of current substreams awaiting a response to an RPC request.
-    waiting_substreams: FnvHashMap<RequestId, WaitingResponse<TSubstream>>,
+    waiting_substreams: FnvHashMap<RequestId, WaitingResponse<P, TSubstream>>,
 
     /// List of outbound substreams that need to be driven to completion.
-    substreams: Vec<SubstreamState<TSubstream>>,
+    substreams: Vec<SubstreamState<P, TSubstream>>,
 
     /// Sequential Id for waiting substreams.
     current_substream_id: RequestId,
@@ -71,50 +52,52 @@ where
     /// After the given duration has elapsed, an inactive connection will shutdown.
     inactive_timeout: Duration,
 
-    /// Marker to pin the generic stream.
-    _phantom: PhantomData<TSubstream>,
+	/// The protocol handler.
+	protocol: P,
+
+	_marker: PhantomData<TSubstream>,
 }
 
 /// An outbound substream is waiting a response from the user.
-struct WaitingResponse<TSubstream> {
+struct WaitingResponse<P: RPCProtocol, TSubstream> {
     /// The framed negotiated substream.
-    substream: InboundFramed<TSubstream>,
+    substream: InboundFramed<P, TSubstream>,
     /// The time when the substream is closed.
     timeout: Instant,
 }
 
 /// State of an outbound substream. Either waiting for a response, or in the process of sending.
-pub enum SubstreamState<TSubstream>
+pub enum SubstreamState<P: RPCProtocol, TSubstream>
 where
     TSubstream: AsyncRead + AsyncWrite,
 {
     /// A response has been sent, pending writing and flush.
     ResponsePendingSend {
-        substream: futures::sink::Send<InboundFramed<TSubstream>>,
+        substream: futures::sink::Send<InboundFramed<P, TSubstream>>,
     },
     /// A request has been sent, and we are awaiting a response. This future is driven in the
     /// handler because GOODBYE requests can be handled and responses dropped instantly.
     RequestPendingResponse {
         /// The framed negotiated substream.
-        substream: OutboundFramed<TSubstream>,
+        substream: OutboundFramed<P, TSubstream>,
         /// Keeps track of the request id and the request to permit forming advanced responses which require
         /// data from the request.
-        rpc_event: RPCEvent,
+        rpc_event: RPCEvent<P::Request, P::Response>,
         /// The time  when the substream is closed.
         timeout: Instant,
     },
 }
 
-impl<TSubstream> RPCHandler<TSubstream>
-where
-    TSubstream: AsyncRead + AsyncWrite,
+impl<P, TSubstream> RPCHandler<P, TSubstream> where
+	P: RPCProtocol + Clone,
+	TSubstream: AsyncRead + AsyncWrite,
 {
-    pub fn new(
-        listen_protocol: SubstreamProtocol<RPCProtocol>,
+	pub fn new(
+		protocol: P,
         inactive_timeout: Duration,
     ) -> Self {
         RPCHandler {
-            listen_protocol,
+            listen_protocol: SubstreamProtocol::new(RPCInbound(protocol.clone())),
             pending_error: None,
             events_out: SmallVec::new(),
             dial_queue: SmallVec::new(),
@@ -125,7 +108,8 @@ where
             max_dial_negotiated: 8,
             keep_alive: KeepAlive::Yes,
             inactive_timeout,
-            _phantom: PhantomData,
+			protocol,
+            _marker: PhantomData,
         }
     }
 
@@ -138,7 +122,7 @@ where
     ///
     /// > **Note**: If you modify the protocol, modifications will only applies to future inbound
     /// >           substreams, not the ones already being negotiated.
-    pub fn listen_protocol_ref(&self) -> &SubstreamProtocol<RPCProtocol> {
+    pub fn listen_protocol_ref(&self) -> &SubstreamProtocol<RPCInbound<P>> {
         &self.listen_protocol
     }
 
@@ -146,54 +130,51 @@ where
     ///
     /// > **Note**: If you modify the protocol, modifications will only applies to future inbound
     /// >           substreams, not the ones already being negotiated.
-    pub fn listen_protocol_mut(&mut self) -> &mut SubstreamProtocol<RPCProtocol> {
+    pub fn listen_protocol_mut(&mut self) -> &mut SubstreamProtocol<RPCInbound<P>> {
         &mut self.listen_protocol
     }
 
     /// Opens an outbound substream with a request.
-    #[inline]
-    pub fn send_request(&mut self, rpc_event: RPCEvent) {
+    pub fn send_request(&mut self, rpc_event: RPCEvent<P::Request, P::Response>) {
         self.keep_alive = KeepAlive::Yes;
 
         self.dial_queue.push(rpc_event);
     }
 }
 
-impl<TSubstream> Default for RPCHandler<TSubstream>
-where
-    TSubstream: AsyncRead + AsyncWrite,
+impl<P, TSubstream> Default for RPCHandler<P, TSubstream> where
+	P: RPCProtocol + Default + Clone,
+	TSubstream: AsyncRead + AsyncWrite,
 {
-    fn default() -> Self {
-        RPCHandler::new(SubstreamProtocol::new(RPCProtocol), Duration::from_secs(30))
-    }
+	fn default() -> Self {
+		RPCHandler::new(P::default(), Duration::from_secs(30))
+	}
 }
 
-impl<TSubstream> ProtocolsHandler for RPCHandler<TSubstream>
-where
-    TSubstream: AsyncRead + AsyncWrite,
+impl<P, TSubstream> ProtocolsHandler for RPCHandler<P, TSubstream> where
+	P: RPCProtocol + Clone,
+	TSubstream: AsyncRead + AsyncWrite,
 {
-    type InEvent = RPCEvent;
-    type OutEvent = RPCEvent;
-    type Error = ProtocolsHandlerUpgrErr<RPCError>;
-    type Substream = TSubstream;
-    type InboundProtocol = RPCProtocol;
-    type OutboundProtocol = RPCRequest;
-    type OutboundOpenInfo = RPCEvent; // Keep track of the id and the request
+	type InEvent = RPCEvent<P::Request, P::Response>;
+	type OutEvent = RPCEvent<P::Request, P::Response>;
+	type Error = ProtocolsHandlerUpgrErr<RPCError>;
+	type Substream = TSubstream;
+	type InboundProtocol = RPCInbound<P>;
+	type OutboundProtocol = RPCOutbound<P>;
+	type OutboundOpenInfo = RPCEvent<P::Request, P::Response>;
 
-    #[inline]
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol> {
         self.listen_protocol.clone()
     }
 
-    #[inline]
     fn inject_fully_negotiated_inbound(
         &mut self,
-        out: <RPCProtocol as InboundUpgrade<TSubstream>>::Output,
+        out: <RPCInbound<P> as InboundUpgrade<TSubstream>>::Output,
     ) {
         let (req, substream) = out;
         // drop the stream and return a 0 id for goodbye "requests"
-        if let r @ RPCRequest::Goodbye(_) = req {
-            self.events_out.push(RPCEvent::Request(0, r));
+        if req.is_goodbye() {
+            self.events_out.push(RPCEvent::Request(0, req));
             return;
         }
 
@@ -210,10 +191,9 @@ where
         self.current_substream_id += 1;
     }
 
-    #[inline]
     fn inject_fully_negotiated_outbound(
         &mut self,
-        out: <RPCRequest as OutboundUpgrade<TSubstream>>::Output,
+        out: <RPCOutbound<P> as OutboundUpgrade<TSubstream>>::Output,
         rpc_event: Self::OutboundOpenInfo,
     ) {
         self.dial_negotiated -= 1;
@@ -243,7 +223,6 @@ where
 
     // Note: If the substream has closed due to inactivity, or the substream is in the
     // wrong state a response will fail silently.
-    #[inline]
     fn inject_event(&mut self, rpc_event: Self::InEvent) {
         match rpc_event {
             RPCEvent::Request(_, _) => self.send_request(rpc_event),
@@ -260,7 +239,6 @@ where
         }
     }
 
-    #[inline]
     fn inject_dial_upgrade_error(
         &mut self,
         _: Self::OutboundOpenInfo,
@@ -273,7 +251,6 @@ where
         }
     }
 
-    #[inline]
     fn connection_keep_alive(&self) -> KeepAlive {
         self.keep_alive
     }
@@ -316,9 +293,9 @@ where
                             self.substreams
                                 .push(SubstreamState::ResponsePendingSend { substream });
                         }
-                        Err(e) => {
+                        Err(_) => {
                             return Ok(Async::Ready(ProtocolsHandlerEvent::Custom(
-                                RPCEvent::Error(0, e),
+                                RPCEvent::Error(0, RPCError::Codec),
                             )))
                         }
                     }
@@ -353,9 +330,9 @@ where
                                 });
                         }
                     }
-                    Err(e) => {
+                    Err(_) => {
                         return Ok(Async::Ready(ProtocolsHandlerEvent::Custom(
-                            RPCEvent::Error(rpc_event.id(), e),
+                            RPCEvent::Error(rpc_event.id(), RPCError::Codec),
                         )))
                     }
                 },
@@ -370,7 +347,9 @@ where
                 if let RPCEvent::Request(id, req) = rpc_event {
                     return Ok(Async::Ready(
                         ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                            protocol: SubstreamProtocol::new(req.clone()),
+                            protocol: SubstreamProtocol::new(
+								RPCOutbound(req.clone(), self.protocol.clone())
+							),
                             info: RPCEvent::Request(id, req),
                         },
                     ));

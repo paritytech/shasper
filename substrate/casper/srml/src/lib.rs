@@ -21,7 +21,7 @@
 use srml_support::{StorageValue, dispatch::Result, decl_module, decl_storage, decl_event, print};
 use system::ensure_none;
 use sr_primitives::{traits::{One, MaybeDebug, Extrinsic as ExtrinsicT, ValidateUnsigned}, weights::SimpleDispatchInfo};
-use sr_primitives::transaction_validity::{TransactionValidity, TransactionLongevity, ValidTransaction};
+use sr_primitives::transaction_validity::{TransactionValidity, TransactionLongevity, ValidTransaction, InvalidTransaction};
 use casper_primitives::{ValidatorId, ValidatorSignature, ValidatorWeight, Epoch};
 use codec::{Encode, Decode};
 use app_crypto::RuntimeAppPublic;
@@ -114,7 +114,7 @@ decl_event!(
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		fn deposit_event<T>() = default;
+		fn deposit_event() = default;
 
 		#[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
 		fn slash(
@@ -259,10 +259,10 @@ impl<T: Trait> Module<T> {
 					.ok_or("attestation signing failed")?;
 
 				let call = Call::attest(attestation, signature);
-				let ex = T::UncheckedExtrinsic::new_unsigned(call.into())
+				let ex = T::UncheckedExtrinsic::new(call.into(), None)
 					.ok_or("create unsigned attestation failed")?;
 
-				sr_io::submit_transaction(&ex).map_err(|_| "submit attestation failed")?;
+				sr_io::submit_transaction(ex.encode()).map_err(|_| "submit attestation failed")?;
 			}
 		}
 
@@ -284,6 +284,10 @@ impl<T: Trait> Module<T> {
 
 impl<T: Trait> session::OneSessionHandler<T::AccountId> for Module<T> {
 	type Key = ValidatorId;
+
+	fn on_genesis_session<'a, I: 'a>(_validators: I) where
+		I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
+	{ }
 
 	fn on_new_session<'a, I: 'a>(changed: bool, new_validators: I, _queued_validators: I) where
 		I: Iterator<Item=(&'a T::AccountId, ValidatorId)>
@@ -385,21 +389,21 @@ impl<T: Trait> ValidateUnsigned for Module<T> {
 
 	fn validate_unsigned(call: &Self::Call) -> TransactionValidity {
 		match call {
-			Call::attest(attestation, _) => TransactionValidity::Valid(ValidTransaction {
+			Call::attest(attestation, _) => Ok(ValidTransaction {
 				priority: 0,
 				requires: vec![],
 				provides: vec![attestation.encode()],
 				longevity: TransactionLongevity::max_value(),
 				propagate: true,
 			}),
-			Call::slash(a1, _, a2, _) => TransactionValidity::Valid(ValidTransaction {
+			Call::slash(a1, _, a2, _) => Ok(ValidTransaction {
 				priority: 0,
 				requires: vec![],
 				provides: vec![(a1, a2).encode()],
 				longevity: TransactionLongevity::max_value(),
 				propagate: true,
 			}),
-			_ => TransactionValidity::Invalid(0),
+			_ => Err(InvalidTransaction::BadProof.into()),
 		}
 	}
 }

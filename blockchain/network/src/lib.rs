@@ -14,18 +14,16 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod behaviour;
+mod behaviour;
 mod config;
 mod discovery;
 mod error;
-pub mod rpc;
+mod rpc;
 mod service;
+mod handler;
 
-pub use behaviour::{Behaviour, PubsubMessage};
-pub use config::{
-	Config as NetworkConfig, BEACON_ATTESTATION_TOPIC, BEACON_BLOCK_TOPIC, SHARD_TOPIC_PREFIX,
-	TOPIC_ENCODING_POSTFIX, TOPIC_PREFIX,
-};
+pub use behaviour::Behaviour;
+pub use config::Config as NetworkConfig;
 pub use libp2p::enr::Enr;
 pub use libp2p::multiaddr;
 pub use libp2p::Multiaddr;
@@ -34,31 +32,49 @@ pub use libp2p::{
 	PeerId, Swarm,
 };
 pub use error::Error;
-pub use rpc::{RPCEvent, RPCErrorResponse, RPCRequest, RPCResponse, methods::BeaconBlocksRequest};
-pub use service::Libp2pEvent;
 pub use service::Service;
+pub use handler::Handler;
 
 use log::*;
-use core::fmt::Debug;
 use core::time::Duration;
-use ssz::{Encode, Decode};
 use libp2p::identity;
-use futures::{Async, stream::Stream};
-use tokio_timer::Interval;
-use rand::seq::SliceRandom;
-use blockchain::backend::{SharedCommittable, ChainQuery, ImportLock};
+use futures01::{Async, stream::Stream};
+use futures::{Poll, StreamExt as _};
+use blockchain::{Auxiliary, AsExternalities};
+use blockchain::backend::{Store, SharedCommittable, ChainQuery, ImportLock};
 use blockchain::import::BlockImporter;
+use blockchain_network::sync::{NetworkSync, SyncConfig, SyncEvent};
+use beacon::Config;
+use shasper_runtime::{Block, StateExternalities};
+use network_messages::{HelloMessage, PubsubMessage};
+use crate::rpc::{RPCEvent, RPCRequest, RPCResponse};
 
 pub const VERSION: &str = "v0.1";
 
-pub fn start_network_simple_sync<Ba, I>(
+/// Events that can be obtained from polling the Libp2p Service.
+#[derive(Debug)]
+pub enum Libp2pEvent<C: Config> {
+    /// An RPC response request has been received on the swarm.
+    RPC(PeerId, RPCEvent<C>),
+    /// Initiated the connection to a new peer.
+    PeerDialed(PeerId),
+    /// A peer has disconnected.
+    PeerDisconnected(PeerId),
+    /// Received pubsub message.
+    Pubsub(PeerId, PubsubMessage<C>),
+}
+
+pub fn start_network_simple_sync<C, Ba, I>(
 	backend: Ba,
 	import_lock: ImportLock,
-	mut importer: I,
+	importer: I,
 ) -> Result<(), Error> where
-	Ba: SharedCommittable + ChainQuery + Send + Sync + 'static,
-	Ba::Block: Debug + Encode + Decode + Send + Sync,
-	I: BlockImporter<Block=Ba::Block> + Send + Sync + 'static,
+	C: Config,
+	Ba: Store<Block=Block<C>> + SharedCommittable + ChainQuery + Send + Sync + 'static,
+	Ba::Block: Unpin + Send + Sync,
+	Ba::State: StateExternalities + AsExternalities<dyn StateExternalities<Config=C>>,
+	Ba::Auxiliary: Auxiliary<Block<C>> + Unpin,
+	I: BlockImporter<Block=Block<C>> + Unpin + Send + Sync + 'static,
 {
 	// Create a random PeerId
 	let local_key = identity::Keypair::generate_ed25519();
@@ -66,106 +82,68 @@ pub fn start_network_simple_sync<Ba, I>(
 	info!("Local peer id: {:?}", local_peer_id);
 
 	let config = NetworkConfig::default();
+	let sync_config = SyncConfig {
+		peer_update_frequency: 2,
+		update_frequency: 1,
+		request_timeout: 4,
+	};
+
+	let handler = Handler::<C, Ba>::new(backend, import_lock);
+	let head_status = handler.status();
+	let mut sync = NetworkSync::<PeerId, HelloMessage, I>::new(
+		head_status,
+		importer,
+		Duration::new(2, 0),
+		sync_config
+	);
 
 	let mut service = Service::new(config)?;
-	let mut peers = <Vec<PeerId>>::new();
 
-	let mut interval = Interval::new_interval(Duration::new(5, 0));
 	let mut listening = false;
 
-	tokio::run(futures::future::poll_fn(move || -> Result<_, ()> {
-		loop {
-			match interval.poll().expect("Error while polling interval") {
-				Async::Ready(Some(_)) => {
-					if let Some(peer) = peers.choose(&mut rand::thread_rng()) {
-						let best_depth = {
-							let best_hash = backend.head();
-							backend.depth_at(&best_hash)
-								.expect("Best block depth hash cannot fail")
-						};
-
-						service.swarm.send_rpc(peer.clone(), RPCEvent::Request(
-							0,
-							RPCRequest::BeaconBlocks(
-								BeaconBlocksRequest {
-									head_block_root: Default::default(),
-									start_slot: best_depth as u64,
-									count: 10,
-									step: 1
-								}
-							)
-						));
-					}
-				},
-				Async::Ready(None) => panic!("Interval closed"),
-				Async::NotReady => break,
-			};
-		}
-
+	let poll = futures::future::poll_fn::<Result<(), ()>, _>(move |ctx| {
 		loop {
 			match service.poll().expect("Error while polling swarm") {
 				Async::Ready(Some(message)) => {
 					match message {
 						Libp2pEvent::PeerDialed(peer) => {
-							peers.push(peer);
+							sync.note_connected(peer);
 						},
 						Libp2pEvent::PeerDisconnected(peer) => {
-							peers.retain(|p| p != &peer);
+							sync.note_disconnected(peer);
 						},
-						Libp2pEvent::PubsubMessage {
-							source, topics, message,
-						} => {
-							warn!("Unhandled pubsub message {:?}, {:?}, {:?}",
-								  source, topics, message);
+						Libp2pEvent::Pubsub(peer, message) => {
+							warn!("Unhandled pubsub message {:?}, {:?}", peer, message);
 						},
 						Libp2pEvent::RPC(peer, event) => {
 							match event {
 								RPCEvent::Request(request_id, RPCRequest::BeaconBlocks(request)) => {
-									let mut ret = Vec::new();
-									{
-										let _ = import_lock.lock();
-										let start_slot = request.start_slot;
-										let count = request.count;
-
-										for d in start_slot..(start_slot + count) {
-											match backend.lookup_canon_depth(d as usize) {
-												Ok(Some(hash)) => {
-													let block = backend.block_at(&hash)
-														.expect("Found hash cannot fail");
-													ret.push(block);
-												},
-												_ => break,
-											}
-										}
-									}
 									service.swarm.send_rpc(peer, RPCEvent::Response(
-										request_id, RPCErrorResponse::Success(
-											RPCResponse::BeaconBlocks(ret.encode())
+										request_id, RPCResponse::BeaconBlocks(
+											handler.blocks_by_slot(
+												request.head_block_root,
+												request.start_slot,
+												request.count as usize,
+											)
 										)
 									));
 								},
-								RPCEvent::Response(_, RPCErrorResponse::Success(
-									RPCResponse::BeaconBlocks(blocks)
-								)) => {
-									let blocks = match <Vec<Ba::Block> as Decode>::decode(
-										&mut &blocks[..]
-									) {
-										Ok(blocks) => blocks,
-										Err(e) => {
-											warn!("Received RPC response error: {:?}", e);
-											Vec::new()
-										},
-									};
-
-									for block in blocks {
-										match importer.import_block(block) {
-											Ok(()) => (),
-											Err(_) => {
-												warn!("Error happened on block response message");
-												break
-											},
-										}
-									}
+								RPCEvent::Request(request_id, RPCRequest::Hello(hello)) => {
+									service.swarm.send_rpc(peer.clone(), RPCEvent::Response(
+										request_id, RPCResponse::Hello(
+											handler.status()
+										)
+									));
+									sync.note_peer_status(peer, hello);
+								},
+								RPCEvent::Response(_, RPCResponse::Hello(hello)) => {
+									sync.note_peer_status(peer, hello);
+								},
+								RPCEvent::Response(_, RPCResponse::BeaconBlocks(blocks)) => {
+									sync.note_blocks(
+										blocks.into_iter().map(Into::into).collect(),
+										Some(peer)
+									);
 								},
 								event => {
 									warn!("Unhandled RPC message {:?}, {:?}", peer, event);
@@ -186,8 +164,31 @@ pub fn start_network_simple_sync<Ba, I>(
 			}
 		}
 
-		Ok(Async::NotReady)
-	}));
+		loop {
+			match sync.poll_next_unpin(ctx) {
+				Poll::Pending | Poll::Ready(None) => break,
+				Poll::Ready(Some(SyncEvent::QueryStatus)) => {
+					sync.note_status(handler.status());
+				},
+				Poll::Ready(Some(SyncEvent::QueryPeerStatus(peer))) => {
+					service.swarm.send_rpc(peer, RPCEvent::Request(
+						0,
+						RPCRequest::Hello(handler.status())
+					));
+				},
+				Poll::Ready(Some(SyncEvent::QueryBlocks(peer))) => {
+					service.swarm.send_rpc(peer, RPCEvent::Request(
+						0,
+						RPCRequest::BeaconBlocks(handler.head_request(10))
+					));
+				},
+			}
+		}
+
+		Poll::Pending
+	});
+
+	tokio::run(futures::compat::Compat::new(poll));
 
 	Err(Error::Other("Shutdown".to_string()))
 }

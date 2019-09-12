@@ -21,7 +21,7 @@
 //!
 
 use crate::{Error, NetworkConfig};
-use futures::prelude::*;
+use futures01::prelude::*;
 use libp2p::core::{identity::Keypair, ConnectedPoint, Multiaddr, PeerId};
 use libp2p::discv5::{Discv5, Discv5Event};
 use libp2p::enr::{Enr, EnrBuilder, NodeId};
