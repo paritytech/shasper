@@ -26,6 +26,7 @@ use shasper_blockchain::backend::ShasperBackend;
 use shasper_network::NetworkConfig;
 use lmd_ghost::archive::{ArchiveGhostImporter, AncestorQuery};
 use clap::{App, Arg};
+use libp2p::Multiaddr;
 use std::thread;
 use std::str::FromStr;
 use std::collections::HashMap;
@@ -122,11 +123,10 @@ fn main() {
 			 .long("data")
 			 .takes_value(true)
 			 .help("Use rocksdb instead of in-memory database"))
-		.arg(Arg::with_name("bootnodes")
-			 .short("b")
-			 .long("bootnodes")
+		.arg(Arg::with_name("libp2p-nodes")
+			 .long("libp2p-nodes")
 			 .takes_value(true)
-			 .help("Comma-separated bootnodes"))
+			 .help("Comma-separated libp2p nodes to initially connect to"))
 		.arg(Arg::with_name("author")
 			 .long("author")
 			 .help("Whether to author blocks"))
@@ -177,6 +177,13 @@ fn main() {
 	let mut network_config = NetworkConfig::default();
 	network_config.libp2p_port = u16::from_str(matches.value_of("port").unwrap()).unwrap();
 	network_config.discovery_port = u16::from_str(matches.value_of("port").unwrap()).unwrap();
+	network_config.libp2p_nodes = if let Some(nodes) = matches.value_of("libp2p-nodes") {
+		nodes.rsplit(',')
+			.map(|v| FromStr::from_str(v).unwrap())
+			.collect::<Vec<Multiaddr>>()
+	} else {
+		Vec::new()
+	};
 
 	if let Some(path) = matches.value_of("data") {
 		info!("Using RocksDB backend");
