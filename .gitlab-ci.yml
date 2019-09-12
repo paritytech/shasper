@@ -27,6 +27,7 @@ test-rust-stable:
     - ./scripts/init.sh
     - ./scripts/build.sh
     - time cargo test --all --release --locked
+    - cd substrate && time cargo test --all --release --locked
     - sccache -s
   only:
     - triggers
@@ -38,7 +39,6 @@ test-rust-stable:
   tags:
     - linux-docker
 
-
 #### stage:                        build
 
 build-linux:
@@ -48,6 +48,7 @@ build-linux:
     - ./scripts/init.sh
     - ./scripts/build.sh
     - time cargo build --release
+    - cd substrate && time cargo build --release
     - sccache -s
   tags:
     - linux-docker
