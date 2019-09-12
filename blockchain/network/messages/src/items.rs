@@ -1,8 +1,9 @@
+use core::cmp::Ordering;
 use ssz::{Codec, Decode, Encode};
 use beacon::primitives::{Epoch, H256, Slot, Version};
 
 /// The HELLO request/response handshake message.
-#[derive(Codec, Encode, Decode, Clone, Debug)]
+#[derive(Codec, Encode, Decode, Clone, Debug, Eq, PartialEq)]
 pub struct HelloMessage {
     /// The fork version of the chain we are broadcasting.
     pub fork_version: Version,
@@ -18,6 +19,18 @@ pub struct HelloMessage {
 
     /// The slot associated with the latest block root.
     pub head_slot: Slot,
+}
+
+impl PartialOrd for HelloMessage {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+impl Ord for HelloMessage {
+	fn cmp(&self, other: &Self) -> Ordering {
+		self.head_slot.cmp(&other.head_slot)
+	}
 }
 
 /// The reason given for a `Goodbye` message.

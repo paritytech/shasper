@@ -64,5 +64,6 @@ impl<C: Config> Into<BeaconBlock<C>> for Block<C> {
 pub trait StateExternalities {
 	type Config: Config;
 
-	fn state(&mut self) -> &mut BeaconState<Self::Config>;
+	fn state(&self) -> &BeaconState<Self::Config>;
+	fn state_mut(&mut self) -> &mut BeaconState<Self::Config>;
 }

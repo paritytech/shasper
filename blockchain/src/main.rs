@@ -215,7 +215,7 @@ fn run<B, C: Config>(
 	Block<C>: ssz::Encode + ssz::Decode + Unpin + Send + Sync,
 	B: ChainQuery + AncestorQuery + Store<Block=Block<C>>,
 	B::State: StateExternalities + AsExternalities<dyn StateExternalities<Config=C>>,
-	B::Auxiliary: Auxiliary<Block<C>>,
+	B::Auxiliary: Auxiliary<Block<C>> + Unpin,
 	B: SharedCommittable<Operation=Operation<<B as Store>::Block, <B as Store>::State, <B as Store>::Auxiliary>>,
 	B: Send + Sync + 'static,
 	C: Unpin + Clone + Send + Sync + 'static,

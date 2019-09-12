@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod behaviour;
+mod behaviour;
 mod config;
 mod discovery;
 mod error;
 mod rpc;
 mod service;
+mod handler;
 
 pub use behaviour::Behaviour;
 pub use config::Config as NetworkConfig;
@@ -32,19 +33,20 @@ pub use libp2p::{
 };
 pub use error::Error;
 pub use service::Service;
+pub use handler::Handler;
 
 use log::*;
 use core::time::Duration;
 use libp2p::identity;
 use futures01::{Async, stream::Stream};
 use futures::{Poll, StreamExt as _};
-use blockchain::Auxiliary;
+use blockchain::{Auxiliary, AsExternalities};
 use blockchain::backend::{Store, SharedCommittable, ChainQuery, ImportLock};
 use blockchain::import::BlockImporter;
 use blockchain_network::sync::{NetworkSync, SyncConfig, SyncEvent};
 use beacon::Config;
-use shasper_runtime::Block;
-use network_messages::{HelloMessage, BeaconBlocksRequest, PubsubMessage};
+use shasper_runtime::{Block, StateExternalities};
+use network_messages::{HelloMessage, PubsubMessage};
 use crate::rpc::{RPCEvent, RPCRequest, RPCResponse};
 
 pub const VERSION: &str = "v0.1";
@@ -70,6 +72,7 @@ pub fn start_network_simple_sync<C, Ba, I>(
 	C: Config,
 	Ba: Store<Block=Block<C>> + SharedCommittable + ChainQuery + Send + Sync + 'static,
 	Ba::Block: Unpin + Send + Sync,
+	Ba::State: StateExternalities + AsExternalities<dyn StateExternalities<Config=C>>,
 	Ba::Auxiliary: Auxiliary<Block<C>> + Unpin,
 	I: BlockImporter<Block=Block<C>> + Unpin + Send + Sync + 'static,
 {
@@ -84,13 +87,11 @@ pub fn start_network_simple_sync<C, Ba, I>(
 		update_frequency: 1,
 		request_timeout: 4,
 	};
-	let best_depth = {
-		let best_hash = backend.head();
-		backend.depth_at(&best_hash)
-			.expect("Best block depth hash cannot fail")
-	};
-	let mut sync = NetworkSync::<PeerId, _, _>::new(
-		best_depth,
+
+	let handler = Handler::<C, Ba>::new(backend, import_lock);
+	let head_status = handler.status();
+	let mut sync = NetworkSync::<PeerId, HelloMessage, I>::new(
+		head_status,
 		importer,
 		Duration::new(2, 0),
 		sync_config
@@ -117,46 +118,26 @@ pub fn start_network_simple_sync<C, Ba, I>(
 						Libp2pEvent::RPC(peer, event) => {
 							match event {
 								RPCEvent::Request(request_id, RPCRequest::BeaconBlocks(request)) => {
-									let mut ret = Vec::new();
-									{
-										let _ = import_lock.lock();
-										let start_slot = request.start_slot;
-										let count = request.count;
-
-										for d in start_slot..(start_slot + count) {
-											match backend.lookup_canon_depth(d as usize) {
-												Ok(Some(hash)) => {
-													let block = backend.block_at(&hash)
-														.expect("Found hash cannot fail");
-													ret.push(block);
-												},
-												_ => break,
-											}
-										}
-									}
 									service.swarm.send_rpc(peer, RPCEvent::Response(
 										request_id, RPCResponse::BeaconBlocks(
-											ret.into_iter().map(Into::into).collect()
+											handler.blocks_by_slot(
+												request.head_block_root,
+												request.start_slot,
+												request.count as usize,
+											)
 										)
 									));
 								},
 								RPCEvent::Request(request_id, RPCRequest::Hello(hello)) => {
-									let best_hash = backend.head();
-									let best_depth = backend.depth_at(&best_hash)
-										.expect("Best block depth hash cannot fail");
 									service.swarm.send_rpc(peer.clone(), RPCEvent::Response(
-										request_id, RPCResponse::Hello(HelloMessage {
-											fork_version: Default::default(),
-											finalized_root: Default::default(),
-											finalized_epoch: Default::default(),
-											head_root: best_hash,
-											head_slot: best_depth as u64,
-										})
+										request_id, RPCResponse::Hello(
+											handler.status()
+										)
 									));
-									sync.note_peer_status(peer, hello.head_slot as usize);
+									sync.note_peer_status(peer, hello);
 								},
 								RPCEvent::Response(_, RPCResponse::Hello(hello)) => {
-									sync.note_peer_status(peer, hello.head_slot as usize);
+									sync.note_peer_status(peer, hello);
 								},
 								RPCEvent::Response(_, RPCResponse::BeaconBlocks(blocks)) => {
 									sync.note_blocks(
@@ -187,40 +168,18 @@ pub fn start_network_simple_sync<C, Ba, I>(
 			match sync.poll_next_unpin(ctx) {
 				Poll::Pending | Poll::Ready(None) => break,
 				Poll::Ready(Some(SyncEvent::QueryStatus)) => {
-					let best_hash = backend.head();
-					let best_depth = backend.depth_at(&best_hash)
-						.expect("Best block depth hash cannot fail");
-					sync.note_status(best_depth);
+					sync.note_status(handler.status());
 				},
 				Poll::Ready(Some(SyncEvent::QueryPeerStatus(peer))) => {
-					let best_hash = backend.head();
-					let best_depth = backend.depth_at(&best_hash)
-						.expect("Best block depth hash cannot fail");
 					service.swarm.send_rpc(peer, RPCEvent::Request(
 						0,
-						RPCRequest::Hello(HelloMessage {
-							fork_version: Default::default(),
-							finalized_root: Default::default(),
-							finalized_epoch: Default::default(),
-							head_root: best_hash,
-							head_slot: best_depth as u64,
-						})
+						RPCRequest::Hello(handler.status())
 					));
 				},
 				Poll::Ready(Some(SyncEvent::QueryBlocks(peer))) => {
-					let best_hash = backend.head();
-					let best_depth = backend.depth_at(&best_hash)
-						.expect("Best block depth hash cannot fail");
 					service.swarm.send_rpc(peer, RPCEvent::Request(
 						0,
-						RPCRequest::BeaconBlocks(
-							BeaconBlocksRequest {
-								head_block_root: Default::default(),
-								start_slot: best_depth as u64,
-								count: 10,
-								step: 1
-							}
-						)
+						RPCRequest::BeaconBlocks(handler.head_request(10))
 					));
 				},
 			}

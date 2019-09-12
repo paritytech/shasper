@@ -49,7 +49,11 @@ impl<C: Config> Into<BeaconState<C>> for MemoryState<C> {
 impl<C: Config> StateExternalities for MemoryState<C> {
 	type Config = C;
 
-	fn state(&mut self) -> &mut BeaconState<C> {
+	fn state(&self) -> &BeaconState<C> {
+		&self.state
+	}
+
+	fn state_mut(&mut self) -> &mut BeaconState<C> {
 		&mut self.state
 	}
 }
@@ -80,7 +84,11 @@ impl<C: Config> Into<BeaconState<C>> for RocksState<C> {
 impl<C: Config> StateExternalities for RocksState<C> {
 	type Config = C;
 
-	fn state(&mut self) -> &mut BeaconState<C> {
+	fn state(&self) -> &BeaconState<C> {
+		&self.state
+	}
+
+	fn state_mut(&mut self) -> &mut BeaconState<C> {
 		&mut self.state
 	}
 }
@@ -137,7 +145,7 @@ impl<C: Config, BLS: BLSConfig> Executor<C, BLS> {
 		state: &mut <Self as BlockExecutor>::Externalities,
 		target_slot: u64,
 	) -> Result<(), Error> {
-		Ok(beacon::initialize_block::<C>(state.state(), target_slot)?)
+		Ok(beacon::initialize_block::<C>(state.state_mut(), target_slot)?)
 	}
 
 	pub fn apply_inherent(
@@ -146,7 +154,7 @@ impl<C: Config, BLS: BLSConfig> Executor<C, BLS> {
 		state: &mut <Self as BlockExecutor>::Externalities,
 		inherent: Inherent,
 	) -> Result<UnsealedBeaconBlock<C>, Error> {
-		Ok(beacon::apply_inherent::<C, BLS>(&parent_block.0, state.state(), inherent)?)
+		Ok(beacon::apply_inherent::<C, BLS>(&parent_block.0, state.state_mut(), inherent)?)
 	}
 
 	pub fn apply_extrinsic(
@@ -155,7 +163,7 @@ impl<C: Config, BLS: BLSConfig> Executor<C, BLS> {
 		state: &mut <Self as BlockExecutor>::Externalities,
 		extrinsic: Transaction<C>,
 	) -> Result<(), Error> {
-		Ok(beacon::apply_transaction::<C, BLS>(block, state.state(), extrinsic)?)
+		Ok(beacon::apply_transaction::<C, BLS>(block, state.state_mut(), extrinsic)?)
 	}
 
 	pub fn finalize_block(
@@ -163,7 +171,7 @@ impl<C: Config, BLS: BLSConfig> Executor<C, BLS> {
 		block: &mut UnsealedBeaconBlock<C>,
 		state: &mut <Self as BlockExecutor>::Externalities,
 	) -> Result<(), Error> {
-		Ok(beacon::finalize_block::<C, BLS>(block, state.state())?)
+		Ok(beacon::finalize_block::<C, BLS>(block, state.state_mut())?)
 	}
 }
 
@@ -177,7 +185,7 @@ impl<C: Config, BLS: BLSConfig> BlockExecutor for Executor<C, BLS> {
 		block: &Block<C>,
 		state: &mut Self::Externalities,
 	) -> Result<(), Error> {
-		Ok(beacon::execute_block::<C, BLS>(&block.0, state.state())?)
+		Ok(beacon::execute_block::<C, BLS>(&block.0, state.state_mut())?)
 	}
 }
 
