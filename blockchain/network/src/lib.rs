@@ -93,7 +93,7 @@ pub fn start_network_simple_sync<C, Ba, I>(
 	let mut sync = NetworkSync::<PeerId, HelloMessage, I>::new(
 		head_status,
 		importer,
-		Duration::new(2, 0),
+		Duration::new(1, 0),
 		sync_config
 	);
 
@@ -107,9 +107,11 @@ pub fn start_network_simple_sync<C, Ba, I>(
 				Async::Ready(Some(message)) => {
 					match message {
 						Libp2pEvent::PeerDialed(peer) => {
+							trace!("Peer noted to be dialed: {:?}", peer);
 							sync.note_connected(peer);
 						},
 						Libp2pEvent::PeerDisconnected(peer) => {
+							trace!("Peer noted to disconnect: {:?}", peer);
 							sync.note_disconnected(peer);
 						},
 						Libp2pEvent::Pubsub(peer, message) => {
@@ -168,15 +170,18 @@ pub fn start_network_simple_sync<C, Ba, I>(
 			match sync.poll_next_unpin(ctx) {
 				Poll::Pending | Poll::Ready(None) => break,
 				Poll::Ready(Some(SyncEvent::QueryStatus)) => {
+					trace!("Sync requested status query");
 					sync.note_status(handler.status());
 				},
 				Poll::Ready(Some(SyncEvent::QueryPeerStatus(peer))) => {
+					trace!("Sync requested peer status query to {:?}", peer);
 					service.swarm.send_rpc(peer, RPCEvent::Request(
 						0,
 						RPCRequest::Hello(handler.status())
 					));
 				},
 				Poll::Ready(Some(SyncEvent::QueryBlocks(peer))) => {
+					trace!("Sync requested blocks query to {:?}", peer);
 					service.swarm.send_rpc(peer, RPCEvent::Request(
 						0,
 						RPCRequest::BeaconBlocks(handler.head_request(10))

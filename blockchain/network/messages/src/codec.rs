@@ -3,6 +3,7 @@ use tokio::codec::{Encoder, Decoder};
 use bytes::{BufMut, BytesMut};
 use beacon::Config;
 use ssz::{Encode, Decode};
+use log::*;
 use crate::{RPCType, RPCRequest, RPCResponse};
 
 pub struct InboundCodec<C: Config> {
@@ -74,13 +75,15 @@ impl<C: Config> Encoder for OutboundCodec<C> {
 	type Error = ssz::Error;
 
 	fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+		trace!("type: {:?}, item: {:?}", self.typ, item);
+
 		match (self.typ, item) {
 			(RPCType::Hello, RPCRequest::Hello(item)) => dst.put(&item.encode()[..]),
 			(RPCType::Goodbye, RPCRequest::Goodbye(item)) => dst.put(&item.encode()[..]),
 			(RPCType::BeaconBlocks, RPCRequest::BeaconBlocks(item)) => dst.put(&item.encode()[..]),
 			(RPCType::RecentBeaconBlocks, RPCRequest::RecentBeaconBlocks(item)) =>
 				dst.put(&item.encode()[..]),
-			_ => return Err(ssz::Error::Other),
+			_ => return Err(ssz::Error::Other("outbound codec invalid type")),
 		}
 
 		Ok(())
@@ -93,7 +96,7 @@ impl<C: Config> Decoder for OutboundCodec<C> {
 
 	fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
 		if src.is_empty() {
-			return Err(ssz::Error::Other)
+			return Err(ssz::Error::Other("src is empty"))
 		}
 
 		let code = src.split_to(1)[0];

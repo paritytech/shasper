@@ -267,7 +267,7 @@ fn builder_thread<B, I, C: Config + Clone>(
 	let mut attestations = AttestationPool::<C, BLSVerification>::new();
 
 	loop {
-		thread::sleep(Duration::new(1, 0));
+		thread::sleep(Duration::new(5, 0));
 
 		let head = backend.head();
 		info!("Building on top of {}", head);

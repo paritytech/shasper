@@ -72,9 +72,7 @@ impl<C: Config> Service<C> {
 
         match Swarm::listen_on(&mut swarm, listen_multiaddr.clone()) {
             Ok(_) => {
-                let mut log_address = listen_multiaddr;
-                log_address.push(Protocol::P2p(local_peer_id.clone().into()));
-                info!("Listening established {}", log_address);
+                info!("Listening established {}", listen_multiaddr);
             }
             Err(err) => {
                 warn!(

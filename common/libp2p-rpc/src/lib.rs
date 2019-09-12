@@ -5,8 +5,9 @@ pub use protocol::RPCProtocol;
 
 use futures::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::codec::Encoder;
 use libp2p::{Multiaddr, PeerId};
-use libp2p::core::ConnectedPoint;
+use libp2p::core::{ConnectedPoint, ProtocolName};
 use libp2p::swarm::{
 	protocols_handler::ProtocolsHandler, NetworkBehaviour, NetworkBehaviourAction,
 	PollParameters,
@@ -40,9 +41,14 @@ impl<T> From<tokio::timer::timeout::Error<T>> for RPCError {
     }
 }
 
-pub trait RPCRequest {
+pub trait RPCRequest<T: RPCType> {
 	fn is_goodbye(&self) -> bool;
 	fn expect_response(&self) -> bool;
+	fn typ(&self) -> T;
+}
+
+pub trait RPCType: ProtocolName + Sized {
+	fn all() -> Vec<Self>;
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +103,7 @@ impl<P: RPCProtocol, TSubstream> RPC<P, TSubstream> {
 impl<P, TSubstream> NetworkBehaviour for RPC<P, TSubstream> where
 	P: RPCProtocol + Default + Clone,
 	TSubstream: AsyncRead + AsyncWrite,
+	<P::OutboundCodec as Encoder>::Error: core::fmt::Debug,
 {
 	type ProtocolsHandler = crate::handler::RPCHandler<P, TSubstream>;
     type OutEvent = RPCMessage<P::Request, P::Response>;
@@ -111,12 +118,9 @@ impl<P, TSubstream> NetworkBehaviour for RPC<P, TSubstream> where
     }
 
     fn inject_connected(&mut self, peer_id: PeerId, connected_point: ConnectedPoint) {
-        // if initialised the connection, report this upwards to send the HELLO request
-        if let ConnectedPoint::Dialer { .. } = connected_point {
-            self.events.push(NetworkBehaviourAction::GenerateEvent(
-                RPCMessage::PeerDialed(peer_id),
-            ));
-        }
+        self.events.push(NetworkBehaviourAction::GenerateEvent(
+            RPCMessage::PeerDialed(peer_id),
+        ));
     }
 
     fn inject_disconnected(&mut self, peer_id: &PeerId, _: ConnectedPoint) {

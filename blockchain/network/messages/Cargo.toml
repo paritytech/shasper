@@ -11,3 +11,4 @@ tokio = "0.1"
 bytes = "0.4"
 libp2p = { path = "../../../vendor/libp2p" }
 libp2p-rpc = { path = "../../../common/libp2p-rpc" }
+log = "0.4"

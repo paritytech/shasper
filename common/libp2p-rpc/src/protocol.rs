@@ -10,7 +10,8 @@ use futures::{
 	future::{self, Future, FutureResult}, stream::{self, Stream},
 	sink::{self, Sink}
 };
-use crate::{RPCError, RPCRequest};
+use log::*;
+use crate::{RPCError, RPCType, RPCRequest};
 
 /// Time allowed for the first byte of a request to arrive before we time out (Time To First Byte).
 const TTFB_TIMEOUT: u64 = 5;
@@ -18,15 +19,16 @@ const TTFB_TIMEOUT: u64 = 5;
 /// established before the stream is terminated.
 const REQUEST_TIMEOUT: u64 = 15;
 
-pub trait RPCProtocol: UpgradeInfo {
-	type Request: RPCRequest + Clone;
+pub trait RPCProtocol {
+	type Type: RPCType + Copy;
+	type Request: RPCRequest<Self::Type> + Clone;
 	type Response: Clone;
 
 	type InboundCodec: Encoder<Item=Self::Response> + Decoder<Item=Self::Request>;
-	fn inbound_codec(&self, protocol: <Self as UpgradeInfo>::Info) -> Self::InboundCodec;
+	fn inbound_codec(&self, protocol: Self::Type) -> Self::InboundCodec;
 
 	type OutboundCodec: Encoder<Item=Self::Request> + Decoder<Item=Self::Response>;
-	fn outbound_codec(&self, protocol: <Self as UpgradeInfo>::Info) -> Self::OutboundCodec;
+	fn outbound_codec(&self, protocol: Self::Type) -> Self::OutboundCodec;
 }
 
 pub type InboundFramed<P, TSocket> = Framed<TimeoutStream<Negotiated<TSocket>>,
@@ -37,11 +39,11 @@ pub type InboundOutput<P, TSocket> = (<P as RPCProtocol>::Request, InboundFramed
 pub struct RPCInbound<P>(pub P);
 
 impl<P: RPCProtocol> UpgradeInfo for RPCInbound<P> {
-	type Info = P::Info;
-	type InfoIter = P::InfoIter;
+	type Info = P::Type;
+	type InfoIter = Vec<P::Type>;
 
 	fn protocol_info(&self) -> Self::InfoIter {
-		self.0.protocol_info()
+		P::Type::all()
 	}
 }
 
@@ -69,7 +71,7 @@ impl<P, TSocket> InboundUpgrade<TSocket> for RPCInbound<P> where
 	fn upgrade_inbound(
 		self,
         socket: Negotiated<TSocket>,
-        protocol: P::Info,
+        protocol: P::Type,
 	) -> Self::Future {
 		let codec = self.0.inbound_codec(protocol);
 		let mut timed_socket = TimeoutStream::new(socket);
@@ -95,11 +97,11 @@ pub type OutboundFramed<P, TSocket> = Framed<Negotiated<TSocket>,
 pub struct RPCOutbound<P: RPCProtocol>(pub P::Request, pub P);
 
 impl<P: RPCProtocol> UpgradeInfo for RPCOutbound<P> {
-	type Info = P::Info;
-	type InfoIter = P::InfoIter;
+	type Info = P::Type;
+	type InfoIter = Vec<P::Type>;
 
 	fn protocol_info(&self) -> Self::InfoIter {
-		self.1.protocol_info()
+		vec![self.0.typ()]
 	}
 }
 
@@ -108,6 +110,7 @@ type RPCOutboundFnMapErr<P> = fn(<<P as RPCProtocol>::OutboundCodec as Encoder>:
 impl<P, TSocket> OutboundUpgrade<TSocket> for RPCOutbound<P> where
 	P: RPCProtocol,
 	TSocket: AsyncRead + AsyncWrite,
+	<P::OutboundCodec as Encoder>::Error: core::fmt::Debug,
 {
 	type Output = OutboundFramed<P, TSocket>;
 	type Error = RPCError;
@@ -119,10 +122,13 @@ impl<P, TSocket> OutboundUpgrade<TSocket> for RPCOutbound<P> where
 	fn upgrade_outbound(
         self,
         socket: Negotiated<TSocket>,
-        protocol: P::Info,
+        protocol: P::Type,
     ) -> Self::Future {
 		let codec = self.1.outbound_codec(protocol);
 		Framed::new(socket, codec).send(self.0)
-			.map_err(|_| RPCError::Codec)
+			.map_err(|e| {
+				warn!("Outbound upgrade codec error: {:?}", e);
+				RPCError::Codec
+			})
 	}
 }

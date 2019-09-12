@@ -183,7 +183,7 @@ impl<C: Config, TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess
                     );
                     info.listen_addrs.truncate(MAX_IDENTIFY_ADDRESSES);
                 }
-                debug!(
+				debug!(
 					"Identified peer ({}, {}, {}, {:?}, {:?})",
 					peer_id,
 					info.protocol_version,
@@ -191,6 +191,7 @@ impl<C: Config, TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess
 					info.listen_addrs,
 					info.protocols,
                 );
+				self.events.push(Libp2pEvent::PeerDialed(peer_id));
             }
             IdentifyEvent::Error { .. } => {}
             IdentifyEvent::SendBack { .. } => {}

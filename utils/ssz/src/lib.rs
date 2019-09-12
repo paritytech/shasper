@@ -48,13 +48,13 @@ pub enum Error {
 	/// List length is too large.
 	ListTooLarge,
 	/// Other errors.
-	Other,
+	Other(&'static str),
 }
 
 #[cfg(feature = "std")]
 impl From<std::io::Error> for Error {
 	fn from(_: std::io::Error) -> Error {
-		Error::Other
+		Error::Other("io error")
 	}
 }
 

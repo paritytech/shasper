@@ -9,6 +9,8 @@ use libp2p::swarm::protocols_handler::{
 };
 use futures::prelude::*;
 use tokio_io::{AsyncRead, AsyncWrite};
+use tokio_io::codec::Encoder;
+use log::*;
 use crate::{RPCEvent, RPCRequest, RPCError, RequestId};
 use crate::protocol::{InboundFramed, OutboundFramed, RPCProtocol, RPCInbound, RPCOutbound};
 
@@ -154,6 +156,7 @@ impl<P, TSubstream> Default for RPCHandler<P, TSubstream> where
 impl<P, TSubstream> ProtocolsHandler for RPCHandler<P, TSubstream> where
 	P: RPCProtocol + Clone,
 	TSubstream: AsyncRead + AsyncWrite,
+	<P::OutboundCodec as Encoder>::Error: core::fmt::Debug,
 {
 	type InEvent = RPCEvent<P::Request, P::Response>;
 	type OutEvent = RPCEvent<P::Request, P::Response>;
@@ -266,7 +269,7 @@ impl<P, TSubstream> ProtocolsHandler for RPCHandler<P, TSubstream> where
             // the RPC protocols. For our immediate purposes we permit this and simply log that an
             // upgrade was not supported.
             // TODO: Add a logger to the handler for trace output.
-            dbg!(&err);
+            warn!("RPC received error: {:?}", err);
         }
 
         // return any events that need to be reported
@@ -294,6 +297,7 @@ impl<P, TSubstream> ProtocolsHandler for RPCHandler<P, TSubstream> where
                                 .push(SubstreamState::ResponsePendingSend { substream });
                         }
                         Err(_) => {
+							warn!("Response pending send codec error");
                             return Ok(Async::Ready(ProtocolsHandlerEvent::Custom(
                                 RPCEvent::Error(0, RPCError::Codec),
                             )))
@@ -330,7 +334,8 @@ impl<P, TSubstream> ProtocolsHandler for RPCHandler<P, TSubstream> where
                                 });
                         }
                     }
-                    Err(_) => {
+                    Err(e) => {
+						warn!("Request pending response codec error");
                         return Ok(Async::Ready(ProtocolsHandlerEvent::Custom(
                             RPCEvent::Error(rpc_event.id(), RPCError::Codec),
                         )))
