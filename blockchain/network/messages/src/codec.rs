@@ -22,6 +22,8 @@ impl<C: Config> Encoder for InboundCodec<C> {
 	type Error = ssz::Error;
 
 	fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+		trace!("inbound encode item: {:?}", item);
+
 		match item {
 			RPCResponse::Hello(item) => {
 				dst.put(self.typ as u8);
@@ -50,11 +52,19 @@ impl<C: Config> Decoder for InboundCodec<C> {
 	type Error = ssz::Error;
 
 	fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+		trace!("inbound decode src len: {}", src.len());
+
 		Ok(Some(match self.typ {
 			RPCType::Hello => RPCRequest::Hello(Decode::decode(&src)?),
 			RPCType::Goodbye => RPCRequest::Goodbye(Decode::decode(&src)?),
-			RPCType::BeaconBlocks => RPCRequest::BeaconBlocks(Decode::decode(&src)?),
-			RPCType::RecentBeaconBlocks => RPCRequest::RecentBeaconBlocks(Decode::decode(&src)?),
+			RPCType::BeaconBlocks => {
+				let bytes: Vec<u8> = Decode::decode(&src)?;
+				RPCRequest::BeaconBlocks(Decode::decode(&bytes[..])?)
+			},
+			RPCType::RecentBeaconBlocks => {
+				let bytes: Vec<u8> = Decode::decode(&src)?;
+				RPCRequest::RecentBeaconBlocks(Decode::decode(&bytes[..])?)
+			},
 		}))
 	}
 }
@@ -75,14 +85,19 @@ impl<C: Config> Encoder for OutboundCodec<C> {
 	type Error = ssz::Error;
 
 	fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
-		trace!("type: {:?}, item: {:?}", self.typ, item);
+		trace!("outbound encode type: {:?}, item: {:?}", self.typ, item);
 
 		match (self.typ, item) {
 			(RPCType::Hello, RPCRequest::Hello(item)) => dst.put(&item.encode()[..]),
 			(RPCType::Goodbye, RPCRequest::Goodbye(item)) => dst.put(&item.encode()[..]),
-			(RPCType::BeaconBlocks, RPCRequest::BeaconBlocks(item)) => dst.put(&item.encode()[..]),
-			(RPCType::RecentBeaconBlocks, RPCRequest::RecentBeaconBlocks(item)) =>
-				dst.put(&item.encode()[..]),
+			(RPCType::BeaconBlocks, RPCRequest::BeaconBlocks(item)) => {
+				let bytes = item.encode();
+				dst.put(&bytes.encode()[..])
+			},
+			(RPCType::RecentBeaconBlocks, RPCRequest::RecentBeaconBlocks(item)) => {
+				let bytes = item.encode();
+				dst.put(&bytes.encode()[..])
+			},
 			_ => return Err(ssz::Error::Other("outbound codec invalid type")),
 		}
 
@@ -95,8 +110,10 @@ impl<C: Config> Decoder for OutboundCodec<C> {
 	type Error = ssz::Error;
 
 	fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+		trace!("outbound decode src len: {}", src.len());
+
 		if src.is_empty() {
-			return Err(ssz::Error::Other("src is empty"))
+			return Ok(None)
 		}
 
 		let code = src.split_to(1)[0];

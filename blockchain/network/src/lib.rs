@@ -184,7 +184,7 @@ pub fn start_network_simple_sync<C, Ba, I>(
 					trace!("Sync requested blocks query to {:?}", peer);
 					service.swarm.send_rpc(peer, RPCEvent::Request(
 						0,
-						RPCRequest::BeaconBlocks(handler.head_request(10))
+						RPCRequest::BeaconBlocks(handler.head_request(3))
 					));
 				},
 			}

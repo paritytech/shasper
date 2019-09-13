@@ -79,21 +79,25 @@ impl<C, Ba> Handler<C, Ba> where
 	) -> Vec<BeaconBlock<C>> {
 		let _ = self.import_lock.lock();
 
-		if !self.backend.is_canon(&start_hash).unwrap() {
-			return Vec::new();
+		if !self.backend.contains(&start_hash).unwrap() || start_hash == H256::default() {
+			self.blocks_by_depth_no_lock(1, count)
+		} else {
+			if !self.backend.is_canon(&start_hash).unwrap() {
+				return Vec::new();
+			}
+
+			let start_state = match self.backend.state_at(&start_hash) {
+				Ok(state) => state,
+				Err(_) => return Vec::new(),
+			};
+
+			if start_state.state().slot != start_slot {
+				return Vec::new()
+			}
+
+			let start_depth = self.backend.depth_at(&start_hash).unwrap();
+
+			self.blocks_by_depth_no_lock(start_depth, count)
 		}
-
-		let start_state = match self.backend.state_at(&start_hash) {
-			Ok(state) => state,
-			Err(_) => return Vec::new(),
-		};
-
-		if start_state.state().slot != start_slot {
-			return Vec::new()
-		}
-
-		let start_depth = self.backend.depth_at(&start_hash).unwrap();
-
-		self.blocks_by_depth_no_lock(start_depth, count)
 	}
 }

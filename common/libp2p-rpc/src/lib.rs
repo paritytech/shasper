@@ -18,7 +18,7 @@ pub type RequestId = usize;
 
 #[derive(Debug, Clone)]
 pub enum RPCError {
-	Codec,
+	Codec(String),
 	StreamTimeout,
 	Custom(String),
 }

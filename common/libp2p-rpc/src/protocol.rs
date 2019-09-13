@@ -128,7 +128,7 @@ impl<P, TSocket> OutboundUpgrade<TSocket> for RPCOutbound<P> where
 		Framed::new(socket, codec).send(self.0)
 			.map_err(|e| {
 				warn!("Outbound upgrade codec error: {:?}", e);
-				RPCError::Codec
+				RPCError::Codec("outbound upgrade codec error".to_string())
 			})
 	}
 }

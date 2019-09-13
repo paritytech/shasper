@@ -100,7 +100,7 @@ impl<C: Config, TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess
 {
     fn inject_event(&mut self, event: GossipsubEvent) {
         match event {
-            GossipsubEvent::Message(gs_msg) => {
+            GossipsubEvent::Message(_, gs_msg) => {
                 trace!("Received GossipEvent");
 
 				let typ = match gs_msg.topics.iter()

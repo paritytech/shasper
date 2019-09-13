@@ -13,7 +13,7 @@
 
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
-use beacon::{genesis, Config, MinimalConfig, Inherent, Transaction};
+use beacon::{genesis_beacon_state, Config, MinimalConfig, Inherent, Transaction};
 use beacon::primitives::*;
 use beacon::types::*;
 use core::cmp::min;
@@ -29,9 +29,13 @@ use clap::{App, Arg};
 use libp2p::Multiaddr;
 use std::thread;
 use std::str::FromStr;
+use std::fs::File;
+use std::io::{BufReader, Read};
 use std::collections::HashMap;
+use ssz::Decode;
 use core::time::Duration;
 use core::convert::TryInto;
+use serde::{Serialize, Deserialize};
 use log::*;
 use bm_le::tree_root;
 use crypto::bls::{self, BLSVerification};
@@ -109,6 +113,23 @@ fn deposit_proof<C: Config>(tree: &Vec<Vec<H256>>, item_index: usize) -> Vec<H25
 	proof
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+struct ValidatorKey {
+	pub privkey: String,
+	pub pubkey: String,
+}
+
+fn string_to_bytes(string: &str) -> Result<Vec<u8>, String> {
+    let string = if string.starts_with("0x") {
+        &string[2..]
+    } else {
+        string
+    };
+
+    hex::decode(string).map_err(|e| format!("Unable to decode public or private key: {}", e))
+}
+
 fn main() {
 	pretty_env_logger::init();
 
@@ -130,49 +151,106 @@ fn main() {
 		.arg(Arg::with_name("author")
 			 .long("author")
 			 .help("Whether to author blocks"))
+		.arg(Arg::with_name("genesis-state")
+			 .long("genesis-state")
+			 .takes_value(true)
+			 .help("ssz raw genesis state file"))
+		.arg(Arg::with_name("validator-keys")
+			 .long("validator-keys")
+			 .takes_value(true)
+			 .help("yaml validator keys"))
 		.get_matches();
 
 	let mut keys: HashMap<ValidatorId, bls::Secret> = HashMap::new();
-	let mut deposit_datas = Vec::new();
-	for i in 0..32 {
-		let seckey = bls::Secret::random(&mut rand::thread_rng());
-		let pubkey = ValidatorId::from_slice(&bls::Public::from_secret_key(&seckey).as_bytes()[..]);
-		let mut data = DepositData {
-			pubkey: pubkey.clone(),
-			withdrawal_credentials: H256::from_low_u64_le(i as u64),
-			amount: 32000000000,
-			signature: Default::default(),
-		};
-		let signature = Signature::from_slice(&bls::Signature::new(
-			&tree_root::<sha2::Sha256, _>(&SigningDepositData::from(data.clone()))[..],
-			beacon::genesis_domain(MinimalConfig::domain_deposit()),
-			&seckey
-		).as_bytes()[..]);
-		data.signature = signature;
-		deposit_datas.push(data);
-		keys.insert(pubkey, seckey);
+
+	if let Some(validator_keys) = matches.value_of("validator-keys") {
+		const PRIVATE_KEY_BYTES: usize = 48;
+		const PUBLIC_KEY_BYTES: usize = 48;
+
+		let file = File::open(validator_keys).unwrap();
+		let coll = serde_yaml::from_reader::<_, Vec<ValidatorKey>>(BufReader::new(file)).unwrap();
+
+		for key in coll {
+			let privkey = string_to_bytes(&key.privkey).unwrap();
+			let pubkey = string_to_bytes(&key.pubkey).unwrap();
+
+			let sk = {
+				let mut bytes = vec![0; PRIVATE_KEY_BYTES - privkey.len()];
+				bytes.extend_from_slice(&privkey);
+				bls::Secret::from_bytes(&bytes)
+					.map_err(|e| format!("Failed to decode bytes into secret key: {:?}", e))
+					.unwrap()
+			};
+
+			let pk = {
+				let mut bytes = vec![0; PUBLIC_KEY_BYTES - pubkey.len()];
+				bytes.extend_from_slice(&pubkey);
+				bls::Public::from_bytes(&bytes)
+					.map_err(|e| format!("Failed to decode bytes into public key: {:?}", e))
+					.unwrap()
+			};
+
+			let pubkey = ValidatorId::from_slice(&pk.as_bytes()[..]);
+
+			keys.insert(pubkey, sk);
+		}
 	}
 
-	let deposit_tree = deposit_tree::<MinimalConfig>(&deposit_datas);
-	let deposits = deposit_datas.clone().into_iter()
-		.enumerate()
-		.map(|(i, deposit_data)| {
-			Deposit {
-				proof: deposit_proof::<MinimalConfig>(&deposit_tree, i).try_into().ok().unwrap(),
-				data: deposit_data,
-			}
-		})
-		.collect::<Vec<_>>();
-	let deposit_root = deposit_root(&deposit_tree);
-	let eth1_data = Eth1Data {
-		deposit_root,
-		deposit_count: deposits.len() as u64,
-		block_hash: Default::default(),
+	let genesis_state = if let Some(genesis_file) = matches.value_of("genesis-state") {
+		let mut file = File::open(genesis_file).unwrap();
+		let mut data = Vec::new();
+		file.read_to_end(&mut data).unwrap();
+
+		Decode::decode(&mut &data[..]).unwrap()
+	} else {
+		let mut deposit_datas = Vec::new();
+		for i in 0..10 {
+			let seckey = bls::Secret::random(&mut rand::thread_rng());
+			let pubkey = ValidatorId::from_slice(&bls::Public::from_secret_key(&seckey).as_bytes()[..]);
+			let mut data = DepositData {
+				pubkey: pubkey.clone(),
+				withdrawal_credentials: H256::from_low_u64_le(i as u64),
+				amount: 32000000000,
+				signature: Default::default(),
+			};
+			let signature = Signature::from_slice(&bls::Signature::new(
+				&tree_root::<sha2::Sha256, _>(&SigningDepositData::from(data.clone()))[..],
+				beacon::genesis_domain(MinimalConfig::domain_deposit()),
+				&seckey
+			).as_bytes()[..]);
+			data.signature = signature;
+			deposit_datas.push(data);
+			keys.insert(pubkey, seckey);
+		}
+
+		let deposit_tree = deposit_tree::<MinimalConfig>(&deposit_datas);
+		let deposits = deposit_datas.clone().into_iter()
+			.enumerate()
+			.map(|(i, deposit_data)| {
+				Deposit {
+					proof: deposit_proof::<MinimalConfig>(&deposit_tree, i).try_into().ok().unwrap(),
+					data: deposit_data,
+				}
+			})
+			.collect::<Vec<_>>();
+		let deposit_root = deposit_root(&deposit_tree);
+		let eth1_data = Eth1Data {
+			deposit_root,
+			deposit_count: deposits.len() as u64,
+			block_hash: Default::default(),
+		};
+		let genesis_state =
+			genesis_beacon_state::<MinimalConfig, BLSVerification>(
+				&deposits, 0, eth1_data.clone()
+			).unwrap();
+
+		genesis_state
 	};
-	let (genesis_beacon_block, genesis_state) = genesis::<MinimalConfig, BLSVerification>(
-		&deposits, 0, eth1_data.clone()
-	).unwrap();
-	let genesis_block = Block(genesis_beacon_block);
+	let genesis_block = Block(BeaconBlock {
+		state_root: tree_root::<<MinimalConfig as Config>::Digest, _>(&genesis_state),
+		..Default::default()
+	});
+	let eth1_data = genesis_state.eth1_data.clone();
 
 	let mut network_config = NetworkConfig::default();
 	network_config.libp2p_port = u16::from_str(matches.value_of("port").unwrap()).unwrap();

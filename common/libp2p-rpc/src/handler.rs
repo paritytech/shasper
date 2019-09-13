@@ -296,10 +296,10 @@ impl<P, TSubstream> ProtocolsHandler for RPCHandler<P, TSubstream> where
                             self.substreams
                                 .push(SubstreamState::ResponsePendingSend { substream });
                         }
-                        Err(_) => {
+                        Err(e) => {
 							warn!("Response pending send codec error");
                             return Ok(Async::Ready(ProtocolsHandlerEvent::Custom(
-                                RPCEvent::Error(0, RPCError::Codec),
+                                RPCEvent::Error(0, RPCError::Codec("send codec error".to_string())),
                             )))
                         }
                     }
@@ -337,7 +337,7 @@ impl<P, TSubstream> ProtocolsHandler for RPCHandler<P, TSubstream> where
                     Err(e) => {
 						warn!("Request pending response codec error");
                         return Ok(Async::Ready(ProtocolsHandlerEvent::Custom(
-                            RPCEvent::Error(rpc_event.id(), RPCError::Codec),
+                            RPCEvent::Error(rpc_event.id(), RPCError::Codec("response codec error".to_string())),
                         )))
                     }
                 },
