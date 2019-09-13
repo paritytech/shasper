@@ -1,5 +1,6 @@
 use core::marker::PhantomData;
-use blockchain::{Auxiliary, AsExternalities};
+use core::cmp;
+use blockchain::{Auxiliary, Block as BlockT, AsExternalities};
 use blockchain::backend::{Store, SharedCommittable, ChainQuery, ImportLock};
 use beacon::{Config, types::BeaconBlock, primitives::H256};
 use network_messages::{HelloMessage, BeaconBlocksRequest};
@@ -75,7 +76,7 @@ impl<C, Ba> Handler<C, Ba> where
 	}
 
 	pub fn blocks_by_slot(
-		&self, start_hash: H256, start_slot: u64, count: usize
+		&self, mut start_hash: H256, mut start_slot: u64, count: usize
 	) -> Vec<BeaconBlock<C>> {
 		let _ = self.import_lock.lock();
 
@@ -86,13 +87,21 @@ impl<C, Ba> Handler<C, Ba> where
 				return Vec::new();
 			}
 
-			let start_state = match self.backend.state_at(&start_hash) {
+			let mut start_state = match self.backend.state_at(&start_hash) {
 				Ok(state) => state,
 				Err(_) => return Vec::new(),
 			};
 
-			if start_state.state().slot != start_slot {
-				return Vec::new()
+			while start_state.state().slot > start_slot {
+				start_hash = match self.backend.block_at(&start_hash).unwrap().parent_id() {
+					Some(id) => id,
+					None => break,
+				};
+
+				start_state = match self.backend.state_at(&start_hash) {
+					Ok(state) => state,
+					Err(_) => return Vec::new(),
+				};
 			}
 
 			let start_depth = self.backend.depth_at(&start_hash).unwrap();

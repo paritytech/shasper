@@ -172,7 +172,6 @@ fn main() {
 
 		for key in coll {
 			let privkey = string_to_bytes(&key.privkey).unwrap();
-			let pubkey = string_to_bytes(&key.pubkey).unwrap();
 
 			let sk = {
 				let mut bytes = vec![0; PRIVATE_KEY_BYTES - privkey.len()];
@@ -182,15 +181,7 @@ fn main() {
 					.unwrap()
 			};
 
-			let pk = {
-				let mut bytes = vec![0; PUBLIC_KEY_BYTES - pubkey.len()];
-				bytes.extend_from_slice(&pubkey);
-				bls::Public::from_bytes(&bytes)
-					.map_err(|e| format!("Failed to decode bytes into public key: {:?}", e))
-					.unwrap()
-			};
-
-			let pubkey = ValidatorId::from_slice(&pk.as_bytes()[..]);
+			let pubkey = ValidatorId::from_slice(&bls::Public::from_secret_key(&sk).as_bytes()[..]);
 
 			keys.insert(pubkey, sk);
 		}
@@ -345,7 +336,7 @@ fn builder_thread<B, I, C: Config + Clone>(
 	let mut attestations = AttestationPool::<C, BLSVerification>::new();
 
 	loop {
-		thread::sleep(Duration::new(5, 0));
+		thread::sleep(Duration::new(1, 0));
 
 		let head = backend.head();
 		info!("Building on top of {}", head);

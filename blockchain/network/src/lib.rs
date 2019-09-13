@@ -118,6 +118,7 @@ pub fn start_network_simple_sync<C, Ba, I>(
 							warn!("Unhandled pubsub message {:?}, {:?}", peer, message);
 						},
 						Libp2pEvent::RPC(peer, event) => {
+							trace!("Received RPC event {:?}, {:?}", peer, event);
 							match event {
 								RPCEvent::Request(request_id, RPCRequest::BeaconBlocks(request)) => {
 									service.swarm.send_rpc(peer, RPCEvent::Response(
@@ -184,7 +185,7 @@ pub fn start_network_simple_sync<C, Ba, I>(
 					trace!("Sync requested blocks query to {:?}", peer);
 					service.swarm.send_rpc(peer, RPCEvent::Request(
 						0,
-						RPCRequest::BeaconBlocks(handler.head_request(3))
+						RPCRequest::BeaconBlocks(handler.head_request(1))
 					));
 				},
 			}
