@@ -24,7 +24,59 @@ use beacon::types::*;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use ssz::{Encode, Decode};
 use bm_le::{IntoTree, FromTree, InMemoryBackend, DigestConstruct};
-use sha2::Sha256;
+use sha2::Sha256
+use strum_macros::EnumString;
+
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct Roots {
+	pub root: H256,
+	pub signing_root: Option<H256>,
+}
+
+#[derive(EnumString)]
+pub enum TestType {
+	Attestation,
+	AttestationData,
+	AttestationDataAndCustodyBit,
+	AttesterSlashing,
+	BeaconBlock
+	BeaconBlockBody
+	BeaconBlockHeader
+	BeaconState
+	Checkpoint
+	CompactCommittee
+	Crosslink
+	Deposit
+	DepositData
+	Eth1Data
+	Fork
+	HistoricalBatch
+	IndexedAttestation
+	PendingAttestation
+	ProposerSlashing
+	Transfer
+	Validator
+	VoluntaryExit
+}
+
+pub fn test_type<T>(name: &str, typ: TestType, serialized: Vec<u8>, value: T) {
+	print!("Testing {} ...", serialized);
+	std::io::stdout().flush().ok().expect("Could not flush stdout");
+	assert!(self.serialized.starts_with("0x"));
+	let expected = hex::decode(&self.serialized[2..]).unwrap();
+	let encoded = Encode::encode(&self.value);
+	assert_eq!(encoded, expected);
+	let decoded = T::decode(&encoded).unwrap();
+	assert_eq!(decoded, self.value);
+	let mut db = InMemoryBackend::<DigestConstruct<Sha256>>::default();
+	let encoded_root = self.value.into_tree(&mut db).unwrap();
+	assert_eq!(H256::from_slice(encoded_root.as_ref()), self.root);
+	let decoded_root = T::from_tree(&encoded_root, &mut db).unwrap();
+	assert_eq!(decoded_root, self.value);
+
+	println!(" passed");
+}
 
 #[derive(Deserialize, Debug)]
 #[serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static")]

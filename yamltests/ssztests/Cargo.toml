@@ -14,3 +14,5 @@ beacon = { path = "../../beacon" }
 crypto = { package = "shasper-crypto", path = "../../crypto" }
 hex = "0.3"
 sha2 = "0.8"
+strum = "0.16.0"
+strum_macros = "0.16.0"
