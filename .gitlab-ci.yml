@@ -12,6 +12,10 @@ variables:
   CI_SERVER_NAME:                  "GitLab CI"
   RUST_TOOLCHAIN:                  "stable"
 
+cache:
+  paths:
+    - yamltests/res/ethtests
+
 .compiler_info:                    &compiler_info
   before_script:
     - rustup show
