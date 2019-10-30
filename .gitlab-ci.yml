@@ -12,17 +12,26 @@ variables:
   CI_SERVER_NAME:                  "GitLab CI"
   RUST_TOOLCHAIN:                  "stable"
 
-.compiler_info:                    &compiler_info
+.docker-env:                       &docker-env
+  image:                           parity/rust-builder:latest
   before_script:
     - rustup show
     - cargo --version
     - sccache -s
+  retry:
+    max: 2
+    when: 
+      - runner_system_failure
+      - unknown_failure
+      - api_failure
+  tags:
+    - linux-docker
 
 #### stage:                        test
 
 test-rust-stable:
   stage:                           test
-  <<:                              *compiler_info
+  <<:                              *docker-env
   script:
     - ./scripts/init.sh
     - ./scripts/build.sh
@@ -36,22 +45,18 @@ test-rust-stable:
     - schedules
     - web
     - /^[0-9]+$/
-  tags:
-    - linux-docker
 
 #### stage:                        build
 
 build-linux:
   stage:                           build
-  <<:                              *compiler_info
+  <<:                              *docker-env
   script:
     - ./scripts/init.sh
     - ./scripts/build.sh
     - time cargo build --release
     - cd substrate && time cargo build --release
     - sccache -s
-  tags:
-    - linux-docker
   only:
     - master
     - tags
