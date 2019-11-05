@@ -3501,6 +3501,7 @@ version = "0.1.0"
 dependencies = [
  "beacon 0.2.0",
  "bm-le 0.11.0",
+ "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.98 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.8.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",

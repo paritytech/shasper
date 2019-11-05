@@ -1,18 +1,7 @@
 use std::str::FromStr;
-use std::path::Path;
-use std::{fs, io};
-
-#[derive(Debug)]
-pub enum Error {
-	InvalidType,
-	IO(io::Error),
-}
-
-impl From<io::Error> for Error {
-	fn from(err: io::Error) -> Error {
-		Error::IO(err)
-	}
-}
+use std::path::{Path, PathBuf};
+use std::fs;
+use crate::{test_name, Error};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum TestPhase {
@@ -306,7 +295,7 @@ pub struct TestDescription {
 	pub typ: TestType,
 	pub origin: String,
 	pub name: String,
-	pub path: String,
+	pub path: Option<PathBuf>,
 }
 
 impl FromStr for TestDescription {
@@ -323,10 +312,10 @@ impl FromStr for TestDescription {
 		let typ = TestType::from_str(&(s[2].to_owned() + "/" + s[3]))?;
 		let origin = s[4].to_owned();
 		let name = s[5].to_owned();
-		let path = s0.to_owned();
 
 		Ok(Self {
-			network, phase, typ, origin, name, path,
+			network, phase, typ, origin, name,
+			path: None,
 		})
 	}
 }
@@ -347,18 +336,9 @@ pub fn read_descriptions<P: AsRef<Path> + Clone>(root: P) -> Result<Vec<TestDesc
 
 	if is_all_files {
 		let path = fs::canonicalize(root)?;
-		let s = path.to_str().ok_or(Error::InvalidType)?;
-		let ss = s.split("/").collect::<Vec<_>>();
-
-		if ss.len() < 6 {
-			return Err(Error::InvalidType)
-		}
-
-		let s0 = &ss[(ss.len() - 6)..];
-		ret.push(TestDescription::from_str(
-			&(s0[0].to_owned() + "/" + s0[1] + "/"
-			  + s0[2] + "/" + s0[3] + "/"
-			  + s0[4] + "/" + s0[5]))?);
+		let mut desc = TestDescription::from_str(&test_name(&path)?)?;
+		desc.path = Some(path);
+		ret.push(desc);
 	}
 
 	Ok(ret)
