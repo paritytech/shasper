@@ -174,7 +174,7 @@ impl<C: Config, TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess
 {
     fn inject_event(&mut self, event: IdentifyEvent) {
         match event {
-            IdentifyEvent::Identified {
+			IdentifyEvent::Received {
                 peer_id, mut info, ..
             } => {
                 if info.listen_addrs.len() > MAX_IDENTIFY_ADDRESSES {
@@ -192,9 +192,9 @@ impl<C: Config, TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess
 					info.protocols,
                 );
 				self.events.push(Libp2pEvent::PeerDialed(peer_id));
-            }
-            IdentifyEvent::Error { .. } => {}
-            IdentifyEvent::SendBack { .. } => {}
+            },
+			IdentifyEvent::Sent { .. } => (),
+            IdentifyEvent::Error { .. } => (),
         }
     }
 }
