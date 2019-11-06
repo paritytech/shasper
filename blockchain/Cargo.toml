@@ -20,7 +20,7 @@ blockchain-rocksdb = { version = "0.1", path = "common/rocksdb" }
 ssz = { path = "../utils/ssz" }
 sha2 = "0.8"
 bls-aggregates = { git = "https://github.com/sigp/signature-schemes" }
-rand = "0.6"
+rand = "0.7"
 rocksdb = "0.12"
 bm-le = { version = "0.11", path = "../vendor/bm/le", features = ["derive"] }
 pretty_env_logger = "0.3"
