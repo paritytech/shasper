@@ -24,7 +24,6 @@ typenum = "1.10"
 
 [features]
 default = ["std", "with-serde", "with-codec"]
-builder = []
 std = [
 	"ssz/std",
 	"bm/std",

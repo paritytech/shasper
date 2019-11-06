@@ -17,10 +17,8 @@
 mod helpers;
 mod transition;
 mod choice;
-
-#[cfg(feature = "builder")]
 mod assignment;
-#[cfg(feature = "builder")]
+
 pub use self::assignment::*;
 
 #[cfg(feature = "serde")]
