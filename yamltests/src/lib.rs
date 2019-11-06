@@ -45,7 +45,7 @@ pub fn test(desc: TestDescription) {
 		TestType::Operations(typ) => operations::test(typ, desc),
 		TestType::Sanity(typ) => sanity::test(typ, desc),
 		TestType::EpochProcessing(typ) => epoch_processing::test(typ, desc),
-		_ => unimplemented!(),
+		_ => println!("Skipped {}", test_name(desc.path.unwrap()).unwrap()),
 	}
 }
 

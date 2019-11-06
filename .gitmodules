@@ -10,3 +10,6 @@
 [submodule "vendor/libp2p"]
 	path = vendor/libp2p
 	url = https://github.com/sorpaas/rust-libp2p
+[submodule "vendor/milagro_bls"]
+	path = vendor/milagro_bls
+	url = https://github.com/sorpaas/milagro_bls
