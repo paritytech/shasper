@@ -13,8 +13,6 @@ members = [
 	"utils/ssz/derive",
 	"utils/keccak-hasher",
 	"yamltests",
-	"yamltests/ssztests",
-	"yamltests/transitiontests",
 ]
 exclude = [
 	"beacon/wasm",
