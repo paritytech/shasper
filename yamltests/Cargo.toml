@@ -12,3 +12,4 @@ bm-le = { version = "0.11", path = "../vendor/bm/le" }
 beacon = { path = "../beacon" }
 sha2 = "0.8"
 clap = "2.32"
+crypto = { package = "shasper-crypto", path = "../crypto" }

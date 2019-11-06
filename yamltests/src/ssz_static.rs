@@ -1,6 +1,5 @@
-use std::fs::File;
 use std::fmt::Debug;
-use std::io::{Read, Write, BufReader};
+use std::io::Write;
 use std::path::PathBuf;
 use serde::{Serialize, Deserialize, de::DeserializeOwned};
 use beacon::{Config, MinimalConfig, MainnetConfig, BeaconState};
@@ -9,7 +8,7 @@ use beacon::types::*;
 use bm_le::{FromTree, IntoTree, DigestConstruct, InMemoryBackend};
 use ssz::{Encode, Decode};
 use sha2::Sha256;
-use crate::test_name;
+use crate::{test_name, read_raw_unwrap, read_value_unwrap};
 use crate::description::{TestNetwork, TestPhase, TestDescription, SszStaticType};
 
 #[derive(Deserialize, Debug)]
@@ -71,28 +70,21 @@ pub fn test_ssz<C: Config, T>(path: PathBuf) where
 		let mut path = path.clone();
 		path.push("roots.yaml");
 
-		let file = File::open(path).expect("Open roots failed");
-		let reader = BufReader::new(file);
-		serde_yaml::from_reader::<_, Roots>(reader).expect("Parse roots failed")
+		read_value_unwrap::<_, Roots>(path)
 	};
 
 	let serialized = {
 		let mut path = path.clone();
 		path.push("serialized.ssz");
 
-		File::open(path).expect("Open serialized failed")
-			.bytes()
-			.map(|v| v.unwrap())
-			.collect::<Vec<_>>()
+		read_raw_unwrap(path)
 	};
 
 	let value = {
 		let mut path = path.clone();
 		path.push("value.yaml");
 
-		let file = File::open(path).expect("Open roots failed");
-		let reader = BufReader::new(file);
-		serde_yaml::from_reader::<_, T>(reader).expect("Parse roots failed")
+		read_value_unwrap::<_, T>(path)
 	};
 
 	let encoded = Encode::encode(&value);
