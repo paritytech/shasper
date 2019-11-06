@@ -133,3 +133,22 @@ pub fn read_pre_post_unwrap<C: Config>(path: PathBuf) -> (BeaconState<C>, Option
 
 	(pre, post)
 }
+
+#[cfg(test)]
+mod tests {
+	use std::path::PathBuf;
+
+	#[test]
+	fn ethtests_all() {
+		let dir = {
+			let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+			path.push("res/ethtests/tests");
+			path
+		};
+
+		let descs = crate::description::read_descriptions(dir).unwrap();
+		for desc in descs {
+			crate::test(desc);
+		}
+	}
+}
