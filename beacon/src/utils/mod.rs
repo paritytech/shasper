@@ -129,7 +129,7 @@ pub fn start_slot_of_epoch<C: Config>(epoch: Uint) -> Uint {
 
 /// Get activation exit epoch.
 pub fn activation_exit_epoch<C: Config>(epoch: Uint) -> Uint {
-	epoch + 1 + C::activation_exit_delay()
+	epoch + 1 + C::max_seed_lookahead()
 }
 
 /// Check whether given proof is valid merkle branch.

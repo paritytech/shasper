@@ -98,31 +98,13 @@ impl Validator {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
 #[cfg_attr(feature = "std", derive(Debug))]
-/// Crosslink.
-pub struct Crosslink {
-	/// Shard number
-	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
-	pub shard: Uint,
-	/// Root of the previous crosslink
-	pub parent_root: H256,
-
-	// == Crosslinking data ==
-	/// Crosslinking data from epoch start
-	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
-	pub start_epoch: Uint,
-	/// Crosslinking data to epoch end
-	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
-	pub end_epoch: Uint,
-	/// Root of the crosslinked shard data since the previous crosslink
-	pub data_root: H256,
-}
-
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Attestation data.
 pub struct AttestationData {
+	/// Voting slot.
+	pub slot: Uint,
+	/// Voting committee index.
+	pub index: Uint,
+
 	// == LMD-GHOST vote ==
 	/// Root of the signed beacon block
 	pub beacon_block_root: H256,
@@ -132,9 +114,6 @@ pub struct AttestationData {
 	pub source: Checkpoint,
 	/// Target
 	pub target: Checkpoint,
-
-	/// Crosslink vote
-	pub crosslink: Crosslink,
 }
 
 impl AttestationData {
@@ -290,19 +269,6 @@ pub struct SigningDepositData {
 	/// Amount in Gwei
 	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub amount: Uint,
-}
-
-#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
-/// Compact committee
-pub struct CompactCommittee<C: Config> {
-	/// BLS pubkeys
-	pub pubkeys: MaxVec<ValidatorId, C::MaxValidatorsPerCommittee>,
-	/// Compact validators
-	#[bm(compact)]
-	pub compact_validators: MaxVec<Uint, C::MaxValidatorsPerCommittee>,
 }
 
 #[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]

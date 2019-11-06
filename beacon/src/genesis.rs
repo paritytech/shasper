@@ -53,6 +53,10 @@ pub fn genesis_beacon_state<C: Config, BLS: BLSConfig>(
 		..BeaconState::<C>::default()
 	};
 
+	for i in 0..state.randao_mixes.len() {
+		state.randao_mixes[i] = genesis_eth1_data.block_hash;
+	}
+
 	for deposit in deposits {
 		state.process_deposit::<BLS>(deposit.clone())?;
 	}
@@ -62,17 +66,6 @@ pub fn genesis_beacon_state<C: Config, BLS: BLSConfig>(
 			validator.activation_eligibility_epoch = C::genesis_epoch();
 			validator.activation_epoch = C::genesis_epoch();
 		}
-	}
-
-	// Populate latest_active_index_roots
-	let genesis_active_index_root = tree_root::<C::Digest, _>(
-		&Compact(MaxVec::<_, C::ValidatorRegistryLimit>::from(
-			state.active_validator_indices(C::genesis_epoch())
-		))
-	);
-	for index in 0..C::epochs_per_historical_vector() {
-		state.active_index_roots[index as usize] =
-			genesis_active_index_root;
 	}
 
 	Ok(state)

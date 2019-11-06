@@ -24,9 +24,7 @@ impl<C: Config> BeaconState<C> {
 		&mut self,
 		proposer_slashing: ProposerSlashing
 	) -> Result<(), Error> {
-		if utils::epoch_of_slot::<C>(proposer_slashing.header_1.slot) !=
-			utils::epoch_of_slot::<C>(proposer_slashing.header_2.slot)
-		{
+		if proposer_slashing.header_1.slot != proposer_slashing.header_2.slot {
 			return Err(Error::ProposerSlashingInvalidSlot)
 		}
 

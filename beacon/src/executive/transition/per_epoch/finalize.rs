@@ -45,21 +45,6 @@ impl<C: Config> BeaconState<C> {
 			}
 		}
 
-		// Set active index root
-		let index_epoch = next_epoch + C::activation_exit_delay();
-		let index_root_position = index_epoch % C::epochs_per_historical_vector();
-		self.active_index_roots[index_root_position as usize] =
-			tree_root::<C::Digest, _>(
-				&Compact(MaxVec::<_, C::ValidatorRegistryLimit>::from(self.active_validator_indices(
-					next_epoch + C::activation_exit_delay()
-				)))
-			);
-
-		// Set committees root
-		let committee_root_position = next_epoch % C::epochs_per_historical_vector();
-		self.compact_committees_roots[committee_root_position as usize] =
-			self.compact_committees_root(next_epoch)?;
-
 		// Set total slashed balances
 		self.slashings[
 			(next_epoch % C::epochs_per_slashings_vector()) as usize
@@ -80,11 +65,6 @@ impl<C: Config> BeaconState<C> {
 				state_roots: self.state_roots.clone(),
 			}));
 		}
-
-		// Update start shard
-		self.start_shard =
-			(self.start_shard + self.shard_delta(current_epoch)) %
-			C::shard_count();
 
 		// Rotate current/previous epoch attestations
 		self.previous_epoch_attestations =

@@ -47,8 +47,6 @@ pub struct BeaconBlockBody<C: Config> {
 	pub deposits: MaxVec<Deposit, C::MaxDeposits>,
 	/// Voluntary exits.
 	pub voluntary_exits: MaxVec<VoluntaryExit, C::MaxVoluntaryExits>,
-	/// Transfer.
-	pub transfers: MaxVec<Transfer, C::MaxTransfers>,
 }
 
 /// Sealed or unsealed block.

@@ -16,9 +16,11 @@
 
 mod helpers;
 mod transition;
-mod assignment;
 mod choice;
 
+#[cfg(feature = "builder")]
+mod assignment;
+#[cfg(feature = "builder")]
 pub use self::assignment::*;
 
 #[cfg(feature = "serde")]
@@ -74,15 +76,8 @@ pub struct BeaconState<C: Config> {
 	pub balances: MaxVec<Uint, C::ValidatorRegistryLimit>,
 
 	// == Shuffling ==
-	/// Start shard for shuffling.
-	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
-	pub start_shard: Uint,
 	/// Past randao mixes.
 	pub randao_mixes: VecArray<H256, C::EpochsPerHistoricalVector>,
-	/// Past active index roots.
-	pub active_index_roots: VecArray<H256, C::EpochsPerHistoricalVector>,
-	/// Past compact committees roots.
-	pub compact_committees_roots: VecArray<H256, C::EpochsPerHistoricalVector>,
 
 	// == Slashings ==
 	#[bm(compact)]
@@ -94,12 +89,6 @@ pub struct BeaconState<C: Config> {
 	pub previous_epoch_attestations: MaxVec<PendingAttestation<C>, C::MaxAttestationsPerEpoch>,
 	/// Attestations on current epoch.
 	pub current_epoch_attestations: MaxVec<PendingAttestation<C>, C::MaxAttestationsPerEpoch>,
-
-	// == Crosslinks ==
-	/// Previous crosslinks.
-	pub previous_crosslinks: VecArray<Crosslink, C::ShardCount>,
-	/// Current crosslinks.
-	pub current_crosslinks: VecArray<Crosslink, C::ShardCount>,
 
 	// == Finality ==
 	#[bm(compact)]
