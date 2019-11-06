@@ -1,10 +1,12 @@
 pub mod description;
 pub mod ssz_static;
 pub mod operations;
+pub mod sanity;
 
 use std::fs::File;
 use std::io::{self, BufReader, Read};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use ssz::Encode;
 use serde::de::DeserializeOwned;
 use description::{TestDescription, TestType};
 use beacon::{BeaconState, Config};
@@ -40,6 +42,7 @@ pub fn test(desc: TestDescription) {
 	match desc.typ {
 		TestType::SszStatic(typ) => ssz_static::test(typ, desc),
 		TestType::Operations(typ) => operations::test(typ, desc),
+		TestType::Sanity(typ) => sanity::test(typ, desc),
 		_ => unimplemented!(),
 	}
 }
@@ -83,4 +86,48 @@ pub fn read_value_unwrap<P: AsRef<Path>, T>(path: P) -> T where
 	let file = File::open(path).expect("Open roots failed");
 	let reader = BufReader::new(file);
 	serde_yaml::from_reader::<_, T>(reader).expect("Parse roots failed")
+}
+
+pub fn read_pre_post_unwrap<C: Config>(path: PathBuf) -> (BeaconState<C>, Option<BeaconState<C>>) where
+	C: DeserializeOwned,
+{
+	let pre = {
+		let mut path = path.clone();
+		path.push("pre.yaml");
+
+		read_value_unwrap::<_, BeaconState<C>>(path)
+	};
+
+	let pre_ssz = {
+		let mut path = path.clone();
+		path.push("pre.ssz");
+
+		read_raw_unwrap(path)
+	};
+
+	assert_eq!(Encode::encode(&pre), pre_ssz);
+
+	let post = {
+		let mut path = path.clone();
+		path.push("post.yaml");
+
+		if path.exists() {
+			Some(read_value_unwrap::<_, BeaconState<C>>(path))
+		} else {
+			None
+		}
+	};
+
+	if let Some(post) = post.as_ref() {
+		let post_ssz = {
+			let mut path = path.clone();
+			path.push("post.ssz");
+
+			read_raw_unwrap(path)
+		};
+
+		assert_eq!(Encode::encode(post), post_ssz);
+	}
+
+	(pre, post)
 }

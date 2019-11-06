@@ -6,7 +6,7 @@ use bm_le::{FromTree, IntoTree};
 use beacon::{BeaconState, Config, Error, MainnetConfig, MinimalConfig};
 use beacon::types::*;
 use crypto::bls::BLSVerification;
-use crate::{test_name, read_raw_unwrap, read_value_unwrap, test_state_with};
+use crate::{test_name, read_raw_unwrap, read_value_unwrap, test_state_with, read_pre_post_unwrap};
 use crate::description::{OperationsType, TestNetwork, TestDescription, TestPhase};
 
 pub fn test(typ: OperationsType, desc: TestDescription) {
@@ -53,43 +53,7 @@ pub fn test_operation<C: Config, T, F>(path: PathBuf, operation_id: &str, f: F) 
 	T: FromTree + IntoTree + Debug + Encode + Decode + Eq + DeserializeOwned,
 	F: FnOnce(&mut BeaconState<C>, T) -> Result<(), Error>,
 {
-	let pre = {
-		let mut path = path.clone();
-		path.push("pre.yaml");
-
-		read_value_unwrap::<_, BeaconState<C>>(path)
-	};
-
-	let pre_ssz = {
-		let mut path = path.clone();
-		path.push("pre.ssz");
-
-		read_raw_unwrap(path)
-	};
-
-	assert_eq!(Encode::encode(&pre), pre_ssz);
-
-	let post = {
-		let mut path = path.clone();
-		path.push("post.yaml");
-
-		if path.exists() {
-			Some(read_value_unwrap::<_, BeaconState<C>>(path))
-		} else {
-			None
-		}
-	};
-
-	if let Some(post) = post.as_ref() {
-		let post_ssz = {
-			let mut path = path.clone();
-			path.push("post.ssz");
-
-			read_raw_unwrap(path)
-		};
-
-		assert_eq!(Encode::encode(post), post_ssz);
-	}
+	let (pre, post) = read_pre_post_unwrap(path.clone());
 
 	let value = {
 		let mut path = path.clone();
