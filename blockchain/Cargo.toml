@@ -13,12 +13,18 @@ parity-codec = { version = "4.0", features = ["derive"] }
 crypto = { package = "shasper-crypto", path = "../crypto" }
 shasper-network = { path = "network" }
 shasper-runtime = { path = "runtime" }
+libp2p = { path = "../vendor/libp2p" }
 blockchain = { version = "0.9", path = "../vendor/blockchain" }
 blockchain-network = { version = "0.1", path = "../vendor/blockchain/network" }
 blockchain-rocksdb = { version = "0.1", path = "common/rocksdb" }
 ssz = { path = "../utils/ssz" }
 sha2 = "0.8"
 bls-aggregates = { git = "https://github.com/sigp/signature-schemes" }
-rand = "0.6"
+rand = "0.7"
 rocksdb = "0.12"
 bm-le = { version = "0.11", path = "../vendor/bm/le", features = ["derive"] }
+pretty_env_logger = "0.3"
+log = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
+hex = "0.3"

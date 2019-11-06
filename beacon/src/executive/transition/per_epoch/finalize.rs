@@ -45,11 +45,6 @@ impl<C: Config> BeaconState<C> {
 			}
 		}
 
-		// Update start shard
-		self.start_shard =
-			(self.start_shard + self.shard_delta(current_epoch)) %
-			C::shard_count();
-
 		// Set active index root
 		let index_epoch = next_epoch + C::activation_exit_delay();
 		let index_root_position = index_epoch % C::epochs_per_historical_vector();
@@ -85,6 +80,11 @@ impl<C: Config> BeaconState<C> {
 				state_roots: self.state_roots.clone(),
 			}));
 		}
+
+		// Update start shard
+		self.start_shard =
+			(self.start_shard + self.shard_delta(current_epoch)) %
+			C::shard_count();
 
 		// Rotate current/previous epoch attestations
 		self.previous_epoch_attestations =

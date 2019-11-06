@@ -18,6 +18,15 @@ pub enum RPCType {
 	RecentBeaconBlocks = 3,
 }
 
+impl libp2p_rpc::RPCType for RPCType {
+	fn all() -> Vec<Self> {
+		vec![
+			RPCType::Hello, RPCType::Goodbye,
+			RPCType::BeaconBlocks, RPCType::RecentBeaconBlocks,
+		]
+	}
+}
+
 impl libp2p::core::ProtocolName for RPCType {
 	fn protocol_name(&self) -> &[u8] {
 		match self {
@@ -38,7 +47,7 @@ pub enum RPCRequest {
 	RecentBeaconBlocks(RecentBeaconBlocksRequest),
 }
 
-impl libp2p_rpc::RPCRequest for RPCRequest {
+impl libp2p_rpc::RPCRequest<RPCType> for RPCRequest {
 	fn is_goodbye(&self) -> bool {
 		match self {
 			RPCRequest::Goodbye(_) => true,
@@ -50,6 +59,15 @@ impl libp2p_rpc::RPCRequest for RPCRequest {
 		match self {
 			RPCRequest::Goodbye(_) => false,
 			_ => true,
+		}
+	}
+
+	fn typ(&self) -> RPCType {
+		match self {
+			Self::Hello(_) => RPCType::Hello,
+			Self::Goodbye(_) => RPCType::Goodbye,
+			Self::BeaconBlocks(_) => RPCType::BeaconBlocks,
+			Self::RecentBeaconBlocks(_) => RPCType::RecentBeaconBlocks,
 		}
 	}
 }

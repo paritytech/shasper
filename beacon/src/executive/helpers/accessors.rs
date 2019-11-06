@@ -231,7 +231,7 @@ impl<C: Config> BeaconState<C> {
 	}
 
 	/// Get signing domain, given domain type and message epoch.
-	pub fn domain(&self, domain_type: Uint, message_epoch: Option<Uint>) -> Uint {
+	pub fn domain(&self, domain_type: u32, message_epoch: Option<Uint>) -> Uint {
 		let epoch = message_epoch.unwrap_or(self.current_epoch());
 		let fork_version = if epoch < self.fork.epoch {
 			self.fork.previous_version
@@ -273,6 +273,10 @@ impl<C: Config> BeaconState<C> {
 		let committee = self.crosslink_committee(
 			attestation_data.target.epoch, attestation_data.crosslink.shard
 		)?;
+
+		if committee.len() != bitfield.len() {
+			return Err(Error::AttestationBitFieldInvalid)
+		}
 
 		let mut ret = committee.into_iter()
 			.enumerate()

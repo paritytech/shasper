@@ -86,7 +86,7 @@ pub mod bls {
 			fn verify_multiple(pubkeys: &[ValidatorId], messages: &[H256], signature: &Signature, domain: u64) -> bool {
 				let mut bls_messages = Vec::new();
 				for message in messages {
-					bls_messages.append(&mut (&message[..]).to_vec());
+					bls_messages.push((&message[..]).to_vec());
 				}
 
 				let bls_signature = match bls::AggregateSignature::from_bytes(&signature[..]) {

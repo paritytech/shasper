@@ -72,9 +72,7 @@ impl<C: Config> Service<C> {
 
         match Swarm::listen_on(&mut swarm, listen_multiaddr.clone()) {
             Ok(_) => {
-                let mut log_address = listen_multiaddr;
-                log_address.push(Protocol::P2p(local_peer_id.clone().into()));
-                info!("Listening established {}", log_address);
+                info!("Listening established {}", listen_multiaddr);
             }
             Err(err) => {
                 warn!(
@@ -156,23 +154,15 @@ fn build_transport(local_private_key: Keypair) -> Boxed<(PeerId, StreamMuxerBox)
         transport.or_transport(websocket::WsConfig::new(trans_clone))
     };
     transport
-        .with_upgrade(secio::SecioConfig::new(local_private_key))
-        .and_then(move |out, endpoint| {
-            let peer_id = out.remote_key.into_peer_id();
-            let peer_id2 = peer_id.clone();
-            let upgrade = core::upgrade::SelectUpgrade::new(
-                libp2p::yamux::Config::default(),
-                libp2p::mplex::MplexConfig::new(),
-            )
-            // TODO: use a single `.map` instead of two maps
-            .map_inbound(move |muxer| (peer_id, muxer))
-            .map_outbound(move |muxer| (peer_id2, muxer));
-
-            core::upgrade::apply(out.stream, upgrade, endpoint)
-                .map(|(id, muxer)| (id, core::muxing::StreamMuxerBox::new(muxer)))
-        })
-        .with_timeout(Duration::from_secs(20))
-        .map_err(|err| Error::Libp2p(Box::new(err)))
+		.upgrade(core::upgrade::Version::V1)
+        .authenticate(secio::SecioConfig::new(local_private_key))
+        .multiplex(core::upgrade::SelectUpgrade::new(
+            libp2p::yamux::Config::default(),
+            libp2p::mplex::MplexConfig::new(),
+        ))
+        .map(|(peer, muxer), _| (peer, core::muxing::StreamMuxerBox::new(muxer)))
+        .timeout(Duration::from_secs(20))
+        .map_err(|e| Error::Libp2p(Box::new(e)))
         .boxed()
 }
 

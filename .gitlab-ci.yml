@@ -25,7 +25,6 @@ test-rust-stable:
   <<:                              *compiler_info
   script:
     - ./scripts/init.sh
-    - ./scripts/build.sh
     - time cargo test --all --release --locked
     - cd substrate && time cargo test --all --release --locked
     - sccache -s
@@ -46,7 +45,6 @@ build-linux:
   <<:                              *compiler_info
   script:
     - ./scripts/init.sh
-    - ./scripts/build.sh
     - time cargo build --release
     - cd substrate && time cargo build --release
     - sccache -s

@@ -100,7 +100,7 @@ impl<C: Config, TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess
 {
     fn inject_event(&mut self, event: GossipsubEvent) {
         match event {
-            GossipsubEvent::Message(gs_msg) => {
+            GossipsubEvent::Message(_, gs_msg) => {
                 trace!("Received GossipEvent");
 
 				let typ = match gs_msg.topics.iter()
@@ -174,7 +174,7 @@ impl<C: Config, TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess
 {
     fn inject_event(&mut self, event: IdentifyEvent) {
         match event {
-            IdentifyEvent::Identified {
+			IdentifyEvent::Received {
                 peer_id, mut info, ..
             } => {
                 if info.listen_addrs.len() > MAX_IDENTIFY_ADDRESSES {
@@ -183,7 +183,7 @@ impl<C: Config, TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess
                     );
                     info.listen_addrs.truncate(MAX_IDENTIFY_ADDRESSES);
                 }
-                debug!(
+				debug!(
 					"Identified peer ({}, {}, {}, {:?}, {:?})",
 					peer_id,
 					info.protocol_version,
@@ -191,9 +191,10 @@ impl<C: Config, TSubstream: AsyncRead + AsyncWrite> NetworkBehaviourEventProcess
 					info.listen_addrs,
 					info.protocols,
                 );
-            }
-            IdentifyEvent::Error { .. } => {}
-            IdentifyEvent::SendBack { .. } => {}
+				self.events.push(Libp2pEvent::PeerDialed(peer_id));
+            },
+			IdentifyEvent::Sent { .. } => (),
+            IdentifyEvent::Error { .. } => (),
         }
     }
 }

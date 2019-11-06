@@ -1,5 +1,4 @@
 use core::marker::PhantomData;
-use libp2p::core::upgrade::UpgradeInfo;
 use libp2p_rpc::RPCProtocol as RPCProtocolT;
 use network_messages::{InboundCodec, OutboundCodec};
 use beacon::Config;
@@ -14,19 +13,8 @@ pub struct RPCProtocol<C: Config> {
 	_marker: PhantomData<C>,
 }
 
-impl<C: Config> UpgradeInfo for RPCProtocol<C> {
-	type Info = RPCType;
-	type InfoIter = Vec<RPCType>;
-
-	fn protocol_info(&self) -> Self::InfoIter {
-		vec![
-			RPCType::Hello, RPCType::Goodbye,
-			RPCType::BeaconBlocks, RPCType::RecentBeaconBlocks
-		]
-	}
-}
-
 impl<C: Config> RPCProtocolT for RPCProtocol<C> {
+	type Type = RPCType;
 	type Request = RPCRequest;
 	type Response = RPCResponse<C>;
 
