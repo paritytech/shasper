@@ -2,6 +2,7 @@ pub mod description;
 pub mod ssz_static;
 pub mod operations;
 pub mod sanity;
+pub mod epoch_processing;
 
 use std::fs::File;
 use std::io::{self, BufReader, Read};
@@ -43,6 +44,7 @@ pub fn test(desc: TestDescription) {
 		TestType::SszStatic(typ) => ssz_static::test(typ, desc),
 		TestType::Operations(typ) => operations::test(typ, desc),
 		TestType::Sanity(typ) => sanity::test(typ, desc),
+		TestType::EpochProcessing(typ) => epoch_processing::test(typ, desc),
 		_ => unimplemented!(),
 	}
 }
