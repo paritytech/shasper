@@ -33,6 +33,7 @@ pub fn test_with_config<C: Config>(typ: SszStaticType, desc: TestDescription) wh
 	let path = desc.path.clone().unwrap();
 
 	match typ {
+		SszStaticType::AggregateAndProof => println!("Skipped {}", test_name(path).unwrap()),
 		SszStaticType::Attestation => test_ssz::<C, Attestation<C>>(path),
 		SszStaticType::AttestationData => test_ssz::<C, AttestationData>(path),
 		SszStaticType::AttestationDataAndCustodyBit => test_ssz::<C, AttestationDataAndCustodyBit>(path),
@@ -42,8 +43,6 @@ pub fn test_with_config<C: Config>(typ: SszStaticType, desc: TestDescription) wh
 		SszStaticType::BeaconBlockHeader => test_ssz::<C, BeaconBlockHeader>(path),
 		SszStaticType::BeaconState => test_ssz::<C, BeaconState<C>>(path),
 		SszStaticType::Checkpoint => test_ssz::<C, Checkpoint>(path),
-		SszStaticType::CompactCommittee => test_ssz::<C, CompactCommittee<C>>(path),
-		SszStaticType::Crosslink => test_ssz::<C, Crosslink>(path),
 		SszStaticType::Deposit => test_ssz::<C, Deposit>(path),
 		SszStaticType::DepositData => test_ssz::<C, DepositData>(path),
 		SszStaticType::Eth1Data => test_ssz::<C, Eth1Data>(path),
@@ -52,7 +51,6 @@ pub fn test_with_config<C: Config>(typ: SszStaticType, desc: TestDescription) wh
 		SszStaticType::IndexedAttestation => test_ssz::<C, IndexedAttestation<C>>(path),
 		SszStaticType::PendingAttestation => test_ssz::<C, PendingAttestation<C>>(path),
 		SszStaticType::ProposerSlashing => test_ssz::<C, ProposerSlashing>(path),
-		SszStaticType::Transfer => test_ssz::<C, Transfer>(path),
 		SszStaticType::Validator => test_ssz::<C, Validator>(path),
 		SszStaticType::VoluntaryExit => test_ssz::<C, VoluntaryExit>(path),
 	}

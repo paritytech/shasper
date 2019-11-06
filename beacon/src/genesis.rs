@@ -43,7 +43,7 @@ pub fn genesis_beacon_state<C: Config, BLS: BLSConfig>(
 ) -> Result<BeaconState<C>, Error> {
 	let mut state = BeaconState {
 		genesis_time,
-		eth1_data: genesis_eth1_data,
+		eth1_data: genesis_eth1_data.clone(),
 		latest_block_header: BeaconBlockHeader {
 			body_root: tree_root::<C::Digest, _>(
 				&BeaconBlockBody::<C>::default()
@@ -54,7 +54,7 @@ pub fn genesis_beacon_state<C: Config, BLS: BLSConfig>(
 	};
 
 	for i in 0..state.randao_mixes.len() {
-		state.randao_mixes[i] = genesis_eth1_data.block_hash.clone();
+		state.randao_mixes[i] = genesis_eth1_data.block_hash;
 	}
 
 	for deposit in deposits {

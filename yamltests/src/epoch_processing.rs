@@ -19,10 +19,6 @@ pub fn test_with_config<C: Config>(typ: EpochProcessingType, desc: TestDescripti
 	let path = desc.path.clone().unwrap();
 
 	match typ {
-		EpochProcessingType::Crosslinks =>
-			test_epoch_processing::<C, _>(path, |state| {
-				state.process_crosslinks()
-			}),
 		EpochProcessingType::FinalUpdates =>
 			test_epoch_processing::<C, _>(path, |state| {
 				state.process_final_updates()
@@ -34,6 +30,10 @@ pub fn test_with_config<C: Config>(typ: EpochProcessingType, desc: TestDescripti
 		EpochProcessingType::RegistryUpdates =>
 			test_epoch_processing::<C, _>(path, |state| {
 				state.process_registry_updates()
+			}),
+		EpochProcessingType::RewardsAndPenalties =>
+			test_epoch_processing::<C, _>(path, |state| {
+				state.process_rewards_and_penalties()
 			}),
 		EpochProcessingType::Slashings =>
 			test_epoch_processing::<C, _>(path, |state| {
