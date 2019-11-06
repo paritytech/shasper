@@ -54,7 +54,7 @@ pub fn genesis_beacon_state<C: Config, BLS: BLSConfig>(
 	};
 
 	for i in 0..state.randao_mixes.len() {
-		state.randao_mixes[i] = genesis_eth1_data.block_hash;
+		state.randao_mixes[i] = genesis_eth1_data.block_hash.clone();
 	}
 
 	for deposit in deposits {
