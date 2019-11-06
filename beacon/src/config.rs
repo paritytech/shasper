@@ -184,17 +184,17 @@ pub trait Config: Default + Clone + PartialEq + Eq + core::fmt::Debug + Send + S
 
 	// == Signature domains ==
 	/// Beacon proposer domain.
-	fn domain_beacon_proposer() -> Uint;
+	fn domain_beacon_proposer() -> u32;
 	/// Randao domain.
-	fn domain_randao() -> Uint;
+	fn domain_randao() -> u32;
 	/// Attestation domain.
-	fn domain_attestation() -> Uint;
+	fn domain_attestation() -> u32;
 	/// Deposit domain.
-	fn domain_deposit() -> Uint;
+	fn domain_deposit() -> u32;
 	/// Voluntary exit domain.
-	fn domain_voluntary_exit() -> Uint;
+	fn domain_voluntary_exit() -> u32;
 	/// Transfer domain.
-	fn domain_transfer() -> Uint;
+	fn domain_transfer() -> u32;
 
 	// == Helpers ==
 	/// Hash function.
@@ -271,12 +271,12 @@ impl Config for MinimalConfig {
 	fn min_slashing_penalty_quotient() -> Uint { 32 }
 
 	// == Signature domains ==
-	fn domain_beacon_proposer() -> Uint { 0 }
-	fn domain_randao() -> Uint { 1 }
-	fn domain_attestation() -> Uint { 2 }
-	fn domain_deposit() -> Uint { 3 }
-	fn domain_voluntary_exit() -> Uint { 4 }
-	fn domain_transfer() -> Uint { 5 }
+	fn domain_beacon_proposer() -> u32 { 0 }
+	fn domain_randao() -> u32 { 1 }
+	fn domain_attestation() -> u32 { 2 }
+	fn domain_deposit() -> u32 { 3 }
+	fn domain_voluntary_exit() -> u32 { 4 }
+	fn domain_transfer() -> u32 { 5 }
 }
 
 #[derive(Default, Clone, PartialEq, Eq)]
@@ -341,10 +341,10 @@ impl Config for MainnetConfig {
 	fn min_slashing_penalty_quotient() -> Uint { 32 }
 
 	// == Signature domains ==
-	fn domain_beacon_proposer() -> Uint { 0 }
-	fn domain_randao() -> Uint { 1 }
-	fn domain_attestation() -> Uint { 2 }
-	fn domain_deposit() -> Uint { 3 }
-	fn domain_voluntary_exit() -> Uint { 4 }
-	fn domain_transfer() -> Uint { 5 }
+	fn domain_beacon_proposer() -> u32 { 0 }
+	fn domain_randao() -> u32 { 1 }
+	fn domain_attestation() -> u32 { 2 }
+	fn domain_deposit() -> u32 { 3 }
+	fn domain_voluntary_exit() -> u32 { 4 }
+	fn domain_transfer() -> u32 { 5 }
 }

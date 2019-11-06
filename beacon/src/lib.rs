@@ -52,7 +52,7 @@ pub fn execute_block<C: Config, BLS: BLSConfig>(
 }
 
 /// Get genesis domain.
-pub fn genesis_domain(domain_type: u64) -> u64 {
+pub fn genesis_domain(domain_type: u32) -> u64 {
 	utils::bls_domain(domain_type, Default::default())
 }
 
