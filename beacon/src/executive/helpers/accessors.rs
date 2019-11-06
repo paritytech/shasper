@@ -274,6 +274,10 @@ impl<C: Config> BeaconState<C> {
 			attestation_data.target.epoch, attestation_data.crosslink.shard
 		)?;
 
+		if committee.len() != bitfield.len() {
+			return Err(Error::AttestationBitFieldInvalid)
+		}
+
 		let mut ret = committee.into_iter()
 			.enumerate()
 			.filter(|(i, _)| bitfield[*i])
