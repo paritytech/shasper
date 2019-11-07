@@ -311,7 +311,7 @@ impl Config for MainnetConfig {
 	fn bls_withdrawal_prefix_byte() -> u8 { 0x00 }
 
 	// == Time parameters ==
-	fn min_attestation_inclusion_delay() -> Uint { 12 }
+	fn min_attestation_inclusion_delay() -> Uint { 1 }
 	fn min_seed_lookahead() -> Uint { 1 }
 	fn max_seed_lookahead() -> Uint { 4 }
 	fn min_validator_withdrawability_delay() -> Uint { 256 }
