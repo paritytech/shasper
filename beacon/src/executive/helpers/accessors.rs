@@ -82,94 +82,66 @@ impl<C: Config> BeaconState<C> {
 	}
 
 	/// Get the random seed for epoch.
-	pub fn seed(&self, epoch: Epoch) -> H256 {
+	pub fn seed(&self, epoch: Epoch, domain_type: u32) -> H256 {
 		C::hash(&[
+			&domain_type.to_le_bytes()[..],
+			&epoch.to_le_bytes()[..8],
 			&self.randao_mix(epoch +
 							 C::epochs_per_historical_vector() -
 							 C::min_seed_lookahead() - 1)[..],
-			&self.active_index_roots[(epoch % C::epochs_per_historical_vector()) as usize][..],
-			&utils::to_bytes(epoch)[..],
 		])
 	}
 
 	/// Get committee count for epoch.
-	pub fn committee_count(&self, epoch: Epoch) -> Uint {
+	pub fn committee_count_at_slot(&self, slot: Uint) -> Uint {
+		let epoch = utils::epoch_of_slot::<C>(slot);
 		let active_validator_indices = self.active_validator_indices(epoch);
 		max(
 			1,
 			min(
-				C::shard_count() / C::slots_per_epoch(),
+				C::max_committees_per_slot(),
 				active_validator_indices.len() as u64 /
 					C::slots_per_epoch() /
 					C::target_committee_size(),
 			)
-		) * C::slots_per_epoch()
+		)
 	}
 
 	/// Get the crosslink committee.
-	pub fn crosslink_committee(
-		&self, epoch: Epoch, shard: Shard
+	pub fn beacon_committee(
+		&self, slot: Uint, index: Uint,
 	) -> Result<Vec<ValidatorIndex>, Error> {
+		let epoch = utils::epoch_of_slot::<C>(slot);
+		let committees_per_slot = self.committee_count_at_slot(slot);
 		let indices = self.active_validator_indices(epoch);
-		let seed = self.seed(epoch);
-		let index = (shard +
-					 C::shard_count() - self.start_shard(epoch)?) %
-			C::shard_count();
-		let count = self.committee_count(epoch);
+		let seed = self.seed(epoch, C::domain_beacon_attester());
+		let index = (slot % C::slots_per_epoch()) * committees_per_slot + index;
+		let count = committees_per_slot * C::slots_per_epoch();
 
 		utils::compute_committee::<C>(&indices, seed, index, count)
-	}
-
-	/// Get start shard for shuffling at epoch.
-	pub fn start_shard(&self, epoch: Epoch) -> Result<Shard, Error> {
-		if !(epoch <= self.current_epoch() + 1) {
-			return Err(Error::EpochOutOfRange)
-		}
-
-		let mut check_epoch = self.current_epoch() + 1;
-		let mut shard = (self.start_shard +
-						 self.shard_delta(self.current_epoch())) %
-			C::shard_count();
-
-		while check_epoch > epoch {
-			check_epoch -= 1;
-			shard = (shard + C::shard_count() -
-					 self.shard_delta(check_epoch)) %
-				C::shard_count();
-		}
-
-		Ok(shard)
-	}
-
-	/// Get shard delta for epoch.
-	pub fn shard_delta(&self, epoch: Epoch) -> Uint {
-		min(
-			self.committee_count(epoch),
-			C::shard_count() -
-				C::shard_count() / C::slots_per_epoch()
-		)
 	}
 
 	/// Get the current beacon proposer index.
 	pub fn beacon_proposer_index(&self) -> Result<ValidatorIndex, Error> {
 		let epoch = self.current_epoch();
-		let committees_per_slot =
-			self.committee_count(epoch) / C::slots_per_epoch();
-		let offset = committees_per_slot *
-			(self.slot % C::slots_per_epoch());
-		let shard = (self.start_shard(epoch)? + offset) %
-			C::shard_count();
-		let first_committee = self.crosslink_committee(epoch, shard)?;
-		let seed = self.seed(epoch);
+		let seed = C::hash(&[
+			&self.seed(epoch, C::domain_beacon_proposer())[..],
+			&self.slot.to_le_bytes()[..8]
+		]);
+		let indices = self.active_validator_indices(epoch);
 
 		let mut i = 0;
 		loop {
-			let candidate_index = first_committee[
-				((epoch + i) % first_committee.len() as u64) as usize
+			let candidate_index = indices[
+				utils::shuffled_index::<C>(
+					i % indices.len() as u64,
+					indices.len() as u64,
+					seed
+				)? as usize
 			];
 			let random_byte = C::hash(&[
 				&seed[..],
-				&utils::to_bytes(i / 32)[..],
+				&utils::to_bytes(i / 32)[..8],
 			])[(i % 32) as usize];
 			let effective_balance = self.validators[candidate_index as usize].effective_balance;
 			if effective_balance * u8::max_value() as u64 >=
@@ -178,41 +150,8 @@ impl<C: Config> BeaconState<C> {
 				return Ok(candidate_index)
 			}
 
-			i+= 1
+			i += 1;
 		}
-	}
-
-	/// Get attestation data slot.
-	pub fn attestation_data_slot(&self, attestation: &AttestationData) -> Result<Slot, Error> {
-		let committee_count = self.committee_count(
-			attestation.target.epoch
-		);
-		let offset = (attestation.crosslink.shard + C::shard_count() -
-					  self.start_shard(attestation.target.epoch)?) %
-			C::shard_count();
-
-		Ok(utils::start_slot_of_epoch::<C>(attestation.target.epoch) +
-		   offset / (committee_count / C::slots_per_epoch()))
-	}
-
-	/// Get compact committees root at epoch.
-	pub fn compact_committees_root(&self, epoch: Uint) -> Result<H256, Error> {
-		let mut committees = VecArray::<CompactCommittee<C>, C::ShardCount>::default();
-		let start_shard = self.start_shard(epoch)?;
-
-		for committee_number in 0..self.committee_count(epoch) {
-			let shard = (start_shard + committee_number) % C::shard_count();
-			for index in self.crosslink_committee(epoch, shard)? {
-				let validator = &self.validators[index as usize];
-				committees[shard as usize].pubkeys.push(validator.pubkey.clone());
-				let compact_balance = validator.effective_balance / C::effective_balance_increment();
-				let compact_validator = (index << 16) +
-					(if validator.slashed { 1 } else { 0 } << 15) + compact_balance;
-				committees[shard as usize].compact_validators.push(compact_validator);
-			}
-		}
-
-		Ok(tree_root::<C::Digest, _>(&committees))
 	}
 
 	/// Get total balance of validator indices.
@@ -270,8 +209,8 @@ impl<C: Config> BeaconState<C> {
 	pub fn attesting_indices(
 		&self, attestation_data: &AttestationData, bitfield: &[bool],
 	) -> Result<Vec<ValidatorIndex>, Error> {
-		let committee = self.crosslink_committee(
-			attestation_data.target.epoch, attestation_data.crosslink.shard
+		let committee = self.beacon_committee(
+			attestation_data.slot, attestation_data.index,
 		)?;
 
 		if committee.len() != bitfield.len() {

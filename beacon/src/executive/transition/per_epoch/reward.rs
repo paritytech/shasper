@@ -88,10 +88,7 @@ impl<C: Config> BeaconState<C> {
 			let proposer_reward = self.base_reward(index) / C::proposer_reward_quotient();
 			rewards[attestation.proposer_index as usize] += proposer_reward;
 			let max_attester_reward = self.base_reward(index) - proposer_reward;
-			rewards[index as usize] += max_attester_reward *
-				(C::slots_per_epoch() + C::min_attestation_inclusion_delay() -
-				 attestation.inclusion_delay) /
-				C::slots_per_epoch();
+			rewards[index as usize] += max_attester_reward / attestation.inclusion_delay;
 		}
 
 		// Inactivity penalty
@@ -113,45 +110,16 @@ impl<C: Config> BeaconState<C> {
 		Ok((rewards, penalties))
 	}
 
-	fn crosslink_deltas(&self) -> Result<(Vec<Gwei>, Vec<Gwei>), Error> {
-		let mut rewards = (0..self.validators.len())
-			.map(|_| 0).collect::<Vec<_>>();
-		let mut penalties = (0..self.validators.len())
-			.map(|_| 0).collect::<Vec<_>>();
-		let epoch = self.previous_epoch();
-
-		for offset in 0..self.committee_count(epoch) {
-			let shard = (self.start_shard(epoch)? + offset) % C::shard_count();
-			let crosslink_committee = self.crosslink_committee(epoch, shard)?;
-			let (_winning_crosslink, attesting_indices) =
-				self.winning_crosslink_and_attesting_indices(epoch, shard)?;
-			let attesting_balance = self.total_balance(&attesting_indices);
-			let committee_balance = self.total_balance(&crosslink_committee);
-			for index in crosslink_committee {
-				let base_reward = self.base_reward(index);
-				if attesting_indices.contains(&index) {
-					rewards[index as usize] += base_reward * attesting_balance /
-						committee_balance;
-				} else {
-					penalties[index as usize] += base_reward;
-				}
-			}
-		}
-
-		Ok((rewards, penalties))
-	}
-
 	/// Process rewards and penalties
 	pub fn process_rewards_and_penalties(&mut self) -> Result<(), Error> {
 		if self.current_epoch() == C::genesis_epoch() {
 			return Ok(())
 		}
 
-		let (rewards1, penalties1) = self.attestation_deltas()?;
-		let (rewards2, penalties2) = self.crosslink_deltas()?;
+		let (rewards, penalties) = self.attestation_deltas()?;
 		for i in 0..self.validators.len() {
-			self.increase_balance(i as u64, rewards1[i] + rewards2[i]);
-			self.decrease_balance(i as u64, penalties1[i] + penalties2[i]);
+			self.increase_balance(i as u64, rewards[i]);
+			self.decrease_balance(i as u64, penalties[i]);
 		}
 
 		Ok(())

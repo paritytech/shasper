@@ -39,9 +39,6 @@ pub fn test_with_config<C: Config>(typ: OperationsType, desc: TestDescription) w
 		OperationsType::ProposerSlashing => test_operation::<C, ProposerSlashing, _>(path, "proposer_slashing", |s, a| {
 			s.process_proposer_slashing::<BLSVerification>(a)
 		}),
-		OperationsType::Transfer => test_operation::<C, Transfer, _>(path, "transfer", |s, a| {
-			s.process_transfer::<BLSVerification>(a)
-		}),
 		OperationsType::VoluntaryExit => test_operation::<C, VoluntaryExit, _>(path, "voluntary_exit", |s, a| {
 			s.process_voluntary_exit::<BLSVerification>(a)
 		}),

@@ -69,8 +69,6 @@ pub trait Config: Default + Clone + PartialEq + Eq + core::fmt::Debug + Send + S
 	type MaxDeposits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Maximum voluntary exists in a given block.
 	type MaxVoluntaryExits: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
-	/// Maximum transfers in a given block.
-	type MaxTransfers: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Limit of historical roots.
 	type HistoricalRootsLimit: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 	/// Shard count.
@@ -89,8 +87,8 @@ pub trait Config: Default + Clone + PartialEq + Eq + core::fmt::Debug + Send + S
 	type MaxAttestationsPerEpoch: Unsigned + core::fmt::Debug + Clone + Eq + PartialEq + Default + Send + Sync + 'static;
 
 	// === Misc ===
-	/// Shard count.
-	fn shard_count() -> Uint { Self::ShardCount::to_u64() }
+	/// Maximum committees per slot.
+	fn max_committees_per_slot() -> Uint;
 	/// Target committee size.
 	fn target_committee_size() -> Uint;
 	/// Maximum indices per attestation.
@@ -131,8 +129,8 @@ pub trait Config: Default + Clone + PartialEq + Eq + core::fmt::Debug + Send + S
 	fn slots_per_epoch() -> Uint { Self::SlotsPerEpoch::to_u64() }
 	/// Minimum seed lookahead.
 	fn min_seed_lookahead() -> Uint;
-	/// Activation exit delay.
-	fn activation_exit_delay() -> Uint;
+	/// Maximum seed lookahead.
+	fn max_seed_lookahead() -> Uint;
 	/// Slots per eth1 voting period.
 	fn slots_per_eth1_voting_period() -> Uint { Self::SlotsPerEth1VotingPeriod::to_u64() }
 	/// Slots per historical root.
@@ -179,22 +177,18 @@ pub trait Config: Default + Clone + PartialEq + Eq + core::fmt::Debug + Send + S
 	fn max_deposits() -> Uint { Self::MaxDeposits::to_u64() }
 	/// Maximum voluntary exits per block.
 	fn max_voluntary_exits() -> Uint { Self::MaxVoluntaryExits::to_u64() }
-	/// Maximum transfers per block.
-	fn max_transfers() -> Uint { Self::MaxTransfers::to_u64() }
 
 	// == Signature domains ==
 	/// Beacon proposer domain.
-	fn domain_beacon_proposer() -> u32;
+	fn domain_beacon_proposer() -> u32 { 0 }
+	/// Beacon attester domain.
+	fn domain_beacon_attester() -> u32 { 1 }
 	/// Randao domain.
-	fn domain_randao() -> u32;
-	/// Attestation domain.
-	fn domain_attestation() -> u32;
+	fn domain_randao() -> u32 { 2 }
 	/// Deposit domain.
-	fn domain_deposit() -> u32;
+	fn domain_deposit() -> u32 { 3 }
 	/// Voluntary exit domain.
-	fn domain_voluntary_exit() -> u32;
-	/// Transfer domain.
-	fn domain_transfer() -> u32;
+	fn domain_voluntary_exit() -> u32 { 4 }
 
 	// == Helpers ==
 	/// Hash function.
@@ -218,14 +212,13 @@ pub struct MinimalConfig;
 
 impl Config for MinimalConfig {
 	type Digest = sha2::Sha256;
-	type MaxValidatorsPerCommittee = typenum::U4096;
+	type MaxValidatorsPerCommittee = typenum::U2048;
 	type SlotsPerHistoricalRoot = typenum::U64;
 	type MaxProposerSlashings = typenum::U16;
 	type MaxAttesterSlashings = typenum::U1;
 	type MaxAttestations = typenum::U128;
 	type MaxDeposits = typenum::U16;
 	type MaxVoluntaryExits = typenum::U16;
-	type MaxTransfers = typenum::U0;
 	type HistoricalRootsLimit = typenum::U16777216;
 	type ShardCount = typenum::U8;
 	type SlotsPerEpoch = typenum::U8;
@@ -236,6 +229,7 @@ impl Config for MinimalConfig {
 	type MaxAttestationsPerEpoch = typenum::Prod<Self::MaxAttestations, Self::SlotsPerEpoch>;
 
 	// === Misc ===
+	fn max_committees_per_slot() -> Uint { 4 }
 	fn target_committee_size() -> Uint { 4 }
 	fn min_per_epoch_churn_limit() -> Uint { 4 }
 	fn churn_limit_quotient() -> Uint { 65536 }
@@ -257,7 +251,7 @@ impl Config for MinimalConfig {
 	// == Time parameters ==
 	fn min_attestation_inclusion_delay() -> Uint { 1 }
 	fn min_seed_lookahead() -> Uint { 1 }
-	fn activation_exit_delay() -> Uint { 4 }
+	fn max_seed_lookahead() -> Uint { 4 }
 	fn min_validator_withdrawability_delay() -> Uint { 256 }
 	fn persistent_committee_period() -> Uint { 2048 }
 	fn max_epochs_per_crosslink() -> Uint { 4 }
@@ -269,14 +263,6 @@ impl Config for MinimalConfig {
 	fn proposer_reward_quotient() -> Uint { 8 }
 	fn inactivity_penalty_quotient() -> Uint { 33554432 }
 	fn min_slashing_penalty_quotient() -> Uint { 32 }
-
-	// == Signature domains ==
-	fn domain_beacon_proposer() -> u32 { 0 }
-	fn domain_randao() -> u32 { 1 }
-	fn domain_attestation() -> u32 { 2 }
-	fn domain_deposit() -> u32 { 3 }
-	fn domain_voluntary_exit() -> u32 { 4 }
-	fn domain_transfer() -> u32 { 5 }
 }
 
 #[derive(Default, Clone, PartialEq, Eq)]
@@ -288,17 +274,16 @@ pub struct MainnetConfig;
 
 impl Config for MainnetConfig {
 	type Digest = sha2::Sha256;
-	type MaxValidatorsPerCommittee = typenum::U4096;
+	type MaxValidatorsPerCommittee = typenum::U2048;
 	type SlotsPerHistoricalRoot = typenum::U8192;
 	type MaxProposerSlashings = typenum::U16;
 	type MaxAttesterSlashings = typenum::U1;
 	type MaxAttestations = typenum::U128;
 	type MaxDeposits = typenum::U16;
 	type MaxVoluntaryExits = typenum::U16;
-	type MaxTransfers = typenum::U0;
 	type HistoricalRootsLimit = typenum::U16777216;
 	type ShardCount = typenum::U1024;
-	type SlotsPerEpoch = typenum::U64;
+	type SlotsPerEpoch = typenum::U32;
 	type SlotsPerEth1VotingPeriod = typenum::U1024;
 	type ValidatorRegistryLimit = typenum::U1099511627776;
 	type EpochsPerHistoricalVector = typenum::U65536;
@@ -306,6 +291,7 @@ impl Config for MainnetConfig {
 	type MaxAttestationsPerEpoch = typenum::Prod<Self::MaxAttestations, Self::SlotsPerEpoch>;
 
 	// === Misc ===
+	fn max_committees_per_slot() -> Uint { 64 }
 	fn target_committee_size() -> Uint { 128 }
 	fn min_per_epoch_churn_limit() -> Uint { 4 }
 	fn churn_limit_quotient() -> Uint { 65536 }
@@ -327,7 +313,7 @@ impl Config for MainnetConfig {
 	// == Time parameters ==
 	fn min_attestation_inclusion_delay() -> Uint { 1 }
 	fn min_seed_lookahead() -> Uint { 1 }
-	fn activation_exit_delay() -> Uint { 4 }
+	fn max_seed_lookahead() -> Uint { 4 }
 	fn min_validator_withdrawability_delay() -> Uint { 256 }
 	fn persistent_committee_period() -> Uint { 2048 }
 	fn max_epochs_per_crosslink() -> Uint { 64 }
@@ -339,12 +325,4 @@ impl Config for MainnetConfig {
 	fn proposer_reward_quotient() -> Uint { 8 }
 	fn inactivity_penalty_quotient() -> Uint { 33554432 }
 	fn min_slashing_penalty_quotient() -> Uint { 32 }
-
-	// == Signature domains ==
-	fn domain_beacon_proposer() -> u32 { 0 }
-	fn domain_randao() -> u32 { 1 }
-	fn domain_attestation() -> u32 { 2 }
-	fn domain_deposit() -> u32 { 3 }
-	fn domain_voluntary_exit() -> u32 { 4 }
-	fn domain_transfer() -> u32 { 5 }
 }

@@ -21,7 +21,7 @@ use crate::primitives::Uint;
 /// Far future epoch.
 pub const FAR_FUTURE_EPOCH: Uint = Uint::max_value();
 /// Base rewards per epoch.
-pub const BASE_REWARDS_PER_EPOCH: Uint = 5;
+pub const BASE_REWARDS_PER_EPOCH: Uint = 4;
 /// Deposit contract tree depth.
 pub const DEPOSIT_CONTRACT_TREE_DEPTH: Uint = 32;
 /// Deposit contract tree depth type.

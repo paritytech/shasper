@@ -359,7 +359,7 @@ fn builder_thread<B, I, C: Config + Clone>(
 			let proposer_domain = externalities.state()
 				.domain(C::domain_beacon_proposer(), None);
 			let attestation_domain = externalities.state()
-				.domain(C::domain_attestation(), None);
+				.domain(C::domain_beacon_attester(), None);
 
 			for (validator_id, validator_seckey) in &keys {
 				let validator_index = externalities.state().validator_index(validator_id);
@@ -370,9 +370,8 @@ fn builder_thread<B, I, C: Config + Clone>(
 					if let Some(committee_assignment) = committee_assignment {
 						if committee_assignment.slot == current_slot {
 							trace!(
-								"Found validator {} attesting slot {} with shard {}",
-								validator_id, current_slot, committee_assignment.shard);
-							let shard = committee_assignment.shard;
+								"Found validator {} attesting slot {} with index {}",
+								validator_id, current_slot, committee_assignment.index);
 							let committee = committee_assignment.validators;
 
 							let target_epoch = current_epoch;
@@ -390,9 +389,6 @@ fn builder_thread<B, I, C: Config + Clone>(
 								source_epoch, source_root, target_epoch, target_root,
 							);
 
-							let parent_crosslink = head_state.state()
-								.current_crosslinks[shard as usize].clone();
-
 							let data = AttestationData {
 								beacon_block_root: head_block.id(),
 								source: Checkpoint {
@@ -403,16 +399,8 @@ fn builder_thread<B, I, C: Config + Clone>(
 									epoch: target_epoch,
 									root: target_root,
 								},
-								crosslink: Crosslink {
-									shard,
-									start_epoch: parent_crosslink.end_epoch,
-									end_epoch: min(
-										target_epoch,
-										parent_crosslink.end_epoch + C::max_epochs_per_crosslink()
-									),
-									parent_root: tree_root::<C::Digest, _>(&parent_crosslink),
-									data_root: H256::default(),
-								},
+								slot: committee_assignment.slot,
+								index: committee_assignment.index,
 							};
 							let signature = Signature::from_slice(&bls::Signature::new(
 								&tree_root::<C::Digest, _>(&AttestationDataAndCustodyBit {

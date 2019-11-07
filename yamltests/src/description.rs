@@ -128,10 +128,10 @@ impl FromStr for SszGenericType {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum EpochProcessingType {
-	Crosslinks,
 	FinalUpdates,
 	JustificationAndFinalization,
 	RegistryUpdates,
+	RewardsAndPenalties,
 	Slashings,
 }
 
@@ -140,10 +140,10 @@ impl FromStr for EpochProcessingType {
 
 	fn from_str(s: &str) -> Result<Self, Error> {
 		match s {
-			"crosslinks" => Ok(Self::Crosslinks),
 			"final_updates" => Ok(Self::FinalUpdates),
 			"justification_and_finalization" => Ok(Self::JustificationAndFinalization),
 			"registry_updates" => Ok(Self::RegistryUpdates),
+			"rewards_and_penalties" => Ok(Self::RewardsAndPenalties),
 			"slashings" => Ok(Self::Slashings),
 			_ => Err(Error::InvalidType),
 		}
@@ -175,7 +175,6 @@ pub enum OperationsType {
 	BlockHeader,
 	Deposit,
 	ProposerSlashing,
-	Transfer,
 	VoluntaryExit,
 }
 
@@ -189,7 +188,6 @@ impl FromStr for OperationsType {
 			"block_header" => Ok(Self::BlockHeader),
 			"deposit" => Ok(Self::Deposit),
 			"proposer_slashing" => Ok(Self::ProposerSlashing),
-			"transfer" => Ok(Self::Transfer),
 			"voluntary_exit" => Ok(Self::VoluntaryExit),
 			_ => Err(Error::InvalidType),
 		}
@@ -232,6 +230,7 @@ impl FromStr for ShufflingType {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum SszStaticType {
+	AggregateAndProof,
 	Attestation,
 	AttestationData,
 	AttestationDataAndCustodyBit,
@@ -241,8 +240,6 @@ pub enum SszStaticType {
 	BeaconBlockHeader,
 	BeaconState,
 	Checkpoint,
-	CompactCommittee,
-	Crosslink,
 	Deposit,
 	DepositData,
 	Eth1Data,
@@ -251,7 +248,6 @@ pub enum SszStaticType {
 	IndexedAttestation,
 	PendingAttestation,
 	ProposerSlashing,
-	Transfer,
 	Validator,
 	VoluntaryExit,
 }
@@ -261,6 +257,7 @@ impl FromStr for SszStaticType {
 
 	fn from_str(s: &str) -> Result<Self, Error> {
 		match s {
+			"AggregateAndProof" => Ok(Self::AggregateAndProof),
 			"Attestation" => Ok(Self::Attestation),
 			"AttestationData" => Ok(Self::AttestationData),
 			"AttestationDataAndCustodyBit" => Ok(Self::AttestationDataAndCustodyBit),
@@ -270,8 +267,6 @@ impl FromStr for SszStaticType {
 			"BeaconBlockHeader" => Ok(Self::BeaconBlockHeader),
 			"BeaconState" => Ok(Self::BeaconState),
 			"Checkpoint" => Ok(Self::Checkpoint),
-			"CompactCommittee" => Ok(Self::CompactCommittee),
-			"Crosslink" => Ok(Self::Crosslink),
 			"Deposit" => Ok(Self::Deposit),
 			"DepositData" => Ok(Self::DepositData),
 			"Eth1Data" => Ok(Self::Eth1Data),
@@ -280,7 +275,6 @@ impl FromStr for SszStaticType {
 			"IndexedAttestation" => Ok(Self::IndexedAttestation),
 			"PendingAttestation" => Ok(Self::PendingAttestation),
 			"ProposerSlashing" => Ok(Self::ProposerSlashing),
-			"Transfer" => Ok(Self::Transfer),
 			"Validator" => Ok(Self::Validator),
 			"VoluntaryExit" => Ok(Self::VoluntaryExit),
 			_ => Err(Error::InvalidType),

@@ -79,7 +79,7 @@ impl<C: Config> BeaconState<C> {
 			],
 			&indexed_attestation.signature,
 			self.domain(
-				C::domain_attestation(),
+				C::domain_beacon_attester(),
 				Some(indexed_attestation.data.target.epoch)
 			)
 		)

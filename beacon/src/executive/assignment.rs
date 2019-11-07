@@ -22,7 +22,7 @@ pub struct CommitteeAssignment {
 	/// List of validators in the committee.
 	pub validators: Vec<u64>,
 	/// Shard to which the committee is assigned.
-	pub shard: u64,
+	pub index: u64,
 	/// Slot at which the committee is assigned.
 	pub slot: u64,
 }
@@ -39,21 +39,16 @@ impl<C: Config> BeaconState<C> {
 			return Err(Error::EpochOutOfRange)
 		}
 
-		let committees_per_slot =
-			self.committee_count(epoch) / C::slots_per_epoch();
 		let epoch_start_slot = utils::start_slot_of_epoch::<C>(epoch);
 		for slot in epoch_start_slot..(epoch_start_slot + C::slots_per_epoch()) {
-			let offset = committees_per_slot *
-				(slot % C::slots_per_epoch());
-			let slot_start_shard =
-				(self.start_shard(epoch)? + offset) % C::shard_count();
-			for i in 0..committees_per_slot {
-				let shard = (slot_start_shard + i) % C::shard_count();
-				let committee = self.crosslink_committee(epoch, shard)?;
+			let committee_count = self.committee_count_at_slot(slot);
+			for index in 0..committee_count {
+				let index = index as u64;
+				let committee = self.beacon_committee(slot, index)?;
 				if committee.contains(&validator_index) {
 					return Ok(Some(CommitteeAssignment {
 						validators: committee,
-						shard, slot,
+						index, slot,
 					}))
 				}
 			}

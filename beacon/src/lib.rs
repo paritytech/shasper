@@ -76,8 +76,6 @@ pub enum Transaction<C: Config> {
 	Deposit(Deposit),
 	/// Voluntary exit.
 	VoluntaryExit(VoluntaryExit),
-	/// Transfer.
-	Transfer(Transfer),
 }
 
 /// Initialize a block, and apply inherents.
@@ -158,13 +156,6 @@ pub fn apply_transaction<C: Config, BLS: BLSConfig>(
 			}
 			state.process_voluntary_exit::<BLS>(voluntary_exit.clone())?;
 			block.body.voluntary_exits.push(voluntary_exit);
-		},
-		Transaction::Transfer(transfer) => {
-			if block.body.transfers.len() >= C::max_transfers() as usize {
-				return Err(Error::TooManyTransfers)
-			}
-			state.process_transfer::<BLS>(transfer.clone())?;
-			block.body.transfers.push(transfer);
 		},
 	}
 	Ok(())

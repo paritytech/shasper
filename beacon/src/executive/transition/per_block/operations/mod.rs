@@ -19,7 +19,6 @@ mod attester_slashing;
 mod attestation;
 mod deposit;
 mod voluntary_exit;
-mod transfer;
 
 use crate::types::*;
 use crate::{Config, BLSConfig, BeaconState, Error};
@@ -39,13 +38,6 @@ impl<C: Config> BeaconState<C> {
 				self.eth1_deposit_index
 		) {
 			return Err(Error::TooManyDeposits)
-		}
-
-		// Verify that there are no duplicate transfers
-		if (1..body.transfers.len())
-			.any(|i| body.transfers[i..].contains(&body.transfers[i - 1]))
-		{
-			return Err(Error::DuplicateTransfer)
 		}
 
 		if body.proposer_slashings.len() > C::max_proposer_slashings() as usize {
@@ -81,13 +73,6 @@ impl<C: Config> BeaconState<C> {
 		}
 		for voluntary_exit in body.voluntary_exits.iter() {
 			self.process_voluntary_exit::<BLS>(voluntary_exit.clone())?;
-		}
-
-		if body.transfers.len() > C::max_transfers() as usize{
-			return Err(Error::TooManyTransfers)
-		}
-		for transfer in body.transfers.iter() {
-			self.process_transfer::<BLS>(transfer.clone())?;
 		}
 
 		Ok(())
