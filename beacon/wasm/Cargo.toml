@@ -1,6 +1,6 @@
 [package]
 name = "eth2"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Parity Technologies <admin@parity.io>"]
 description = "Minimal Serenity beacon chain implementation compiled to WebAssembly"
 license = "GPL-3.0"
