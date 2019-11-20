@@ -15,9 +15,9 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::types::*;
-use crate::{Config, BeaconState, Error, BLSConfig};
+use crate::{Config, BeaconExecutive, Error, BLSConfig};
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Push a new `AttesterSlashing` to the state.
 	pub fn process_attester_slashing<BLS: BLSConfig>(&mut self, attester_slashing: AttesterSlashing<C>) -> Result<(), Error> {
 		let attestation_1 = attester_slashing.attestation_1;

@@ -15,11 +15,11 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::types::*;
-use crate::{Config, BeaconState, Error};
+use crate::{Config, BeaconExecutive, Error};
 use bm_le::{MaxVec, Compact, tree_root};
 use core::cmp::min;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Process final updates
 	pub fn process_final_updates(&mut self) -> Result<(), Error> {
 		let current_epoch = self.current_epoch();
@@ -27,13 +27,13 @@ impl<C: Config> BeaconState<C> {
 
 		// Reset eth1 data votes
 		if (self.slot + 1) % C::slots_per_eth1_voting_period() == 0 {
-			self.eth1_data_votes = Default::default();
+			self.state.eth1_data_votes = Default::default();
 		}
 
 		// Update effective balances with hysteresis
 		for index in 0..(self.validators.len() as u64) {
-			let validator = &mut self.validators[index as usize];
-			let balance = self.balances[index as usize];
+			let validator = &mut self.state.validators[index as usize];
+			let balance = self.state.balances[index as usize];
 			let half_increment = C::effective_balance_increment() / 2;
 			if balance < validator.effective_balance ||
 				validator.effective_balance + 3 * half_increment < balance
@@ -46,12 +46,12 @@ impl<C: Config> BeaconState<C> {
 		}
 
 		// Set total slashed balances
-		self.slashings[
+		self.state.slashings[
 			(next_epoch % C::epochs_per_slashings_vector()) as usize
 		] = 0;
 
 		// Set randao mix
-		self.randao_mixes[
+		self.state.randao_mixes[
 			(next_epoch % C::epochs_per_historical_vector()) as usize
 		] = self.randao_mix(current_epoch);
 
@@ -60,16 +60,16 @@ impl<C: Config> BeaconState<C> {
 			(C::slots_per_historical_root() / C::slots_per_epoch())
 			== 0
 		{
-			self.historical_roots.push(tree_root::<C::Digest, _>(&HistoricalBatch::<C> {
-				block_roots: self.block_roots.clone(),
-				state_roots: self.state_roots.clone(),
+			self.state.historical_roots.push(tree_root::<C::Digest, _>(&HistoricalBatch::<C> {
+				block_roots: self.state.block_roots.clone(),
+				state_roots: self.state.state_roots.clone(),
 			}));
 		}
 
 		// Rotate current/previous epoch attestations
-		self.previous_epoch_attestations =
+		self.state.previous_epoch_attestations =
 			self.current_epoch_attestations.clone();
-		self.current_epoch_attestations = Default::default();
+		self.state.current_epoch_attestations = Default::default();
 
 		Ok(())
 	}

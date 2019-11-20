@@ -15,10 +15,10 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::types::*;
-use crate::{Config, BeaconState, Error, BLSConfig, consts};
+use crate::{Config, BeaconExecutive, Error, BLSConfig, consts};
 use bm_le::tree_root;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Push a new `VoluntaryExit` to the state.
 	pub fn process_voluntary_exit<BLS: BLSConfig>(
 		&mut self,

@@ -21,6 +21,7 @@ mod assignment;
 
 pub use self::assignment::*;
 
+use core::ops::Deref;
 #[cfg(feature = "serde")]
 use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};
@@ -31,10 +32,36 @@ use crate::primitives::*;
 use crate::types::*;
 use crate::consts;
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(PartialEq, Eq, Debug)]
+pub struct BeaconExecutive<'a, C: Config> {
+	state: &'a mut BeaconState<C>,
+
+	active_validator_indices: Option<Vec<ValidatorIndex>>,
+	total_active_balance: Option<Gwei>,
+}
+
+impl<'a, C: Config> BeaconExecutive<'a, C> {
+	pub fn new(state: &'a mut BeaconState<C>) -> Self {
+		Self {
+			state,
+
+			active_validator_indices: None,
+			total_active_balance: None,
+		}
+	}
+}
+
+impl<'a, C: Config> Deref for BeaconExecutive<'a, C> {
+	type Target = BeaconState<C>;
+
+	fn deref(&self) -> &BeaconState<C> {
+		&self.state
+	}
+}
+
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Beacon state.
 pub struct BeaconState<C: Config> {
 	// == Versioning ==

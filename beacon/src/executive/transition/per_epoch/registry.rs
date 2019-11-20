@@ -14,17 +14,17 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{Config, BeaconState, Error, consts, utils};
+use crate::{Config, BeaconExecutive, Error, consts, utils};
 use core::cmp::min;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Process registry updates
 	pub fn process_registry_updates(&mut self) -> Result<(), Error> {
 		for index in 0..self.validators.len() {
 			if self.validators[index].activation_eligibility_epoch == consts::FAR_FUTURE_EPOCH &&
 				self.validators[index].effective_balance == C::max_effective_balance()
 			{
-				self.validators[index].activation_eligibility_epoch = self.current_epoch();
+				self.state.validators[index].activation_eligibility_epoch = self.current_epoch();
 			}
 
 			if self.validators[index].is_active(self.current_epoch()) &&
@@ -51,7 +51,7 @@ impl<C: Config> BeaconState<C> {
 											 self.validator_churn_limit() as usize)]
 		{
 			let current_epoch = self.current_epoch();
-			let validator = &mut self.validators[*index as usize];
+			let validator = &mut self.state.validators[*index as usize];
 			if validator.activation_epoch == consts::FAR_FUTURE_EPOCH {
 				validator.activation_epoch =
 					utils::activation_exit_epoch::<C>(current_epoch);

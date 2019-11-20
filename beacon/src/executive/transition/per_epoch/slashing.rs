@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{Config, BeaconState};
+use crate::{Config, BeaconExecutive};
 use core::cmp::min;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Process slashings
 	pub fn process_slashings(&mut self) {
 		let current_epoch = self.current_epoch();

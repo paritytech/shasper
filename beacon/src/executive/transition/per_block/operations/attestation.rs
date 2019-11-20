@@ -15,11 +15,11 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::types::*;
-use crate::{Config, BeaconState, Error, BLSConfig};
+use crate::{Config, BeaconExecutive, Error, BLSConfig};
 use bm_le::tree_root;
 use core::cmp::min;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Push a new `Attestation` to the state.
 	pub fn process_attestation<BLS: BLSConfig>(&mut self, attestation: Attestation<C>) -> Result<(), Error> {
 		let data = attestation.data.clone();
@@ -63,9 +63,9 @@ impl<C: Config> BeaconState<C> {
 		}
 
 		if push_current {
-			self.current_epoch_attestations.push(pending_attestation);
+			self.state.current_epoch_attestations.push(pending_attestation);
 		} else {
-			self.previous_epoch_attestations.push(pending_attestation);
+			self.state.previous_epoch_attestations.push(pending_attestation);
 		}
 
 		Ok(())

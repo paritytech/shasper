@@ -15,9 +15,9 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::primitives::*;
-use crate::{Config, BeaconState, Error, utils, consts};
+use crate::{Config, BeaconExecutive, Error, utils, consts};
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	fn base_reward(&self, index: ValidatorIndex) -> Gwei {
 		let total_balance = self.total_active_balance();
 

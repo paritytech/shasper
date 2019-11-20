@@ -20,12 +20,12 @@ mod eth1;
 mod operations;
 
 use crate::types::*;
-use crate::{Config, BLSConfig, BeaconState, Error};
+use crate::{Config, BLSConfig, BeaconExecutive, Error};
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Process a block, assuming we are at given slot.
-	pub fn process_block<'a, 'b, B: Block<Config=C>, BLS: BLSConfig>(
-		&'a mut self,
+	pub fn process_block<'b, B: Block<Config=C>, BLS: BLSConfig>(
+		&mut self,
 		block: &'b B,
 	) -> Result<(), Error> where
 		UnsealedBeaconBlock<C>: From<&'b B>,

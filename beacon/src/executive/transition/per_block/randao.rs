@@ -15,10 +15,10 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::types::*;
-use crate::{Config, BeaconState, Error, BLSConfig};
+use crate::{Config, BeaconExecutive, Error, BLSConfig};
 use bm_le::tree_root;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Process randao information given in a block.
 	pub fn process_randao<BLS: BLSConfig>(&mut self, body: &BeaconBlockBody<C>) -> Result<(), Error> {
 		let proposer = &self.validators[
@@ -35,7 +35,7 @@ impl<C: Config> BeaconState<C> {
 		}
 
 		let current_epoch = self.current_epoch();
-		self.randao_mixes[
+		self.state.randao_mixes[
 			(current_epoch % C::epochs_per_historical_vector()) as usize
 		] = self.randao_mix(current_epoch) ^
 			C::hash(&[&body.randao_reveal[..]]);

@@ -21,10 +21,10 @@ mod deposit;
 mod voluntary_exit;
 
 use crate::types::*;
-use crate::{Config, BLSConfig, BeaconState, Error};
+use crate::{Config, BLSConfig, BeaconExecutive, Error};
 use core::cmp::min;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Process block operations.
 	pub fn process_operations<BLS: BLSConfig>(
 		&mut self,

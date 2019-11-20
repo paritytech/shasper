@@ -15,13 +15,13 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::types::*;
-use crate::{Config, BeaconState, Error, BLSConfig};
+use crate::{Config, BeaconExecutive, Error, BLSConfig};
 use bm_le::tree_root;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Process a block header.
-	pub fn process_block_header<'a, 'b, B: Block, BLS: BLSConfig>(
-		&'a mut self,
+	pub fn process_block_header<'b, B: Block, BLS: BLSConfig>(
+		&mut self,
 		block: &'b B
 	) -> Result<(), Error> where
 		UnsealedBeaconBlock<C>: From<&'b B>,
@@ -36,7 +36,7 @@ impl<C: Config> BeaconState<C> {
 			return Err(Error::BlockPreviousRootInvalid)
 		}
 
-		self.latest_block_header = BeaconBlockHeader {
+		self.state.latest_block_header = BeaconBlockHeader {
 			slot: block.slot(),
 			parent_root: *block.parent_root(),
 			body_root: tree_root::<C::Digest, _>(block.body()),

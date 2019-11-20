@@ -21,9 +21,9 @@ mod registry;
 mod slashing;
 mod finalize;
 
-use crate::{Config, BeaconState, Error};
+use crate::{Config, BeaconExecutive, Error};
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Process an epoch.
 	pub fn process_epoch(&mut self) -> Result<(), Error> {
 		self.process_justification_and_finalization()?;

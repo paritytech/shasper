@@ -15,11 +15,11 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::types::*;
-use crate::{Config, BeaconState, Error, BLSConfig, utils, consts};
+use crate::{Config, BeaconExecutive, Error, BLSConfig, utils, consts};
 use bm_le::tree_root;
 use core::cmp::min;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Push a new `Deposit` to the state.
 	pub fn process_deposit<BLS: BLSConfig>(&mut self, deposit: Deposit) -> Result<(), Error> {
 		if !utils::is_valid_merkle_branch::<C>(
@@ -32,7 +32,7 @@ impl<C: Config> BeaconState<C> {
 			return Err(Error::DepositMerkleInvalid)
 		}
 
-		self.eth1_deposit_index += 1;
+		self.state.eth1_deposit_index += 1;
 
 		let pubkey = deposit.data.pubkey.clone();
 		let amount = deposit.data.amount.clone();
@@ -65,8 +65,8 @@ impl<C: Config> BeaconState<C> {
 				),
 				slashed: false,
 			};
-			self.validators.push(validator);
-			self.balances.push(amount);
+			self.state.validators.push(validator);
+			self.state.balances.push(amount);
 		} else {
 			let index = validator_pubkeys.iter().position(|v| v == &pubkey)
 				.expect("Registry contains the public key");

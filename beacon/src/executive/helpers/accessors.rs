@@ -16,12 +16,12 @@
 
 use crate::types::*;
 use crate::primitives::*;
-use crate::{BeaconState, Config, Error, utils};
+use crate::{BeaconState, BeaconExecutive, Config, Error, utils};
 use vecarray::VecArray;
 use bm_le::tree_root;
 use core::cmp::{max, min};
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Get current epoch.
 	pub fn current_epoch(&self) -> Epoch {
 		utils::epoch_of_slot::<C>(self.slot)

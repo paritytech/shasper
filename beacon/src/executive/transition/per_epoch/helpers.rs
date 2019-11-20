@@ -16,11 +16,11 @@
 
 use crate::primitives::*;
 use crate::types::*;
-use crate::{Config, BeaconState, Error, utils};
+use crate::{Config, BeaconExecutive, Error, utils};
 use bm_le::tree_root;
 use core::cmp::Ordering;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Get attestations with matching source at given epoch.
 	pub fn matching_source_attestations(
 		&self,
