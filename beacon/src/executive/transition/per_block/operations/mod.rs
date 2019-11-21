@@ -20,7 +20,7 @@ mod attestation;
 mod deposit;
 mod voluntary_exit;
 
-use crate::types::*;
+use crate::types::BeaconBlockBody;
 use crate::{Config, BLSConfig, BeaconExecutive, Error};
 use core::cmp::min;
 

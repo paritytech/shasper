@@ -18,6 +18,16 @@ mod misc;
 mod operation;
 mod block;
 
-pub use self::misc::*;
-pub use self::operation::*;
-pub use self::block::*;
+pub use self::misc::{
+	Fork, Checkpoint, Validator, AttestationData, AttestationDataAndCustodyBit,
+	IndexedAttestation, SigningIndexedAttestation, PendingAttestation, Eth1Data,
+	HistoricalBatch, DepositData, SigningDepositData, BeaconBlockHeader,
+	SigningBeaconBlockHeader,
+};
+pub use self::operation::{
+	ProposerSlashing, AttesterSlashing, Attestation, SigningAttestation,
+	Deposit, VoluntaryExit, SigningVoluntaryExit
+};
+pub use self::block::{
+	BeaconBlockBody, BeaconBlock, UnsealedBeaconBlock, Block,
+};

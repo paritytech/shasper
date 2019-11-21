@@ -33,13 +33,19 @@ mod config;
 mod executive;
 mod genesis;
 
-pub use self::error::*;
-pub use self::config::*;
-pub use self::executive::*;
-pub use self::genesis::*;
+pub use self::error::Error;
+pub use self::config::{
+	BLSConfig, BLSNoVerification,
+	Config, MinimalConfig, MainnetConfig,
+};
+pub use self::executive::{BeaconState, BeaconExecutive};
+pub use self::genesis::{genesis, genesis_beacon_state};
 
-use self::primitives::*;
-use self::types::*;
+use self::primitives::{H256, H768};
+use self::types::{
+	Attestation, UnsealedBeaconBlock, BeaconBlockBody, BeaconBlock, VoluntaryExit, Deposit,
+	Block, AttesterSlashing, ProposerSlashing, Eth1Data, SigningBeaconBlockHeader,
+};
 use core::cmp::min;
 use bm_le::tree_root;
 

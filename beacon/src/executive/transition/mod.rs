@@ -17,8 +17,8 @@
 mod per_block;
 mod per_epoch;
 
-use crate::primitives::*;
-use crate::types::*;
+use crate::primitives::{Uint, H256};
+use crate::types::{Block, SigningBeaconBlockHeader};
 use crate::{Error, Config, BeaconExecutive, BLSConfig};
 use bm_le::tree_root;
 

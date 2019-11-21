@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::primitives::*;
-use crate::types::*;
+use crate::primitives::H256;
+use crate::types::BeaconBlock;
 use crate::{Config, BeaconExecutive, Error};
 
 impl<'a, C: Config> BeaconExecutive<'a, C> {

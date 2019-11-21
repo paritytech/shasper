@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::primitives::*;
-use crate::types::*;
-use crate::{Config, BeaconExecutive, Error, utils};
-use bm_le::tree_root;
-use core::cmp::Ordering;
+use crate::primitives::{Epoch, Gwei, ValidatorIndex};
+use crate::types::PendingAttestation;
+use crate::{Config, BeaconExecutive, Error};
 
 impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Get attestations with matching source at given epoch.

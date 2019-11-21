@@ -19,7 +19,7 @@ mod transition;
 mod choice;
 mod assignment;
 
-pub use self::assignment::*;
+pub use self::assignment::CommitteeAssignment;
 
 use core::ops::Deref;
 #[cfg(feature = "serde")]
@@ -27,12 +27,15 @@ use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
 use vecarray::VecArray;
-use crate::*;
-use crate::primitives::*;
-use crate::types::*;
+use crate::Config;
+use crate::primitives::{H256, Uint, ValidatorIndex, Gwei};
+use crate::types::{
+	BeaconBlockHeader, Validator, Eth1Data, PendingAttestation, Checkpoint, Fork,
+};
 use crate::consts;
 
 #[derive(PartialEq, Eq, Debug)]
+/// Beacon executive. Cached data for intermediate state transition.
 pub struct BeaconExecutive<'a, C: Config> {
 	state: &'a mut BeaconState<C>,
 
@@ -41,6 +44,7 @@ pub struct BeaconExecutive<'a, C: Config> {
 }
 
 impl<'a, C: Config> BeaconExecutive<'a, C> {
+	/// Create an executive from a mutable state reference.
 	pub fn new(state: &'a mut BeaconState<C>) -> Self {
 		Self {
 			state,

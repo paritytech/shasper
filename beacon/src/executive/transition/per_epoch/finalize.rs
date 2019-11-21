@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::types::*;
+use crate::types::HistoricalBatch;
 use crate::{Config, BeaconExecutive, Error};
-use bm_le::{MaxVec, Compact, tree_root};
+use bm_le::tree_root;
 use core::cmp::min;
 
 impl<'a, C: Config> BeaconExecutive<'a, C> {

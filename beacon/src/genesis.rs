@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::primitives::*;
-use crate::types::*;
+use crate::primitives::Uint;
+use crate::types::{Deposit, BeaconBlockHeader, BeaconBlock, Eth1Data, BeaconBlockBody};
 use crate::{Config, BeaconState, BeaconExecutive, BLSConfig, Error};
-use bm_le::{MaxVec, Compact, tree_root};
+use bm_le::tree_root;
 
 /// Generate genesis state and genesis block from given deposits, timestamp and eth1 data.
 pub fn genesis<C: Config, BLS: BLSConfig>(

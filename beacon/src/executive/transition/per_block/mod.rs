@@ -19,7 +19,7 @@ mod randao;
 mod eth1;
 mod operations;
 
-use crate::types::*;
+use crate::types::{Block, UnsealedBeaconBlock};
 use crate::{Config, BLSConfig, BeaconExecutive, Error};
 
 impl<'a, C: Config> BeaconExecutive<'a, C> {
