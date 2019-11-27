@@ -27,7 +27,7 @@ impl<'a, C: Config> BeaconExecutive<'a, C> {
 		let previous_epoch = self.previous_epoch();
 		let current_epoch = self.current_epoch();
 		let old_previous_justified_checkpoint = self.previous_justified_checkpoint.clone();
-		let old_current_justified_checkpoint = self.current_justified_checkpoint.clone();;
+		let old_current_justified_checkpoint = self.current_justified_checkpoint.clone();
 
 		// Process justifications
 		self.state.previous_justified_checkpoint = self.current_justified_checkpoint.clone();

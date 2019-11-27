@@ -103,7 +103,7 @@ impl<'a, C: Config> BeaconExecutive<'a, C> {
 			1,
 			min(
 				C::max_committees_per_slot(),
-				active_validator_len() as u64 /
+				active_validator_len as u64 /
 					C::slots_per_epoch() /
 					C::target_committee_size(),
 			)
