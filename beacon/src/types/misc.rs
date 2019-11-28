@@ -20,6 +20,7 @@ use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
 use vecarray::VecArray;
 use crate::Config;
+use crate::components::Checkpoint as CheckpointT;
 use crate::primitives::{Version, Uint, H256, ValidatorId, Signature};
 
 #[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
@@ -46,6 +47,12 @@ pub struct Checkpoint {
 	pub epoch: Uint,
 	/// Root of the checkpoint
 	pub root: H256,
+}
+
+impl CheckpointT for Checkpoint {
+	fn epoch(&self) -> u64 {
+		self.epoch
+	}
 }
 
 #[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]

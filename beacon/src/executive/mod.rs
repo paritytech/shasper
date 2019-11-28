@@ -27,11 +27,12 @@ use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
 use vecarray::VecArray;
-use crate::Config;
+use crate::{Config, Error};
 use crate::primitives::{H256, Uint, ValidatorIndex, Gwei};
 use crate::types::{
 	BeaconBlockHeader, Validator, Eth1Data, PendingAttestation, Checkpoint, Fork,
 };
+use crate::components::Registry;
 use crate::consts;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -60,6 +61,22 @@ impl<'a, C: Config> Deref for BeaconExecutive<'a, C> {
 
 	fn deref(&self) -> &BeaconState<C> {
 		&self.state
+	}
+}
+
+impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
+	type Error = Error;
+	type Checkpoint = Checkpoint;
+
+	fn total_active_balance(&self) -> u64 {
+		self.total_active_balance()
+	}
+
+	fn attesting_target_balance(
+		&self,
+		checkpoint: &Self::Checkpoint
+	) -> Result<u64, Self::Error> {
+		self.attesting_balance(&self.matching_target_attestations(checkpoint.epoch)?)
 	}
 }
 

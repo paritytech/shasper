@@ -1,3 +1,6 @@
+use vecarray::VecArray;
+use crate::consts;
+
 type Epoch = u64;
 type Balance = u64;
 
@@ -17,10 +20,10 @@ pub trait Registry {
 }
 
 pub struct JustificationProcessor<C: Checkpoint> {
-	justification_bits: [bool; 4],
-	current_justified_checkpoint: C,
-	previous_justified_checkpoint: C,
-	finalized_checkpoint: C,
+	pub justification_bits: VecArray<bool, consts::JustificationBitsLength>,
+	pub current_justified_checkpoint: C,
+	pub previous_justified_checkpoint: C,
+	pub finalized_checkpoint: C,
 }
 
 impl<C: Checkpoint> JustificationProcessor<C> {
