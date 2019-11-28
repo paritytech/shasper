@@ -67,6 +67,8 @@ impl<'a, C: Config> Deref for BeaconExecutive<'a, C> {
 impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
 	type Error = Error;
 	type Checkpoint = Checkpoint;
+	type Validator = (usize, Validator);
+	type Attestation = PendingAttestation<C>;
 
 	fn total_active_balance(&self) -> u64 {
 		self.total_active_balance()
@@ -77,6 +79,85 @@ impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
 		checkpoint: &Self::Checkpoint
 	) -> Result<u64, Self::Error> {
 		self.attesting_balance(&self.matching_target_attestations(checkpoint.epoch)?)
+	}
+
+	fn min_inclusion_delay_attestation(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+		index: u64,
+	) -> Result<Option<&Self::Attestation>, Self::Error> {
+		unimplemented!()
+	}
+
+	fn unslashed_attesting_balance(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<u64, Self::Error> {
+		unimplemented!()
+	}
+
+	fn unslashed_attesting_validators(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error> {
+		unimplemented!()
+	}
+
+	fn unslashed_attesting_target_balance(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<u64, Self::Error> {
+		unimplemented!()
+	}
+
+	fn unslashed_attesting_target_validators(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error> {
+		unimplemented!()
+	}
+
+	fn unslashed_attesting_matching_head_balance(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<u64, Self::Error> {
+		unimplemented!()
+	}
+
+	fn unslashed_attesting_matching_head_validators(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error> {
+		unimplemented!()
+	}
+
+	fn balance(
+		&self,
+		index: u64,
+	) -> Result<u64, Self::Error> {
+		unimplemented!()
+	}
+
+	fn increase_balance(
+		&mut self,
+		index: u64,
+		value: u64,
+	) -> Result<(), Self::Error> {
+		unimplemented!()
+	}
+
+	fn decrease_balance(
+		&mut self,
+		index: u64,
+		value: u64,
+	) -> Result<(), Self::Error> {
+		unimplemented!()
+	}
+
+	fn validators(
+		&self,
+	) -> Result<Box<Iterator<Item=&dyn Validator>>, Self::Error> {
+		unimplemented!()
 	}
 }
 

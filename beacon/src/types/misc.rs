@@ -20,7 +20,9 @@ use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
 use vecarray::VecArray;
 use crate::Config;
-use crate::components::Checkpoint as CheckpointT;
+use crate::components::{
+	Checkpoint as CheckpointT, Validator as ValidatorT, Attestation as AttestationT
+};
 use crate::primitives::{Version, Uint, H256, ValidatorId, Signature};
 
 #[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
@@ -95,6 +97,16 @@ impl Validator {
 	pub fn is_slashable(&self, epoch: Uint) -> bool {
 		self.slashed == false &&
 			self.activation_epoch <= epoch && epoch < self.withdrawable_epoch
+	}
+}
+
+impl ValidatorT for (usize, Validator) {
+	type Checkpoint = Checkpoint;
+
+	fn index(&self) -> u64 { self.0 as u64 }
+	fn is_eligible(&self, checkpoint: &Checkpoint) -> bool {
+		self.1.is_active(checkpoint.epoch()) ||
+			(self.1.slashed && checkpoint.epoch() + 1 < self.1.withdrawable_epoch)
 	}
 }
 
@@ -202,6 +214,10 @@ pub struct PendingAttestation<C: Config> {
 	/// Proposer index
 	#[cfg_attr(feature = "serde", serde(deserialize_with = "crate::utils::deserialize_uint"))]
 	pub proposer_index: Uint,
+}
+
+impl<C: Config> AttestationT for PendingAttestation<C> {
+
 }
 
 #[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default, Debug)]

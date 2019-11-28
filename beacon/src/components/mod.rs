@@ -3,6 +3,18 @@ use crate::consts;
 
 type Epoch = u64;
 type Balance = u64;
+type ValidatorIndex = u64;
+
+pub trait Validator {
+	type Checkpoint;
+
+	fn index(&self) -> ValidatorIndex;
+	fn is_eligible(&self, checkpoint: &Self::Checkpoint) -> bool;
+}
+
+pub trait Attestation {
+
+}
 
 pub trait Checkpoint: Clone {
 	fn epoch(&self) -> Epoch;
@@ -10,13 +22,63 @@ pub trait Checkpoint: Clone {
 
 pub trait Registry {
 	type Checkpoint;
+	type Validator: Validator<Checkpoint=Self::Checkpoint>;
+	type Attestation;
 	type Error;
 
 	fn total_active_balance(&self) -> Balance;
 	fn attesting_target_balance(
 		&self,
-		checkpoint: &Self::Checkpoint
+		source_checkpoint: &Self::Checkpoint
 	) -> Result<Balance, Self::Error>;
+	fn min_inclusion_delay_attestation(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+		index: ValidatorIndex,
+	) -> Result<Option<&Self::Attestation>, Self::Error>;
+
+	fn unslashed_attesting_balance(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Balance, Self::Error>;
+	fn unslashed_attesting_validators(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error>;
+	fn unslashed_attesting_target_balance(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Balance, Self::Error>;
+	fn unslashed_attesting_target_validators(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error>;
+	fn unslashed_attesting_matching_head_balance(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Balance, Self::Error>;
+	fn unslashed_attesting_matching_head_validators(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error>;
+
+	fn balance(
+		&self,
+		index: ValidatorIndex
+	) -> Result<Balance, Self::Error>;
+	fn increase_balance(
+		&mut self,
+		index: ValidatorIndex,
+		value: Balance,
+	) -> Result<(), Self::Error>;
+	fn decrease_balance(
+		&mut self,
+		index: ValidatorIndex,
+		value: Balance,
+	) -> Result<(), Self::Error>;
+	fn validators(
+		&self,
+	) -> Result<Box<Iterator<Item=&dyn Self::Validator>>, Self::Error>;
 }
 
 pub struct JustificationProcessor<C: Checkpoint> {
