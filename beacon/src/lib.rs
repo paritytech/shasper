@@ -28,6 +28,7 @@ pub mod consts;
 /// Exported beacon chain utilities.
 pub mod utils;
 
+mod components;
 mod error;
 mod config;
 mod executive;
