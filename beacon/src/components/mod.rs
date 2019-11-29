@@ -18,7 +18,8 @@ pub trait Validator {
 }
 
 pub trait Attestation {
-
+	fn proposer_index(&self) -> ValidatorIndex;
+	fn inclusion_delay(&self) -> u64;
 }
 
 pub trait Checkpoint: Clone {
@@ -26,9 +27,9 @@ pub trait Checkpoint: Clone {
 }
 
 pub trait Registry {
-	type Checkpoint;
+	type Checkpoint: Checkpoint;
 	type Validator: Validator<Checkpoint=Self::Checkpoint>;
-	type Attestation;
+	type Attestation: Attestation;
 	type Error;
 
 	fn total_active_balance(&self) -> Balance;

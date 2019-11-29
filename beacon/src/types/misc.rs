@@ -217,7 +217,13 @@ pub struct PendingAttestation<C: Config> {
 }
 
 impl<C: Config> AttestationT for PendingAttestation<C> {
+	fn proposer_index(&self) -> u64 {
+		self.proposer_index
+	}
 
+	fn inclusion_delay(&self) -> u64 {
+		self.inclusion_delay
+	}
 }
 
 #[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default, Debug)]
