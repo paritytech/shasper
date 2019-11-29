@@ -100,13 +100,12 @@ impl Validator {
 	}
 }
 
-impl ValidatorT for (usize, Validator) {
+impl ValidatorT for Validator {
 	type Checkpoint = Checkpoint;
 
-	fn index(&self) -> u64 { self.0 as u64 }
 	fn is_eligible(&self, checkpoint: &Checkpoint) -> bool {
-		self.1.is_active(checkpoint.epoch()) ||
-			(self.1.slashed && checkpoint.epoch() + 1 < self.1.withdrawable_epoch)
+		self.is_active(checkpoint.epoch()) ||
+			(self.slashed && checkpoint.epoch() + 1 < self.withdrawable_epoch)
 	}
 }
 

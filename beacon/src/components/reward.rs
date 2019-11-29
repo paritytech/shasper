@@ -27,12 +27,10 @@ pub fn process<R: Registry, C: Config>(
 	macro_rules! micro_incentives {
 		( $balance:tt, $validators:tt ) => {
 			let attesting_balance = registry.$balance(&previous_checkpoint)?;
-			for validator in registry.validators()? {
-				let index = validator.index();
-
+			for (index, validator) in registry.validators()? {
 				if validator.is_eligible(&previous_checkpoint) {
 					if registry.$validators(&previous_checkpoint)?
-						.find(|v| v.index() == index).is_some()
+						.find(|(i, _)| *i == index).is_some()
 					{
 						*rewards.entry(index).or_default() += base::<_, C>(registry, index)? *
 							attesting_balance / total_balance;
@@ -50,8 +48,7 @@ pub fn process<R: Registry, C: Config>(
 					  unslashed_attesting_matching_head_validators);
 
 	// Proposer and inclusion delay micro-rewards
-	for validator in registry.unslashed_attesting_validators(&previous_checkpoint)? {
-		let index = validator.index();
+	for (index, validator) in registry.unslashed_attesting_validators(&previous_checkpoint)? {
 		let attestation = registry.min_inclusion_delay_attestation(
 			&previous_checkpoint, index
 		)?;
@@ -68,15 +65,13 @@ pub fn process<R: Registry, C: Config>(
 	// Inactivity penalty
 	let finality_delay = previous_checkpoint.epoch() - finalized_checkpoint.epoch();
 	if finality_delay > C::min_epochs_to_inactivity_penalty() {
-		for validator in registry.validators()? {
-			let index = validator.index();
-
+		for (index, validator) in registry.validators()? {
 			if validator.is_eligible(&previous_checkpoint) {
 				*penalties.entry(index).or_default() += base::<_, C>(registry, index)? *
 					consts::BASE_REWARDS_PER_EPOCH;
 
 				if !registry.unslashed_attesting_target_validators(&previous_checkpoint)?
-					.find(|v| v.index() == index).is_some()
+					.find(|(i, _)| *i == index).is_some()
 				{
 					*penalties.entry(index).or_default() +=
 						registry.effective_balance(index)? * finality_delay /

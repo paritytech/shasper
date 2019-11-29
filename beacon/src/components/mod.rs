@@ -13,7 +13,6 @@ type ValidatorIndex = u64;
 pub trait Validator {
 	type Checkpoint;
 
-	fn index(&self) -> ValidatorIndex;
 	fn is_eligible(&self, checkpoint: &Self::Checkpoint) -> bool;
 }
 
@@ -41,32 +40,32 @@ pub trait Registry {
 		&self,
 		source_checkpoint: &Self::Checkpoint,
 		index: ValidatorIndex,
-	) -> Result<Option<&Self::Attestation>, Self::Error>;
+	) -> Result<Option<Self::Attestation>, Self::Error>;
 
 	fn unslashed_attesting_balance(
 		&self,
 		source_checkpoint: &Self::Checkpoint,
 	) -> Result<Balance, Self::Error>;
-	fn unslashed_attesting_validators(
-		&self,
+	fn unslashed_attesting_validators<'a>(
+		&'a self,
 		source_checkpoint: &Self::Checkpoint,
-	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error>;
+	) -> Result<Box<dyn Iterator<Item=(ValidatorIndex, &Self::Validator)> + 'a>, Self::Error>;
 	fn unslashed_attesting_target_balance(
 		&self,
 		source_checkpoint: &Self::Checkpoint,
 	) -> Result<Balance, Self::Error>;
-	fn unslashed_attesting_target_validators(
-		&self,
+	fn unslashed_attesting_target_validators<'a>(
+		&'a self,
 		source_checkpoint: &Self::Checkpoint,
-	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error>;
+	) -> Result<Box<dyn Iterator<Item=(ValidatorIndex, &Self::Validator)> + 'a>, Self::Error>;
 	fn unslashed_attesting_matching_head_balance(
 		&self,
 		source_checkpoint: &Self::Checkpoint,
 	) -> Result<Balance, Self::Error>;
-	fn unslashed_attesting_matching_head_validators(
-		&self,
+	fn unslashed_attesting_matching_head_validators<'a>(
+		&'a self,
 		source_checkpoint: &Self::Checkpoint,
-	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error>;
+	) -> Result<Box<dyn Iterator<Item=(ValidatorIndex, &Self::Validator)> + 'a>, Self::Error>;
 
 	fn balance(
 		&self,
@@ -86,7 +85,7 @@ pub trait Registry {
 		index: ValidatorIndex,
 		value: Balance,
 	);
-	fn validators(
-		&self,
-	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error>;
+	fn validators<'a>(
+		&'a self,
+	) -> Result<Box<dyn Iterator<Item=(ValidatorIndex, &Self::Validator)> + 'a>, Self::Error>;
 }

@@ -32,7 +32,7 @@ use crate::primitives::{H256, Uint, ValidatorIndex, Gwei};
 use crate::types::{
 	BeaconBlockHeader, Validator, Eth1Data, PendingAttestation, Checkpoint, Fork,
 };
-use crate::components::Registry;
+use crate::components::{Registry, Checkpoint as CheckpointT};
 use crate::consts;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -64,10 +64,32 @@ impl<'a, C: Config> Deref for BeaconExecutive<'a, C> {
 	}
 }
 
+macro_rules! unslashed_balance {
+	( $attestations:tt, $epoch:expr, $self:expr ) => ({
+		let attestations = $self.$attestations($epoch)?;
+		let unslashed_attesting_indices =
+			$self.unslashed_attesting_indices(&attestations)?;
+
+		Ok($self.total_balance(&unslashed_attesting_indices))
+	})
+}
+
+macro_rules! unslashed_validators {
+	( $attestations:tt, $epoch:expr, $self:expr ) => ({
+		let attestations = $self.$attestations($epoch)?;
+		let unslashed_attesting_indices =
+			$self.unslashed_attesting_indices(&attestations)?;
+
+		Ok(Box::new(unslashed_attesting_indices.into_iter().map(move |index| {
+			(index, &$self.validators[index as usize])
+		})))
+	})
+}
+
 impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
 	type Error = Error;
 	type Checkpoint = Checkpoint;
-	type Validator = (usize, Validator);
+	type Validator = Validator;
 	type Attestation = PendingAttestation<C>;
 
 	fn total_active_balance(&self) -> u64 {
@@ -85,64 +107,79 @@ impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
 		&self,
 		source_checkpoint: &Self::Checkpoint,
 		index: u64,
-	) -> Result<Option<&Self::Attestation>, Self::Error> {
-		unimplemented!()
+	) -> Result<Option<Self::Attestation>, Self::Error> {
+		let matching_source_attestations =
+			self.matching_source_attestations(source_checkpoint.epoch())?;
+
+		Ok(Some(matching_source_attestations.iter()
+			.map(|a| Ok((
+				a,
+				self.attesting_indices(&a.data, &a.aggregation_bits)?.contains(&index)
+			)))
+			.collect::<Result<Vec<_>, _>>()?
+			.into_iter()
+			.filter(|(_, c)| *c)
+			.map(|(a, _)| a)
+			.fold(matching_source_attestations[0].clone(), |a, b| {
+				if a.inclusion_delay < b.inclusion_delay { a } else { b.clone() }
+			})))
 	}
 
 	fn unslashed_attesting_balance(
 		&self,
 		source_checkpoint: &Self::Checkpoint,
 	) -> Result<u64, Self::Error> {
-		unimplemented!()
+		unslashed_balance!(matching_source_attestations, source_checkpoint.epoch(), self)
 	}
 
-	fn unslashed_attesting_validators(
-		&self,
+	fn unslashed_attesting_validators<'b>(
+		&'b self,
 		source_checkpoint: &Self::Checkpoint,
-	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error> {
-		unimplemented!()
+	) -> Result<Box<dyn Iterator<Item=(u64, &Self::Validator)> + 'b>, Self::Error> {
+		unslashed_validators!(matching_source_attestations, source_checkpoint.epoch(), self)
 	}
 
 	fn unslashed_attesting_target_balance(
 		&self,
 		source_checkpoint: &Self::Checkpoint,
 	) -> Result<u64, Self::Error> {
-		unimplemented!()
+		unslashed_balance!(matching_target_attestations, source_checkpoint.epoch(), self)
 	}
 
-	fn unslashed_attesting_target_validators(
-		&self,
+	fn unslashed_attesting_target_validators<'b>(
+		&'b self,
 		source_checkpoint: &Self::Checkpoint,
-	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error> {
-		unimplemented!()
+	) -> Result<Box<dyn Iterator<Item=(u64, &Self::Validator)> + 'b>, Self::Error> {
+		unslashed_validators!(matching_target_attestations, source_checkpoint.epoch(), self)
 	}
 
 	fn unslashed_attesting_matching_head_balance(
 		&self,
 		source_checkpoint: &Self::Checkpoint,
 	) -> Result<u64, Self::Error> {
-		unimplemented!()
+		unslashed_balance!(matching_head_attestations, source_checkpoint.epoch(), self)
 	}
 
-	fn unslashed_attesting_matching_head_validators(
-		&self,
+	fn unslashed_attesting_matching_head_validators<'b>(
+		&'b self,
 		source_checkpoint: &Self::Checkpoint,
-	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error> {
-		unimplemented!()
+	) -> Result<Box<dyn Iterator<Item=(u64, &Self::Validator)> + 'b>, Self::Error> {
+		unslashed_validators!(matching_head_attestations, source_checkpoint.epoch(), self)
 	}
 
 	fn balance(
 		&self,
 		index: u64,
 	) -> Result<u64, Self::Error> {
-		unimplemented!()
+		self.balances.get(index as usize).cloned().ok_or(Error::IndexOutOfRange)
 	}
 
 	fn effective_balance(
 		&self,
 		index: u64,
 	) -> Result<u64, Self::Error> {
-		unimplemented!()
+		self.validators.get(index as usize).map(|v| v.effective_balance)
+			.ok_or(Error::IndexOutOfRange)
 	}
 
 	fn increase_balance(
@@ -150,7 +187,7 @@ impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
 		index: u64,
 		value: u64,
 	) {
-		unimplemented!()
+		self.increase_balance(index, value)
 	}
 
 	fn decrease_balance(
@@ -158,13 +195,13 @@ impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
 		index: u64,
 		value: u64,
 	) {
-		unimplemented!()
+		self.decrease_balance(index, value)
 	}
 
-	fn validators(
-		&self,
-	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error> {
-		unimplemented!()
+	fn validators<'b>(
+		&'b self,
+	) -> Result<Box<dyn Iterator<Item=(u64, &Self::Validator)> + 'b>, Self::Error> {
+		Ok(Box::new(self.validators.iter().enumerate().map(|(i, v)| (i as u64, v))))
 	}
 }
 
