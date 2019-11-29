@@ -138,11 +138,18 @@ impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
 		unimplemented!()
 	}
 
+	fn effective_balance(
+		&self,
+		index: u64,
+	) -> Result<u64, Self::Error> {
+		unimplemented!()
+	}
+
 	fn increase_balance(
 		&mut self,
 		index: u64,
 		value: u64,
-	) -> Result<(), Self::Error> {
+	) {
 		unimplemented!()
 	}
 
@@ -150,13 +157,13 @@ impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
 		&mut self,
 		index: u64,
 		value: u64,
-	) -> Result<(), Self::Error> {
+	) {
 		unimplemented!()
 	}
 
 	fn validators(
 		&self,
-	) -> Result<Box<Iterator<Item=&dyn Validator>>, Self::Error> {
+	) -> Result<Box<dyn Iterator<Item=&Self::Validator>>, Self::Error> {
 		unimplemented!()
 	}
 }

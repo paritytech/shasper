@@ -19,6 +19,8 @@
 #![warn(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate alloc;
+
 pub use beacon_primitives as primitives;
 
 /// Types for operations and blocks.

@@ -15,7 +15,7 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::types::Checkpoint;
-use crate::components::JustificationProcessor;
+use crate::components::Justifier;
 use crate::{Config, BeaconExecutive, Error};
 
 impl<'a, C: Config> BeaconExecutive<'a, C> {
@@ -36,14 +36,14 @@ impl<'a, C: Config> BeaconExecutive<'a, C> {
 			root: self.block_root(current_epoch)?,
 		};
 
-		let mut processor = JustificationProcessor {
+		let mut processor = Justifier {
 			justification_bits: self.justification_bits.clone(),
 			current_justified_checkpoint: self.current_justified_checkpoint.clone(),
 			previous_justified_checkpoint: self.previous_justified_checkpoint.clone(),
 			finalized_checkpoint: self.finalized_checkpoint.clone(),
 		};
 
-		processor.advance_epoch(previous_checkpoint, current_checkpoint, self)?;
+		processor.process(previous_checkpoint, current_checkpoint, self)?;
 
 		self.state.justification_bits = processor.justification_bits;
 		self.state.current_justified_checkpoint = processor.current_justified_checkpoint;
