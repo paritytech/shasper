@@ -13,10 +13,9 @@
 
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
-use beacon::{genesis_beacon_state, Config, MinimalConfig, Inherent, Transaction};
+use beacon::{genesis_beacon_state, Config, MinimalConfig, Inherent, Transaction, BeaconExecutive};
 use beacon::primitives::*;
 use beacon::types::*;
-use core::cmp::min;
 use blockchain::{AsExternalities, Auxiliary, Block as BlockT};
 use blockchain::backend::{SharedMemoryBackend, SharedCommittable, ChainQuery, Store, ImportLock, Operation};
 use blockchain::import::{SharedBlockImporter, MutexImporter};
@@ -352,20 +351,18 @@ fn builder_thread<B, I, C: Config + Clone>(
 			let externalities = state.as_externalities();
 			let current_slot = head_block.0.slot + 1;
 			executor.initialize_block(externalities, current_slot).unwrap();
-			let current_epoch = externalities.state().current_epoch();
+			let executive = BeaconExecutive::new(externalities.state_mut());
+			let current_epoch = executive.current_epoch();
 
-			let randao_domain = externalities.state()
-				.domain(C::domain_randao(), None);
-			let proposer_domain = externalities.state()
-				.domain(C::domain_beacon_proposer(), None);
-			let attestation_domain = externalities.state()
-				.domain(C::domain_beacon_attester(), None);
+			let randao_domain = executive.domain(C::domain_randao(), None);
+			let proposer_domain = executive.domain(C::domain_beacon_proposer(), None);
+			let attestation_domain = executive.domain(C::domain_beacon_attester(), None);
 
 			for (validator_id, validator_seckey) in &keys {
-				let validator_index = externalities.state().validator_index(validator_id);
+				let validator_index = executive.validator_index(validator_id);
 
 				if let Some(validator_index) = validator_index {
-					let committee_assignment = externalities.state()
+					let committee_assignment = executive
 						.committee_assignment(current_epoch, validator_index).unwrap();
 					if let Some(committee_assignment) = committee_assignment {
 						if committee_assignment.slot == current_slot {
@@ -379,11 +376,10 @@ fn builder_thread<B, I, C: Config + Clone>(
 							let target_root = if target_slot == current_slot {
 								head
 							} else {
-								externalities.state()
-									.block_root(target_epoch).unwrap()
+								executive.block_root(target_epoch).unwrap()
 							};
-							let source_epoch = externalities.state().current_justified_checkpoint.epoch;
-							let source_root = externalities.state().current_justified_checkpoint.root;
+							let source_epoch = executive.current_justified_checkpoint.epoch;
+							let source_root = executive.current_justified_checkpoint.root;
 							trace!(
 								"Casper source {} ({}) to target {} ({})",
 								source_epoch, source_root, target_epoch, target_root,
@@ -432,8 +428,8 @@ fn builder_thread<B, I, C: Config + Clone>(
 				}
 			}
 
-			let proposer_index = externalities.state().beacon_proposer_index().unwrap();
-			let proposer_pubkey = externalities.state().validator_pubkey(proposer_index).unwrap();
+			let proposer_index = executive.beacon_proposer_index().unwrap();
+			let proposer_pubkey = executive.validator_pubkey(proposer_index).unwrap();
 			trace!("Current proposer {} ({}) on epoch {}", proposer_index, proposer_pubkey, current_epoch);
 
 			let seckey = match keys.get(&proposer_pubkey) {

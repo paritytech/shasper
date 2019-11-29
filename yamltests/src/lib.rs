@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use ssz::Encode;
 use serde::de::DeserializeOwned;
 use description::{TestDescription, TestType};
-use beacon::{BeaconState, Config};
+use beacon::{BeaconState, BeaconExecutive, Config};
 
 #[derive(Debug)]
 pub enum Error {
@@ -49,14 +49,15 @@ pub fn test(desc: TestDescription) {
 	}
 }
 
-pub fn test_state_with<C: Config, F: FnOnce(&mut BeaconState<C>) -> Result<(), beacon::Error>>(
+pub fn test_state_with<C: Config, F: FnOnce(&mut BeaconExecutive<C>) -> Result<(), beacon::Error>>(
 	description: &str, pre: &BeaconState<C>, post: Option<&BeaconState<C>>, f: F
 ) {
 	print!("Running test: {} ...", description);
 
 	let mut state = pre.clone();
+	let mut executive = BeaconExecutive::new(&mut state);
 
-	match f(&mut state) {
+	match f(&mut executive) {
 		Ok(()) => {
 			print!(" accepted");
 

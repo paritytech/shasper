@@ -3,9 +3,6 @@ mod justification;
 
 pub use self::justification::Justifier;
 
-use vecarray::VecArray;
-use crate::consts;
-
 type Epoch = u64;
 type Balance = u64;
 type ValidatorIndex = u64;

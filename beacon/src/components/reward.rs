@@ -1,5 +1,5 @@
 use alloc::collections::BTreeMap;
-use super::{Registry, Epoch, Checkpoint, Validator, Attestation, ValidatorIndex, Balance};
+use super::{Registry, Checkpoint, Validator, Attestation, ValidatorIndex, Balance};
 use crate::{Config, utils, consts};
 
 pub fn base<R: Registry, C: Config>(
