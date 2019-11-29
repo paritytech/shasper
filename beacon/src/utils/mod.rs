@@ -21,10 +21,9 @@ mod serde;
 pub use self::serde::*;
 
 use crate::{Config, Error};
-use crate::primitives::*;
+use crate::primitives::{H256, Uint, ValidatorIndex, Version};
 use core::cmp::max;
 use core::convert::TryInto;
-use primitive_types::H256;
 
 /// Convert integer to bytes.
 pub fn to_bytes(v: Uint) -> H256 {

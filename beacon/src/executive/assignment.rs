@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::primitives::*;
-use crate::{Config, BeaconState, Error, utils};
+use crate::primitives::ValidatorId;
+use crate::{Config, BeaconExecutive, Error, utils};
 
 /// Committee assignment.
 pub struct CommitteeAssignment {
@@ -27,7 +27,7 @@ pub struct CommitteeAssignment {
 	pub slot: u64,
 }
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Find committee assignment at slot.
 	pub fn committee_assignment(
 		&self,

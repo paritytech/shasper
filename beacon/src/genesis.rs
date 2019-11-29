@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::primitives::*;
-use crate::types::*;
-use crate::{Config, BeaconState, BLSConfig, Error};
-use bm_le::{MaxVec, Compact, tree_root};
+use crate::primitives::Uint;
+use crate::types::{Deposit, BeaconBlockHeader, BeaconBlock, Eth1Data, BeaconBlockBody};
+use crate::{Config, BeaconState, BeaconExecutive, BLSConfig, Error};
+use bm_le::tree_root;
 
 /// Generate genesis state and genesis block from given deposits, timestamp and eth1 data.
 pub fn genesis<C: Config, BLS: BLSConfig>(
@@ -57,8 +57,11 @@ pub fn genesis_beacon_state<C: Config, BLS: BLSConfig>(
 		state.randao_mixes[i] = genesis_eth1_data.block_hash;
 	}
 
-	for deposit in deposits {
-		state.process_deposit::<BLS>(deposit.clone())?;
+	{
+		let mut executive = BeaconExecutive::new(&mut state);
+		for deposit in deposits {
+			executive.process_deposit::<BLS>(deposit.clone())?;
+		}
 	}
 
 	for validator in state.validators.iter_mut() {

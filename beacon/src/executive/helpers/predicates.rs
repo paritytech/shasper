@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::types::*;
-use crate::{BeaconState, Config, BLSConfig};
+use crate::types::{IndexedAttestation, AttestationDataAndCustodyBit};
+use crate::{BeaconExecutive, Config, BLSConfig};
 use bm_le::tree_root;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Check if ``indexed_attestation`` has valid indices and signature.
 	pub fn is_valid_indexed_attestation<BLS: BLSConfig>(
 		&self,

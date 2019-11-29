@@ -21,14 +21,13 @@ use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
 use vecarray::VecArray;
-use crate::*;
-use crate::primitives::*;
-use crate::types::*;
+use crate::{Config, consts};
+use crate::primitives::{Uint, Signature, H256};
+use super::misc::{IndexedAttestation, BeaconBlockHeader, DepositData, AttestationData};
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Block proposer slashing.
 pub struct ProposerSlashing {
 	/// Proposer index
@@ -40,10 +39,10 @@ pub struct ProposerSlashing {
 	pub header_2: BeaconBlockHeader,
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config"))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Block attester slashing.
 pub struct AttesterSlashing<C: Config> {
 	/// First slashable attestation
@@ -52,10 +51,10 @@ pub struct AttesterSlashing<C: Config> {
 	pub attestation_2: IndexedAttestation<C>,
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config"))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Attestation.
 pub struct Attestation<C: Config> {
 	/// Attester aggregation bitfield
@@ -84,10 +83,10 @@ impl<C: Config> From<Attestation<C>> for SigningAttestation<C> {
 	}
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config"))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Unsealed attestation.
 pub struct SigningAttestation<C: Config> {
 	/// Attester aggregation bitfield
@@ -104,10 +103,9 @@ pub struct SigningAttestation<C: Config> {
 	pub custody_bits: MaxVec<bool, C::MaxValidatorsPerCommittee>,
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Block deposit.
 pub struct Deposit {
 	/// Branch in the deposit tree
@@ -116,10 +114,9 @@ pub struct Deposit {
 	pub data: DepositData,
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Block voluntary exit.
 pub struct VoluntaryExit {
 	/// Minimum epoch for processing exit
@@ -141,10 +138,9 @@ impl From<VoluntaryExit> for SigningVoluntaryExit {
 	}
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Unsealed voluntary exit transaction.
 pub struct SigningVoluntaryExit {
 	/// Minimum epoch for processing exit

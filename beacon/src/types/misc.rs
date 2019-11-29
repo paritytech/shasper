@@ -19,13 +19,15 @@ use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
 use vecarray::VecArray;
-use crate::*;
-use crate::primitives::*;
+use crate::Config;
+use crate::components::{
+	Checkpoint as CheckpointT, Validator as ValidatorT, Attestation as AttestationT
+};
+use crate::primitives::{Version, Uint, H256, ValidatorId, Signature};
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Fork information.
 pub struct Fork {
 	/// Previous fork version
@@ -37,10 +39,9 @@ pub struct Fork {
 	pub epoch: Uint,
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Checkpoint
 pub struct Checkpoint {
 	/// Epoch
@@ -50,10 +51,15 @@ pub struct Checkpoint {
 	pub root: H256,
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+impl CheckpointT for Checkpoint {
+	fn epoch(&self) -> u64 {
+		self.epoch
+	}
+}
+
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Validator record.
 pub struct Validator {
 	/// BLS public key
@@ -94,10 +100,18 @@ impl Validator {
 	}
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+impl ValidatorT for Validator {
+	type Checkpoint = Checkpoint;
+
+	fn is_eligible(&self, checkpoint: &Checkpoint) -> bool {
+		self.is_active(checkpoint.epoch()) ||
+			(self.slashed && checkpoint.epoch() + 1 < self.withdrawable_epoch)
+	}
+}
+
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Attestation data.
 pub struct AttestationData {
 	/// Voting slot.
@@ -125,10 +139,9 @@ impl AttestationData {
 	}
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Attestation data with custody bit.
 pub struct AttestationDataAndCustodyBit {
 	/// Attestation data
@@ -137,10 +150,10 @@ pub struct AttestationDataAndCustodyBit {
 	pub custody_bit: bool,
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config"))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Indexed attestation.
 pub struct IndexedAttestation<C: Config> {
 	/// Validator indices of custody bit 0.
@@ -165,10 +178,10 @@ impl<C: Config> From<IndexedAttestation<C>> for SigningIndexedAttestation<C> {
 	}
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config"))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Signing indexed attestation.
 pub struct SigningIndexedAttestation<C: Config> {
 	/// Validator indices of custody bit 0.
@@ -181,10 +194,10 @@ pub struct SigningIndexedAttestation<C: Config> {
 	pub data: AttestationData,
 }
 
-#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config"))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Pending attestation.
 pub struct PendingAttestation<C: Config> {
 	/// Attester aggregation bitfield
@@ -202,10 +215,19 @@ pub struct PendingAttestation<C: Config> {
 	pub proposer_index: Uint,
 }
 
-#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+impl<C: Config> AttestationT for PendingAttestation<C> {
+	fn proposer_index(&self) -> u64 {
+		self.proposer_index
+	}
+
+	fn inclusion_delay(&self) -> u64 {
+		self.inclusion_delay
+	}
+}
+
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Eth1 data.
 pub struct Eth1Data {
 	/// Root of the deposit tree
@@ -217,10 +239,10 @@ pub struct Eth1Data {
 	pub block_hash: H256,
 }
 
-#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config"))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Historical batch information.
 pub struct HistoricalBatch<C: Config> {
 	/// Block roots
@@ -229,10 +251,9 @@ pub struct HistoricalBatch<C: Config> {
 	pub state_roots: VecArray<H256, C::SlotsPerHistoricalRoot>,
 }
 
-#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Deposit data.
 pub struct DepositData {
 	/// BLS pubkey
@@ -256,10 +277,9 @@ impl From<DepositData> for SigningDepositData {
 	}
 }
 
-#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Deposit data.
 pub struct SigningDepositData {
 	/// BLS pubkey
@@ -271,10 +291,9 @@ pub struct SigningDepositData {
 	pub amount: Uint,
 }
 
-#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Beacon block header.
 pub struct BeaconBlockHeader {
 	/// Slot of the block.
@@ -301,10 +320,9 @@ impl From<BeaconBlockHeader> for SigningBeaconBlockHeader {
 	}
 }
 
-#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, FromTree, IntoTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Beacon block header.
 pub struct SigningBeaconBlockHeader {
 	/// Slot of the block.

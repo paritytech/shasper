@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::types::*;
-use crate::primitives::*;
-use crate::{BeaconState, Config, Error, utils};
-use vecarray::VecArray;
-use bm_le::tree_root;
+use crate::types::{AttestationData, Attestation, IndexedAttestation};
+use crate::primitives::{Epoch, H256, Uint, ValidatorIndex, Gwei, Slot};
+use crate::{BeaconExecutive, Config, Error, utils};
 use core::cmp::{max, min};
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Get current epoch.
 	pub fn current_epoch(&self) -> Epoch {
 		utils::epoch_of_slot::<C>(self.slot)
@@ -72,11 +70,16 @@ impl<C: Config> BeaconState<C> {
 			.collect()
 	}
 
+	/// Get active validator length.
+	pub fn active_validator_len(&self, epoch: Uint) -> usize {
+		self.active_validator_indices(epoch).len()
+	}
+
 	/// Get churn limit for validator exits.
 	pub fn validator_churn_limit(&self) -> Uint {
 		max(
 			C::min_per_epoch_churn_limit(),
-			self.active_validator_indices(self.current_epoch()).len() as u64 /
+			self.active_validator_len(self.current_epoch()) as u64 /
 				C::churn_limit_quotient()
 		)
 	}
@@ -95,12 +98,12 @@ impl<C: Config> BeaconState<C> {
 	/// Get committee count for epoch.
 	pub fn committee_count_at_slot(&self, slot: Uint) -> Uint {
 		let epoch = utils::epoch_of_slot::<C>(slot);
-		let active_validator_indices = self.active_validator_indices(epoch);
+		let active_validator_len = self.active_validator_len(epoch);
 		max(
 			1,
 			min(
 				C::max_committees_per_slot(),
-				active_validator_indices.len() as u64 /
+				active_validator_len as u64 /
 					C::slots_per_epoch() /
 					C::target_committee_size(),
 			)

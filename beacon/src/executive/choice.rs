@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::primitives::*;
-use crate::types::*;
-use crate::{Config, BeaconState, Error};
+use crate::primitives::H256;
+use crate::types::BeaconBlock;
+use crate::{Config, BeaconExecutive, Error};
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Get justified active validators from current state.
 	pub fn justified_active_validators(&self) -> Vec<u64> {
 		let current_justified_epoch = self.current_justified_checkpoint.epoch;

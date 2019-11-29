@@ -19,6 +19,8 @@
 #![warn(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate alloc;
+
 pub use beacon_primitives as primitives;
 
 /// Types for operations and blocks.
@@ -28,18 +30,25 @@ pub mod consts;
 /// Exported beacon chain utilities.
 pub mod utils;
 
+mod components;
 mod error;
 mod config;
 mod executive;
 mod genesis;
 
-pub use self::error::*;
-pub use self::config::*;
-pub use self::executive::*;
-pub use self::genesis::*;
+pub use self::error::Error;
+pub use self::config::{
+	BLSConfig, BLSNoVerification,
+	Config, MinimalConfig, MainnetConfig,
+};
+pub use self::executive::{BeaconState, BeaconExecutive};
+pub use self::genesis::{genesis, genesis_beacon_state};
 
-use self::primitives::*;
-use self::types::*;
+use self::primitives::{H256, H768};
+use self::types::{
+	Attestation, UnsealedBeaconBlock, BeaconBlockBody, BeaconBlock, VoluntaryExit, Deposit,
+	Block, AttesterSlashing, ProposerSlashing, Eth1Data, SigningBeaconBlockHeader,
+};
 use core::cmp::min;
 use bm_le::tree_root;
 
@@ -48,7 +57,8 @@ pub fn execute_block<C: Config, BLS: BLSConfig>(
 	block: &BeaconBlock<C>,
 	state: &mut BeaconState<C>
 ) -> Result<(), Error> {
-	state.state_transition::<_, BLS>(block)
+	let mut executive = BeaconExecutive::new(state);
+	executive.state_transition::<_, BLS>(block)
 }
 
 /// Get genesis domain.
@@ -83,7 +93,8 @@ pub fn initialize_block<C: Config>(
 	state: &mut BeaconState<C>,
 	target_slot: u64
 ) -> Result<(), Error> {
-	state.process_slots(target_slot)
+	let mut executive = BeaconExecutive::new(state);
+	executive.process_slots(target_slot)
 }
 
 /// Apply inherent to a block.
@@ -109,8 +120,9 @@ pub fn apply_inherent<C: Config, BLS: BLSConfig>(
 		&SigningBeaconBlockHeader::from(state.latest_block_header.clone())
 	);
 
-	state.process_randao::<BLS>(block.body())?;
-	state.process_eth1_data(block.body());
+	let mut executive = BeaconExecutive::new(state);
+	executive.process_randao::<BLS>(block.body())?;
+	executive.process_eth1_data(block.body());
 
 	Ok(block)
 }
@@ -121,40 +133,41 @@ pub fn apply_transaction<C: Config, BLS: BLSConfig>(
 	state: &mut BeaconState<C>,
 	extrinsic: Transaction<C>,
 ) -> Result<(), Error> {
+	let mut executive = BeaconExecutive::new(state);
 	match extrinsic {
 		Transaction::ProposerSlashing(slashing) => {
 			if block.body.proposer_slashings.len() >= C::max_proposer_slashings() as usize {
 				return Err(Error::TooManyProposerSlashings)
 			}
-			state.process_proposer_slashing::<BLS>(slashing.clone())?;
+			executive.process_proposer_slashing::<BLS>(slashing.clone())?;
 			block.body.proposer_slashings.push(slashing);
 		},
 		Transaction::AttesterSlashing(slashing) => {
 			if block.body.attester_slashings.len() >= C::max_attester_slashings() as usize {
 				return Err(Error::TooManyAttesterSlashings)
 			}
-			state.process_attester_slashing::<BLS>(slashing.clone())?;
+			executive.process_attester_slashing::<BLS>(slashing.clone())?;
 			block.body.attester_slashings.push(slashing);
 		},
 		Transaction::Attestation(attestation) => {
 			if block.body.attestations.len() >= C::max_attestations() as usize {
 				return Err(Error::TooManyAttestations)
 			}
-			state.process_attestation::<BLS>(attestation.clone())?;
+			executive.process_attestation::<BLS>(attestation.clone())?;
 			block.body.attestations.push(attestation);
 		},
 		Transaction::Deposit(deposit) => {
 			if block.body.deposits.len() >= C::max_deposits() as usize {
 				return Err(Error::TooManyDeposits)
 			}
-			state.process_deposit::<BLS>(deposit.clone())?;
+			executive.process_deposit::<BLS>(deposit.clone())?;
 			block.body.deposits.push(deposit);
 		},
 		Transaction::VoluntaryExit(voluntary_exit) => {
 			if block.body.voluntary_exits.len() >= C::max_voluntary_exits() as usize {
 				return Err(Error::TooManyVoluntaryExits)
 			}
-			state.process_voluntary_exit::<BLS>(voluntary_exit.clone())?;
+			executive.process_voluntary_exit::<BLS>(voluntary_exit.clone())?;
 			block.body.voluntary_exits.push(voluntary_exit);
 		},
 	}
@@ -177,7 +190,8 @@ pub fn finalize_block<C: Config, BLS: BLSConfig>(
 		return Err(Error::TooManyDeposits)
 	}
 
-	state.process_block_header::<_, BLS>(block)?;
+	let mut executive = BeaconExecutive::new(state);
+	executive.process_block_header::<_, BLS>(block)?;
 
 	block.state_root = tree_root::<C::Digest, _>(state);
 

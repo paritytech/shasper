@@ -21,7 +21,8 @@ pub use shasper_runtime::{Block, StateExternalities};
 
 use beacon::primitives::H256;
 use beacon::types::*;
-use beacon::{Error as BeaconError, BeaconState, Config, BLSConfig, Inherent, Transaction};
+use beacon::{Error as BeaconError, BeaconState, BeaconExecutive, Config,
+			 BLSConfig, Inherent, Transaction};
 use std::sync::Arc;
 use blockchain::{Block as BlockT, BlockExecutor, AsExternalities};
 use lmd_ghost::JustifiableExecutor;
@@ -196,7 +197,8 @@ impl<C: Config, BLS: BLSConfig> JustifiableExecutor for Executor<C, BLS> {
 		&self,
 		state: &mut Self::Externalities,
 	) -> Result<Vec<Self::ValidatorIndex>, Self::Error> {
-		Ok(state.state().justified_active_validators())
+		let executive = BeaconExecutive::new(state.state_mut());
+		Ok(executive.justified_active_validators())
 	}
 
 	fn justified_block_id(
@@ -216,6 +218,7 @@ impl<C: Config, BLS: BLSConfig> JustifiableExecutor for Executor<C, BLS> {
 		block: &Self::Block,
 		state: &mut Self::Externalities,
 	) -> Result<Vec<(Self::ValidatorIndex, <Self::Block as BlockT>::Identifier)>, Self::Error> {
-		Ok(state.state().block_vote_targets(&block.0)?)
+		let executive = BeaconExecutive::new(state.state_mut());
+		Ok(executive.block_vote_targets(&block.0)?)
 	}
 }

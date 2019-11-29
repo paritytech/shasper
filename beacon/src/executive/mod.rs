@@ -19,22 +19,195 @@ mod transition;
 mod choice;
 mod assignment;
 
-pub use self::assignment::*;
+pub use self::assignment::CommitteeAssignment;
 
+use core::ops::Deref;
 #[cfg(feature = "serde")]
 use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
 use vecarray::VecArray;
-use crate::*;
-use crate::primitives::*;
-use crate::types::*;
+use crate::{Config, Error};
+use crate::primitives::{H256, Uint, ValidatorIndex, Gwei};
+use crate::types::{
+	BeaconBlockHeader, Validator, Eth1Data, PendingAttestation, Checkpoint, Fork,
+};
+use crate::components::{Registry, Checkpoint as CheckpointT};
 use crate::consts;
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(PartialEq, Eq, Debug)]
+/// Beacon executive. Cached data for intermediate state transition.
+pub struct BeaconExecutive<'a, C: Config> {
+	state: &'a mut BeaconState<C>,
+
+	active_validator_indices: Option<Vec<ValidatorIndex>>,
+	total_active_balance: Option<Gwei>,
+}
+
+impl<'a, C: Config> BeaconExecutive<'a, C> {
+	/// Create an executive from a mutable state reference.
+	pub fn new(state: &'a mut BeaconState<C>) -> Self {
+		Self {
+			state,
+
+			active_validator_indices: None,
+			total_active_balance: None,
+		}
+	}
+}
+
+impl<'a, C: Config> Deref for BeaconExecutive<'a, C> {
+	type Target = BeaconState<C>;
+
+	fn deref(&self) -> &BeaconState<C> {
+		&self.state
+	}
+}
+
+macro_rules! unslashed_balance {
+	( $attestations:tt, $epoch:expr, $self:expr ) => ({
+		let attestations = $self.$attestations($epoch)?;
+		let unslashed_attesting_indices =
+			$self.unslashed_attesting_indices(&attestations)?;
+
+		Ok($self.total_balance(&unslashed_attesting_indices))
+	})
+}
+
+macro_rules! unslashed_validators {
+	( $attestations:tt, $epoch:expr, $self:expr ) => ({
+		let attestations = $self.$attestations($epoch)?;
+		let unslashed_attesting_indices =
+			$self.unslashed_attesting_indices(&attestations)?;
+
+		Ok(Box::new(unslashed_attesting_indices.into_iter().map(move |index| {
+			(index, &$self.validators[index as usize])
+		})))
+	})
+}
+
+impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
+	type Error = Error;
+	type Checkpoint = Checkpoint;
+	type Validator = Validator;
+	type Attestation = PendingAttestation<C>;
+
+	fn total_active_balance(&self) -> u64 {
+		self.total_active_balance()
+	}
+
+	fn attesting_target_balance(
+		&self,
+		checkpoint: &Self::Checkpoint
+	) -> Result<u64, Self::Error> {
+		self.attesting_balance(&self.matching_target_attestations(checkpoint.epoch)?)
+	}
+
+	fn min_inclusion_delay_attestation(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+		index: u64,
+	) -> Result<Option<Self::Attestation>, Self::Error> {
+		let matching_source_attestations =
+			self.matching_source_attestations(source_checkpoint.epoch())?;
+
+		Ok(Some(matching_source_attestations.iter()
+			.map(|a| Ok((
+				a,
+				self.attesting_indices(&a.data, &a.aggregation_bits)?.contains(&index)
+			)))
+			.collect::<Result<Vec<_>, _>>()?
+			.into_iter()
+			.filter(|(_, c)| *c)
+			.map(|(a, _)| a)
+			.fold(matching_source_attestations[0].clone(), |a, b| {
+				if a.inclusion_delay < b.inclusion_delay { a } else { b.clone() }
+			})))
+	}
+
+	fn unslashed_attesting_balance(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<u64, Self::Error> {
+		unslashed_balance!(matching_source_attestations, source_checkpoint.epoch(), self)
+	}
+
+	fn unslashed_attesting_validators<'b>(
+		&'b self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Box<dyn Iterator<Item=(u64, &Self::Validator)> + 'b>, Self::Error> {
+		unslashed_validators!(matching_source_attestations, source_checkpoint.epoch(), self)
+	}
+
+	fn unslashed_attesting_target_balance(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<u64, Self::Error> {
+		unslashed_balance!(matching_target_attestations, source_checkpoint.epoch(), self)
+	}
+
+	fn unslashed_attesting_target_validators<'b>(
+		&'b self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Box<dyn Iterator<Item=(u64, &Self::Validator)> + 'b>, Self::Error> {
+		unslashed_validators!(matching_target_attestations, source_checkpoint.epoch(), self)
+	}
+
+	fn unslashed_attesting_matching_head_balance(
+		&self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<u64, Self::Error> {
+		unslashed_balance!(matching_head_attestations, source_checkpoint.epoch(), self)
+	}
+
+	fn unslashed_attesting_matching_head_validators<'b>(
+		&'b self,
+		source_checkpoint: &Self::Checkpoint,
+	) -> Result<Box<dyn Iterator<Item=(u64, &Self::Validator)> + 'b>, Self::Error> {
+		unslashed_validators!(matching_head_attestations, source_checkpoint.epoch(), self)
+	}
+
+	fn balance(
+		&self,
+		index: u64,
+	) -> Result<u64, Self::Error> {
+		self.balances.get(index as usize).cloned().ok_or(Error::IndexOutOfRange)
+	}
+
+	fn effective_balance(
+		&self,
+		index: u64,
+	) -> Result<u64, Self::Error> {
+		self.validators.get(index as usize).map(|v| v.effective_balance)
+			.ok_or(Error::IndexOutOfRange)
+	}
+
+	fn increase_balance(
+		&mut self,
+		index: u64,
+		value: u64,
+	) {
+		self.increase_balance(index, value)
+	}
+
+	fn decrease_balance(
+		&mut self,
+		index: u64,
+		value: u64,
+	) {
+		self.decrease_balance(index, value)
+	}
+
+	fn validators<'b>(
+		&'b self,
+	) -> Result<Box<dyn Iterator<Item=(u64, &Self::Validator)> + 'b>, Self::Error> {
+		Ok(Box::new(self.validators.iter().enumerate().map(|(i, v)| (i as u64, v))))
+	}
+}
+
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Beacon state.
 pub struct BeaconState<C: Config> {
 	// == Versioning ==

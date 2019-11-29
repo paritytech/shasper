@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use serde::{Serialize, de::DeserializeOwned};
 use ssz::{Encode, Decode};
 use bm_le::{FromTree, IntoTree};
-use beacon::{BeaconState, Config, Error, MainnetConfig, MinimalConfig};
+use beacon::{BeaconExecutive, Config, Error, MainnetConfig, MinimalConfig};
 use beacon::types::*;
 use crypto::bls::BLSVerification;
 use crate::{test_name, read_raw_unwrap, read_value_unwrap, test_state_with, read_pre_post_unwrap};
@@ -48,7 +48,7 @@ pub fn test_with_config<C: Config>(typ: OperationsType, desc: TestDescription) w
 pub fn test_operation<C: Config, T, F>(path: PathBuf, operation_id: &str, f: F) where
 	C: DeserializeOwned,
 	T: FromTree + IntoTree + Debug + Encode + Decode + Eq + DeserializeOwned,
-	F: FnOnce(&mut BeaconState<C>, T) -> Result<(), Error>,
+	F: FnOnce(&mut BeaconExecutive<C>, T) -> Result<(), Error>,
 {
 	let (pre, post) = read_pre_post_unwrap(path.clone());
 

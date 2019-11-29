@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use serde::{Serialize, de::DeserializeOwned};
-use beacon::{BeaconState, Config, Error, MainnetConfig, MinimalConfig};
+use beacon::{BeaconExecutive, Config, Error, MainnetConfig, MinimalConfig};
 use crate::{test_name, test_state_with, read_pre_post_unwrap};
 use crate::description::{EpochProcessingType, TestNetwork, TestDescription, TestPhase};
 
@@ -45,7 +45,7 @@ pub fn test_with_config<C: Config>(typ: EpochProcessingType, desc: TestDescripti
 
 pub fn test_epoch_processing<C: Config, F>(path: PathBuf, f: F) where
 	C: DeserializeOwned,
-	F: FnOnce(&mut BeaconState<C>) -> Result<(), Error>,
+	F: FnOnce(&mut BeaconExecutive<C>) -> Result<(), Error>,
 {
 	let (pre, post) = read_pre_post_unwrap(path.clone());
 

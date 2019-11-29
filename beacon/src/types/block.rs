@@ -17,18 +17,18 @@
 //! Beacon blocks
 
 #[cfg(feature = "serde")]
-use serde::{Serialize, Deserialize, de::DeserializeOwned};
+use serde::{Serialize, Deserialize};
 use ssz::{Codec, Encode, Decode};
 use bm_le::{IntoTree, FromTree, MaxVec};
-use crate::*;
-use crate::primitives::*;
-use crate::types::*;
+use crate::Config;
+use crate::primitives::{H256, H768, Uint, Signature};
+use super::operation::{AttesterSlashing, ProposerSlashing, Attestation, Deposit, VoluntaryExit};
+use super::misc::Eth1Data;
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "serde", serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static"))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config"))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Beacon block body.
 pub struct BeaconBlockBody<C: Config> {
 	/// Randao reveal.
@@ -66,11 +66,10 @@ pub trait Block {
 	fn signature(&self) -> Option<&Signature>;
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "serde", serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static"))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config"))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Beacon block.
 pub struct BeaconBlock<C: Config> {
 	/// Slot of the block.
@@ -107,11 +106,10 @@ impl<'a, C: Config, T: Block<Config=C>> From<&'a T> for UnsealedBeaconBlock<C> {
 	}
 }
 
-#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default)]
+#[derive(Codec, Encode, Decode, IntoTree, FromTree, Clone, PartialEq, Eq, Default, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(deny_unknown_fields))]
-#[cfg_attr(feature = "serde", serde(bound = "C: Config + Serialize + Clone + DeserializeOwned + 'static"))]
+#[cfg_attr(feature = "serde", serde(bound = "C: Config"))]
 #[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
-#[cfg_attr(feature = "std", derive(Debug))]
 /// Unsealed Beacon block.
 pub struct UnsealedBeaconBlock<C: Config> {
 	/// Slot of the block.

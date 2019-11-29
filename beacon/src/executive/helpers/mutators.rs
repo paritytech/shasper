@@ -14,19 +14,19 @@
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::primitives::*;
-use crate::{BeaconState, Config, Error, utils, consts};
+use crate::primitives::{ValidatorIndex, Gwei};
+use crate::{BeaconExecutive, Config, Error, utils, consts};
 use core::cmp::max;
 
-impl<C: Config> BeaconState<C> {
+impl<'a, C: Config> BeaconExecutive<'a, C> {
 	/// Increase validator balance.
 	pub fn increase_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
-		self.balances[index as usize] += delta;
+		self.state.balances[index as usize] += delta;
 	}
 
 	/// Decrease validator balance.
 	pub fn decrease_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
-		self.balances[index as usize] =
+		self.state.balances[index as usize] =
 			self.balances[index as usize].saturating_sub(delta);
 	}
 
@@ -54,7 +54,7 @@ impl<C: Config> BeaconState<C> {
 			exit_queue_epoch += 1;
 		}
 
-		let validator = &mut self.validators[index as usize];
+		let validator = &mut self.state.validators[index as usize];
 		validator.exit_epoch = exit_queue_epoch;
 		validator.withdrawable_epoch = validator.exit_epoch +
 			C::min_validator_withdrawability_delay();
@@ -69,14 +69,14 @@ impl<C: Config> BeaconState<C> {
 		let current_epoch = self.current_epoch();
 		self.initiate_validator_exit(slashed_index);
 
-		self.validators[slashed_index as usize].slashed = true;
-		self.validators[slashed_index as usize].withdrawable_epoch = max(
+		self.state.validators[slashed_index as usize].slashed = true;
+		self.state.validators[slashed_index as usize].withdrawable_epoch = max(
 			self.validators[slashed_index as usize].withdrawable_epoch,
 			current_epoch + C::epochs_per_slashings_vector()
 		);
 		let slashed_balance =
 			self.validators[slashed_index as usize].effective_balance;
-		self.slashings[
+		self.state.slashings[
 			(current_epoch % C::epochs_per_slashings_vector()) as usize
 		] += slashed_balance;
 		self.decrease_balance(slashed_index, slashed_balance / C::min_slashing_penalty_quotient());
