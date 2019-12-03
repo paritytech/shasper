@@ -1,6 +1,6 @@
 use vecarray::VecArray;
 use crate::consts;
-use super::{Checkpoint, Registry};
+use super::{Checkpoint, JustifierRegistry};
 
 pub struct Justifier<C: Checkpoint> {
 	pub justification_bits: VecArray<bool, consts::JustificationBitsLength>,
@@ -10,7 +10,7 @@ pub struct Justifier<C: Checkpoint> {
 }
 
 impl<C: Checkpoint> Justifier<C> {
-	pub fn process<R: Registry<Checkpoint=C>>(
+	pub fn process<R: JustifierRegistry<Checkpoint=C>>(
 		&mut self,
 		previous_checkpoint: C,
 		current_checkpoint: C,

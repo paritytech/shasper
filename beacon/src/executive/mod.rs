@@ -32,7 +32,7 @@ use crate::primitives::{H256, Uint, ValidatorIndex, Gwei};
 use crate::types::{
 	BeaconBlockHeader, Validator, Eth1Data, PendingAttestation, Checkpoint, Fork,
 };
-use crate::components::{Registry, Checkpoint as CheckpointT};
+use crate::components::{JustifierRegistry, Registry, Checkpoint as CheckpointT};
 use crate::consts;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -86,11 +86,9 @@ macro_rules! unslashed_validators {
 	})
 }
 
-impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
+impl<'a, C: Config> JustifierRegistry for BeaconExecutive<'a, C> {
 	type Error = Error;
 	type Checkpoint = Checkpoint;
-	type Validator = Validator;
-	type Attestation = PendingAttestation<C>;
 
 	fn total_active_balance(&self) -> u64 {
 		self.total_active_balance()
@@ -102,6 +100,11 @@ impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
 	) -> Result<u64, Self::Error> {
 		self.attesting_balance(&self.matching_target_attestations(checkpoint.epoch)?)
 	}
+}
+
+impl<'a, C: Config> Registry for BeaconExecutive<'a, C> {
+	type Validator = Validator;
+	type Attestation = PendingAttestation<C>;
 
 	fn min_inclusion_delay_attestation(
 		&self,

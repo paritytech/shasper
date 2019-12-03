@@ -16,7 +16,6 @@
 
 //! Ethereum 2.0 (Serenity) beacon chain state transition implementation.
 
-#![warn(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -29,8 +28,9 @@ pub mod types;
 pub mod consts;
 /// Exported beacon chain utilities.
 pub mod utils;
+/// Components for reuse.
+pub mod components;
 
-mod components;
 mod error;
 mod config;
 mod executive;

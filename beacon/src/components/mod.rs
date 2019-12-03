@@ -1,5 +1,5 @@
-mod reward;
 mod justification;
+pub mod reward;
 
 pub use self::justification::Justifier;
 
@@ -22,10 +22,8 @@ pub trait Checkpoint: Clone {
 	fn epoch(&self) -> Epoch;
 }
 
-pub trait Registry {
+pub trait JustifierRegistry {
 	type Checkpoint: Checkpoint;
-	type Validator: Validator<Checkpoint=Self::Checkpoint>;
-	type Attestation: Attestation;
 	type Error;
 
 	fn total_active_balance(&self) -> Balance;
@@ -33,6 +31,12 @@ pub trait Registry {
 		&self,
 		source_checkpoint: &Self::Checkpoint
 	) -> Result<Balance, Self::Error>;
+}
+
+pub trait Registry: JustifierRegistry {
+	type Validator: Validator<Checkpoint=Self::Checkpoint>;
+	type Attestation: Attestation;
+
 	fn min_inclusion_delay_attestation(
 		&self,
 		source_checkpoint: &Self::Checkpoint,
