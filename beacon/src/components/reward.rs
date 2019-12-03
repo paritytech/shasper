@@ -48,7 +48,7 @@ pub fn process<R: Registry, C: Config>(
 					  unslashed_attesting_matching_head_validators);
 
 	// Proposer and inclusion delay micro-rewards
-	for (index, validator) in registry.unslashed_attesting_validators(&previous_checkpoint)? {
+	for (index, _) in registry.unslashed_attesting_validators(&previous_checkpoint)? {
 		let attestation = registry.min_inclusion_delay_attestation(
 			&previous_checkpoint, index
 		)?;
