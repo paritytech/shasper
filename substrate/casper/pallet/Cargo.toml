@@ -5,14 +5,20 @@ authors = ["Wei Tang <hi@that.world>"]
 edition = "2018"
 
 [dependencies]
+serde = { version = "1.0.101", optional = true, features = ["derive"] }
 sp-staking = { git = "https://github.com/paritytech/substrate", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false }
-pallet-staking = { git = "https://github.com/paritytech/substrate", default-features = false }
+system = { package = "frame-system", git = "https://github.com/paritytech/substrate", default-features = false }
+support = { package = "frame-support", git = "https://github.com/paritytech/substrate", default-features = false }
+codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false }
 
 [features]
 default = ["std"]
 std = [
 	"sp-staking/std",
-	"frame-system/std",
-	"pallet-staking/std",
+	"system/std",
+	"support/std",
+	"codec/std",
+	"sp-runtime/std",
+	"serde",
 ]
