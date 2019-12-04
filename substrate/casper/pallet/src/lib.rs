@@ -17,11 +17,15 @@ pub struct Attestation<T: Trait> {
 	pub target: Checkpoint<T>,
 }
 
-pub trait Trait: system::Trait + core::fmt::Debug {
+pub trait Trait: session::Trait + core::fmt::Debug {
 	/// The overarching event type.
 	type Event: From<Event> + Into<<Self as system::Trait>::Event>;
-	/// A stable ID for a validator.
-	type ValidatorId: Member + Parameter;
+	/// Validator weighter;
+	type WeighValidators: WeighValidators<Self>;
+}
+
+pub trait WeighValidators<T: Trait> {
+	fn weigh_validators(validators: Vec<T::ValidatorId>) -> Vec<(T::ValidatorId, u128)>;
 }
 
 decl_storage! {
@@ -29,14 +33,10 @@ decl_storage! {
 		pub SessionBlockHash get(fn session_block_hash)
 			build(|_| vec![]): map SessionIndex => T::Hash;
 
-		CurrentEpochAttestations get(current_epoch_attestations)
+		CurrentSessionAttestations get(current_session_attestations)
 			build(|_| Vec::new()): Vec<Attestation<T>>;
-		CurrentEpochAttestationsCount get(current_epoch_attestations_count)
-			build(|_| 0u32): u32;
-		PreviousEpochAttestations get(previous_epoch_attestations)
+		PreviousSessionAttestations get(previous_session_attestations)
 			build(|_| Vec::new()): Vec<Attestation<T>>;
-		PreviousEpochAttestationsCount get(previous_epoch_attestations_count)
-			build(|_| 0u32): u32;
 	}
 }
 
@@ -58,5 +58,23 @@ decl_module! {
 
 			Ok(())
 		}
+	}
+}
+
+impl<T: Trait> Module<T> {
+	fn push_attestation(attestation: Attestation<T>) -> Result {
+		let current_session_index = session::Module::<T>::current_index();
+
+		if current_session_index == attestation.target.session_index {
+			CurrentSessionAttestations::<T>::mutate(|attestations| {
+				attestations.push(attestation)
+			});
+		} else {
+			PreviousSessionAttestations::<T>::mutate(|attestations| {
+				attestations.push(attestation)
+			});
+		}
+
+		Ok(())
 	}
 }

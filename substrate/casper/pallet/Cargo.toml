@@ -8,6 +8,7 @@ edition = "2018"
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 sp-staking = { git = "https://github.com/paritytech/substrate", default-features = false }
 system = { package = "frame-system", git = "https://github.com/paritytech/substrate", default-features = false }
+session = { package = "pallet-session", git = "https://github.com/paritytech/substrate", default-features = false }
 support = { package = "frame-support", git = "https://github.com/paritytech/substrate", default-features = false }
 codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false }
@@ -17,6 +18,7 @@ default = ["std"]
 std = [
 	"sp-staking/std",
 	"system/std",
+	"session/std",
 	"support/std",
 	"codec/std",
 	"sp-runtime/std",
