@@ -12,7 +12,6 @@ members = [
 	"utils/ssz",
 	"utils/ssz/derive",
 	"utils/keccak-hasher",
-	"substrate/frame/attestations",
 	"yamltests",
 ]
 exclude = [
