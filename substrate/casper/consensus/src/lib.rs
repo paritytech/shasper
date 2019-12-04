@@ -19,11 +19,12 @@ use primitives::{H256, Blake2Hasher};
 use sr_primitives::traits::{Block as BlockT, Header, ProvideRuntimeApi};
 use sr_primitives::generic::BlockId;
 use consensus_common::{
-	BlockImport, Error as ConsensusError,
-	BlockImportParams, ImportResult, well_known_cache_keys,
+	BlockImport, Error as ConsensusError, BlockCheckParams,
+	BlockImportParams, ImportResult, import_queue::CacheKeyId,
 };
 use casper_primitives::CasperApi;
-use client::{Client, CallExecutor, backend::{Backend, Finalizer}, blockchain::Backend as _};
+use client::{Client, CallExecutor};
+use client_api::{Backend, Finalizer};
 use log::warn;
 
 pub struct CasperBlockImport<B, E, Block: BlockT<Hash=H256>, RA, PRA> {
@@ -59,7 +60,7 @@ impl<B, E, Block: BlockT<Hash=H256>, RA, PRA> BlockImport<Block> for
 	fn import_block(
 		&mut self,
 		block: BlockImportParams<Block>,
-		new_cache: HashMap<well_known_cache_keys::Id, Vec<u8>>
+		new_cache: HashMap<CacheKeyId, Vec<u8>>
 	) -> Result<ImportResult, Self::Error> {
 		let at = BlockId::hash(*block.header.parent_hash());
 		let result = self.inner.import_block(block, new_cache)?;
@@ -74,13 +75,7 @@ impl<B, E, Block: BlockT<Hash=H256>, RA, PRA> BlockImport<Block> for
 							return
 						},
 					};
-					let last_finalized = match self.inner.backend().blockchain().last_finalized() {
-						Ok(finalized_hash) => finalized_hash,
-						Err(e) => {
-							warn!("Failed to fetch the client's finalized hash: {:?}", e);
-							return
-						},
-					};
+					let last_finalized = self.inner.info().chain.finalized_hash;
 					if finalized_hash != last_finalized {
 						match self.inner.finalize_block(BlockId::Hash(finalized_hash), None, true) {
 							Ok(()) => (),
@@ -101,9 +96,8 @@ impl<B, E, Block: BlockT<Hash=H256>, RA, PRA> BlockImport<Block> for
 
 	fn check_block(
 		&mut self,
-		hash: Block::Hash,
-		parent_hash: Block::Hash,
+		block: BlockCheckParams<Block>,
 	) -> Result<ImportResult, Self::Error> {
-		self.inner.check_block(hash, parent_hash)
+		self.inner.check_block(block).map_err(Into::into)
 	}
 }

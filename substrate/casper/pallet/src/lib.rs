@@ -18,9 +18,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use srml_support::{StorageValue, dispatch::Result, decl_module, decl_storage, decl_event, print};
+use srml_support::{StorageValue, dispatch::Result, decl_module, decl_storage, decl_event,
+				   print, weights::SimpleDispatchInfo};
 use system::ensure_none;
-use sr_primitives::{traits::{One, MaybeDebug, Extrinsic as ExtrinsicT, ValidateUnsigned}, weights::SimpleDispatchInfo};
+use sr_primitives::{traits::{One, Extrinsic as ExtrinsicT, ValidateUnsigned}};
 use sr_primitives::transaction_validity::{TransactionValidity, TransactionLongevity, ValidTransaction, InvalidTransaction};
 use casper_primitives::{ValidatorId, ValidatorSignature, ValidatorWeight, Epoch};
 use codec::{Encode, Decode};
@@ -35,15 +36,13 @@ impl OnSlashing for () {
 	fn on_slashing(_validator_id: &ValidatorId) { }
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 pub struct Checkpoint<T: Trait> {
 	pub epoch: Epoch,
 	pub hash: T::Hash,
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug)]
 pub struct Attestation<T: Trait> {
 	pub validator_id: ValidatorId,
 	pub source: Checkpoint<T>,
@@ -51,14 +50,14 @@ pub struct Attestation<T: Trait> {
 }
 
 /// Casper module's configuration trait.
-pub trait Trait: session::Trait + MaybeDebug {
+pub trait Trait: session::Trait + core::fmt::Debug {
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	/// The function call.
 	type Call: From<Call<Self>>;
 	/// A extrinsic right from the external world. This is unchecked and so
 	/// can contain a signature.
-	type UncheckedExtrinsic: ExtrinsicT<Call=<Self as Trait>::Call> + Encode + Decode + MaybeDebug;
+	type UncheckedExtrinsic: ExtrinsicT<Call=<Self as Trait>::Call> + Encode + Decode;
 	/// Triggers when slashing happens.
 	type OnSlashing: OnSlashing;
 }
@@ -213,7 +212,7 @@ decl_module! {
 		fn on_finalize(_n: T::BlockNumber) { }
 
 		fn offchain_worker(n: T::BlockNumber) {
-			if sr_io::is_validator() {
+			if sr_io::offchain::is_validator() {
 				match Self::offchain(n) {
 					Ok(()) => (),
 					Err(e) => { print(e); },
@@ -262,7 +261,8 @@ impl<T: Trait> Module<T> {
 				let ex = T::UncheckedExtrinsic::new(call.into(), None)
 					.ok_or("create unsigned attestation failed")?;
 
-				sr_io::submit_transaction(ex.encode()).map_err(|_| "submit attestation failed")?;
+				sr_io::offchain::submit_transaction(ex.encode())
+					.map_err(|_| "submit attestation failed")?;
 			}
 		}
 
@@ -280,6 +280,10 @@ impl<T: Trait> Module<T> {
 	pub fn finalized_block() -> T::Hash {
 		<system::Module<T>>::block_hash(<FinalizedEpochNumber<T>>::get())
 	}
+}
+
+impl<T: Trait> sr_primitives::BoundToRuntimeAppPublic for Module<T> {
+	type Public = ValidatorId;
 }
 
 impl<T: Trait> session::OneSessionHandler<T::AccountId> for Module<T> {
@@ -365,8 +369,8 @@ impl<T: Trait> session::OneSessionHandler<T::AccountId> for Module<T> {
 		}
 
 		<JustificationBits>::put(justification_bits);
-		<PreviousEpochAttestations<T>>::put(Vec::new());
-		<CurrentEpochAttestations<T>>::put(Vec::new());
+		<PreviousEpochAttestations<T>>::put(Vec::<Attestation<T>>::new());
+		<CurrentEpochAttestations<T>>::put(Vec::<Attestation<T>>::new());
 
 		if changed {
 			<Validators>::put(new_validators.map(|(_, k)| (k, 1u64)).collect::<Vec<_>>());
