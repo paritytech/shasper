@@ -5,9 +5,11 @@ authors = ["Wei Tang <hi@that.world>"]
 edition = "2018"
 
 [dependencies]
-primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate" }
-sr-primitives = { git = "https://github.com/paritytech/substrate" }
-consensus-common = { package = "substrate-consensus-common", git = "https://github.com/paritytech/substrate" }
-client = { package = "substrate-client", git = "https://github.com/paritytech/substrate" }
+primitives = { package = "sp-core", git = "https://github.com/paritytech/substrate" }
+sr-primitives = { package = "sp-runtime", git = "https://github.com/paritytech/substrate" }
+consensus-common = { package = "sp-consensus", git = "https://github.com/paritytech/substrate" }
+client = { package = "sc-client", git = "https://github.com/paritytech/substrate" }
+client-db = { package = "sc-client-db", git = "https://github.com/paritytech/substrate" }
+client-api = { package = "sc-client-api", git = "https://github.com/paritytech/substrate" }
 casper-primitives = { package = "substrate-casper-primitives", path = "../primitives" }
 log = { version = "0.4" }

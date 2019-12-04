@@ -17,7 +17,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use primitives::crypto::KeyTypeId;
-use sr_api_macros::decl_runtime_apis;
+use sp_api::decl_runtime_apis;
 use sr_primitives::traits::Block as BlockT;
 
 pub const KEY_TYPE_ID: KeyTypeId = KeyTypeId(*b"casp");
