@@ -1,0 +1,18 @@
+[package]
+name = "pallet-casper"
+version = "0.1.0"
+authors = ["Wei Tang <hi@that.world>"]
+edition = "2018"
+
+[dependencies]
+sp-staking = { git = "https://github.com/paritytech/substrate", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false }
+pallet-staking = { git = "https://github.com/paritytech/substrate", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"sp-staking/std",
+	"frame-system/std",
+	"pallet-staking/std",
+]
