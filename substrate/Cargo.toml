@@ -1,6 +1,6 @@
 [workspace]
 members = [
-	"casper/srml",
-	"casper/consensus",
+	"casper/pallet",
 	"casper/primitives",
+	"casper/consensus",
 ]
