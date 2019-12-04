@@ -1,7 +1,7 @@
 use codec::{Encode, Decode};
-use sp_runtime::{RuntimeDebug, traits::Member};
+use sp_runtime::RuntimeDebug;
 use sp_staking::SessionIndex;
-use support::{decl_module, decl_storage, decl_event, dispatch::Result, Parameter};
+use support::{decl_module, decl_storage, decl_event, dispatch::Result};
 use system::ensure_none;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
@@ -19,7 +19,7 @@ pub struct Attestation<T: Trait> {
 
 pub trait Trait: session::Trait + core::fmt::Debug {
 	/// The overarching event type.
-	type Event: From<Event> + Into<<Self as system::Trait>::Event>;
+	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	/// Validator weighter;
 	type WeighValidators: WeighValidators<Self>;
 }
@@ -41,8 +41,13 @@ decl_storage! {
 }
 
 decl_event! {
-	pub enum Event {
-
+	pub enum Event<T> where
+		H = <T as system::Trait>::Hash,
+	{
+		/// On Casper justification happens.
+		OnJustified(H),
+		/// On Casper finalization happens.
+		OnFinalized(H),
 	}
 }
 
@@ -55,6 +60,10 @@ decl_module! {
 			attestations: Vec<Attestation<T>>,
 		) -> Result {
 			ensure_none(origin)?;
+
+			for attestation in attestations {
+				Self::push_attestation(attestation)?;
+			}
 
 			Ok(())
 		}
