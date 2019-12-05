@@ -115,14 +115,16 @@ impl<C: Config> Decoder for OutboundCodec<C> {
 		};
 
 		Ok(Some(if code == 0 {
+			trace!("outbound decode type: {:?}", self.typ);
 			match self.typ {
 				RPCType::Hello => RPCResponse::Hello(Decode::decode(&bytes[..])?),
-				RPCType::BeaconBlocks => RPCResponse::BeaconBlocks(Decode::decode(&bytes[..])?),
+				RPCType::BeaconBlocks => RPCResponse::BeaconBlocks(vec![Decode::decode(&bytes[..])?]),
 				RPCType::RecentBeaconBlocks =>
-					RPCResponse::RecentBeaconBlocks(Decode::decode(&bytes[..])?),
+					RPCResponse::RecentBeaconBlocks(vec![Decode::decode(&bytes[..])?]),
 				RPCType::Goodbye => RPCResponse::Unknown(code, bytes.to_vec()),
 			}
 		} else {
+			trace!("outbound decoded unknown with code {}", code);
 			RPCResponse::Unknown(code, bytes.to_vec())
 		}))
 	}

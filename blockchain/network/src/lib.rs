@@ -126,7 +126,7 @@ pub fn start_network_simple_sync<C, Ba, I>(
 											handler.blocks_by_slot(
 												request.head_block_root,
 												request.start_slot,
-												request.count as usize,
+												1, // TODO: request.count as usize,
 											)
 										)
 									));
