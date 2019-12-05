@@ -49,7 +49,7 @@ impl<C, Ba> Handler<C, Ba> where
 
 		BeaconBlocksRequest {
 			head_block_root: head_hash,
-			start_slot: head_slot,
+			start_slot: head_slot + 1,
 			count: count as u64,
 			step: 1
 		}

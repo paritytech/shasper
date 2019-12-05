@@ -13,7 +13,7 @@
 
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
-use beacon::{genesis_beacon_state, Config, MinimalConfig, Inherent, Transaction, BeaconExecutive};
+use beacon::{genesis_beacon_state, Config, Inherent, Transaction, BeaconExecutive};
 use beacon::primitives::*;
 use beacon::types::*;
 use blockchain::{AsExternalities, Auxiliary, Block as BlockT};
@@ -21,10 +21,11 @@ use blockchain::backend::{SharedMemoryBackend, SharedCommittable, ChainQuery, St
 use blockchain::import::{SharedBlockImporter, MutexImporter};
 use blockchain_rocksdb::RocksBackend;
 use shasper_blockchain::{Block, Executor, MemoryState, RocksState, Error, StateExternalities, AttestationPool};
+use shasper_blockchain::preset::Preset;
 use shasper_blockchain::backend::ShasperBackend;
 use shasper_network::NetworkConfig;
 use lmd_ghost::archive::{ArchiveGhostImporter, AncestorQuery};
-use clap::{App, Arg};
+use clap::{App, Arg, ArgMatches};
 use libp2p::Multiaddr;
 use std::thread;
 use std::str::FromStr;
@@ -165,8 +166,37 @@ fn main() {
 			 .long("chain")
 			 .takes_value(true)
 			 .help("Preset chain to connect to"))
+		.arg(Arg::with_name("config")
+			 .long("config")
+			 .takes_value(true)
+			 .help("Config to use"))
 		.get_matches();
 
+	let preset = matches.value_of("chain").map(|name| {
+		shasper_blockchain::preset::presets().get(&name)
+			.expect("Unknown preset").clone()
+	});
+
+	let config_name = matches.value_of("config")
+		.unwrap_or(if matches.value_of("chain") == Some("sapphire") {
+			"sapphire"
+		} else {
+			"minimal"
+		});
+
+	info!("Using chain config: {}", config_name);
+	match config_name {
+		"minimal" => main_with_config::<beacon::MinimalConfig>(matches, preset),
+		"mainnet" => main_with_config::<beacon::MainnetConfig>(matches, preset),
+		"sapphire" => main_with_config::<beacon::SapphireConfig>(matches, preset),
+		e => panic!("Unknown config name: {:?}", e),
+	}
+}
+
+fn main_with_config<C: Config>(matches: ArgMatches, preset: Option<Preset>) where
+	C: Unpin + Clone + Send + Sync + 'static,
+	Block<C>: ssz::Encode + ssz::Decode + Unpin + Send + Sync,
+{
 	let mut keys: HashMap<ValidatorId, bls::Secret> = HashMap::new();
 
 	if let Some(validator_keys) = matches.value_of("validator-keys") {
@@ -193,11 +223,6 @@ fn main() {
 		}
 	}
 
-	let preset = matches.value_of("chain").map(|name| {
-		shasper_blockchain::preset::presets().get(&name)
-			.expect("Unknown preset").clone()
-	});
-
 	let genesis_state = if let Some(genesis_file) = matches.value_of("genesis-state") {
 		let mut file = File::open(genesis_file).unwrap();
 		let mut data = Vec::new();
@@ -219,7 +244,7 @@ fn main() {
 			};
 			let signature = Signature::from_slice(&bls::Signature::new(
 				&tree_root::<sha2::Sha256, _>(&SigningDepositData::from(data.clone()))[..],
-				beacon::genesis_domain(MinimalConfig::domain_deposit()),
+				beacon::genesis_domain(C::domain_deposit()),
 				&seckey
 			).as_bytes()[..]);
 			data.signature = signature;
@@ -227,12 +252,12 @@ fn main() {
 			keys.insert(pubkey, seckey);
 		}
 
-		let deposit_tree = deposit_tree::<MinimalConfig>(&deposit_datas);
+		let deposit_tree = deposit_tree::<C>(&deposit_datas);
 		let deposits = deposit_datas.clone().into_iter()
 			.enumerate()
 			.map(|(i, deposit_data)| {
 				Deposit {
-					proof: deposit_proof::<MinimalConfig>(&deposit_tree, i).try_into().ok().unwrap(),
+					proof: deposit_proof::<C>(&deposit_tree, i).try_into().ok().unwrap(),
 					data: deposit_data,
 				}
 			})
@@ -244,14 +269,14 @@ fn main() {
 			block_hash: Default::default(),
 		};
 		let genesis_state =
-			genesis_beacon_state::<MinimalConfig, BLS>(
+			genesis_beacon_state::<C, BLS>(
 				&deposits, 0, eth1_data.clone()
 			).unwrap();
 
 		genesis_state
 	};
 	let genesis_block = Block(BeaconBlock {
-		state_root: tree_root::<<MinimalConfig as Config>::Digest, _>(&genesis_state),
+		state_root: tree_root::<<C as Config>::Digest, _>(&genesis_state),
 		..Default::default()
 	});
 	let eth1_data = genesis_state.eth1_data.clone();
@@ -275,7 +300,7 @@ fn main() {
 	if let Some(path) = matches.value_of("data") {
 		info!("Using RocksDB backend");
 		let backend = ShasperBackend::new(
-			RocksBackend::<_, (), RocksState<MinimalConfig>>::open_or_create(path, |_| {
+			RocksBackend::<_, (), RocksState<C>>::open_or_create(path, |_| {
 				Ok((genesis_block.clone(), genesis_state.into()))
 			}).unwrap()
 		);
@@ -290,7 +315,7 @@ fn main() {
 	} else {
 		info!("Using in-memory backend");
 		let backend = ShasperBackend::new(
-			SharedMemoryBackend::<_, (), MemoryState<MinimalConfig>>::new_with_genesis(
+			SharedMemoryBackend::<_, (), MemoryState<C>>::new_with_genesis(
 				genesis_block.clone(),
 				genesis_state.into(),
 			)

@@ -326,3 +326,65 @@ impl Config for MainnetConfig {
 	fn inactivity_penalty_quotient() -> Uint { 33554432 }
 	fn min_slashing_penalty_quotient() -> Uint { 32 }
 }
+
+#[derive(Default, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Debug))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "parity-codec", derive(parity_codec::Encode, parity_codec::Decode))]
+/// Minimal config.
+pub struct SapphireConfig;
+
+impl Config for SapphireConfig {
+	type Digest = sha2::Sha256;
+	type MaxValidatorsPerCommittee = typenum::U2048;
+	type SlotsPerHistoricalRoot = typenum::U64;
+	type MaxProposerSlashings = typenum::U16;
+	type MaxAttesterSlashings = typenum::U1;
+	type MaxAttestations = typenum::U128;
+	type MaxDeposits = typenum::U16;
+	type MaxVoluntaryExits = typenum::U16;
+	type HistoricalRootsLimit = typenum::U16777216;
+	type ShardCount = typenum::U8;
+	type SlotsPerEpoch = typenum::U8;
+	type SlotsPerEth1VotingPeriod = typenum::U16;
+	type ValidatorRegistryLimit = typenum::U1099511627776;
+	type EpochsPerHistoricalVector = typenum::U64;
+	type EpochsPerSlashingsVector = typenum::U64;
+	type MaxAttestationsPerEpoch = typenum::Prod<Self::MaxAttestations, Self::SlotsPerEpoch>;
+
+	// === Misc ===
+	fn max_committees_per_slot() -> Uint { 4 }
+	fn target_committee_size() -> Uint { 4 }
+	fn min_per_epoch_churn_limit() -> Uint { 4 }
+	fn churn_limit_quotient() -> Uint { 65536 }
+	fn shuffle_round_count() -> Uint { 10 }
+	fn min_genesis_active_validator_count() -> Uint { 64 }
+	fn min_genesis_time() -> Uint { 1578009600 }
+
+	// == Gwei values ==
+	fn min_deposit_amount() -> Uint { 100 }
+	fn max_effective_balance() -> Uint { 3200000000 }
+	fn ejection_balance() -> Uint { 3000000000 }
+	fn effective_balance_increment() -> Uint { 1000000000 }
+
+	// == Initial values ==
+	fn genesis_slot() -> Uint { 0 }
+	fn genesis_epoch() -> Uint { 0 }
+	fn bls_withdrawal_prefix_byte() -> u8 { 0x00 }
+
+	// == Time parameters ==
+	fn min_attestation_inclusion_delay() -> Uint { 1 }
+	fn min_seed_lookahead() -> Uint { 1 }
+	fn max_seed_lookahead() -> Uint { 4 }
+	fn min_validator_withdrawability_delay() -> Uint { 256 }
+	fn persistent_committee_period() -> Uint { 2048 }
+	fn max_epochs_per_crosslink() -> Uint { 4 }
+	fn min_epochs_to_inactivity_penalty() -> Uint { 4 }
+
+	// == Reward and penalty quotients ==
+	fn base_reward_factor() -> Uint { 64 }
+	fn whistleblower_reward_quotient() -> Uint { 512 }
+	fn proposer_reward_quotient() -> Uint { 8 }
+	fn inactivity_penalty_quotient() -> Uint { 33554432 }
+	fn min_slashing_penalty_quotient() -> Uint { 32 }
+}
