@@ -94,32 +94,32 @@ pub enum PubsubType {
 impl PubsubType {
 	pub fn from_gossipsub_topic_hash(topic: &gossipsub::TopicHash) -> Option<Self> {
 		match topic.as_str() {
-			"/eth2/beacon_block/ssz/beacon_block" => Some(Self::Block),
-			"/eth2/beacon_block/ssz/beacon_attestation" => Some(Self::Attestation),
-			"/eth2/beacon_block/ssz/voluntary_exit" => Some(Self::VoluntaryExit),
-			"/eth2/beacon_block/ssz/proposer_slashing" => Some(Self::ProposerSlashing),
-			"/eth2/beacon_block/ssz/attester_slashing" => Some(Self::AttesterSlashing),
+			"/eth2/beacon_block/ssz" => Some(Self::Block),
+			"/eth2/beacon_attestation/ssz" => Some(Self::Attestation),
+			"/eth2/voluntary_exit/ssz" => Some(Self::VoluntaryExit),
+			"/eth2/proposer_slashing/ssz" => Some(Self::ProposerSlashing),
+			"/eth2/attester_slashing/ssz" => Some(Self::AttesterSlashing),
 			_ => None,
 		}
 	}
 
 	pub fn gossipsub_topic_hash(&self) -> gossipsub::TopicHash {
 		gossipsub::TopicHash::from_raw(match self {
-			Self::Block => "/eth2/beacon_block/ssz/beacon_block".to_string(),
-			Self::Attestation => "/eth2/beacon_block/ssz/beacon_attestation".to_string(),
-			Self::VoluntaryExit => "/eth2/beacon_block/ssz/voluntary_exit".to_string(),
-			Self::ProposerSlashing => "/eth2/beacon_block/ssz/proposer_slashing".to_string(),
-			Self::AttesterSlashing => "/eth2/beacon_block/ssz/attester_slashing".to_string(),
+			Self::Block => "/eth2/beacon_block/ssz".to_string(),
+			Self::Attestation => "/eth2/beacon_attestation/ssz".to_string(),
+			Self::VoluntaryExit => "/eth2/voluntary_exit/ssz".to_string(),
+			Self::ProposerSlashing => "/eth2/proposer_slashing/ssz".to_string(),
+			Self::AttesterSlashing => "/eth2/attester_slashing/ssz".to_string(),
 		})
 	}
 
 	pub fn gossipsub_topic(&self) -> gossipsub::Topic {
 		gossipsub::Topic::new(match self {
-			Self::Block => "/eth2/beacon_block/ssz/beacon_block".to_string(),
-			Self::Attestation => "/eth2/beacon_block/ssz/beacon_attestation".to_string(),
-			Self::VoluntaryExit => "/eth2/beacon_block/ssz/voluntary_exit".to_string(),
-			Self::ProposerSlashing => "/eth2/beacon_block/ssz/proposer_slashing".to_string(),
-			Self::AttesterSlashing => "/eth2/beacon_block/ssz/attester_slashing".to_string(),
+			Self::Block => "/eth2/beacon_block/ssz".to_string(),
+			Self::Attestation => "/eth2/beacon_attestation/ssz".to_string(),
+			Self::VoluntaryExit => "/eth2/voluntary_exit/ssz".to_string(),
+			Self::ProposerSlashing => "/eth2/proposer_slashing/ssz".to_string(),
+			Self::AttesterSlashing => "/eth2/attester_slashing/ssz".to_string(),
 		})
 	}
 }
