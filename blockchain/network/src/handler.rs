@@ -5,6 +5,7 @@ use blockchain::backend::{Store, SharedCommittable, ChainQuery, ImportLock};
 use beacon::{Config, types::BeaconBlock, primitives::H256};
 use network_messages::{HelloMessage, BeaconBlocksRequest};
 use shasper_runtime::{StateExternalities, Block};
+use log::*;
 
 pub struct Handler<C, Ba> {
 	import_lock: ImportLock,
@@ -47,9 +48,11 @@ impl<C, Ba> Handler<C, Ba> where
 		let head_state = self.backend.state_at(&head_hash).unwrap();
 		let head_slot = head_state.state().slot;
 
+		info!("Chain head: {:?} (slot: {})", head_hash, head_slot);
+
 		BeaconBlocksRequest {
 			head_block_root: head_hash,
-			start_slot: head_slot,
+			start_slot: head_slot + 1,
 			count: count as u64,
 			step: 1
 		}

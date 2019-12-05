@@ -39,7 +39,7 @@ mod genesis;
 pub use self::error::Error;
 pub use self::config::{
 	BLSConfig, BLSNoVerification,
-	Config, MinimalConfig, MainnetConfig,
+	Config, MinimalConfig, MainnetConfig, SapphireConfig,
 };
 pub use self::executive::{BeaconState, BeaconExecutive};
 pub use self::genesis::{genesis, genesis_beacon_state};

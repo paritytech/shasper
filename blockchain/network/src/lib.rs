@@ -126,7 +126,7 @@ pub fn start_network_simple_sync<C, Ba, I>(
 											handler.blocks_by_slot(
 												request.head_block_root,
 												request.start_slot,
-												request.count as usize,
+												1, // TODO: request.count as usize,
 											)
 										)
 									));
@@ -185,7 +185,7 @@ pub fn start_network_simple_sync<C, Ba, I>(
 					trace!("Sync requested blocks query to {:?}", peer);
 					service.swarm.send_rpc(peer, RPCEvent::Request(
 						0,
-						RPCRequest::BeaconBlocks(handler.head_request(1))
+						RPCRequest::BeaconBlocks(handler.head_request(50))
 					));
 				},
 			}

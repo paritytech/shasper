@@ -7,3 +7,4 @@ edition = "2018"
 
 [dependencies]
 blockchain = { version = "0.9", path = "../../vendor/blockchain" }
+log = "0.4"

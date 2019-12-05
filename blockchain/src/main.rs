@@ -13,7 +13,7 @@
 
 // You should have received a copy of the GNU General Public License along with
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
-use beacon::{genesis_beacon_state, Config, MinimalConfig, Inherent, Transaction, BeaconExecutive};
+use beacon::{genesis_beacon_state, Config, Inherent, Transaction, BeaconExecutive};
 use beacon::primitives::*;
 use beacon::types::*;
 use blockchain::{AsExternalities, Auxiliary, Block as BlockT};
@@ -21,10 +21,11 @@ use blockchain::backend::{SharedMemoryBackend, SharedCommittable, ChainQuery, St
 use blockchain::import::{SharedBlockImporter, MutexImporter};
 use blockchain_rocksdb::RocksBackend;
 use shasper_blockchain::{Block, Executor, MemoryState, RocksState, Error, StateExternalities, AttestationPool};
+use shasper_blockchain::preset::Preset;
 use shasper_blockchain::backend::ShasperBackend;
 use shasper_network::NetworkConfig;
 use lmd_ghost::archive::{ArchiveGhostImporter, AncestorQuery};
-use clap::{App, Arg};
+use clap::{App, Arg, ArgMatches};
 use libp2p::Multiaddr;
 use std::thread;
 use std::str::FromStr;
@@ -35,9 +36,11 @@ use ssz::Decode;
 use core::time::Duration;
 use core::convert::TryInto;
 use serde::{Serialize, Deserialize};
-use log::*;
+use log::{info, warn, trace};
 use bm_le::tree_root;
-use crypto::bls::{self, BLSVerification};
+use crypto::bls;
+
+type BLS = bls::BLSVerification;
 
 fn deposit_tree<C: Config>(deposits: &[DepositData]) -> Vec<Vec<H256>> {
 	let mut zerohashes = vec![H256::default()];
@@ -137,6 +140,7 @@ fn main() {
 			 .short("p")
 			 .long("port")
 			 .takes_value(true)
+			 .required(true)
 			 .help("Port to listen on"))
 		.arg(Arg::with_name("data")
 			 .short("d")
@@ -153,13 +157,46 @@ fn main() {
 		.arg(Arg::with_name("genesis-state")
 			 .long("genesis-state")
 			 .takes_value(true)
-			 .help("ssz raw genesis state file"))
+			 .help("Ssz raw genesis state file"))
 		.arg(Arg::with_name("validator-keys")
 			 .long("validator-keys")
 			 .takes_value(true)
-			 .help("yaml validator keys"))
+			 .help("Yaml validator keys"))
+		.arg(Arg::with_name("chain")
+			 .long("chain")
+			 .takes_value(true)
+			 .help("Preset chain to connect to"))
+		.arg(Arg::with_name("config")
+			 .long("config")
+			 .takes_value(true)
+			 .help("Config to use"))
 		.get_matches();
 
+	let preset = matches.value_of("chain").map(|name| {
+		shasper_blockchain::preset::presets().get(&name)
+			.expect("Unknown preset").clone()
+	});
+
+	let config_name = matches.value_of("config")
+		.unwrap_or(if matches.value_of("chain") == Some("sapphire") {
+			"sapphire"
+		} else {
+			"minimal"
+		});
+
+	info!("Using chain config: {}", config_name);
+	match config_name {
+		"minimal" => main_with_config::<beacon::MinimalConfig>(matches, preset),
+		"mainnet" => main_with_config::<beacon::MainnetConfig>(matches, preset),
+		"sapphire" => main_with_config::<beacon::SapphireConfig>(matches, preset),
+		e => panic!("Unknown config name: {:?}", e),
+	}
+}
+
+fn main_with_config<C: Config>(matches: ArgMatches, preset: Option<Preset>) where
+	C: Unpin + Clone + Send + Sync + 'static,
+	Block<C>: ssz::Encode + ssz::Decode + Unpin + Send + Sync,
+{
 	let mut keys: HashMap<ValidatorId, bls::Secret> = HashMap::new();
 
 	if let Some(validator_keys) = matches.value_of("validator-keys") {
@@ -192,6 +229,8 @@ fn main() {
 		file.read_to_end(&mut data).unwrap();
 
 		Decode::decode(&mut &data[..]).unwrap()
+	} else if let Some(preset) = preset.as_ref() {
+		Decode::decode(&mut &preset.genesis_state).unwrap()
 	} else {
 		let mut deposit_datas = Vec::new();
 		for i in 0..10 {
@@ -205,7 +244,7 @@ fn main() {
 			};
 			let signature = Signature::from_slice(&bls::Signature::new(
 				&tree_root::<sha2::Sha256, _>(&SigningDepositData::from(data.clone()))[..],
-				beacon::genesis_domain(MinimalConfig::domain_deposit()),
+				beacon::genesis_domain(C::domain_deposit()),
 				&seckey
 			).as_bytes()[..]);
 			data.signature = signature;
@@ -213,12 +252,12 @@ fn main() {
 			keys.insert(pubkey, seckey);
 		}
 
-		let deposit_tree = deposit_tree::<MinimalConfig>(&deposit_datas);
+		let deposit_tree = deposit_tree::<C>(&deposit_datas);
 		let deposits = deposit_datas.clone().into_iter()
 			.enumerate()
 			.map(|(i, deposit_data)| {
 				Deposit {
-					proof: deposit_proof::<MinimalConfig>(&deposit_tree, i).try_into().ok().unwrap(),
+					proof: deposit_proof::<C>(&deposit_tree, i).try_into().ok().unwrap(),
 					data: deposit_data,
 				}
 			})
@@ -230,14 +269,14 @@ fn main() {
 			block_hash: Default::default(),
 		};
 		let genesis_state =
-			genesis_beacon_state::<MinimalConfig, BLSVerification>(
+			genesis_beacon_state::<C, BLS>(
 				&deposits, 0, eth1_data.clone()
 			).unwrap();
 
 		genesis_state
 	};
 	let genesis_block = Block(BeaconBlock {
-		state_root: tree_root::<<MinimalConfig as Config>::Digest, _>(&genesis_state),
+		state_root: tree_root::<<C as Config>::Digest, _>(&genesis_state),
 		..Default::default()
 	});
 	let eth1_data = genesis_state.eth1_data.clone();
@@ -249,6 +288,11 @@ fn main() {
 		nodes.rsplit(',')
 			.map(|v| FromStr::from_str(v).unwrap())
 			.collect::<Vec<Multiaddr>>()
+	} else if let Some(preset) = preset.as_ref() {
+		preset.bootnodes
+			.iter()
+			.map(|v| FromStr::from_str(v).unwrap())
+			.collect::<Vec<Multiaddr>>()
 	} else {
 		Vec::new()
 	};
@@ -256,7 +300,7 @@ fn main() {
 	if let Some(path) = matches.value_of("data") {
 		info!("Using RocksDB backend");
 		let backend = ShasperBackend::new(
-			RocksBackend::<_, (), RocksState<MinimalConfig>>::open_or_create(path, |_| {
+			RocksBackend::<_, (), RocksState<C>>::open_or_create(path, |_| {
 				Ok((genesis_block.clone(), genesis_state.into()))
 			}).unwrap()
 		);
@@ -271,7 +315,7 @@ fn main() {
 	} else {
 		info!("Using in-memory backend");
 		let backend = ShasperBackend::new(
-			SharedMemoryBackend::<_, (), MemoryState<MinimalConfig>>::new_with_genesis(
+			SharedMemoryBackend::<_, (), MemoryState<C>>::new_with_genesis(
 				genesis_block.clone(),
 				genesis_state.into(),
 			)
@@ -303,7 +347,7 @@ fn run<B, C: Config>(
 	B: Send + Sync + 'static,
 	C: Unpin + Clone + Send + Sync + 'static,
 {
-	let executor = Executor::<C, BLSVerification>::new();
+	let executor = Executor::<C, BLS>::new();
 	let importer = MutexImporter::new(
 		ArchiveGhostImporter::new(executor, backend.clone(), import_lock.clone())
 	);
@@ -331,8 +375,8 @@ fn builder_thread<B, I, C: Config + Clone>(
 	B::Auxiliary: Auxiliary<Block<C>>,
 	I: SharedBlockImporter<Block=Block<C>>
 {
-	let executor = Executor::<C, BLSVerification>::new();
-	let mut attestations = AttestationPool::<C, BLSVerification>::new();
+	let executor = Executor::<C, BLS>::new();
+	let mut attestations = AttestationPool::<C, BLS>::new();
 
 	loop {
 		thread::sleep(Duration::new(1, 0));

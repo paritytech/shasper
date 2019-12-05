@@ -30,10 +30,10 @@ impl libp2p_rpc::RPCType for RPCType {
 impl libp2p::core::ProtocolName for RPCType {
 	fn protocol_name(&self) -> &[u8] {
 		match self {
-			RPCType::Hello => b"/eth2/beacon_chain/req/hello/1/ssz",
+			RPCType::Hello => b"/eth2/beacon_chain/req/status/1/ssz",
 			RPCType::Goodbye => b"/eth2/beacon_chain/req/goodbye/1/ssz",
-			RPCType::BeaconBlocks => b"/eth2/beacon_chain/req/beacon_blocks/1/ssz",
-			RPCType::RecentBeaconBlocks => b"/eth2/beacon_chain/req/recent_beacon_blocks/1/ssz",
+			RPCType::BeaconBlocks => b"/eth2/beacon_chain/req/beacon_blocks_by_range/1/ssz",
+			RPCType::RecentBeaconBlocks => b"/eth2/beacon_chain/req/beacon_blocks_by_root/1/ssz",
 		}
 	}
 }

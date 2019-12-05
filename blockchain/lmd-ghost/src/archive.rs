@@ -19,6 +19,7 @@ use core::mem;
 use blockchain::{Block, Auxiliary, BlockExecutor, AsExternalities};
 use blockchain::import::{BlockImporter, RawImporter, ImportAction};
 use blockchain::backend::{Store, SharedCommittable, ImportOperation, ChainQuery, ImportLock, Operation};
+use log::*;
 use crate::JustifiableExecutor;
 
 pub trait AncestorQuery: Store {
