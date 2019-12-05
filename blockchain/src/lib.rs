@@ -15,6 +15,7 @@
 // Parity Shasper.  If not, see <http://www.gnu.org/licenses/>.
 mod pool;
 pub mod backend;
+pub mod preset;
 
 pub use pool::AttestationPool;
 pub use shasper_runtime::{Block, StateExternalities};

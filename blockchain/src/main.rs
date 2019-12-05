@@ -35,7 +35,7 @@ use ssz::Decode;
 use core::time::Duration;
 use core::convert::TryInto;
 use serde::{Serialize, Deserialize};
-use log::*;
+use log::{info, warn, trace};
 use bm_le::tree_root;
 use crypto::bls::{self, BLSVerification};
 
@@ -137,6 +137,7 @@ fn main() {
 			 .short("p")
 			 .long("port")
 			 .takes_value(true)
+			 .required(true)
 			 .help("Port to listen on"))
 		.arg(Arg::with_name("data")
 			 .short("d")
@@ -153,11 +154,15 @@ fn main() {
 		.arg(Arg::with_name("genesis-state")
 			 .long("genesis-state")
 			 .takes_value(true)
-			 .help("ssz raw genesis state file"))
+			 .help("Ssz raw genesis state file"))
 		.arg(Arg::with_name("validator-keys")
 			 .long("validator-keys")
 			 .takes_value(true)
-			 .help("yaml validator keys"))
+			 .help("Yaml validator keys"))
+		.arg(Arg::with_name("chain")
+			 .long("chain")
+			 .takes_value(true)
+			 .help("Preset chain to connect to"))
 		.get_matches();
 
 	let mut keys: HashMap<ValidatorId, bls::Secret> = HashMap::new();
@@ -186,12 +191,19 @@ fn main() {
 		}
 	}
 
+	let preset = matches.value_of("chain").map(|name| {
+		shasper_blockchain::preset::presets().get(&name)
+			.expect("Unknown preset").clone()
+	});
+
 	let genesis_state = if let Some(genesis_file) = matches.value_of("genesis-state") {
 		let mut file = File::open(genesis_file).unwrap();
 		let mut data = Vec::new();
 		file.read_to_end(&mut data).unwrap();
 
 		Decode::decode(&mut &data[..]).unwrap()
+	} else if let Some(preset) = preset.as_ref() {
+		Decode::decode(&mut &preset.genesis_state).unwrap()
 	} else {
 		let mut deposit_datas = Vec::new();
 		for i in 0..10 {
@@ -247,6 +259,11 @@ fn main() {
 	network_config.discovery_port = u16::from_str(matches.value_of("port").unwrap()).unwrap();
 	network_config.libp2p_nodes = if let Some(nodes) = matches.value_of("libp2p-nodes") {
 		nodes.rsplit(',')
+			.map(|v| FromStr::from_str(v).unwrap())
+			.collect::<Vec<Multiaddr>>()
+	} else if let Some(preset) = preset.as_ref() {
+		preset.bootnodes
+			.iter()
 			.map(|v| FromStr::from_str(v).unwrap())
 			.collect::<Vec<Multiaddr>>()
 	} else {
