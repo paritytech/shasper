@@ -74,7 +74,7 @@ impl<TSubstream> Discovery<TSubstream> {
         info!("ENR Initialised {}, {}", local_enr.to_base64(), local_enr.seq());
         debug!("Discv5 Node ID Initialised {}", local_enr.node_id());
 
-        let mut discovery = Discv5::new(local_enr, local_key.clone(), config.listen_address)
+        let mut discovery = Discv5::new(local_enr, local_key.clone(), config.listen_address, false)
             .map_err(|e| format!("Discv5 service failed. Error: {:?}", e))?;
 
         // Add bootnodes to routing table
