@@ -108,24 +108,75 @@ impl<C: Config> Decoder for OutboundCodec<C> {
 			return Ok(None)
 		}
 
-		let code = src.split_to(1)[0];
-		let bytes = match self.uvi.decode(src)? {
-			Some(bytes) => bytes,
-			None => return Ok(None),
-		};
+		Ok(Some(match self.typ {
+			RPCType::Hello => {
+				let code = src.split_to(1)[0];
+				let bytes = match self.uvi.decode(src)? {
+					Some(bytes) => bytes,
+					None => return Ok(None),
+				};
 
-		Ok(Some(if code == 0 {
-			trace!("outbound decode type: {:?}", self.typ);
-			match self.typ {
-				RPCType::Hello => RPCResponse::Hello(Decode::decode(&bytes[..])?),
-				RPCType::BeaconBlocks => RPCResponse::BeaconBlocks(vec![Decode::decode(&bytes[..])?]),
-				RPCType::RecentBeaconBlocks =>
-					RPCResponse::RecentBeaconBlocks(vec![Decode::decode(&bytes[..])?]),
-				RPCType::Goodbye => RPCResponse::Unknown(code, bytes.to_vec()),
-			}
-		} else {
-			trace!("outbound decoded unknown with code {}", code);
-			RPCResponse::Unknown(code, bytes.to_vec())
+				if code == 0 {
+					RPCResponse::Hello(Decode::decode(&bytes[..])?)
+				} else {
+					RPCResponse::Unknown(code, bytes.to_vec())
+				}
+			},
+			RPCType::Goodbye => {
+				let code = src.split_to(1)[0];
+				let bytes = match self.uvi.decode(src)? {
+					Some(bytes) => bytes,
+					None => return Ok(None),
+				};
+
+				RPCResponse::Unknown(code, bytes.to_vec())
+			},
+			RPCType::BeaconBlocks => {
+				let mut result = Vec::new();
+
+				loop {
+					if src.is_empty() {
+						break
+					}
+
+					let code = src.split_to(1)[0];
+					if code != 0 {
+						break
+					}
+
+					let bytes = match self.uvi.decode(src)? {
+						Some(bytes) => bytes,
+						None => break,
+					};
+
+					result.push(Decode::decode(&bytes[..])?);
+				}
+
+				RPCResponse::BeaconBlocks(result)
+			},
+			RPCType::RecentBeaconBlocks => {
+				let mut result = Vec::new();
+
+				loop {
+					if src.is_empty() {
+						break
+					}
+
+					let code = src.split_to(1)[0];
+					if code != 0 {
+						break
+					}
+
+					let bytes = match self.uvi.decode(src)? {
+						Some(bytes) => bytes,
+						None => break,
+					};
+
+					result.push(Decode::decode(&bytes[..])?);
+				}
+
+				RPCResponse::RecentBeaconBlocks(result)
+			},
 		}))
 	}
 }

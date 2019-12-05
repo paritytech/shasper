@@ -1577,6 +1577,7 @@ name = "lmd-ghost"
 version = "0.1.0"
 dependencies = [
  "blockchain 0.9.2",
+ "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

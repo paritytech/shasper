@@ -37,7 +37,9 @@ use core::convert::TryInto;
 use serde::{Serialize, Deserialize};
 use log::{info, warn, trace};
 use bm_le::tree_root;
-use crypto::bls::{self, BLSVerification};
+use crypto::bls;
+
+type BLS = bls::BLSVerification;
 
 fn deposit_tree<C: Config>(deposits: &[DepositData]) -> Vec<Vec<H256>> {
 	let mut zerohashes = vec![H256::default()];
@@ -242,7 +244,7 @@ fn main() {
 			block_hash: Default::default(),
 		};
 		let genesis_state =
-			genesis_beacon_state::<MinimalConfig, BLSVerification>(
+			genesis_beacon_state::<MinimalConfig, BLS>(
 				&deposits, 0, eth1_data.clone()
 			).unwrap();
 
@@ -320,7 +322,7 @@ fn run<B, C: Config>(
 	B: Send + Sync + 'static,
 	C: Unpin + Clone + Send + Sync + 'static,
 {
-	let executor = Executor::<C, BLSVerification>::new();
+	let executor = Executor::<C, BLS>::new();
 	let importer = MutexImporter::new(
 		ArchiveGhostImporter::new(executor, backend.clone(), import_lock.clone())
 	);
@@ -348,8 +350,8 @@ fn builder_thread<B, I, C: Config + Clone>(
 	B::Auxiliary: Auxiliary<Block<C>>,
 	I: SharedBlockImporter<Block=Block<C>>
 {
-	let executor = Executor::<C, BLSVerification>::new();
-	let mut attestations = AttestationPool::<C, BLSVerification>::new();
+	let executor = Executor::<C, BLS>::new();
+	let mut attestations = AttestationPool::<C, BLS>::new();
 
 	loop {
 		thread::sleep(Duration::new(1, 0));
