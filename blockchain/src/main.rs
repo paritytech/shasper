@@ -201,7 +201,6 @@ fn main_with_config<C: Config>(matches: ArgMatches, preset: Option<Preset>) wher
 
 	if let Some(validator_keys) = matches.value_of("validator-keys") {
 		const PRIVATE_KEY_BYTES: usize = 48;
-		const PUBLIC_KEY_BYTES: usize = 48;
 
 		let file = File::open(validator_keys).unwrap();
 		let coll = serde_yaml::from_reader::<_, Vec<ValidatorKey>>(BufReader::new(file)).unwrap();
