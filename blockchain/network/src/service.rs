@@ -27,7 +27,6 @@ use libp2p::core::{
     muxing::StreamMuxerBox,
     nodes::Substream,
     transport::boxed::Boxed,
-    upgrade::{InboundUpgradeExt, OutboundUpgradeExt},
 };
 use libp2p::{core, secio, PeerId, Swarm, Transport};
 use libp2p::gossipsub::Topic;

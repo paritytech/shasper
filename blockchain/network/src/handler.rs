@@ -1,5 +1,4 @@
 use core::marker::PhantomData;
-use core::cmp;
 use blockchain::{Auxiliary, Block as BlockT, AsExternalities};
 use blockchain::backend::{Store, SharedCommittable, ChainQuery, ImportLock};
 use beacon::{Config, types::BeaconBlock, primitives::H256};
@@ -79,7 +78,7 @@ impl<C, Ba> Handler<C, Ba> where
 	}
 
 	pub fn blocks_by_slot(
-		&self, mut start_hash: H256, mut start_slot: u64, count: usize
+		&self, mut start_hash: H256, start_slot: u64, count: usize
 	) -> Vec<BeaconBlock<C>> {
 		let _ = self.import_lock.lock();
 
