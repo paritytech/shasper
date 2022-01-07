@@ -15,4 +15,4 @@
 	url = https://github.com/sorpaas/milagro_bls
 [submodule "blockchain/res/eth2-testnets"]
 	path = blockchain/res/eth2-testnets
-	url = https://github.com/eth2-clients/eth2-testnets
+	url = https://github.com/eth-clients/eth2-testnets
